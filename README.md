@@ -117,7 +117,6 @@ Use the scripts under `build/` for publish and packaging workflows, especially:
 The active documentation set has been intentionally reduced to a small core:
 
 - `BUILD_AND_DEPLOY.md` - Visual Studio build, run, publish, and installer-sandbox workflow
-- `STATUS.md` - current release lane, priorities, and canonical reading order
 - `docs/BETA54_AUDIT_STATE.json` - single canonical machine-maintained audit, test, and release-gate state
 - `build/vm/VM_OPERATIONS_RUNBOOK.md` - repeatable VirtualBox/guest UX validation workflow
 
