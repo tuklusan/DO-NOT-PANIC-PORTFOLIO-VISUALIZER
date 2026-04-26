@@ -91,629 +91,940 @@
   },
   "feature_verification_matrix": [
     {
-      "ID": "F-001",
-      "Feature": "Config screen ships placeholder key formats",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Config/Services/SettingsFileService.cs:38-45, src/PortfolioSaver.Config/Services/ApiKeyValidationService.cs:12-17,39-41",
-      "Tests": "T-001, T-002"
+      "id": "F-001",
+      "feature": "Config screen ships placeholder key formats",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Config/Services/SettingsFileService.cs:38-45",
+        "src/PortfolioSaver.Config/Services/ApiKeyValidationService.cs:12-17,39-41"
+      ],
+      "tests": [
+        "T-001",
+        "T-002"
+      ]
     },
     {
-      "ID": "F-002",
-      "Feature": "Tiingo/FMP/EODHD API key fields in config UI",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Config/Windows/MainWindow.xaml:104-109",
-      "Tests": "T-003"
+      "id": "F-002",
+      "feature": "Tiingo/FMP/EODHD API key fields in config UI",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:104-109"
+      ],
+      "tests": [
+        "T-003"
+      ]
     },
     {
-      "ID": "F-003",
-      "Feature": "Validate button changes to OK only after full validation",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:127,196-230,298-303",
-      "Tests": "T-004"
+      "id": "F-003",
+      "feature": "Validate button changes to OK only after full validation",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:127,196-230,298-303"
+      ],
+      "tests": [
+        "T-004"
+      ]
     },
     {
-      "ID": "F-004",
-      "Feature": "Internet required for active config validation work",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:112-114,201-210,576-585, src/PortfolioSaver.Config/Windows/MainWindow.xaml:65,481-506",
-      "Tests": "T-005"
+      "id": "F-004",
+      "feature": "Internet required for active config validation work",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:112-114,201-210,576-585",
+        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:65,481-506"
+      ],
+      "tests": [
+        "T-005"
+      ]
     },
     {
-      "ID": "F-005",
-      "Feature": "Real-time Yahoo validation for entered symbols",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:376-409, src/PortfolioSaver.Config/Services/YahooSymbolValidationService.cs:33",
-      "Tests": "T-006"
+      "id": "F-005",
+      "feature": "Real-time Yahoo validation for entered symbols",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:376-409",
+        "src/PortfolioSaver.Config/Services/YahooSymbolValidationService.cs:33"
+      ],
+      "tests": [
+        "T-006"
+      ]
     },
     {
-      "ID": "F-006",
-      "Feature": "Apply fails when invalid ticker symbols are present",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:269-281",
-      "Tests": "T-007"
+      "id": "F-006",
+      "feature": "Apply fails when invalid ticker symbols are present",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:269-281"
+      ],
+      "tests": [
+        "T-007"
+      ]
     },
     {
-      "ID": "F-007",
-      "Feature": "Symbol display names auto-fill after successful validation",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:283-374, src/PortfolioSaver.Config/Windows/MainWindow.xaml:234,314",
-      "Tests": "T-008"
+      "id": "F-007",
+      "feature": "Symbol display names auto-fill after successful validation",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:283-374",
+        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:234,314"
+      ],
+      "tests": [
+        "T-008"
+      ]
     },
     {
-      "ID": "F-008",
-      "Feature": "Invalid ticker auto-uncheck",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:275,340-379, src/PortfolioSaver.Config/Content/help.txt:7",
-      "Tests": "T-009"
+      "id": "F-008",
+      "feature": "Invalid ticker auto-uncheck",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:275,340-379",
+        "src/PortfolioSaver.Config/Content/help.txt:7"
+      ],
+      "tests": [
+        "T-009"
+      ]
     },
     {
-      "ID": "F-009",
-      "Feature": "Maximum tapes = 4",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Core/Constants/Defaults.cs:15, src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:157-166",
-      "Tests": "T-010"
+      "id": "F-009",
+      "feature": "Maximum tapes = 4",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Core/Constants/Defaults.cs:15",
+        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:157-166"
+      ],
+      "tests": [
+        "T-010"
+      ]
     },
     {
-      "ID": "F-010",
-      "Feature": "Maximum tickers per tape = 8",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Core/Constants/Defaults.cs:16, src/PortfolioSaver.Config/ViewModels/TickerGroupEditorViewModel.cs:35-37,100-107, src/PortfolioSaver.Core/Services/AppSettingsNormalizer.cs:121",
-      "Tests": "T-011"
+      "id": "F-010",
+      "feature": "Maximum tickers per tape = 8",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Core/Constants/Defaults.cs:16",
+        "src/PortfolioSaver.Config/ViewModels/TickerGroupEditorViewModel.cs:35-37,100-107",
+        "src/PortfolioSaver.Core/Services/AppSettingsNormalizer.cs:121"
+      ],
+      "tests": [
+        "T-011"
+      ]
     },
     {
-      "ID": "F-011",
-      "Feature": "Old note \"16 per tape\"",
-      "Status": "Superseded",
-      "Evidence": "superseded by F-010",
-      "Tests": "T-011"
+      "id": "F-011",
+      "feature": "Old note \"16 per tape\"",
+      "status": "superseded",
+      "evidence": [
+        "superseded by F-010"
+      ],
+      "tests": [
+        "T-011"
+      ]
     },
     {
-      "ID": "F-012",
-      "Feature": "Help badges on config screen",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Config/Windows/MainWindow.xaml:35-45,81-84,153-154,186-187,228-229,418-419",
-      "Tests": "T-012"
+      "id": "F-012",
+      "feature": "Help badges on config screen",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:35-45,81-84,153-154,186-187,228-229,418-419"
+      ],
+      "tests": [
+        "T-012"
+      ]
     },
     {
-      "ID": "F-013",
-      "Feature": "Help/About actions with real content",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Config/Windows/MainWindow.xaml:526-527, src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:69-70,612-630, src/PortfolioSaver.Config/Content/help.txt, src/PortfolioSaver.Config/Content/about.txt",
-      "Tests": "T-013"
+      "id": "F-013",
+      "feature": "Help/About actions with real content",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:526-527",
+        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:69-70,612-630, src/PortfolioSaver.Config/Content/help.txt, src/PortfolioSaver.Config/Content/about.txt"
+      ],
+      "tests": [
+        "T-013"
+      ]
     },
     {
-      "ID": "F-014",
-      "Feature": "RSS/XML feed validation with fallback to Yahoo default",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Config/Services/NewsFeedValidationService.cs:20-22,55-57,67-68, src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:239-255",
-      "Tests": "T-014"
+      "id": "F-014",
+      "feature": "RSS/XML feed validation with fallback to Yahoo default",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Config/Services/NewsFeedValidationService.cs:20-22,55-57,67-68",
+        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:239-255"
+      ],
+      "tests": [
+        "T-014"
+      ]
     },
     {
-      "ID": "F-015",
-      "Feature": "Advanced data-source policy table",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Config/Windows/MainWindow.xaml:427-474, src/PortfolioSaver.Config/ViewModels/DataSourcePolicyEditorViewModel.cs:29-64, src/PortfolioSaver.Core/Constants/DataSourceCatalog.cs:16-47",
-      "Tests": "T-015"
+      "id": "F-015",
+      "feature": "Advanced data-source policy table",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:427-474",
+        "src/PortfolioSaver.Config/ViewModels/DataSourcePolicyEditorViewModel.cs:29-64",
+        "src/PortfolioSaver.Core/Constants/DataSourceCatalog.cs:16-47"
+      ],
+      "tests": [
+        "T-015"
+      ]
     },
     {
-      "ID": "F-016",
-      "Feature": "Advanced tab hard-width regressions eliminated",
-      "Status": "Partial",
-      "Evidence": "src/PortfolioSaver.Config/Windows/MainWindow.xaml:441-473 still relies on minimum widths in places",
-      "Tests": "T-016"
+      "id": "F-016",
+      "feature": "Advanced tab hard-width regressions eliminated",
+      "status": "partial",
+      "evidence": [
+        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:441-473 still relies on minimum widths in places"
+      ],
+      "tests": [
+        "T-016"
+      ]
     },
     {
-      "ID": "F-017",
-      "Feature": "Config responsiveness across General and Advanced tabs",
-      "Status": "Partial",
-      "Evidence": "src/PortfolioSaver.Config/Windows/MainWindow.xaml:10-13,67-69,413-478 still needs stronger automated resize coverage",
-      "Tests": "T-017"
+      "id": "F-017",
+      "feature": "Config responsiveness across General and Advanced tabs",
+      "status": "partial",
+      "evidence": [
+        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:10-13,67-69,413-478 still needs stronger automated resize coverage"
+      ],
+      "tests": [
+        "T-017"
+      ]
     },
     {
-      "ID": "F-018",
-      "Feature": "No separate benchmark/index toggle in current config",
-      "Status": "Implemented-as-removed",
-      "Evidence": "src/PortfolioSaver.Config/Windows/MainWindow.xaml:228",
-      "Tests": "T-018"
+      "id": "F-018",
+      "feature": "No separate benchmark/index toggle in current config",
+      "status": "implemented-as-removed",
+      "evidence": [
+        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:228"
+      ],
+      "tests": [
+        "T-018"
+      ]
     },
     {
-      "ID": "F-019",
-      "Feature": "Startup Yahoo warm-fill with batching and inter-batch delay",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:182-227",
-      "Tests": "T-019"
+      "id": "F-019",
+      "feature": "Startup Yahoo warm-fill with batching and inter-batch delay",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:182-227"
+      ],
+      "tests": [
+        "T-019"
+      ]
     },
     {
-      "ID": "F-020",
-      "Feature": "Yahoo primary + backup provider rotation + fallback handling",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:745-785,320-473",
-      "Tests": "T-020"
+      "id": "F-020",
+      "feature": "Yahoo primary + backup provider rotation + fallback handling",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:745-785,320-473"
+      ],
+      "tests": [
+        "T-020"
+      ]
     },
     {
-      "ID": "F-021",
-      "Feature": "Per-source minimum reuse 15 seconds",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:24,397-401, src/PortfolioSaver.Screensaver/Services/ProviderBudgetLedgerService.cs:39-43",
-      "Tests": "T-021"
+      "id": "F-021",
+      "feature": "Per-source minimum reuse 15 seconds",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:24,397-401",
+        "src/PortfolioSaver.Screensaver/Services/ProviderBudgetLedgerService.cs:39-43"
+      ],
+      "tests": [
+        "T-021"
+      ]
     },
     {
-      "ID": "F-022",
-      "Feature": "Provider hourly/daily budgets enforced",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Screensaver/Services/ProviderBudgetLedgerService.cs:45-50, src/PortfolioSaver.Core/Validation/SettingsValidator.cs:71-85",
-      "Tests": "T-022"
+      "id": "F-022",
+      "feature": "Provider hourly/daily budgets enforced",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Screensaver/Services/ProviderBudgetLedgerService.cs:45-50",
+        "src/PortfolioSaver.Core/Validation/SettingsValidator.cs:71-85"
+      ],
+      "tests": [
+        "T-022"
+      ]
     },
     {
-      "ID": "F-023",
-      "Feature": "Source-specific symbol eligibility filtering",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Core/Services/DataSourceSymbolEligibility.cs, src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:884-895",
-      "Tests": "T-023"
+      "id": "F-023",
+      "feature": "Source-specific symbol eligibility filtering",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Core/Services/DataSourceSymbolEligibility.cs",
+        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:884-895"
+      ],
+      "tests": [
+        "T-023"
+      ]
     },
     {
-      "ID": "F-024",
-      "Feature": "Yahoo session cookie + crumb handling",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Data/Services/YahooFinanceSessionService.cs:58-88,111-117",
-      "Tests": "T-024"
+      "id": "F-024",
+      "feature": "Yahoo session cookie + crumb handling",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Data/Services/YahooFinanceSessionService.cs:58-88,111-117"
+      ],
+      "tests": [
+        "T-024"
+      ]
     },
     {
-      "ID": "F-025",
-      "Feature": "Yahoo live quotes via v8/spark + v8/chart fallback",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Data/Providers/YahooFinanceQuoteProvider.cs:89-126,128-196",
-      "Tests": "T-025"
+      "id": "F-025",
+      "feature": "Yahoo live quotes via v8/spark + v8/chart fallback",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Data/Providers/YahooFinanceQuoteProvider.cs:89-126,128-196"
+      ],
+      "tests": [
+        "T-025"
+      ]
     },
     {
-      "ID": "F-026",
-      "Feature": "Historical quotes via Yahoo batch + chart fallback",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Data/Providers/HybridHistoricalDataProvider.cs:212-261,344-400",
-      "Tests": "T-026"
+      "id": "F-026",
+      "feature": "Historical quotes via Yahoo batch + chart fallback",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Data/Providers/HybridHistoricalDataProvider.cs:212-261,344-400"
+      ],
+      "tests": [
+        "T-026"
+      ]
     },
     {
-      "ID": "F-027",
-      "Feature": "Tapes alternate left/right",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Core/Constants/Defaults.cs:174, src/PortfolioSaver.Core/Services/AppSettingsNormalizer.cs:97-108",
-      "Tests": "T-027"
+      "id": "F-027",
+      "feature": "Tapes alternate left/right",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Core/Constants/Defaults.cs:174",
+        "src/PortfolioSaver.Core/Services/AppSettingsNormalizer.cs:97-108"
+      ],
+      "tests": [
+        "T-027"
+      ]
     },
     {
-      "ID": "F-028",
-      "Feature": "Tape content wraps/repeats to prevent empty gaps",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:934-950, src/PortfolioSaver.Render/Controls/TickerTapeControl.xaml.cs:204-227",
-      "Tests": "T-028"
+      "id": "F-028",
+      "feature": "Tape content wraps/repeats to prevent empty gaps",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:934-950",
+        "src/PortfolioSaver.Render/Controls/TickerTapeControl.xaml.cs:204-227"
+      ],
+      "tests": [
+        "T-028"
+      ]
     },
     {
-      "ID": "F-029",
-      "Feature": "News headlines repeat to prevent blank space",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:952-978, src/PortfolioSaver.Render/Controls/NewsFlasherControl.xaml.cs:175-197",
-      "Tests": "T-029"
+      "id": "F-029",
+      "feature": "News headlines repeat to prevent blank space",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:952-978",
+        "src/PortfolioSaver.Render/Controls/NewsFlasherControl.xaml.cs:175-197"
+      ],
+      "tests": [
+        "T-029"
+      ]
     },
     {
-      "ID": "F-030",
-      "Feature": "Symbols remain yellow when stale/unavailable",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:668",
-      "Tests": "T-030"
+      "id": "F-030",
+      "feature": "Symbols remain yellow when stale/unavailable",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:668"
+      ],
+      "tests": [
+        "T-030"
+      ]
     },
     {
-      "ID": "F-031",
-      "Feature": "Tape values flash once when updated",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:1592-1608, src/PortfolioSaver.Render/Controls/TickerTapeControl.xaml.cs:296-320, src/PortfolioSaver.Render/ViewModels/TapeItemViewModel.cs:65-69",
-      "Tests": "T-031"
+      "id": "F-031",
+      "feature": "Tape values flash once when updated",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:1592-1608",
+        "src/PortfolioSaver.Render/Controls/TickerTapeControl.xaml.cs:296-320",
+        "src/PortfolioSaver.Render/ViewModels/TapeItemViewModel.cs:65-69"
+      ],
+      "tests": [
+        "T-031"
+      ]
     },
     {
-      "ID": "F-032",
-      "Feature": "Graph card background flashes twice on update",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:1654-1655, src/PortfolioSaver.Render/Controls/FloatingGraphControl.xaml.cs:52-58",
-      "Tests": "T-032"
+      "id": "F-032",
+      "feature": "Graph card background flashes twice on update",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:1654-1655",
+        "src/PortfolioSaver.Render/Controls/FloatingGraphControl.xaml.cs:52-58"
+      ],
+      "tests": [
+        "T-032"
+      ]
     },
     {
-      "ID": "F-033",
-      "Feature": "Waiting-for-network bouncing overlay",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml:62-87, src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:645-657,680-681,1463-1487",
-      "Tests": "T-033"
+      "id": "F-033",
+      "feature": "Waiting-for-network bouncing overlay",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml:62-87",
+        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:645-657,680-681,1463-1487"
+      ],
+      "tests": [
+        "T-033"
+      ]
     },
     {
-      "ID": "F-034",
-      "Feature": "Global Markets / world-clock lane with weather/time/index context",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Render/Services/FloatingClockBuilder.cs:8-21, src/PortfolioSaver.Render/Controls/FloatingClockControl.xaml:34-118, src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:810-921,1007-1019",
-      "Tests": "T-034"
+      "id": "F-034",
+      "feature": "Global Markets / world-clock lane with weather/time/index context",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Render/Services/FloatingClockBuilder.cs:8-21",
+        "src/PortfolioSaver.Render/Controls/FloatingClockControl.xaml:34-118",
+        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:810-921,1007-1019"
+      ],
+      "tests": [
+        "T-034"
+      ]
     },
     {
-      "ID": "F-035",
-      "Feature": "New York status text with countdown",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Core/Services/NewYorkMarketStatusService.cs:30-55",
-      "Tests": "T-035"
+      "id": "F-035",
+      "feature": "New York status text with countdown",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Core/Services/NewYorkMarketStatusService.cs:30-55"
+      ],
+      "tests": [
+        "T-035"
+      ]
     },
     {
-      "ID": "F-036",
-      "Feature": "Holiday-aware trading calendar with live sync/cache/offline fallback",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Core/Services/NyseTradingCalendarSnapshot.cs, src/PortfolioSaver.Screensaver/Services/ExchangeMarketCalendarService.cs:62-97,185-397",
-      "Tests": "T-036, T-037"
+      "id": "F-036",
+      "feature": "Holiday-aware trading calendar with live sync/cache/offline fallback",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Core/Services/NyseTradingCalendarSnapshot.cs",
+        "src/PortfolioSaver.Screensaver/Services/ExchangeMarketCalendarService.cs:62-97,185-397"
+      ],
+      "tests": [
+        "T-036",
+        "T-037"
+      ]
     },
     {
-      "ID": "F-037",
-      "Feature": "International exchange market status in Global Markets cards",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:967-987",
-      "Tests": "T-036"
+      "id": "F-037",
+      "feature": "International exchange market status in Global Markets cards",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:967-987"
+      ],
+      "tests": [
+        "T-036"
+      ]
     },
     {
-      "ID": "F-038",
-      "Feature": "Exchange photos from internet + local cache + starter bundles + custom folder override",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Media/Services/ExchangePhotoCacheService.cs:13-153",
-      "Tests": "T-038"
+      "id": "F-038",
+      "feature": "Exchange photos from internet + local cache + starter bundles + custom folder override",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Media/Services/ExchangePhotoCacheService.cs:13-153"
+      ],
+      "tests": [
+        "T-038"
+      ]
     },
     {
-      "ID": "F-039",
-      "Feature": "Uninstall removes AppData caches",
-      "Status": "Implemented",
-      "Evidence": "build/installer/Uninstall-PortfolioSaverScreensaver.ps1:47-52,96-133",
-      "Tests": "T-039"
+      "id": "F-039",
+      "feature": "Uninstall removes AppData caches",
+      "status": "implemented",
+      "evidence": [
+        "build/installer/Uninstall-PortfolioSaverScreensaver.ps1:47-52,96-133"
+      ],
+      "tests": [
+        "T-039"
+      ]
     },
     {
-      "ID": "F-040",
-      "Feature": "Installer elevates before install",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Installer/Program.cs:20-24,46-60, src/PortfolioSaver.Installer/app.manifest:7",
-      "Tests": "T-039"
+      "id": "F-040",
+      "feature": "Installer elevates before install",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Installer/Program.cs:20-24,46-60",
+        "src/PortfolioSaver.Installer/app.manifest:7"
+      ],
+      "tests": [
+        "T-039"
+      ]
     },
     {
-      "ID": "F-041",
-      "Feature": "No-network detection path",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Shared/Services/InternetProbeService.cs:18-77, src/PortfolioSaver.Config/Services/ConfigConnectivityService.cs:5-11, src/PortfolioSaver.Screensaver/Services/NetworkAvailabilityService.cs:5-11",
-      "Tests": "T-040"
+      "id": "F-041",
+      "feature": "No-network detection path",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Shared/Services/InternetProbeService.cs:18-77",
+        "src/PortfolioSaver.Config/Services/ConfigConnectivityService.cs:5-11",
+        "src/PortfolioSaver.Screensaver/Services/NetworkAvailabilityService.cs:5-11"
+      ],
+      "tests": [
+        "T-040"
+      ]
     },
     {
-      "ID": "F-042",
-      "Feature": "15-minute stale rule clears values and hides stale graph cards",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:663-699, src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:1735-1742",
-      "Tests": "T-041"
+      "id": "F-042",
+      "feature": "15-minute stale rule clears values and hides stale graph cards",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:663-699",
+        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:1735-1742"
+      ],
+      "tests": [
+        "T-041"
+      ]
     },
     {
-      "ID": "F-043",
-      "Feature": "Round macro meters",
-      "Status": "Implemented",
-      "Evidence": "src/PortfolioSaver.Render/ViewModels/MacroMeterViewModel.cs, src/PortfolioSaver.Render/Controls/StatusBarControl.xaml:47, src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:736-793",
-      "Tests": "T-042"
+      "id": "F-043",
+      "feature": "Round macro meters",
+      "status": "implemented",
+      "evidence": [
+        "src/PortfolioSaver.Render/ViewModels/MacroMeterViewModel.cs",
+        "src/PortfolioSaver.Render/Controls/StatusBarControl.xaml:47",
+        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:736-793"
+      ],
+      "tests": [
+        "T-042"
+      ]
     },
     {
-      "ID": "F-044",
-      "Feature": "Visual polish from compact to ultrawide layouts",
-      "Status": "Partial",
-      "Evidence": "responsive logic exists in src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:515-550, but robust multi-resolution automation is still blocked",
-      "Tests": "T-043"
+      "id": "F-044",
+      "feature": "Visual polish from compact to ultrawide layouts",
+      "status": "partial",
+      "evidence": [
+        "responsive logic exists in src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:515-550, but robust multi-resolution automation is still blocked"
+      ],
+      "tests": [
+        "T-043"
+      ]
     },
     {
-      "ID": "F-045",
-      "Feature": "Version text reflects old BETA-3 naming",
-      "Status": "Superseded",
-      "Evidence": "current lane is BETA-5.4; see src/PortfolioSaver.Shared/PortfolioVersion.cs, src/PortfolioSaver.Config/Windows/MainWindow.xaml, src/PortfolioSaver.Config/Content/about.txt",
-      "Tests": "T-044"
+      "id": "F-045",
+      "feature": "Version text reflects old BETA-3 naming",
+      "status": "superseded",
+      "evidence": [
+        "current lane is BETA-5.4; see src/PortfolioSaver.Shared/PortfolioVersion.cs, src/PortfolioSaver.Config/Windows/MainWindow.xaml, src/PortfolioSaver.Config/Content/about.txt"
+      ],
+      "tests": [
+        "T-044"
+      ]
     }
   ],
   "automated_regression_coverage": [
     {
-      "Test ID": "T-001",
-      "Scope": "Unit (AppSettingsNormalizerTests)",
-      "Covers": "F-010, F-027",
-      "Current state": "PASS",
-      "Notes": "tape count and tape-direction normalization"
+      "id": "T-001",
+      "scope": "Unit (AppSettingsNormalizerTests)",
+      "covers": [
+        "F-010",
+        "F-027"
+      ],
+      "status": "pass",
+      "notes": "tape count and tape-direction normalization"
     },
     {
-      "Test ID": "T-002",
-      "Scope": "Unit (SettingsValidatorTests)",
-      "Covers": "F-001, F-015, F-022",
-      "Current state": "PASS",
-      "Notes": "placeholder and policy validation"
+      "id": "T-002",
+      "scope": "Unit (SettingsValidatorTests)",
+      "covers": [
+        "F-001",
+        "F-015",
+        "F-022"
+      ],
+      "status": "pass",
+      "notes": "placeholder and policy validation"
     },
     {
-      "Test ID": "T-003",
-      "Scope": "Unit (DataSourceSymbolEligibilityTests)",
-      "Covers": "F-002, F-023",
-      "Current state": "PASS",
-      "Notes": "source eligibility routing"
+      "id": "T-003",
+      "scope": "Unit (DataSourceSymbolEligibilityTests)",
+      "covers": [
+        "F-002",
+        "F-023"
+      ],
+      "status": "pass",
+      "notes": "source eligibility routing"
     },
     {
-      "Test ID": "T-004",
-      "Scope": "Unit (NewYorkMarketStatusServiceTests)",
-      "Covers": "F-003, F-035, F-036",
-      "Current state": "PASS",
-      "Notes": "New York market-state text and countdowns"
+      "id": "T-004",
+      "scope": "Unit (NewYorkMarketStatusServiceTests)",
+      "covers": [
+        "F-003",
+        "F-035",
+        "F-036"
+      ],
+      "status": "pass",
+      "notes": "New York market-state text and countdowns"
     },
     {
-      "Test ID": "T-005",
-      "Scope": "Unit (SymbolProfileHeuristicsTests)",
-      "Covers": "F-004, F-023",
-      "Current state": "PASS",
-      "Notes": "profile-based symbol routing"
+      "id": "T-005",
+      "scope": "Unit (SymbolProfileHeuristicsTests)",
+      "covers": [
+        "F-004",
+        "F-023"
+      ],
+      "status": "pass",
+      "notes": "profile-based symbol routing"
     },
     {
-      "Test ID": "T-006",
-      "Scope": "Unit (FinnhubQuoteProviderTests)",
-      "Covers": "F-005",
-      "Current state": "PASS",
-      "Notes": "config-time provider-facing symbol behavior subset"
+      "id": "T-006",
+      "scope": "Unit (FinnhubQuoteProviderTests)",
+      "covers": [
+        "F-005"
+      ],
+      "status": "pass",
+      "notes": "config-time provider-facing symbol behavior subset"
     },
     {
-      "Test ID": "T-007",
-      "Scope": "Unit (MainWindowViewModelValidationTests)",
-      "Covers": "F-006",
-      "Current state": "PASS",
-      "Notes": "invalid symbols block Apply"
+      "id": "T-007",
+      "scope": "Unit (MainWindowViewModelValidationTests)",
+      "covers": [
+        "F-006"
+      ],
+      "status": "pass",
+      "notes": "invalid symbols block Apply"
     },
     {
-      "Test ID": "T-008",
-      "Scope": "Unit (MainWindowViewModelValidationTests)",
-      "Covers": "F-007",
-      "Current state": "PASS",
-      "Notes": "name autofill on validation"
+      "id": "T-008",
+      "scope": "Unit (MainWindowViewModelValidationTests)",
+      "covers": [
+        "F-007"
+      ],
+      "status": "pass",
+      "notes": "name autofill on validation"
     },
     {
-      "Test ID": "T-009",
-      "Scope": "Unit (MainWindowViewModelValidationTests)",
-      "Covers": "F-008",
-      "Current state": "PASS",
-      "Notes": "invalid symbol auto-disable"
+      "id": "T-009",
+      "scope": "Unit (MainWindowViewModelValidationTests)",
+      "covers": [
+        "F-008"
+      ],
+      "status": "pass",
+      "notes": "invalid symbol auto-disable"
     },
     {
-      "Test ID": "T-010",
-      "Scope": "Unit (MainWindowViewModelValidationTests)",
-      "Covers": "F-009",
-      "Current state": "PASS",
-      "Notes": "tape-count clamp logic"
+      "id": "T-010",
+      "scope": "Unit (MainWindowViewModelValidationTests)",
+      "covers": [
+        "F-009"
+      ],
+      "status": "pass",
+      "notes": "tape-count clamp logic"
     },
     {
-      "Test ID": "T-011",
-      "Scope": "Unit (TickerGroupEditorViewModelTests)",
-      "Covers": "F-010",
-      "Current state": "PASS",
-      "Notes": "max 8 symbols per tape"
+      "id": "T-011",
+      "scope": "Unit (TickerGroupEditorViewModelTests)",
+      "covers": [
+        "F-010"
+      ],
+      "status": "pass",
+      "notes": "max 8 symbols per tape"
     },
     {
-      "Test ID": "T-012",
-      "Scope": "UI automation",
-      "Covers": "F-012",
-      "Current state": "TODO",
-      "Notes": "verify all visible help badges/tooltips"
+      "id": "T-012",
+      "scope": "UI automation",
+      "covers": [
+        "F-012"
+      ],
+      "status": "todo",
+      "notes": "verify all visible help badges/tooltips"
     },
     {
-      "Test ID": "T-013",
-      "Scope": "UI automation",
-      "Covers": "F-013",
-      "Current state": "TODO",
-      "Notes": "verify Help/About windows open with content"
+      "id": "T-013",
+      "scope": "UI automation",
+      "covers": [
+        "F-013"
+      ],
+      "status": "todo",
+      "notes": "verify Help/About windows open with content"
     },
     {
-      "Test ID": "T-014",
-      "Scope": "Unit (NewsFeedValidationServiceTests)",
-      "Covers": "F-014",
-      "Current state": "PASS",
-      "Notes": "invalid feed fallback and no-network behavior"
+      "id": "T-014",
+      "scope": "Unit (NewsFeedValidationServiceTests)",
+      "covers": [
+        "F-014"
+      ],
+      "status": "pass",
+      "notes": "invalid feed fallback and no-network behavior"
     },
     {
-      "Test ID": "T-015",
-      "Scope": "Unit (DataSourcePolicyValidationTests)",
-      "Covers": "F-015",
-      "Current state": "PASS",
-      "Notes": "policy clamping and rejection of invalid values"
+      "id": "T-015",
+      "scope": "Unit (DataSourcePolicyValidationTests)",
+      "covers": [
+        "F-015"
+      ],
+      "status": "pass",
+      "notes": "policy clamping and rejection of invalid values"
     },
     {
-      "Test ID": "T-016",
-      "Scope": "UI automation",
-      "Covers": "F-016",
-      "Current state": "TODO",
-      "Notes": "Advanced tab width/column usability across resize points"
+      "id": "T-016",
+      "scope": "UI automation",
+      "covers": [
+        "F-016"
+      ],
+      "status": "todo",
+      "notes": "Advanced tab width/column usability across resize points"
     },
     {
-      "Test ID": "T-017",
-      "Scope": "UI automation",
-      "Covers": "F-017",
-      "Current state": "TODO",
-      "Notes": "General tab usability across resize points"
+      "id": "T-017",
+      "scope": "UI automation",
+      "covers": [
+        "F-017"
+      ],
+      "status": "todo",
+      "notes": "General tab usability across resize points"
     },
     {
-      "Test ID": "T-018",
-      "Scope": "Unit/UI text (ConfigTextConsistencyTests)",
-      "Covers": "F-018",
-      "Current state": "PASS",
-      "Notes": "no old benchmark/index toggle text"
+      "id": "T-018",
+      "scope": "Unit/UI text (ConfigTextConsistencyTests)",
+      "covers": [
+        "F-018"
+      ],
+      "status": "pass",
+      "notes": "no old benchmark/index toggle text"
     },
     {
-      "Test ID": "T-019",
-      "Scope": "Integration (StartupCoordinatorAdvancedTests)",
-      "Covers": "F-019",
-      "Current state": "PASS",
-      "Notes": "warm startup batching and inter-batch pacing"
+      "id": "T-019",
+      "scope": "Integration (StartupCoordinatorAdvancedTests)",
+      "covers": [
+        "F-019"
+      ],
+      "status": "pass",
+      "notes": "warm startup batching and inter-batch pacing"
     },
     {
-      "Test ID": "T-020",
-      "Scope": "Integration (StartupCoordinatorAdvancedTests)",
-      "Covers": "F-020",
-      "Current state": "PASS",
-      "Notes": "provider order and fallback behavior"
+      "id": "T-020",
+      "scope": "Integration (StartupCoordinatorAdvancedTests)",
+      "covers": [
+        "F-020"
+      ],
+      "status": "pass",
+      "notes": "provider order and fallback behavior"
     },
     {
-      "Test ID": "T-021",
-      "Scope": "Unit (ProviderBudgetLedgerServiceTests)",
-      "Covers": "F-021",
-      "Current state": "PASS",
-      "Notes": "minimum reuse interval"
+      "id": "T-021",
+      "scope": "Unit (ProviderBudgetLedgerServiceTests)",
+      "covers": [
+        "F-021"
+      ],
+      "status": "pass",
+      "notes": "minimum reuse interval"
     },
     {
-      "Test ID": "T-022",
-      "Scope": "Unit (ProviderBudgetLedgerServiceTests)",
-      "Covers": "F-022",
-      "Current state": "PASS",
-      "Notes": "budgets and cooldown enforcement"
+      "id": "T-022",
+      "scope": "Unit (ProviderBudgetLedgerServiceTests)",
+      "covers": [
+        "F-022"
+      ],
+      "status": "pass",
+      "notes": "budgets and cooldown enforcement"
     },
     {
-      "Test ID": "T-023",
-      "Scope": "Unit (DataSourceSymbolEligibilityTests)",
-      "Covers": "F-023",
-      "Current state": "PASS",
-      "Notes": "mixed-symbol eligibility restrictions"
+      "id": "T-023",
+      "scope": "Unit (DataSourceSymbolEligibilityTests)",
+      "covers": [
+        "F-023"
+      ],
+      "status": "pass",
+      "notes": "mixed-symbol eligibility restrictions"
     },
     {
-      "Test ID": "T-024",
-      "Scope": "Integration (YahooFinanceSessionServiceTests)",
-      "Covers": "F-024",
-      "Current state": "PASS",
-      "Notes": "cookie + crumb refresh/retry"
+      "id": "T-024",
+      "scope": "Integration (YahooFinanceSessionServiceTests)",
+      "covers": [
+        "F-024"
+      ],
+      "status": "pass",
+      "notes": "cookie + crumb refresh/retry"
     },
     {
-      "Test ID": "T-025",
-      "Scope": "Integration (YahooFinanceQuoteProviderTests)",
-      "Covers": "F-025",
-      "Current state": "PASS",
-      "Notes": "Spark + chart fallback path"
+      "id": "T-025",
+      "scope": "Integration (YahooFinanceQuoteProviderTests)",
+      "covers": [
+        "F-025"
+      ],
+      "status": "pass",
+      "notes": "Spark + chart fallback path"
     },
     {
-      "Test ID": "T-026",
-      "Scope": "Integration (HybridHistoricalDataProviderTests)",
-      "Covers": "F-026",
-      "Current state": "PASS",
-      "Notes": "history batch + chart fallback"
+      "id": "T-026",
+      "scope": "Integration (HybridHistoricalDataProviderTests)",
+      "covers": [
+        "F-026"
+      ],
+      "status": "pass",
+      "notes": "history batch + chart fallback"
     },
     {
-      "Test ID": "T-027",
-      "Scope": "Integration (StartupCoordinatorAdvancedTests)",
-      "Covers": "F-027, F-028",
-      "Current state": "PASS",
-      "Notes": "default tape directions and repeat fill"
+      "id": "T-027",
+      "scope": "Integration (StartupCoordinatorAdvancedTests)",
+      "covers": [
+        "F-027",
+        "F-028"
+      ],
+      "status": "pass",
+      "notes": "default tape directions and repeat fill"
     },
     {
-      "Test ID": "T-028",
-      "Scope": "Integration (StartupCoordinatorAdvancedTests)",
-      "Covers": "F-028",
-      "Current state": "PASS",
-      "Notes": "tape content signature stability"
+      "id": "T-028",
+      "scope": "Integration (StartupCoordinatorAdvancedTests)",
+      "covers": [
+        "F-028"
+      ],
+      "status": "pass",
+      "notes": "tape content signature stability"
     },
     {
-      "Test ID": "T-029",
-      "Scope": "Integration (StartupCoordinatorNewsTests)",
-      "Covers": "F-029",
-      "Current state": "PASS",
-      "Notes": "repeated headline fill and non-empty fallback"
+      "id": "T-029",
+      "scope": "Integration (StartupCoordinatorNewsTests)",
+      "covers": [
+        "F-029"
+      ],
+      "status": "pass",
+      "notes": "repeated headline fill and non-empty fallback"
     },
     {
-      "Test ID": "T-030",
-      "Scope": "Unit (StartupCoordinatorTapeItemTests)",
-      "Covers": "F-030",
-      "Current state": "PASS",
-      "Notes": "gold stale symbols and blank value fields"
+      "id": "T-030",
+      "scope": "Unit (StartupCoordinatorTapeItemTests)",
+      "covers": [
+        "F-030"
+      ],
+      "status": "pass",
+      "notes": "gold stale symbols and blank value fields"
     },
     {
-      "Test ID": "T-031",
-      "Scope": "Render integration (ScreensaverRenderBehaviorTests)",
-      "Covers": "F-031",
-      "Current state": "PASS",
-      "Notes": "single tape flash on live updates"
+      "id": "T-031",
+      "scope": "Render integration (ScreensaverRenderBehaviorTests)",
+      "covers": [
+        "F-031"
+      ],
+      "status": "pass",
+      "notes": "single tape flash on live updates"
     },
     {
-      "Test ID": "T-032",
-      "Scope": "Render integration (ScreensaverRenderBehaviorTests)",
-      "Covers": "F-032",
-      "Current state": "PASS",
-      "Notes": "two-pulse graph flash animation"
+      "id": "T-032",
+      "scope": "Render integration (ScreensaverRenderBehaviorTests)",
+      "covers": [
+        "F-032"
+      ],
+      "status": "pass",
+      "notes": "two-pulse graph flash animation"
     },
     {
-      "Test ID": "T-033",
-      "Scope": "Render integration (ScreensaverRenderBehaviorTests)",
-      "Covers": "F-033",
-      "Current state": "PASS",
-      "Notes": "waiting overlay template and motion"
+      "id": "T-033",
+      "scope": "Render integration (ScreensaverRenderBehaviorTests)",
+      "covers": [
+        "F-033"
+      ],
+      "status": "pass",
+      "notes": "waiting overlay template and motion"
     },
     {
-      "Test ID": "T-034",
-      "Scope": "Unit (FloatingClockBuilderTests)",
-      "Covers": "F-034",
-      "Current state": "PASS",
-      "Notes": "local summary + exchange card symbol mapping"
+      "id": "T-034",
+      "scope": "Unit (FloatingClockBuilderTests)",
+      "covers": [
+        "F-034"
+      ],
+      "status": "pass",
+      "notes": "local summary + exchange card symbol mapping"
     },
     {
-      "Test ID": "T-035",
-      "Scope": "Unit (NewYorkMarketStatusServiceTests)",
-      "Covers": "F-035",
-      "Current state": "PASS",
-      "Notes": "explicit (New York) coverage"
+      "id": "T-035",
+      "scope": "Unit (NewYorkMarketStatusServiceTests)",
+      "covers": [
+        "F-035"
+      ],
+      "status": "pass",
+      "notes": "explicit (New York) coverage"
     },
     {
-      "Test ID": "T-036",
-      "Scope": "Integration (ExchangeMarketCalendarIntegrationTests)",
-      "Covers": "F-036, F-037",
-      "Current state": "PASS",
-      "Notes": "live/offline exchange calendar merge"
+      "id": "T-036",
+      "scope": "Integration (ExchangeMarketCalendarIntegrationTests)",
+      "covers": [
+        "F-036",
+        "F-037"
+      ],
+      "status": "pass",
+      "notes": "live/offline exchange calendar merge"
     },
     {
-      "Test ID": "T-037",
-      "Scope": "Unit (ExchangeMarketCalendarServiceTests)",
-      "Covers": "F-036",
-      "Current state": "PASS",
-      "Notes": "ambiguous holiday payload handling"
+      "id": "T-037",
+      "scope": "Unit (ExchangeMarketCalendarServiceTests)",
+      "covers": [
+        "F-036"
+      ],
+      "status": "pass",
+      "notes": "ambiguous holiday payload handling"
     },
     {
-      "Test ID": "T-038",
-      "Scope": "Integration (ExchangePhotoCacheServiceTests)",
-      "Covers": "F-038",
-      "Current state": "PASS",
-      "Notes": "custom-folder override and managed photo cache"
+      "id": "T-038",
+      "scope": "Integration (ExchangePhotoCacheServiceTests)",
+      "covers": [
+        "F-038"
+      ],
+      "status": "pass",
+      "notes": "custom-folder override and managed photo cache"
     },
     {
-      "Test ID": "T-039",
-      "Scope": "Installer integration (sandbox/VM)",
-      "Covers": "F-039, F-040",
-      "Current state": "PASS",
-      "Notes": "install/uninstall probe artifact validation"
+      "id": "T-039",
+      "scope": "Installer integration (sandbox/VM)",
+      "covers": [
+        "F-039",
+        "F-040"
+      ],
+      "status": "pass",
+      "notes": "install/uninstall probe artifact validation"
     },
     {
-      "Test ID": "T-040",
-      "Scope": "Unit (InternetProbeServiceTests)",
-      "Covers": "F-041",
-      "Current state": "PASS",
-      "Notes": "probe defaults and invalidation"
+      "id": "T-040",
+      "scope": "Unit (InternetProbeServiceTests)",
+      "covers": [
+        "F-041"
+      ],
+      "status": "pass",
+      "notes": "probe defaults and invalidation"
     },
     {
-      "Test ID": "T-041",
-      "Scope": "Integration/UI (StartupCoordinatorTapeItemTests, ScreensaverRenderBehaviorTests)",
-      "Covers": "F-042",
-      "Current state": "PASS",
-      "Notes": "stale quote hiding and value clearing"
+      "id": "T-041",
+      "scope": "Integration/UI (StartupCoordinatorTapeItemTests, ScreensaverRenderBehaviorTests)",
+      "covers": [
+        "F-042"
+      ],
+      "status": "pass",
+      "notes": "stale quote hiding and value clearing"
     },
     {
-      "Test ID": "T-042",
-      "Scope": "Render integration (ScreensaverRenderBehaviorTests)",
-      "Covers": "F-043",
-      "Current state": "PASS",
-      "Notes": "arc-path macro meter rendering"
+      "id": "T-042",
+      "scope": "Render integration (ScreensaverRenderBehaviorTests)",
+      "covers": [
+        "F-043"
+      ],
+      "status": "pass",
+      "notes": "arc-path macro meter rendering"
     },
     {
-      "Test ID": "T-043",
-      "Scope": "VM UI automation",
-      "Covers": "F-044",
-      "Current state": "BLOCKED",
-      "Notes": "guest framebuffer remained fixed at 1366x768 in attempted higher-resolution runs"
+      "id": "T-043",
+      "scope": "VM UI automation",
+      "covers": [
+        "F-044"
+      ],
+      "status": "blocked",
+      "notes": "guest framebuffer remained fixed at 1366x768 in attempted higher-resolution runs"
     },
     {
-      "Test ID": "T-044",
-      "Scope": "Unit/UI text (ConfigTextConsistencyTests)",
-      "Covers": "F-045",
-      "Current state": "PASS",
-      "Notes": "current version markers are consistent"
+      "id": "T-044",
+      "scope": "Unit/UI text (ConfigTextConsistencyTests)",
+      "covers": [
+        "F-045"
+      ],
+      "status": "pass",
+      "notes": "current version markers are consistent"
     }
   ],
   "canonical_test_and_debug_loop": {

@@ -11,10 +11,12 @@ Do not make the project depend on a non-Visual-Studio-first workflow.
 These are not giant dashboard charts. They are small floating sparkline cards. Keep them elegant, semi-transparent, and readable.
 
 ## Motion note
-The graph cards and the clock should bounce slowly around the screen like polite billiard balls, not pinball. Use low velocities and long-lived motion.
+The graph cards and any floating overlay elements should move slowly like polite billiard balls, not pinball. Use low velocities and long-lived motion.
 
 ## Clock note
-Show both local machine time and New York time. Treat the clock like another floating overlay card so it shares styling and motion rules.
+Keep the visible top-right status clock pinned to UTC.
+Exchange-local times belong in the Global Markets lane and related exchange cards.
+Any floating clock-style overlay behavior should stay visually consistent with the small sparkline-card language rather than becoming a large dashboard widget.
 
 ## Data note
 Historical cache belongs under `%LOCALAPPDATA%\PortfolioSaver\Caches\History`. Delete history files older than 14 days.

@@ -16,9 +16,9 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
 
 - Multi-tape portfolio ticker display with configurable symbols, directions, and speed presets
 - Floating graph cards designed as compact sparkline overlays
-- Floating clock overlay with both local machine time and New York time
+- UTC-pinned top-right status clock plus exchange-local times in the Global Markets lane
 - Direction-colored graph rendering: green for rising segments, red for falling segments
-- Slow, bounded bounce-style overlay motion for graph and clock cards
+- Slow, bounded bounce-style motion for graph cards and other floating overlay elements
 - News headline scroller with configurable RSS source and validation
 - Dynamic background image system with managed exchange photos or user custom folders
 - Provider-aware quote retrieval with budget/rate-limit policy controls
@@ -99,9 +99,9 @@ Official MIT reference:
 
 Use the scripts under `build/` for publish and packaging workflows, especially:
 
-- `build/publish.ps1`
+- `build/build-safe-temp.ps1`
+- `build/publish-safe-temp.ps1`
 - `build/publish-standalone-installer.ps1`
-- `build/make-screensaver.ps1`
 
 ## Current Baseline
 
