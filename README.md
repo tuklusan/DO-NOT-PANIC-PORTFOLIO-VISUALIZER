@@ -1,4 +1,4 @@
-# DO NOT PANIC PORTFOLIO VISUALIZER
+﻿# DO NOT PANIC PORTFOLIO VISUALIZER
 
 Market-aware Windows screensaver and configuration suite by **SANYALnet Labs**, written by **Supratim Sanyal**.
 
@@ -33,8 +33,7 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
   - Data source policy budgets (hour/day + single/batch query controls)
 - Real-time and apply-time symbol validation flow
 - Auto-name support for symbols when provider metadata resolves display names
-- Help, About, and License document windows
-- New **License** button that opens full MIT text and an official license link
+- Bundled help/about/license reference content shipped with the config app assets
 
 ## Installer and Licensing UX
 
@@ -106,7 +105,7 @@ Use the scripts under `build/` for publish and packaging workflows, especially:
 ## Current Baseline
 
 - Remote Git history has been intentionally rebased to start at the `BETA-5.4` baseline
-- Current development/version lane is `BETA-5.4`
+- Current development/version lane is `BETA-5.5`
 - Product identity:
   - Application: **DO NOT PANIC PORTFOLIO VISUALIZER**
   - Publisher: **SANYALnet Labs**
@@ -117,7 +116,7 @@ Use the scripts under `build/` for publish and packaging workflows, especially:
 The active documentation set has been intentionally reduced to a small core:
 
 - `BUILD_AND_DEPLOY.md` - Visual Studio build, run, publish, and installer-sandbox workflow
-- `docs/BETA54_AUDIT_STATE.json` - single canonical machine-maintained audit, test, and release-gate state
+- `docs/BETA55_AUDIT_STATE.json` - single canonical machine-maintained audit, test, and release-gate state
 - `build/vm/VM_OPERATIONS_RUNBOOK.md` - repeatable VirtualBox/guest UX validation workflow
 
 ## License
@@ -126,3 +125,4 @@ This project is licensed under the **MIT LICENSE**.
 
 - Bundled full text: [LICENSE](LICENSE)
 - Official text: [https://opensource.org/license/mit/](https://opensource.org/license/mit/)
+

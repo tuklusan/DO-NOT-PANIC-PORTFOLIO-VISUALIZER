@@ -1,4 +1,4 @@
-# VM Operations Runbook (Windows10Pro)
+﻿# VM Operations Runbook (Windows10Pro)
 
 This runbook captures repeatable methods that have already worked, so we do not rediscover mechanics each cycle.
 
@@ -278,7 +278,7 @@ Use this workflow for every VM UX cycle:
 - Confirm `ConfigPhaseStatus` and `ScreensaverPhaseStatus` are `Completed`.
 - Investigate any `Failed` status before trusting screenshots.
 3. Always validate version markers after UX launch.
-- Config launch: window title must include `BETA-5.4`.
+- Config launch: window title must include `BETA-5.5`.
 - Screensaver launch: version text containing `beta5` must be detected in UIA (`ScreensaverVersionCheck=Passed`).
 4. Always export latest guest result folder to host artifacts before analysis.
 - Use `Guest-ExportLatestVmUxResult.ps1` and verify copied capture counts.
@@ -421,3 +421,4 @@ if (-not (Wait-Process -Id $p.Id -Timeout 300 -ErrorAction SilentlyContinue)) {
   - Yahoo macro/world lane `429`
   - main ETF/equity fallback healthy
   - Twelve Data minute-credit exhaustion later in the same run
+

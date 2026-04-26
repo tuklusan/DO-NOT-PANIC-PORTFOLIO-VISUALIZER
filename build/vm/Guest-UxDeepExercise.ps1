@@ -1,4 +1,4 @@
-param(
+﻿param(
     [ValidateRange(1, 180)]
     [int]$ScreensaverDurationMinutes = 6,
     [ValidateRange(1, 60)]
@@ -347,12 +347,12 @@ try {
         Start-Sleep -Seconds 3
         $window = Find-ConfigWindow -TimeoutSeconds 20
         if ($null -eq $window) { throw 'Could not locate config window via UI Automation.' }
-        if ([string]$window.Current.Name -like '*BETA-5.4*') {
+        if ([string]$window.Current.Name -like '*BETA-5.5*') {
             $summary.ConfigVersionCheck = "Passed"
         }
         else {
             $summary.ConfigVersionCheck = "Failed"
-            $summary.Notes += "Config window title missing expected BETA-5.4 marker: '$([string]$window.Current.Name)'"
+            $summary.Notes += "Config window title missing expected BETA-5.5 marker: '$([string]$window.Current.Name)'"
         }
 
         $tabs = Get-TabItems -Window $window
@@ -532,3 +532,4 @@ finally {
     Write-Output "RESULTS=$results"
     Write-Output "SUMMARY=$summaryPath"
 }
+

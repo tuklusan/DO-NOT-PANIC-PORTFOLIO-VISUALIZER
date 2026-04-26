@@ -1,6 +1,6 @@
-DO NOT PANIC PORTFOLIO VISUALIZER
+﻿DO NOT PANIC PORTFOLIO VISUALIZER
 
-BETA-5.4 baseline.
+BETA-5.5 baseline.
 
 Publisher: SANYALnet Labs
 Author: Supratim Sanyal
@@ -9,3 +9,4 @@ Official License URL: https://opensource.org/license/mit/
 
 This build shows floating ticker tapes, finance headlines, exchange-photo backgrounds, and market-aware overlays.
 The configuration app lets you tune tapes, data sources, image behavior, and refresh settings.
+

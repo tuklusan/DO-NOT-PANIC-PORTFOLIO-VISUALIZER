@@ -1,8 +1,8 @@
-{
+﻿{
   "document_type": "feature_audit_test_checklist_release_gate",
-  "title": "BETA-5.4 Feature Audit, Test Checklist, and Release Gate Plan",
+  "title": "BETA-5.5 Feature Audit, Test Checklist, and Release Gate Plan",
   "date": "2026-04-26",
-  "current_lane": "BETA-5.4",
+  "current_lane": "BETA-5.5",
   "scope": "canonical feature audit, regression checklist, UX validation guide, and release-gate plan for the current main branch",
   "purpose": [
     "feature verification status",
@@ -16,7 +16,7 @@
     "publisher": "SANYALnet Labs",
     "author": "Supratim Sanyal",
     "license": "MIT LICENSE",
-    "semantic_version_lane": "0.9.0-beta5.4",
+    "semantic_version_lane": "0.9.0-beta5.5",
     "repository_history": "intentionally rebased to start at the BETA-5.4 baseline on main"
   },
   "latest_recorded_validation_state": {
@@ -607,7 +607,7 @@
       "feature": "Version text reflects old BETA-3 naming",
       "status": "superseded",
       "evidence": [
-        "current lane is BETA-5.4; see src/PortfolioSaver.Shared/PortfolioVersion.cs, src/PortfolioSaver.Config/Windows/MainWindow.xaml, src/PortfolioSaver.Config/Content/about.txt"
+        "current lane is BETA-5.5; see src/PortfolioSaver.Shared/PortfolioVersion.cs, src/PortfolioSaver.Config/Windows/MainWindow.xaml, src/PortfolioSaver.Config/Content/about.txt"
       ],
       "tests": [
         "T-044"
@@ -1077,7 +1077,7 @@
     ]
   },
   "canonical_evidence_locations": {
-    "Audit / release-gate document": "docs/BETA54_AUDIT_STATE.json",
+    "Audit / release-gate document": "docs/BETA55_AUDIT_STATE.json",
     "VM runbook": "build/vm/VM_OPERATIONS_RUNBOOK.md",
     "Publish artifacts": "build/artifacts/publish-safe-temp",
     "VM result bundles": "build/vm/artifacts/vm-results/",
@@ -1094,9 +1094,10 @@
     ]
   },
   "closed_wont_fix_items": [
-    "Background catalog expansion remains optional content work and is not required for the BETA-5.4 release gate.",
+    "Background catalog expansion remains optional content work and is not required for the BETA-5.5 release gate.",
     "Default tape-symbol curation beyond the current working defaults is accepted as future product polish rather than a release blocker.",
     "A subtle UTC or NTP fallback hint is intentionally omitted to keep the status band quiet unless operator clarity becomes a future requirement.",
     "Minor visual polish beyond the validated readability baseline is intentionally deferred to avoid destabilizing the current runtime."
   ]
 }
+

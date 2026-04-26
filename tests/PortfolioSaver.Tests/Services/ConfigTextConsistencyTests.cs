@@ -1,4 +1,4 @@
-using PortfolioSaver.Shared;
+﻿using PortfolioSaver.Shared;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
@@ -8,9 +8,9 @@ public sealed class ConfigTextConsistencyTests
     [Fact]
     public void PortfolioVersion_UsesBeta54Labeling()
     {
-        Assert.Equal("BETA-5.4", PortfolioVersion.BaselineLabel);
+        Assert.Equal("BETA-5.5", PortfolioVersion.BaselineLabel);
         Assert.Contains("beta5", PortfolioVersion.SemanticVersion, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("BETA-5.4", PortfolioVersion.DisplayName, StringComparison.Ordinal);
+        Assert.Contains("BETA-5.5", PortfolioVersion.DisplayName, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -18,7 +18,7 @@ public sealed class ConfigTextConsistencyTests
     {
         string aboutText = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Content", "about.txt"));
 
-        Assert.Contains("BETA-5.4 baseline", aboutText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("BETA-5.5 baseline", aboutText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Publisher: SANYALnet Labs", aboutText, StringComparison.Ordinal);
         Assert.Contains("Author: Supratim Sanyal", aboutText, StringComparison.Ordinal);
         Assert.Contains("License: MIT License", aboutText, StringComparison.Ordinal);
@@ -29,7 +29,7 @@ public sealed class ConfigTextConsistencyTests
     {
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Windows", "MainWindow.xaml"));
 
-        Assert.Contains("Title=\"DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-5.4\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Title=\"DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-5.5\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Floating benchmark cards", xaml, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Benchmark refresh", xaml, StringComparison.OrdinalIgnoreCase);
     }
@@ -195,3 +195,4 @@ public sealed class ConfigTextConsistencyTests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 }
+
