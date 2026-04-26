@@ -22,6 +22,29 @@ public sealed class VmHarnessScriptTests
     }
 
     [Fact]
+    public void RunVmUxValidation_RecordsActualCaptureDimensions_AndFlagsFramebufferMismatch()
+    {
+        string script = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "Run-VmUxValidation.ps1"));
+        string runbook = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "VM_OPERATIONS_RUNBOOK.md"));
+
+        Assert.Contains("ActualWidth = $mainSize.Width", script, StringComparison.Ordinal);
+        Assert.Contains("ActualHeight = $mainSize.Height", script, StringComparison.Ordinal);
+        Assert.Contains("ActualWidth = $saver12Size.Width", script, StringComparison.Ordinal);
+        Assert.Contains("ActualHeight = $saver12Size.Height", script, StringComparison.Ordinal);
+        Assert.Contains("dimension mismatch", script, StringComparison.Ordinal);
+        Assert.Contains("verify actual capture dimensions before claiming multi-resolution pass", runbook, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("setvideomodehint", runbook, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void GuestPrepareScript_ClearsPersistedPortfolioSaverStateForCleanBaseline()
     {
         string script = File.ReadAllText(Path.Combine(

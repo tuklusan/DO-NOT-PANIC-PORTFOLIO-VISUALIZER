@@ -7,4 +7,4 @@ DO NOT PANIC PORTFOLIO VISUALIZER Help
 - Invalid symbols are automatically disabled so they do not break the screensaver.
 - RSS feeds are validated during Apply. Invalid feeds fall back to the default Yahoo Finance feed.
 - Advanced settings control per-provider hourly and daily request budgets.
-- Use the License button to review the full MIT License and open the official license page.
+- Review the bundled LICENSE file or the official MIT License page for the full license text.

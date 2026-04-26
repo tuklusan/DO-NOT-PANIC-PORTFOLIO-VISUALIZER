@@ -114,6 +114,72 @@ public sealed class ConfigTextConsistencyTests
         Assert.DoesNotContain("KnownLimitText", xaml, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void HelpBadges_ArePresentOnAllKeySections_WithNonEmptyTooltips()
+    {
+        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Windows", "MainWindow.xaml"));
+
+        int helpBadgeCount = xaml.Split("Style=\"{StaticResource HelpBadgeStyle}\"", StringSplitOptions.None).Length - 1;
+        int tooltipCount = xaml.Split("ToolTip=\"", StringSplitOptions.None).Length - 1;
+
+        Assert.Equal(5, helpBadgeCount);
+        Assert.True(tooltipCount >= 5, "Expected every visible help badge to carry a tooltip.");
+        Assert.Contains("API keys are optional until you want live access to that provider.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Apply validates the RSS feed.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Managed exchange photos are cached under AppData.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Ticker names auto-fill during Apply when validation can resolve them.", xaml, StringComparison.Ordinal);
+        Assert.Contains("These budgets cap how often the screensaver is allowed to hit each cloud source.", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HelpAndAboutDocuments_AreBundled_NonEmpty_AndLicenseAligned()
+    {
+        string helpText = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Content", "help.txt"));
+        string aboutText = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Content", "about.txt"));
+
+        Assert.False(string.IsNullOrWhiteSpace(helpText));
+        Assert.False(string.IsNullOrWhiteSpace(aboutText));
+        Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER Help", helpText, StringComparison.Ordinal);
+        Assert.Contains("License: MIT License", aboutText, StringComparison.Ordinal);
+        Assert.Contains("Official License URL: https://opensource.org/license/mit/", aboutText, StringComparison.Ordinal);
+        Assert.Contains("Review the bundled LICENSE file or the official MIT License page for the full license text.", helpText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GeneralTab_UsesResponsiveScrollAndSharedColumns()
+    {
+        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Windows", "MainWindow.xaml"));
+
+        Assert.Contains("Width=\"1120\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Height=\"740\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("MinWidth=\"640\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("MinHeight=\"500\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("<TabItem Header=\"General\">", xaml, StringComparison.Ordinal);
+        Assert.Contains("HorizontalScrollBarVisibility=\"Disabled\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("VerticalScrollBarVisibility=\"Auto\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("SharedSizeGroup=\"GeneralLabelCol\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("ColumnDefinition Width=\"*\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("ColumnDefinition Width=\"1.5*\" MinWidth=\"92\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("ColumnDefinition Width=\"2.2*\" MinWidth=\"132\"", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AdvancedTab_UsesStretchGridAndBoundedColumnMinimums()
+    {
+        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Windows", "MainWindow.xaml"));
+
+        Assert.Contains("<TabItem Header=\"Advanced\">", xaml, StringComparison.Ordinal);
+        Assert.Contains("<ScrollViewer HorizontalScrollBarVisibility=\"Auto\" VerticalScrollBarVisibility=\"Auto\" Background=\"#171717\">", xaml, StringComparison.Ordinal);
+        Assert.Contains("<RowDefinition Height=\"*\" />", xaml, StringComparison.Ordinal);
+        Assert.Contains("HorizontalAlignment=\"Stretch\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("ColumnWidth=\"*\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("MinColumnWidth=\"100\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"2.6*\" MinWidth=\"280\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"1.35*\" MinWidth=\"156\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"1.0*\" MinWidth=\"118\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"1.15*\" MinWidth=\"132\"", xaml, StringComparison.Ordinal);
+    }
+
     private static string GetRepoRoot()
     {
         DirectoryInfo? current = new(AppContext.BaseDirectory);
