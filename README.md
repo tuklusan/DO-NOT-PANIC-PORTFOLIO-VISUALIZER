@@ -2,6 +2,10 @@
 
 Market-aware Windows screensaver and configuration suite by **SANYALnet Labs**, written by **Supratim Sanyal**.
 
+**License: MIT LICENSE**
+
+This repository ships with the full [LICENSE](LICENSE) text in-tree and is licensed under the **MIT LICENSE**, including the standard warranty and liability disclaimer.
+
 ## Overview
 
 **DO NOT PANIC PORTFOLIO VISUALIZER** is a .NET 8 / WPF project that turns a Windows screensaver into a live market display with ticker tapes, floating graph cards, news, exchange backgrounds, and animated overlays.
@@ -101,7 +105,7 @@ Use the scripts under `build/` for publish and packaging workflows, especially:
 
 ## Current Baseline
 
-- Final `BETA-5.3.2` baseline is tagged in Git as `BETA-5.3.2-final`
+- Remote Git history has been intentionally rebased to start at the `BETA-5.4` baseline
 - Current development/version lane is `BETA-5.4`
 - Product identity:
   - Application: **DO NOT PANIC PORTFOLIO VISUALIZER**
@@ -118,6 +122,7 @@ Use the scripts under `build/` for publish and packaging workflows, especially:
 
 ## License
 
-This project is licensed under the **MIT License**.
+This project is licensed under the **MIT LICENSE**.
 
+- Bundled full text: [LICENSE](LICENSE)
 - Official text: [https://opensource.org/license/mit/](https://opensource.org/license/mit/)

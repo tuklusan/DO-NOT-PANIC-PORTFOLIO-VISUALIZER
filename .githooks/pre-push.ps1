@@ -5,7 +5,7 @@ function Is-PlaceholderValue {
 
     if ([string]::IsNullOrWhiteSpace($Value)) { return $true }
     $v = $Value.Trim()
-    if ($v -match '^(?i:REPLACE_WITH_|YOUR_|CHANGEME|REDACTED|NONE|null|nil)$') { return $true }
+    if ($v -match '^(?i:(REPLACE_WITH_[A-Z0-9_]+|YOUR_[A-Z0-9_]+|CHANGEME(?:_[A-Z0-9_]+)?|REDACTED(?:_[A-Z0-9_]+)?|NONE|null|nil))$') { return $true }
     if ($v -match '^<.*>$') { return $true }
     if ($v -match '^\*+$') { return $true }
     return $false
