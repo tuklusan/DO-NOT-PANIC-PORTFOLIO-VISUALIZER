@@ -290,8 +290,8 @@ Use this exact pattern to avoid silent launch failures and run contamination:
 - Verify Run dialog is actually open before injecting command text.
 - Stale text in Run dialog can cause malformed command execution; clear/reopen if needed.
 3. Use known guest workspace path.
-- Guest user profile is `C:\Users\sanyalnet`.
-- Working UX root is `C:\Users\sanyalnet\Desktop\PortfolioVmUx`.
+- Guest user profile is `%USERPROFILE%`.
+- Working UX root is `%USERPROFILE%\Desktop\PortfolioVmUx`.
 4. Start deep runner minimized and with no further keyboard injection during capture window.
 - Launch:
 - `powershell -WindowStyle Minimized -NoProfile -ExecutionPolicy Bypass -File \\VBOXSVR\codexrepo\build\vm\Guest-UxDeepExercise.ps1`
@@ -301,7 +301,7 @@ Use this exact pattern to avoid silent launch failures and run contamination:
 - This prevents incidental cursor/key movement from terminating the saver during test automation.
 6. End-of-run retrieval fallback that worked.
 - If automated copy/export fails, copy latest run directly from guest using `xcopy`:
-- `xcopy /E /I /Y C:\Users\sanyalnet\Desktop\PortfolioVmUx\results\ux-deep-<timestamp> \\VBOXSVR\codexrepo\build\vm\artifacts\vm-results\ux-deep-<timestamp>`
+- `xcopy /E /I /Y %USERPROFILE%\Desktop\PortfolioVmUx\results\ux-deep-<timestamp> \\VBOXSVR\codexrepo\build\vm\artifacts\vm-results\ux-deep-<timestamp>`
 
 ## 12) Runtime Trace Retrieval (for Debug/Defect Analysis)
 

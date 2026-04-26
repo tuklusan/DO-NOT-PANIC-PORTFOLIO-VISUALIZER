@@ -52,9 +52,29 @@ foreach ($r in $refs) {
 }
 
 $hits = New-Object System.Collections.Generic.List[string]
+$forbiddenPathPatterns = @(
+    '(?i)(^|/|\\)codex\.secrets\.json$',
+    '(?i)(^|/|\\)TUKLUS-NOTES-WITH-API-KEYS\.txt$',
+    '(?i)(^|/|\\)Issues and Development Scratchpad.*\.(txt|md)$',
+    '(?i)(^|/|\\).*scratchpad.*\.(txt|md)$',
+    '(?i)(^|/|\\)build/vm-settings\.json$',
+    '(?i)(^|/|\\)build/vm/vm-settings\.json$',
+    '(?i)(^|/|\\)build/vm/vm-credentials\.local\.json$',
+    '(?i)(^|/|\\)build/.*/test-secrets\.json$'
+)
 
 foreach ($commit in $outgoing) {
     if ([string]::IsNullOrWhiteSpace($commit)) { continue }
+
+    $changedPaths = @(git diff-tree --no-commit-id --name-only -r $commit 2>$null)
+    foreach ($path in $changedPaths) {
+        foreach ($pattern in $forbiddenPathPatterns) {
+            if ($path -match $pattern) {
+                Add-Hit -Hits $hits -Commit $commit -Reason 'Forbidden secret/local-only filename' -Line $path
+                break
+            }
+        }
+    }
 
     $patch = git show --pretty=format: --unified=0 $commit -- . ':(exclude).githooks/*' 2>$null
     if ($LASTEXITCODE -ne 0 -or -not $patch) { continue }

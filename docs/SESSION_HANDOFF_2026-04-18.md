@@ -49,7 +49,7 @@ This commit is present both locally and on `origin/main`.
 
 Command used:
 ```powershell
-& 'C:\Users\vagab\.dotnet8\dotnet.exe' test '.\PortfolioScreensaver.sln' -c Release /p:UseSharedCompilation=false /nodeReuse:false
+& '<local-dotnet8>\dotnet.exe' test '.\PortfolioScreensaver.sln' -c Release /p:UseSharedCompilation=false /nodeReuse:false
 ```
 
 ### Publish validation
@@ -166,8 +166,8 @@ Recommended sequence:
 
 ### Local build/test
 ```powershell
-& 'C:\Users\vagab\.dotnet8\dotnet.exe' build '.\PortfolioScreensaver.sln' -c Release --no-restore /p:UseSharedCompilation=false /nodeReuse:false
-& 'C:\Users\vagab\.dotnet8\dotnet.exe' test '.\PortfolioScreensaver.sln' -c Release /p:UseSharedCompilation=false /nodeReuse:false
+& '<local-dotnet8>\dotnet.exe' build '.\PortfolioScreensaver.sln' -c Release --no-restore /p:UseSharedCompilation=false /nodeReuse:false
+& '<local-dotnet8>\dotnet.exe' test '.\PortfolioScreensaver.sln' -c Release /p:UseSharedCompilation=false /nodeReuse:false
 ```
 
 ### Safe publish
@@ -232,8 +232,8 @@ Full suite:
 
 Commands used:
 ```powershell
-& 'C:\Users\vagab\.dotnet8\dotnet.exe' test '.\tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj' -c Release --filter "FullyQualifiedName~ScreensaverRenderBehaviorTests|FullyQualifiedName~StartupCoordinatorAdvancedTests|FullyQualifiedName~YahooFinanceQuoteProviderTests|FullyQualifiedName~SymbolProfileHeuristicsTests|FullyQualifiedName~DataSourceSymbolEligibilityTests" /p:UseSharedCompilation=false /nodeReuse:false
-& 'C:\Users\vagab\.dotnet8\dotnet.exe' test '.\tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj' -c Release /p:UseSharedCompilation=false /nodeReuse:false
+& '<local-dotnet8>\dotnet.exe' test '.\tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj' -c Release --filter "FullyQualifiedName~ScreensaverRenderBehaviorTests|FullyQualifiedName~StartupCoordinatorAdvancedTests|FullyQualifiedName~YahooFinanceQuoteProviderTests|FullyQualifiedName~SymbolProfileHeuristicsTests|FullyQualifiedName~DataSourceSymbolEligibilityTests" /p:UseSharedCompilation=false /nodeReuse:false
+& '<local-dotnet8>\dotnet.exe' test '.\tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj' -c Release /p:UseSharedCompilation=false /nodeReuse:false
 ```
 
 ### Fresh publish / VM workflow finding

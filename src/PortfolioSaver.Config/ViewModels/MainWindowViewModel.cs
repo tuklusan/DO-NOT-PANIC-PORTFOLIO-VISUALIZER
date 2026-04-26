@@ -6,7 +6,6 @@ using System.Windows;
 using System.Windows.Threading;
 using PortfolioSaver.Config.Commands;
 using PortfolioSaver.Config.Services;
-using PortfolioSaver.Config.Windows;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
@@ -20,10 +19,8 @@ namespace PortfolioSaver.Config.ViewModels;
 public sealed class MainWindowViewModel : BindableBase
 {
     private readonly SettingsFileService _settingsFileService;
-    private readonly PreviewLauncherService _previewLauncherService;
     private readonly SettingsValidator _settingsValidator;
     private readonly NewsFeedValidationService _newsFeedValidationService;
-    private readonly DocumentContentService _documentContentService;
     private readonly ConfigConnectivityService _connectivityService;
     private readonly YahooSymbolValidationService _yahooSymbolValidationService;
     private readonly ApiKeyValidationService _apiKeyValidationService;
@@ -49,10 +46,8 @@ public sealed class MainWindowViewModel : BindableBase
     public MainWindowViewModel()
     {
         _settingsFileService = new SettingsFileService();
-        _previewLauncherService = new PreviewLauncherService();
         _settingsValidator = new SettingsValidator();
         _newsFeedValidationService = new NewsFeedValidationService();
-        _documentContentService = new DocumentContentService();
         _connectivityService = new ConfigConnectivityService();
         _yahooSymbolValidationService = new YahooSymbolValidationService();
         _apiKeyValidationService = new ApiKeyValidationService();
@@ -65,11 +60,7 @@ public sealed class MainWindowViewModel : BindableBase
 
         PrimaryCommand = new RelayCommand(() => _ = ExecutePrimaryAsync(), () => !_isApplying && !_isValidationClosePending);
         RetryNetworkCommand = new RelayCommand(RetryConnectivity);
-        PreviewCommand = new RelayCommand(() => _previewLauncherService.LaunchPreview(), () => IsConfigActive);
         AddGroupCommand = new RelayCommand(AddGroup, () => IsConfigActive);
-        HelpCommand = new RelayCommand(ShowHelp);
-        AboutCommand = new RelayCommand(ShowAbout);
-        LicenseCommand = new RelayCommand(ShowLicense);
 
         _stateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _stateTimer.Tick += async (_, _) => await OnStateTimerTickAsync();
@@ -138,11 +129,7 @@ public sealed class MainWindowViewModel : BindableBase
 
     public RelayCommand PrimaryCommand { get; }
     public RelayCommand RetryNetworkCommand { get; }
-    public RelayCommand PreviewCommand { get; }
     public RelayCommand AddGroupCommand { get; }
-    public RelayCommand HelpCommand { get; }
-    public RelayCommand AboutCommand { get; }
-    public RelayCommand LicenseCommand { get; }
 
     public bool CanCloseWindow()
     {
@@ -367,15 +354,16 @@ public sealed class MainWindowViewModel : BindableBase
         if (!IsConfigActive || _isRealtimeValidationRunning)
             return;
 
+        AppSettings candidateSettings = BuildCandidateSettings();
+
         if (IsValidated)
         {
-            AppSettings current = BuildCandidateSettings();
-            string currentFingerprint = BuildFingerprint(current);
+            string currentFingerprint = BuildFingerprint(candidateSettings);
             if (!string.Equals(currentFingerprint, _validatedFingerprint, StringComparison.Ordinal))
                 InvalidateValidationState("Configuration changed. Click Validate.");
         }
 
-        List<string> symbols = GetEnabledSymbols(BuildCandidateSettings()).ToList();
+        List<string> symbols = GetEnabledSymbols(candidateSettings).ToList();
         string fingerprint = string.Join("|", symbols.Select(SymbolProfileHeuristics.Normalize).OrderBy(symbol => symbol, StringComparer.OrdinalIgnoreCase));
         if (string.Equals(fingerprint, _lastRealtimeSymbolsFingerprint, StringComparison.Ordinal))
             return;
@@ -518,7 +506,6 @@ public sealed class MainWindowViewModel : BindableBase
     private void RaiseCommandCanExecuteChanged()
     {
         PrimaryCommand.RaiseCanExecuteChanged();
-        PreviewCommand.RaiseCanExecuteChanged();
         AddGroupCommand.RaiseCanExecuteChanged();
     }
 
@@ -530,35 +517,6 @@ public sealed class MainWindowViewModel : BindableBase
         _validatedFingerprint = string.Empty;
         if (!string.IsNullOrWhiteSpace(statusMessage))
             StatusMessage = statusMessage;
-    }
-
-    private void ShowHelp()
-    {
-        ShowDocument($"{PortfolioVersion.DisplayName} Help", _documentContentService.GetHelpText());
-    }
-
-    private void ShowAbout()
-    {
-        ShowDocument($"About {PortfolioVersion.DisplayName}", _documentContentService.GetAboutText());
-    }
-
-    private void ShowLicense()
-    {
-        ShowDocument(
-            $"{AppIdentity.LicenseName} - {AppIdentity.ApplicationName}",
-            _documentContentService.GetLicenseText(),
-            AppIdentity.OfficialLicenseUrl,
-            "Open Official MIT License");
-    }
-
-    private void ShowDocument(string title, string body, string? linkUrl = null, string? linkButtonText = null)
-    {
-        DocumentWindow window = new(title, body, linkUrl, linkButtonText);
-        Window? owner = Application.Current?.Windows.OfType<Window>().FirstOrDefault(candidate => candidate.IsActive);
-        if (owner is not null)
-            window.Owner = owner;
-
-        window.ShowDialog();
     }
 
     private void HookEditors()

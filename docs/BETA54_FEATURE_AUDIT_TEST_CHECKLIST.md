@@ -1570,7 +1570,7 @@ Local validation after the patch:
 1. Focused tests passed: `27/27`.
 2. Full test suite passed: `167/167`.
 3. Host test command used the pinned SDK directly:
-   - `C:\Users\vagab\.dotnet8\dotnet.exe test .\tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj --no-restore -v minimal`
+   - `<local-dotnet8>\dotnet.exe test .\tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj --no-restore -v minimal`
 
 Next VM validation requirement:
 
