@@ -1,0 +1,299 @@
+﻿{
+    "provider":  "Finnhub",
+    "apiKeyProtected":  false,
+    "FinnhubApiKey": "REPLACE_WITH_FINNHUB_API_KEY",
+    "TwelveDataApiKey": "REPLACE_WITH_TWELVEDATA_API_KEY",
+    "refreshSecondsPortfolio":  30,
+    "refreshSecondsBenchmarks":  30,
+    "refreshSecondsOffHours":  120,
+    "httpTimeoutSeconds":  10,
+    "minFinnhubRequestSpacingSeconds":  2,
+    "minTwelveDataRequestSpacingSeconds":  15,
+    "maxFinnhubRequestsPerMinuteSafe":  30,
+    "maxTwelveDataCreditsPerMinuteSafe":  4,
+    "maxTwelveDataCreditsPerDaySafe":  400,
+    "enableProviderFailover":  true,
+    "backgroundImageFolder":  "C:\\Users\\User\\Pictures\\ExchangeBackgrounds",
+    "backgroundChangeSeconds":  60,
+    "shuffleBackgrounds":  true,
+    "enableBlur":  true,
+    "blurRadius":  12,
+    "dimOpacity":  0.55,
+    "enableRoaming":  true,
+    "layoutPreset":  "UltrawideDefault",
+    "groups":  [
+                   {
+                       "name":  "GBLCORE+SAT",
+                       "renderMode":  "HorizontalTape",
+                       "direction":  "Left",
+                       "speed":  1.0,
+                       "rowHeight":  48,
+                       "enabled":  true,
+                       "tickers":  [
+                                       {
+                                           "symbol":  "VOO",
+                                           "displayName":  "VOO",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "IJH",
+                                           "displayName":  "IJH",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "IJR",
+                                           "displayName":  "IJR",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VEA",
+                                           "displayName":  "VEA",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VWO",
+                                           "displayName":  "VWO",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VSS",
+                                           "displayName":  "VSS",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "EFV",
+                                           "displayName":  "EFV",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "EFG",
+                                           "displayName":  "EFG",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       }
+                                   ],
+                       "id":  "tape-1"
+                   },
+                   {
+                       "name":  "MLTFCT+SMRTBETA",
+                       "renderMode":  "HorizontalTape",
+                       "direction":  "Right",
+                       "speed":  1.1,
+                       "rowHeight":  48,
+                       "enabled":  true,
+                       "tickers":  [
+                                       {
+                                           "symbol":  "QUAL",
+                                           "displayName":  "QUAL",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "MTUM",
+                                           "displayName":  "MTUM",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VLUE",
+                                           "displayName":  "VLUE",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "SIZE",
+                                           "displayName":  "SIZE",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "USMV",
+                                           "displayName":  "USMV",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "INTF",
+                                           "displayName":  "INTF",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "EMGF",
+                                           "displayName":  "EMGF",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "SYLD",
+                                           "displayName":  "SYLD",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       }
+                                   ],
+                       "id":  "tape-2"
+                   },
+                   {
+                       "name":  "DIVGRTH+YLD",
+                       "renderMode":  "HorizontalTape",
+                       "direction":  "Left",
+                       "speed":  1.2,
+                       "rowHeight":  48,
+                       "enabled":  true,
+                       "tickers":  [
+                                       {
+                                           "symbol":  "SCHD",
+                                           "displayName":  "SCHD",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VIG",
+                                           "displayName":  "VIG",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VYM",
+                                           "displayName":  "VYM",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "DGRO",
+                                           "displayName":  "DGRO",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VYMI",
+                                           "displayName":  "VYMI",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VIGI",
+                                           "displayName":  "VIGI",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "SPHD",
+                                           "displayName":  "SPHD",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "DGRW",
+                                           "displayName":  "DGRW",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       }
+                                   ],
+                       "id":  "tape-3"
+                   },
+                   {
+                       "name":  "STRTGC-ROTN",
+                       "renderMode":  "HorizontalTape",
+                       "direction":  "Right",
+                       "speed":  1.35,
+                       "rowHeight":  48,
+                       "enabled":  true,
+                       "tickers":  [
+                                       {
+                                           "symbol":  "XLK",
+                                           "displayName":  "XLK",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "XLV",
+                                           "displayName":  "XLV",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "XLF",
+                                           "displayName":  "XLF",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "XLY",
+                                           "displayName":  "XLY",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "XLE",
+                                           "displayName":  "XLE",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "SMH",
+                                           "displayName":  "SMH",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "CIBR",
+                                           "displayName":  "CIBR",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "ARKK",
+                                           "displayName":  "ARKK",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       }
+                                   ],
+                       "id":  "tape-4"
+                   }
+               ],
+    "benchmarks":  [
+                       {
+                           "symbol":  "SPY",
+                           "displayName":  "SPY",
+                           "enabled":  true
+                       },
+                       {
+                           "symbol":  "QQQ",
+                           "displayName":  "QQQ",
+                           "enabled":  true
+                       },
+                       {
+                           "symbol":  "VT",
+                           "displayName":  "VT",
+                           "enabled":  true
+                       },
+                       {
+                           "symbol":  "BND",
+                           "displayName":  "BND",
+                           "enabled":  true
+                       }
+                   ],
+    "enableFloatingGraphs":  true,
+    "historicalLookbackDays":  14,
+    "historicalRefreshHours":  12,
+    "maxFloatingGraphsPerTape":  3,
+    "historicalCacheRootFolder":  "%TEMP%\\\\PortfolioSaver\\\\history-cache",
+    "enableBouncingGraphCards":  true,
+    "floatingGraphVelocityMin":  22,
+    "floatingGraphVelocityMax":  48,
+    "enableFloatingClock":  true,
+    "showLocalAndNewYorkTime":  true,
+    "clockRefreshSeconds":  1,
+    "backgroundIncludeSubfolders":  false,
+    "protectedApiKey": ""
+}
+
+

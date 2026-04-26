@@ -1,0 +1,5 @@
+<Configuration>
+  <LogonCommand>
+    <Command>cmd.exe /c echo sandbox smoke & timeout /t 3</Command>
+  </LogonCommand>
+</Configuration>

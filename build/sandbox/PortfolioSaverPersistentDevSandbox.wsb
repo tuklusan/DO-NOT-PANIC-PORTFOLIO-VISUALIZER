@@ -1,0 +1,13 @@
+<Configuration>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>D:\Users\vagab\Development\PortfolioScreensaver-Codex-Handoff-VisualStudio</HostFolder>
+      <SandboxFolder>C:\Users\WDAGUtilityAccount\Desktop\PortfolioSaverWorkspace</SandboxFolder>
+      <ReadOnly>false</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>powershell.exe -NoExit -ExecutionPolicy Bypass -Command "Set-Location 'C:\Users\WDAGUtilityAccount\Desktop\PortfolioSaverWorkspace'; Write-Host 'PortfolioSaver persistent sandbox ready.'; Write-Host 'Create build\\sandbox\\test-secrets.json if you want live-source testing, then run installer/setup scripts manually from this window.'" </Command>
+  </LogonCommand>
+</Configuration>
+

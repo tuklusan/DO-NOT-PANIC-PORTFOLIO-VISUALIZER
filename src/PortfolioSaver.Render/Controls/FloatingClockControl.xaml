@@ -1,0 +1,135 @@
+<UserControl x:Class="PortfolioSaver.Render.Controls.FloatingClockControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             UseLayoutRounding="True"
+             SnapsToDevicePixels="True"
+             TextOptions.TextFormattingMode="Display">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibility" />
+        <FontFamily x:Key="StableClockFont">Cascadia Mono,Consolas,Lucida Console</FontFamily>
+    </UserControl.Resources>
+
+        <Grid Width="{Binding Width}"
+              Height="{Binding Height}"
+              ClipToBounds="False"
+              SnapsToDevicePixels="True">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+                <Border Background="#B81B2430"
+                        BorderBrush="#669DB8CF"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="7,2"
+                        Margin="0,0,7,0">
+                    <TextBlock Text="{Binding Title}" Foreground="#F4F8FC" FontWeight="SemiBold" FontSize="11" FontFamily="Bahnschrift SemiCondensed" />
+                </Border>
+                <Border Background="#9A141A20"
+                        BorderBrush="#444E657A"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="7,2">
+                    <TextBlock Text="{Binding Subtitle}" Foreground="#AFC0D2" FontSize="8" TextTrimming="CharacterEllipsis" MaxWidth="230" />
+                </Border>
+            </StackPanel>
+
+            <Grid Grid.Row="1" Margin="0,6,0,0" ClipToBounds="True">
+                <ItemsControl ItemsSource="{Binding Cities}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="6" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                        <Border Background="{Binding CardBackground}"
+                                BorderBrush="{Binding CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Margin="0,0,3,3"
+                                Padding="3,3"
+                                MinWidth="82"
+                                MinHeight="52">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <DockPanel LastChildFill="False">
+                                    <TextBlock Text="{Binding Label}"
+                                               Foreground="#E5EEF7"
+                                               FontSize="8"
+                                               FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxWidth="56"
+                                               VerticalAlignment="Center"
+                                               DockPanel.Dock="Left" />
+                                    <StackPanel Orientation="Horizontal" Margin="4,0,0,0" DockPanel.Dock="Right">
+                                        <TextBlock Text="{Binding WeatherGlyph}" Foreground="#F4D87A" FontSize="8" Margin="0,0,2,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding WeatherText}" Foreground="#E6EFF8" FontSize="7" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="1"
+                                           Text="{Binding TimeText}"
+                                           Foreground="White"
+                                           FontFamily="{StaticResource StableClockFont}"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           Margin="0,1,0,0"
+                                           Width="52"
+                                           SnapsToDevicePixels="True" />
+
+                                <TextBlock Grid.Row="2"
+                                           Text="{Binding ZoneText}"
+                                           Foreground="#C3D2DF"
+                                           FontSize="7"
+                                           TextTrimming="CharacterEllipsis"
+                                           TextWrapping="NoWrap"
+                                           Margin="0,2,0,0" />
+
+                                <StackPanel Grid.Row="3"
+                                            Margin="0,3,0,0"
+                                            Visibility="{Binding ShowExchangeDetails, Converter={StaticResource BooleanToVisibility}}">
+                                    <DockPanel LastChildFill="False">
+                                        <TextBlock Text="{Binding ExchangeName}"
+                                                   Foreground="#D8E5F2"
+                                                   FontSize="7"
+                                                   FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="50"
+                                                   DockPanel.Dock="Left" />
+                                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                            <TextBlock Text="{Binding IndexValueText}" Foreground="#F3F8FD" FontFamily="{StaticResource StableClockFont}" FontSize="7" FontWeight="SemiBold" MinWidth="30" TextAlignment="Right" />
+                                            <TextBlock Text="{Binding IndexChangeText}" Foreground="{Binding IndexChangeForeground}" FontFamily="{StaticResource StableClockFont}" FontSize="7" FontWeight="Bold" Margin="3,0,0,0" MinWidth="28" TextAlignment="Right" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                    <Grid Height="14" Margin="0,1,0,0" HorizontalAlignment="Stretch">
+                                        <Polyline Points="{Binding MiniGraphPoints}"
+                                                  Stroke="{Binding MiniGraphStroke}"
+                                                  StrokeThickness="1.8"
+                                                  StrokeLineJoin="Round"
+                                                  StrokeStartLineCap="Round"
+                                                  StrokeEndLineCap="Round" />
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,1 @@
+powershell -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri 'http://192.168.56.1:8008/vm-test.txt' -OutFile '%USERPROFILE%\Desktop\PortfolioVmUx\vm-test.txt'; Get-Item '%USERPROFILE%\Desktop\PortfolioVmUx\vm-test.txt' | Select-Object FullName,Length,LastWriteTime | ConvertTo-Json -Compress"

@@ -1,0 +1,2 @@
+powershell -NoProfile -Command "$root='%USERPROFILE%\Desktop\PortfolioVmUx\results'; if(Test-Path $root){ Get-ChildItem $root -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 3 FullName,LastWriteTime | Format-Table -AutoSize }"
+powershell -NoProfile -Command "Get-Process PortfolioSaver.Config,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Select-Object ProcessName,Id,StartTime | Format-Table -AutoSize"

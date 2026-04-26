@@ -1,0 +1,24 @@
+<Project>
+  <PropertyGroup>
+    <PortfolioSaverVersion>0.9.0-beta5.4</PortfolioSaverVersion>
+    <PortfolioSaverBaselineLabel>BETA-5.4</PortfolioSaverBaselineLabel>
+    <Version Condition="'$(Version)' == ''">$(PortfolioSaverVersion)</Version>
+    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">0.9.0.0</AssemblyVersion>
+    <FileVersion Condition="'$(FileVersion)' == ''">0.9.0.0</FileVersion>
+    <InformationalVersion Condition="'$(InformationalVersion)' == ''">$(PortfolioSaverVersion) ($(PortfolioSaverBaselineLabel))</InformationalVersion>
+    <Product Condition="'$(Product)' == ''">DO NOT PANIC PORTFOLIO VISUALIZER</Product>
+    <Company Condition="'$(Company)' == ''">SANYALnet Labs</Company>
+    <Authors Condition="'$(Authors)' == ''">Supratim Sanyal</Authors>
+    <Copyright Condition="'$(Copyright)' == ''">Copyright (c) Supratim Sanyal</Copyright>
+    <PackageLicenseExpression Condition="'$(PackageLicenseExpression)' == ''">MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(PortfolioSaverInstallerBaseIntermediateRoot)' != ''">
+    <BaseIntermediateOutputPath>$([MSBuild]::EnsureTrailingSlash('$(PortfolioSaverInstallerBaseIntermediateRoot)'))$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);$(MSBuildProjectDirectory)\obj\**;$(MSBuildProjectDirectory)\bin\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(PortfolioSaverInstallerBaseOutputRoot)' != ''">
+    <BaseOutputPath>$([MSBuild]::EnsureTrailingSlash('$(PortfolioSaverInstallerBaseOutputRoot)'))$(MSBuildProjectName)\</BaseOutputPath>
+  </PropertyGroup>
+</Project>

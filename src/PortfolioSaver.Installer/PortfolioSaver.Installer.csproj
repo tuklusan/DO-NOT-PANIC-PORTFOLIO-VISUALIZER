@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>PortfolioSaverScreensaverSetup</AssemblyName>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Platforms>AnyCPU;x64</Platforms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PortfolioSaver.Shared\PortfolioSaver.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(InstallerPayloadPath)' != ''">
+    <EmbeddedResource Include="$(InstallerPayloadPath)" LogicalName="PortfolioSaver.Payload.zip" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,13 @@
+<Configuration>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>D:\Users\vagab\Development\PortfolioScreensaver-Codex-Handoff-VisualStudio</HostFolder>
+      <SandboxFolder>C:\Users\WDAGUtilityAccount\Desktop\PortfolioSaverWorkspace</SandboxFolder>
+      <ReadOnly>false</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Users\WDAGUtilityAccount\Desktop\PortfolioSaverWorkspace\build\sandbox\Run-PortfolioSaverSandboxSmokeTest.ps1"</Command>
+  </LogonCommand>
+</Configuration>
+

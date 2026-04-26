@@ -1,0 +1,422 @@
+﻿{
+    "RefreshSecondsPortfolio":  30,
+    "RefreshSecondsBenchmarks":  30,
+    "RefreshSecondsOffHours":  120,
+    "HttpTimeoutSeconds":  10,
+    "BackgroundImageFolder":  "",
+    "BackgroundChangeSeconds":  60,
+    "ShuffleBackgrounds":  true,
+    "DimOpacity":  0.55,
+    "LayoutPreset":  0,
+    "FinnhubApiKey": "REPLACE_WITH_FINNHUB_API_KEY",
+    "TwelveDataApiKey": "REPLACE_WITH_TWELVEDATA_API_KEY",
+    "TiingoApiKey": "REPLACE_WITH_TIINGO_API_KEY",
+    "FinancialModelingPrepApiKey": "REPLACE_WITH_FMP_API_KEY",
+    "EodhdApiKey": "REPLACE_WITH_EODHD_API_KEY",
+    "MinFinnhubRequestSpacingSeconds":  2,
+    "MinTwelveDataRequestSpacingSeconds":  15,
+    "EnableFloatingGraphs":  true,
+    "HistoricalLookbackDays":  14,
+    "HistoricalRefreshHours":  12,
+    "MaxFloatingGraphsPerTape":  3,
+    "HistoricalCacheRootFolder":  "%LOCALAPPDATA%\\\\PortfolioSaver\\\\Caches\\\\History",
+    "EnableBouncingGraphCards":  true,
+    "FloatingGraphVelocityMin":  22,
+    "FloatingGraphVelocityMax":  48,
+    "EnableFloatingClock":  true,
+    "ClockRefreshSeconds":  1,
+    "BackgroundIncludeSubfolders":  false,
+    "Groups":  [
+                   {
+                       "Id":  "c4bd3620e5b246cda90a5493cdf93100",
+                       "Name":  "Tape 1",
+                       "RenderMode":  0,
+                       "Direction":  0,
+                       "Speed":  1,
+                       "RowHeight":  48,
+                       "Enabled":  true,
+                       "Tickers":  [
+                                       {
+                                           "Symbol":  "AVGE",
+                                           "DisplayName":  "Avantis All Equity Markets ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "AVUV",
+                                           "DisplayName":  "Avantis U.S. Small Cap Value ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "FMTM",
+                                           "DisplayName":  "Fidelity Momentum Factor ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "IMTM",
+                                           "DisplayName":  "iShares MSCI International Momentum Factor ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "RSST",
+                                           "DisplayName":  "Return Stacked U.S. Stocks \u0026 Managed Futures ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       }
+                                   ]
+                   },
+                   {
+                       "Id":  "8e026b4b0cd741a5bc80c262d08c6608",
+                       "Name":  "Tape 2",
+                       "RenderMode":  0,
+                       "Direction":  0,
+                       "Speed":  1.1,
+                       "RowHeight":  48,
+                       "Enabled":  true,
+                       "Tickers":  [
+                                       {
+                                           "Symbol":  "AVDV",
+                                           "DisplayName":  "Avantis International Small Cap Value ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "AVUV",
+                                           "DisplayName":  "Avantis U.S. Small Cap Value ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "IEMG",
+                                           "DisplayName":  "iShares Core MSCI Emerging Markets ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "SPMD",
+                                           "DisplayName":  "SPDR Portfolio S\u0026P 400 Mid Cap ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "SPYM",
+                                           "DisplayName":  "SPDR Portfolio S\u0026P 1500 Composite Stock Market ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "VEA",
+                                           "DisplayName":  "Vanguard FTSE Developed Markets ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "TFLO",
+                                           "DisplayName":  "iShares Treasury Floating Rate Bond ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "XLRE",
+                                           "DisplayName":  "Real Estate Select Sector SPDR Fund",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "SWVXX",
+                                           "DisplayName":  "Schwab Value Advantage Money Fund",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       }
+                                   ]
+                   },
+                   {
+                       "Id":  "fa00cbbdb4db401cb6e1b567d897273e",
+                       "Name":  "Tape 3",
+                       "RenderMode":  0,
+                       "Direction":  0,
+                       "Speed":  1.2,
+                       "RowHeight":  48,
+                       "Enabled":  true,
+                       "Tickers":  [
+                                       {
+                                           "Symbol":  "AOR",
+                                           "DisplayName":  "iShares Core Growth Allocation ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "SPY",
+                                           "DisplayName":  "SPDR S\u0026P 500 ETF Trust",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "VTI",
+                                           "DisplayName":  "Vanguard Total Stock Market ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "VT",
+                                           "DisplayName":  "Vanguard Total World Stock ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "MTUM",
+                                           "DisplayName":  "iShares MSCI USA Momentum Factor ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "DBMF",
+                                           "DisplayName":  "iMGP DBi Managed Futures Strategy ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "VXUS",
+                                           "DisplayName":  "Vanguard Total International Stock ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "BND",
+                                           "DisplayName":  "Vanguard Total Bond Market ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "AGG",
+                                           "DisplayName":  "iShares Core U.S. Aggregate Bond ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "SCHD",
+                                           "DisplayName":  "Schwab U.S. Dividend Equity ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "VIG",
+                                           "DisplayName":  "Vanguard Dividend Appreciation ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "QQQ",
+                                           "DisplayName":  "Invesco QQQ Trust",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "IWM",
+                                           "DisplayName":  "iShares Russell 2000 ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "VNQ",
+                                           "DisplayName":  "Vanguard Real Estate ETF",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "DXY",
+                                           "DisplayName":  "U.S. Dollar Index",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "TNX",
+                                           "DisplayName":  "CBOE 10-Year Treasury Yield Index",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "VIX",
+                                           "DisplayName":  "CBOE Volatility Index",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "XLRE",
+                                           "DisplayName":  "Real Estate Select Sector SPDR Fund",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "SWVXX",
+                                           "DisplayName":  "Schwab Value Advantage Money Fund",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       }
+                                   ]
+                   },
+                   {
+                       "Id":  "1fdc2e5f6bec4e5890015f876d8540ab",
+                       "Name":  "Tape 4",
+                       "RenderMode":  0,
+                       "Direction":  0,
+                       "Speed":  1.35,
+                       "RowHeight":  48,
+                       "Enabled":  true,
+                       "Tickers":  [
+                                       {
+                                           "Symbol":  "ES=F",
+                                           "DisplayName":  "E-mini S\u0026P 500 Futures",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "NQ=F",
+                                           "DisplayName":  "E-mini Nasdaq-100 Futures",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "YM=F",
+                                           "DisplayName":  "E-mini Dow Futures",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "RTY=F",
+                                           "DisplayName":  "E-mini Russell 2000 Futures",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "ZN=F",
+                                           "DisplayName":  "10-Year T-Note Futures",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "CL=F",
+                                           "DisplayName":  "Crude Oil Futures",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       },
+                                       {
+                                           "Symbol":  "GC=F",
+                                           "DisplayName":  "Gold Futures",
+                                           "Quantity":  null,
+                                           "CostBasis":  null,
+                                           "Currency":  "USD",
+                                           "Enabled":  true
+                                       }
+                                   ]
+                   }
+               ],
+    "Benchmarks":  [
+                       {
+                           "Symbol":  "SPY",
+                           "DisplayName":  "S\u0026P 500",
+                           "Enabled":  true
+                       },
+                       {
+                           "Symbol":  "QQQ",
+                           "DisplayName":  "Nasdaq 100",
+                           "Enabled":  true
+                       },
+                       {
+                           "Symbol":  "VT",
+                           "DisplayName":  "Global Equity",
+                           "Enabled":  true
+                       },
+                       {
+                           "Symbol":  "BND",
+                           "DisplayName":  "U.S. Aggregate Bonds",
+                           "Enabled":  true
+                       }
+                   ],
+    "TiingoApiKey": "REPLACE_WITH_TIINGO_API_KEY",
+    "NewsFeedUrl":  "https://finance.yahoo.com/news/rss",
+    "NewsRefreshMinutes":  15
+}
+
+

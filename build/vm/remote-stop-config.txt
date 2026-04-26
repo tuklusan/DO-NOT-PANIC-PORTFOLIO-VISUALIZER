@@ -1,0 +1,2 @@
+taskkill /F /IM PortfolioSaver.Config.exe >nul 2>&1
+taskkill /F /IM PortfolioSaver.Screensaver.exe >nul 2>&1

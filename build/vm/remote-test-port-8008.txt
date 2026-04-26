@@ -1,0 +1,1 @@
+powershell -NoProfile -Command "Test-NetConnection -ComputerName 192.168.56.1 -Port 8008 | Select-Object ComputerName,RemotePort,TcpTestSucceeded,SourceAddress | ConvertTo-Json -Compress"

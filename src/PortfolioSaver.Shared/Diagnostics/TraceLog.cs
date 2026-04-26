@@ -1,0 +1,377 @@
+using System.Collections;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Globalization;
+using System.Net;
+using System.Net.Sockets;
+using System.Runtime.CompilerServices;
+using System.Text;
+using Microsoft.Win32;
+using PortfolioSaver.Shared.Helpers;
+
+namespace PortfolioSaver.Shared.Diagnostics;
+
+public static class TraceLog
+{
+    private const int MaxTraceBytes = 4 * 1024 * 1024;
+    private const int MaxLineLength = 1900;
+    private const int MaxFieldValueLength = 280;
+    private static readonly TimeSpan UdpResolveRetryInterval = TimeSpan.FromSeconds(30);
+    private static readonly object FileSync = new();
+    private static readonly object EndpointSync = new();
+    private static readonly ConcurrentQueue<string> Queue = new();
+    private static readonly string TraceDirectory = Path.Combine(PathHelper.GetAppDataDirectory(), "Trace");
+    private static readonly string CircularTracePath = Path.Combine(TraceDirectory, "trace.circular.log");
+    private static readonly string CircularIndexPath = Path.Combine(TraceDirectory, "trace.circular.idx");
+    private static readonly string ProgramName = Process.GetCurrentProcess().ProcessName;
+    private static readonly string HostName = GetHostNameSafe();
+    private static readonly string LocalIp = GetPrimaryIpSafe();
+    private static IPEndPoint? _udpEndpoint;
+    private static DateTimeOffset _nextUdpResolveUtc = DateTimeOffset.MinValue;
+    private static int _workerStarted;
+
+    public static void Info(string source, string message, [CallerMemberName] string functionName = "")
+        => Enqueue("INFO", source, message, null, functionName);
+
+    public static void InfoState(
+        string source,
+        string eventName,
+        IEnumerable<KeyValuePair<string, object?>> fields,
+        [CallerMemberName] string functionName = "")
+        => Enqueue("INFO", source, BuildStructuredMessage(eventName, fields), null, functionName);
+
+    public static void Warn(string source, string message, [CallerMemberName] string functionName = "")
+        => Enqueue("WARN", source, message, null, functionName);
+
+    public static void WarnState(
+        string source,
+        string eventName,
+        IEnumerable<KeyValuePair<string, object?>> fields,
+        [CallerMemberName] string functionName = "")
+        => Enqueue("WARN", source, BuildStructuredMessage(eventName, fields), null, functionName);
+
+    public static void Error(string source, string message, Exception? exception = null, [CallerMemberName] string functionName = "")
+        => Enqueue("ERROR", source, message, exception, functionName);
+
+    public static void ErrorState(
+        string source,
+        string eventName,
+        IEnumerable<KeyValuePair<string, object?>> fields,
+        Exception? exception = null,
+        [CallerMemberName] string functionName = "")
+        => Enqueue("ERROR", source, BuildStructuredMessage(eventName, fields), exception, functionName);
+
+    public static bool ShouldForceSoftwareRendering()
+    {
+        string? explicitOverride = Environment.GetEnvironmentVariable("PORTFOLIO_SAVER_FORCE_SOFTWARE_RENDER");
+        if (string.Equals(explicitOverride, "1", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(explicitOverride, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        try
+        {
+            using var biosKey = Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\BIOS");
+            string manufacturer = biosKey?.GetValue("SystemManufacturer")?.ToString() ?? string.Empty;
+            string product = biosKey?.GetValue("SystemProductName")?.ToString() ?? string.Empty;
+            string fingerprint = $"{manufacturer} {product}".ToLowerInvariant();
+
+            return fingerprint.Contains("virtualbox", StringComparison.Ordinal) ||
+                   fingerprint.Contains("innotek", StringComparison.Ordinal) ||
+                   fingerprint.Contains("vmware", StringComparison.Ordinal) ||
+                   fingerprint.Contains("qemu", StringComparison.Ordinal) ||
+                   fingerprint.Contains("kvm", StringComparison.Ordinal);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void Enqueue(string level, string source, string message, Exception? exception, string functionName)
+    {
+        EnsureWorker();
+        string exceptionText = exception is null ? string.Empty : $" | ex={exception.GetType().Name}: {exception.Message}";
+        string functionText = string.IsNullOrWhiteSpace(functionName) ? "unknown" : functionName;
+        string line = $"{DateTimeOffset.UtcNow:O} | {level} | program={ProgramName} | source={source} | function={functionText} | host={HostName} | ip={LocalIp} | pid={Environment.ProcessId} | tid={Environment.CurrentManagedThreadId} | {SanitizeValue(message, MaxLineLength)}{SanitizeValue(exceptionText, 240)}";
+        Queue.Enqueue(line);
+    }
+
+    private static string BuildStructuredMessage(string eventName, IEnumerable<KeyValuePair<string, object?>> fields)
+    {
+        StringBuilder builder = new();
+        builder.Append("event=");
+        builder.Append(SanitizeValue(eventName, 80));
+
+        foreach (KeyValuePair<string, object?> field in fields)
+        {
+            if (string.IsNullOrWhiteSpace(field.Key))
+                continue;
+
+            builder.Append(" | ");
+            builder.Append(SanitizeKey(field.Key));
+            builder.Append('=');
+            builder.Append(SanitizeValue(FormatFieldValue(field.Value), MaxFieldValueLength));
+        }
+
+        return builder.ToString();
+    }
+
+    private static string SanitizeKey(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "field";
+
+        return value
+            .Trim()
+            .Replace(' ', '_')
+            .Replace('|', '/')
+            .Replace('\r', '_')
+            .Replace('\n', '_');
+    }
+
+    private static string SanitizeValue(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        string sanitized = value
+            .Replace("\r", " ")
+            .Replace("\n", " ")
+            .Replace('|', '/')
+            .Trim();
+
+        if (sanitized.Length <= maxLength)
+            return sanitized;
+
+        return sanitized[..Math.Max(0, maxLength - 3)] + "...";
+    }
+
+    private static string FormatFieldValue(object? value)
+    {
+        if (value is null)
+            return "<null>";
+
+        return value switch
+        {
+            string text => text,
+            DateTimeOffset dto => dto.ToString("O", CultureInfo.InvariantCulture),
+            DateTime dt => dt.ToString("O", CultureInfo.InvariantCulture),
+            TimeSpan ts => ts.ToString(),
+            bool flag => flag ? "true" : "false",
+            Enum => Convert.ToString(value, CultureInfo.InvariantCulture) ?? value.ToString() ?? string.Empty,
+            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture) ?? value.ToString() ?? string.Empty,
+            IEnumerable sequence when value is not string => FormatEnumerable(sequence),
+            _ => value.ToString() ?? string.Empty
+        };
+    }
+
+    private static string FormatEnumerable(IEnumerable sequence)
+    {
+        List<string> items = [];
+        int totalCount = 0;
+        foreach (object? item in sequence)
+        {
+            totalCount++;
+            if (items.Count < 8)
+                items.Add(SanitizeValue(FormatFieldValue(item), 48));
+        }
+
+        if (totalCount == 0)
+            return "[]";
+
+        string suffix = totalCount > items.Count ? $", ... ({totalCount} total)" : string.Empty;
+        return $"[{string.Join(", ", items)}{suffix}]";
+    }
+
+    private static void EnsureWorker()
+    {
+        if (Interlocked.CompareExchange(ref _workerStarted, 1, 0) != 0)
+            return;
+
+        _ = Task.Run(ProcessQueueAsync);
+    }
+
+    private static async Task ProcessQueueAsync()
+    {
+        while (true)
+        {
+            if (!Queue.TryDequeue(out string? line))
+            {
+                await Task.Delay(25).ConfigureAwait(false);
+                continue;
+            }
+
+            try
+            {
+                WriteCircular(line);
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                SendUdp(line);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private static void WriteCircular(string line)
+    {
+        byte[] payload = Encoding.UTF8.GetBytes(line + Environment.NewLine);
+        if (payload.Length > MaxTraceBytes)
+            payload = payload[^MaxTraceBytes..];
+
+        lock (FileSync)
+        {
+            Directory.CreateDirectory(TraceDirectory);
+
+            using FileStream stream = new(
+                CircularTracePath,
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.ReadWrite);
+
+            if (stream.Length != MaxTraceBytes)
+                stream.SetLength(MaxTraceBytes);
+
+            int writePosition = ReadPosition();
+            if (writePosition < 0 || writePosition >= MaxTraceBytes)
+                writePosition = 0;
+
+            int firstChunkLength = Math.Min(payload.Length, MaxTraceBytes - writePosition);
+            stream.Position = writePosition;
+            stream.Write(payload, 0, firstChunkLength);
+
+            int remaining = payload.Length - firstChunkLength;
+            if (remaining > 0)
+            {
+                stream.Position = 0;
+                stream.Write(payload, firstChunkLength, remaining);
+            }
+
+            int nextPosition = (writePosition + payload.Length) % MaxTraceBytes;
+            WritePosition(nextPosition);
+            stream.Flush(true);
+        }
+    }
+
+    private static int ReadPosition()
+    {
+        try
+        {
+            if (!File.Exists(CircularIndexPath))
+                return 0;
+
+            string raw = File.ReadAllText(CircularIndexPath).Trim();
+            return int.TryParse(raw, out int position) ? position : 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private static void WritePosition(int position)
+    {
+        try
+        {
+            File.WriteAllText(CircularIndexPath, position.ToString());
+        }
+        catch
+        {
+        }
+    }
+
+    private static void SendUdp(string line)
+    {
+        IPEndPoint? endpoint = GetUdpEndpoint();
+        if (endpoint is null)
+            return;
+
+        try
+        {
+            byte[] payload = Encoding.UTF8.GetBytes(line);
+            using UdpClient client = new();
+            client.Send(payload, payload.Length, endpoint);
+        }
+        catch
+        {
+            InvalidateUdpEndpoint();
+        }
+    }
+
+    private static IPEndPoint? GetUdpEndpoint()
+    {
+        DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
+        lock (EndpointSync)
+        {
+            if (_udpEndpoint is not null)
+                return _udpEndpoint;
+
+            if (nowUtc < _nextUdpResolveUtc)
+                return null;
+
+            _udpEndpoint = ResolveUdpEndpoint();
+            _nextUdpResolveUtc = _udpEndpoint is null
+                ? nowUtc.Add(UdpResolveRetryInterval)
+                : DateTimeOffset.MinValue;
+            return _udpEndpoint;
+        }
+    }
+
+    private static void InvalidateUdpEndpoint()
+    {
+        lock (EndpointSync)
+        {
+            _udpEndpoint = null;
+            _nextUdpResolveUtc = DateTimeOffset.UtcNow.Add(UdpResolveRetryInterval);
+        }
+    }
+
+    private static IPEndPoint? ResolveUdpEndpoint()
+    {
+        try
+        {
+            IPAddress[] addresses = Dns.GetHostAddresses("sanyalnet-oracle-vps2.duckdns.org");
+            IPAddress? target = addresses.FirstOrDefault(address => address.AddressFamily == AddressFamily.InterNetwork)
+                                ?? addresses.FirstOrDefault();
+            return target is null ? null : new IPEndPoint(target, 65514);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string GetHostNameSafe()
+    {
+        try
+        {
+            return Dns.GetHostName();
+        }
+        catch
+        {
+            return Environment.MachineName;
+        }
+    }
+
+    private static string GetPrimaryIpSafe()
+    {
+        try
+        {
+            IPAddress[] addresses = Dns.GetHostAddresses(Dns.GetHostName());
+            IPAddress? ip = addresses.FirstOrDefault(address => address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(address));
+            return ip?.ToString() ?? "127.0.0.1";
+        }
+        catch
+        {
+            return "127.0.0.1";
+        }
+    }
+}

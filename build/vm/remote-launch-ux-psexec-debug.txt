@@ -1,0 +1,2 @@
+%USERPROFILE%\Desktop\PortfolioVmUx\PsExec.exe -accepteula -i 1 -d powershell.exe -NoProfile -ExecutionPolicy Bypass -File %USERPROFILE%\Desktop\PortfolioVmUx\Run-VmUxValidation.ps1
+echo EXIT=%errorlevel%

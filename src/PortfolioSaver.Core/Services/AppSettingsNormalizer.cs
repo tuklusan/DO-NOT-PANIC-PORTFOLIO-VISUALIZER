@@ -1,0 +1,243 @@
+using System.IO;
+using PortfolioSaver.Core.Constants;
+using PortfolioSaver.Core.Enums;
+using PortfolioSaver.Core.Models;
+
+namespace PortfolioSaver.Core.Services;
+
+public static class AppSettingsNormalizer
+{
+    public static AppSettings Normalize(AppSettings? settings)
+    {
+        AppSettings normalized = settings ?? Defaults.CreateSettings();
+
+        normalized.Groups ??= [];
+        normalized.DataSources = [.. DataSourceCatalog.NormalizePolicies(normalized.DataSources)];
+        normalized.Groups = normalized.Groups
+            .Take(Defaults.MaxTapeCount)
+            .Select((group, index) => NormalizeGroup(group, index))
+            .ToList();
+        if (normalized.Groups.Count == 0)
+        {
+            normalized.Groups = Defaults.CreateSettings().Groups
+                .Take(Defaults.MaxTapeCount)
+                .Select((group, index) => NormalizeGroup(CloneGroup(group), index))
+                .ToList();
+        }
+
+        ApplyLegacyAlternatingDirectionFallback(normalized.Groups);
+        ApplyLegacyDifferentiatedSpeedFallback(normalized.Groups);
+
+        normalized.HistoricalCacheRootFolder = NormalizeHistoricalCachePath(
+            normalized.HistoricalCacheRootFolder,
+            Defaults.GetHistoricalCacheFolder());
+
+        normalized.BackgroundImageFolder = NormalizePath(
+            normalized.BackgroundImageFolder,
+            Defaults.GetManagedBackgroundCacheFolder());
+
+        normalized.CustomBackgroundImageFolder = NormalizePath(
+            normalized.CustomBackgroundImageFolder,
+            string.Empty);
+
+        normalized.FinnhubApiKey = NormalizeApiKey(
+            normalized.FinnhubApiKey,
+            "PORTFOLIOSAVER_FINNHUB_API_KEY");
+
+        normalized.TwelveDataApiKey = NormalizeApiKey(
+            normalized.TwelveDataApiKey,
+            "PORTFOLIOSAVER_TWELVEDATA_API_KEY");
+
+        normalized.TiingoApiKey = NormalizeApiKey(
+            normalized.TiingoApiKey,
+            "PORTFOLIOSAVER_TIINGO_API_KEY");
+
+        normalized.FinancialModelingPrepApiKey = NormalizeApiKey(
+            normalized.FinancialModelingPrepApiKey,
+            "PORTFOLIOSAVER_FMP_API_KEY");
+
+        normalized.EodhdApiKey = NormalizeApiKey(
+            normalized.EodhdApiKey,
+            "PORTFOLIOSAVER_EODHD_API_KEY");
+
+        normalized.MarketCalendarRefreshHours = Clamp(
+            normalized.MarketCalendarRefreshHours,
+            1,
+            7 * 24,
+            12);
+
+        normalized.RefreshSecondsPortfolio = Clamp(
+            normalized.RefreshSecondsPortfolio,
+            Defaults.MinRefreshSeconds,
+            Defaults.MaxRefreshSeconds,
+            10);
+
+        normalized.RefreshSecondsOffHours = Clamp(
+            normalized.RefreshSecondsOffHours,
+            Defaults.MinRefreshSeconds,
+            Defaults.MaxRefreshSeconds,
+            30);
+
+        normalized.BackgroundChangeSeconds = Clamp(
+            normalized.BackgroundChangeSeconds,
+            10,
+            Defaults.MaxRefreshSeconds,
+            60);
+
+        normalized.NewsRefreshMinutes = Clamp(
+            normalized.NewsRefreshMinutes,
+            Defaults.MinNewsRefreshMinutes,
+            Defaults.MaxNewsRefreshMinutes,
+            15);
+
+        normalized.NewsFeedUrl = NormalizeNewsFeedUrl(normalized.NewsFeedUrl);
+
+        return normalized;
+    }
+
+    private static void ApplyLegacyAlternatingDirectionFallback(IReadOnlyList<TickerGroup> groups)
+    {
+        if (groups.Count < 2)
+            return;
+
+        bool hasAnyRight = groups.Any(group => group.Direction == ScrollDirection.Right);
+        if (hasAnyRight)
+            return;
+
+        for (int index = 0; index < groups.Count; index++)
+            groups[index].Direction = index % 2 == 0 ? ScrollDirection.Left : ScrollDirection.Right;
+    }
+
+    private static void ApplyLegacyDifferentiatedSpeedFallback(IReadOnlyList<TickerGroup> groups)
+    {
+        if (groups.Count < 2)
+            return;
+
+        double baseline = groups[0].Speed;
+        bool uniformBaselineSpeed = Math.Abs(baseline - Defaults.DefaultTapeBaseSpeed) < 0.0001d &&
+                                    groups.All(group => Math.Abs(group.Speed - baseline) < 0.0001d);
+        if (!uniformBaselineSpeed)
+            return;
+
+        for (int index = 0; index < groups.Count; index++)
+            groups[index].Speed = Defaults.GetDefaultTapeSpeed(index);
+    }
+
+    private static TickerGroup NormalizeGroup(TickerGroup? group, int index)
+    {
+        TickerGroup normalized = group ?? Defaults.CreateEmptyTickerGroup(index);
+        normalized.Name = NormalizeTapeName(normalized.Name, index);
+        normalized.Speed = Math.Clamp(
+            normalized.Speed <= 0 ? Defaults.GetDefaultTapeSpeed(index) : normalized.Speed,
+            Defaults.MinTapeSpeed,
+            Defaults.MaxTapeSpeed);
+        normalized.RowHeight = normalized.RowHeight <= 0 ? 56.0 : normalized.RowHeight;
+        normalized.Tickers ??= [];
+        normalized.Tickers = normalized.Tickers
+            .Where(item => item is not null)
+            .Take(Defaults.MaxTickersPerTape)
+            .Select(NormalizeTicker)
+            .ToList();
+        return normalized;
+    }
+
+    private static TickerItem NormalizeTicker(TickerItem item)
+        => new()
+        {
+            Symbol = (item.Symbol ?? string.Empty).Trim(),
+            DisplayName = (item.DisplayName ?? string.Empty).Trim(),
+            Quantity = item.Quantity,
+            CostBasis = item.CostBasis,
+            Currency = string.IsNullOrWhiteSpace(item.Currency) ? "USD" : item.Currency.Trim(),
+            Enabled = item.Enabled
+        };
+
+    private static TickerGroup CloneGroup(TickerGroup source)
+        => new()
+        {
+            Name = source.Name,
+            Speed = source.Speed,
+            Direction = source.Direction,
+            RenderMode = source.RenderMode,
+            RowHeight = source.RowHeight,
+            Enabled = source.Enabled,
+            Tickers = source.Tickers.Select(CloneTicker).ToList()
+        };
+
+    private static TickerItem CloneTicker(TickerItem source)
+        => new()
+        {
+            Symbol = source.Symbol,
+            DisplayName = source.DisplayName,
+            Quantity = source.Quantity,
+            CostBasis = source.CostBasis,
+            Currency = source.Currency,
+            Enabled = source.Enabled
+        };
+
+    private static string NormalizeHistoricalCachePath(string currentValue, string fallbackValue)
+    {
+        string normalized = NormalizePath(currentValue, fallbackValue);
+        string legacy = Environment.ExpandEnvironmentVariables(Defaults.GetLegacyHistoricalCacheFolder());
+        if (PathsEqual(normalized, legacy))
+            return fallbackValue;
+
+        return normalized;
+    }
+
+    private static string NormalizePath(string currentValue, string fallbackValue)
+    {
+        string value = string.IsNullOrWhiteSpace(currentValue) ? fallbackValue : currentValue;
+        return string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : Environment.ExpandEnvironmentVariables(value.Trim());
+    }
+
+    private static bool PathsEqual(string left, string right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+            return false;
+
+        return string.Equals(
+            Path.GetFullPath(left),
+            Path.GetFullPath(right),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeApiKey(string currentValue, string environmentVariableName)
+    {
+        if (!string.IsNullOrWhiteSpace(currentValue))
+            return currentValue.Trim();
+
+        return (Environment.GetEnvironmentVariable(environmentVariableName) ?? string.Empty).Trim();
+    }
+
+    private static int Clamp(int value, int min, int max, int fallback)
+    {
+        int candidate = value <= 0 ? fallback : value;
+        return Math.Clamp(candidate, min, max);
+    }
+
+    private static string NormalizeNewsFeedUrl(string currentValue)
+    {
+        string candidate = (currentValue ?? string.Empty).Trim();
+        if (Uri.TryCreate(candidate, UriKind.Absolute, out Uri? uri) &&
+            (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp))
+        {
+            return uri.ToString();
+        }
+
+        return Defaults.DefaultNewsFeedUrl;
+    }
+
+    private static string NormalizeTapeName(string? currentValue, int index)
+    {
+        string candidate = (currentValue ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+            return Defaults.GetDefaultTapeName(index + 1);
+
+        return candidate.Length > Defaults.MaxTapeNameLength
+            ? candidate[..Defaults.MaxTapeNameLength]
+            : candidate;
+    }
+}

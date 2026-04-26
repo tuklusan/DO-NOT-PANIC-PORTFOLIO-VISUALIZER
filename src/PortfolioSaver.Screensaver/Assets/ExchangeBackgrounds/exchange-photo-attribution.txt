@@ -1,0 +1,18 @@
+﻿PortfolioSaver exchange photo starters
+
+These bundled starter photos come from Wikimedia Commons:
+
+- NYC - New York Stock Exchange | Jean-Christophe BENOIST | CC BY 3.0 | https://commons.wikimedia.org/wiki/File:NYC_-_New_York_Stock_Exchange.JPG
+- Frankfurt Stock Exchange | Dietmar Rabich | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Frankfurt_Stock_Exchange.jpg
+- Outside Tokyo Stock Exchange | Syced | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Outside_Tokyo_Stock_Exchange_(59463).jpg
+- Beursplein 5 / Euronext Amsterdam | GerardM | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Beursplein_5.jpg
+- London Skyline | Rodrigo.Argenton | CC0 | https://commons.wikimedia.org/wiki/File:London_Skyline_(199638369).jpeg
+- Frankfurt Skyline | WikimediaImages | CC0 | bundled public-domain skyline starter
+- Shanghai skyline from the Bund | Pxfuel | CC0 | https://commons.wikimedia.org/wiki/File:Shanghai_skyline_from_the_bund.jpg
+- Hong Kong skyline | Piqsels | CC0 | bundled public-domain skyline starter
+
+The running screensaver may also download additional exchange photos into the user's managed cache folder:
+
+- Shanghai Stock Exchange | Qa003qa003 | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Shanghai_Stock_Exchange_20140630_200642.jpg
+- Hong Kong Stock Exchange / Exchange Square | Ank Kumar | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Exchange_Square_(äº¤æ˜“å»£å¡²),_Hong_Kong_Stock_Exchange,_Hong_Kong_SAR,_China_(Ank_Kumar,_Infosys_Limited)_01.jpg
+- Sydney skyline, January 2021 | andrew milling | Public Domain Mark | https://commons.wikimedia.org/wiki/File:Sydney_skyline,_January_2021.jpg

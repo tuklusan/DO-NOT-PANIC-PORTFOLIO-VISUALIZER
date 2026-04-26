@@ -1,0 +1,349 @@
+﻿{
+    "provider":  "Finnhub",
+    "apiKeyProtected":  false,
+    "FinnhubApiKey": "REPLACE_WITH_FINNHUB_API_KEY",
+    "TwelveDataApiKey": "REPLACE_WITH_TWELVEDATA_API_KEY",
+    "refreshSecondsPortfolio":  5,
+    "refreshSecondsBenchmarks":  5,
+    "refreshSecondsOffHours":  5,
+    "httpTimeoutSeconds":  10,
+    "minFinnhubRequestSpacingSeconds":  2,
+    "minTwelveDataRequestSpacingSeconds":  15,
+    "maxFinnhubRequestsPerMinuteSafe":  30,
+    "maxTwelveDataCreditsPerMinuteSafe":  4,
+    "maxTwelveDataCreditsPerDaySafe":  400,
+    "enableProviderFailover":  true,
+    "backgroundImageFolder":  "C:\\Users\\User\\Pictures\\ExchangeBackgrounds",
+    "backgroundChangeSeconds":  60,
+    "shuffleBackgrounds":  true,
+    "enableBlur":  true,
+    "blurRadius":  12,
+    "dimOpacity":  0.55,
+    "enableRoaming":  true,
+    "layoutPreset":  "UltrawideDefault",
+    "groups":  [
+                   {
+                       "name":  "Tape 1",
+                       "renderMode":  "HorizontalTape",
+                       "direction":  "Left",
+                       "speed":  1.0,
+                       "rowHeight":  48,
+                       "enabled":  true,
+                       "tickers":  [
+                                       {
+                                           "symbol":  "AVGE",
+                                           "displayName":  "AVGE",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "AVUV",
+                                           "displayName":  "AVUV",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "FMTM",
+                                           "displayName":  "FMTM",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "IMTM",
+                                           "displayName":  "IMTM",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "RSST",
+                                           "displayName":  "RSST",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       }
+                                   ],
+                       "id":  "tape-1"
+                   },
+                   {
+                       "name":  "Tape 2",
+                       "renderMode":  "HorizontalTape",
+                       "direction":  "Left",
+                       "speed":  1.1,
+                       "rowHeight":  48,
+                       "enabled":  true,
+                       "tickers":  [
+                                       {
+                                           "symbol":  "AVDV",
+                                           "displayName":  "AVDV",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "AVUV",
+                                           "displayName":  "AVUV",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "IEMG",
+                                           "displayName":  "IEMG",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "SPMD",
+                                           "displayName":  "SPMD",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "SPYM",
+                                           "displayName":  "SPYM",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VEA",
+                                           "displayName":  "VEA",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "TFLO",
+                                           "displayName":  "TFLO",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "XLRE",
+                                           "displayName":  "XLRE",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "SWVXX",
+                                           "displayName":  "SWVXX",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       }
+                                   ],
+                       "id":  "tape-2"
+                   },
+                   {
+                       "name":  "Tape 3",
+                       "renderMode":  "HorizontalTape",
+                       "direction":  "Left",
+                       "speed":  1.2,
+                       "rowHeight":  48,
+                       "enabled":  true,
+                       "tickers":  [
+                                       {
+                                           "symbol":  "AOR",
+                                           "displayName":  "AOR",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "SPY",
+                                           "displayName":  "SPY",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VTI",
+                                           "displayName":  "VTI",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VT",
+                                           "displayName":  "VT",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "MTUM",
+                                           "displayName":  "MTUM",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "DBMF",
+                                           "displayName":  "DBMF",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VXUS",
+                                           "displayName":  "VXUS",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "BND",
+                                           "displayName":  "BND",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "AGG",
+                                           "displayName":  "AGG",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "SCHD",
+                                           "displayName":  "SCHD",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VIG",
+                                           "displayName":  "VIG",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "QQQ",
+                                           "displayName":  "QQQ",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "IWM",
+                                           "displayName":  "IWM",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VNQ",
+                                           "displayName":  "VNQ",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "DXY",
+                                           "displayName":  "DXY",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "TNX",
+                                           "displayName":  "TNX",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "VIX",
+                                           "displayName":  "VIX",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "XLRE",
+                                           "displayName":  "XLRE",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "SWVXX",
+                                           "displayName":  "SWVXX",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       }
+                                   ],
+                       "id":  "tape-3"
+                   },
+                   {
+                       "name":  "Tape 4",
+                       "renderMode":  "HorizontalTape",
+                       "direction":  "Left",
+                       "speed":  1.35,
+                       "rowHeight":  48,
+                       "enabled":  true,
+                       "tickers":  [
+                                       {
+                                           "symbol":  "ES=F",
+                                           "displayName":  "ES=F",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "NQ=F",
+                                           "displayName":  "NQ=F",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "YM=F",
+                                           "displayName":  "YM=F",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "RTY=F",
+                                           "displayName":  "RTY=F",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "ZN=F",
+                                           "displayName":  "ZN=F",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "CL=F",
+                                           "displayName":  "CL=F",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       },
+                                       {
+                                           "symbol":  "GC=F",
+                                           "displayName":  "GC=F",
+                                           "currency":  "USD",
+                                           "enabled":  true
+                                       }
+                                   ],
+                       "id":  "tape-4"
+                   }
+               ],
+    "benchmarks":  [
+                       {
+                           "symbol":  "SPY",
+                           "displayName":  "SPY",
+                           "enabled":  true
+                       },
+                       {
+                           "symbol":  "QQQ",
+                           "displayName":  "QQQ",
+                           "enabled":  true
+                       },
+                       {
+                           "symbol":  "VT",
+                           "displayName":  "VT",
+                           "enabled":  true
+                       },
+                       {
+                           "symbol":  "BND",
+                           "displayName":  "BND",
+                           "enabled":  true
+                       }
+                   ],
+    "enableFloatingGraphs":  true,
+    "historicalLookbackDays":  14,
+    "historicalRefreshHours":  12,
+    "maxFloatingGraphsPerTape":  3,
+    "historicalCacheRootFolder":  "%TEMP%\\\\PortfolioSaver\\\\history-cache",
+    "enableBouncingGraphCards":  true,
+    "floatingGraphVelocityMin":  22,
+    "floatingGraphVelocityMax":  48,
+    "enableFloatingClock":  true,
+    "showLocalAndNewYorkTime":  true,
+    "clockRefreshSeconds":  1,
+    "backgroundIncludeSubfolders":  false,
+    "protectedApiKey":  "",
+    "TiingoApiKey": "REPLACE_WITH_TIINGO_API_KEY",
+    "newsRefreshMinutes":  5,
+    "newsFeedUrl":  "https://finance.yahoo.com/news/rss"
+}
+

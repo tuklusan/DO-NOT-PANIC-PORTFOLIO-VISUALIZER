@@ -1,0 +1,2 @@
+powershell -NoProfile -Command "where.exe psexec 2>$null"
+powershell -NoProfile -Command "Get-ChildItem -Path 'C:\Program Files' -Recurse -Filter 'PsExec.exe' -ErrorAction SilentlyContinue | Select-Object -First 5 -ExpandProperty FullName"

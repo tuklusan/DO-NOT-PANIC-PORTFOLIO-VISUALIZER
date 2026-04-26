@@ -1,0 +1,57 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+TestResults/
+publish/
+
+# Local secrets and private notes (must never be committed)
+*.secrets.json
+*secrets*.json
+*API-KEYS*.txt
+*api-keys*.txt
+*credentials*.txt
+*credentials*.md
+*passwords*.txt
+*passwords*.md
+TUKLUS-NOTES-WITH-API-KEYS.txt
+codex.secrets.json
+build/**/test-secrets.json
+build/**/codex.secrets.json
+Issues and Development Scratchpad*.txt
+*scratchpad*.txt
+*scratchpad*.md
+*Scratchpad*.txt
+*Scratchpad*.md
+
+# Local agent/runtime logs
+.codex-logs/
+
+# Generated outputs and packaged binaries
+build/artifacts/
+build/baselines/
+build/sandbox/results/
+build/vm-captures/
+build/vm-reports/
+build/vm/host-captures/
+build/vm/results/
+build/vm/artifacts/
+build/vm/tool-inventory/
+build/vm/tools/
+*.binlog
+*.log
+*.zip
+*.exe
+*.scr
+*.sed
+*_wpftmp.csproj
+
+# Local-only VM key files (never commit)
+build/vm-settings.json
+build/vm/vm-settings.json
+
+# Local-only VM credentials/overrides (never commit)
+build/vm/vm-credentials.local.json
+build/vm/remote-*.local.txt
+build/vm/*.local.ps1

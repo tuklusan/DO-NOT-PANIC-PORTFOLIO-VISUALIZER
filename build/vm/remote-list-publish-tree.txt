@@ -1,0 +1,1 @@
+powershell -NoProfile -Command "$root=Join-Path $env:USERPROFILE 'Desktop\PortfolioVmUx\publish'; if(Test-Path $root){Get-ChildItem -Path $root -Recurse -Force | Select-Object FullName,PSIsContainer | ConvertTo-Json -Compress}else{'MISSING'}"

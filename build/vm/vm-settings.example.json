@@ -1,0 +1,13 @@
+﻿{
+  "FinnhubApiKey": "REPLACE_WITH_FINNHUB_API_KEY",
+  "TwelveDataApiKey": "REPLACE_WITH_TWELVEDATA_API_KEY",
+  "TiingoApiKey": "REPLACE_WITH_TIINGO_API_KEY",
+  "FinancialModelingPrepApiKey": "REPLACE_WITH_FMP_API_KEY",
+  "EodhdApiKey": "REPLACE_WITH_EODHD_API_KEY",
+  "refreshSecondsPortfolio": 5,
+  "refreshSecondsBenchmarks": 5,
+  "refreshSecondsOffHours": 5,
+  "newsRefreshMinutes": 5
+}
+
+

@@ -1,0 +1,5 @@
+cmd /c echo %USERPROFILE%
+cmd /c dir "%USERPROFILE%\Desktop\PortfolioVmUx"
+cmd /c if not exist "%USERPROFILE%\Desktop\PortfolioVmUx\publish\config\Content" mkdir "%USERPROFILE%\Desktop\PortfolioVmUx\publish\config\Content"
+cmd /c if not exist "%USERPROFILE%\Desktop\PortfolioVmUx\publish\screensaver\Assets\ExchangePhotos" mkdir "%USERPROFILE%\Desktop\PortfolioVmUx\publish\screensaver\Assets\ExchangePhotos"
+cmd /c dir "%USERPROFILE%\Desktop\PortfolioVmUx\publish\config"

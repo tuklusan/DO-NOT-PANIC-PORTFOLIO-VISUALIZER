@@ -1,0 +1,10 @@
+DO NOT PANIC PORTFOLIO VISUALIZER Help
+
+- Add up to 4 ticker tapes.
+- Each tape can contain up to 8 tickers.
+- Leave a ticker name blank to let Apply auto-fill it when validation succeeds.
+- Apply validates ticker symbols when a network connection is available.
+- Invalid symbols are automatically disabled so they do not break the screensaver.
+- RSS feeds are validated during Apply. Invalid feeds fall back to the default Yahoo Finance feed.
+- Advanced settings control per-provider hourly and daily request budgets.
+- Use the License button to review the full MIT License and open the official license page.

@@ -1,0 +1,197 @@
+using System.Windows.Media;
+using PortfolioSaver.Shared.Infrastructure;
+
+namespace PortfolioSaver.Render.ViewModels;
+
+public sealed class ClockCityViewModel : BindableBase
+{
+    private string _key = string.Empty;
+    private string _label = string.Empty;
+    private string _primaryTimeZoneId = string.Empty;
+    private string _secondaryTimeZoneId = string.Empty;
+    private string _timeText = "--:--";
+    private string _zoneText = string.Empty;
+    private string _weatherGlyph = string.Empty;
+    private string _weatherText = string.Empty;
+    private string _flagGlyph = string.Empty;
+    private string _flagCode = string.Empty;
+    private bool _supportsWeather;
+    private double _latitude;
+    private double _longitude;
+    private bool _isLocalSummary;
+    private bool _showExchangeDetails = true;
+    private string _exchangeName = string.Empty;
+    private string _exchangeSymbol = string.Empty;
+    private string _calendarExchangeCode = string.Empty;
+    private string _marketStatusText = string.Empty;
+    private Brush _marketStatusForeground = Brushes.Gainsboro;
+    private string _indexValueText = "--";
+    private string _indexChangeText = "--";
+    private Brush _indexChangeForeground = Brushes.Gainsboro;
+    private Brush _miniGraphStroke = Brushes.SlateGray;
+    private PointCollection _miniGraphPoints = [];
+    private Brush _cardBackground = new SolidColorBrush(Color.FromArgb(0x66, 0x1D, 0x27, 0x33));
+    private Brush _cardBorderBrush = new SolidColorBrush(Color.FromArgb(0x33, 0x4D, 0x6B, 0x85));
+
+    public string Key
+    {
+        get => _key;
+        set => SetProperty(ref _key, value);
+    }
+
+    public string Label
+    {
+        get => _label;
+        set => SetProperty(ref _label, value);
+    }
+
+    public string PrimaryTimeZoneId
+    {
+        get => _primaryTimeZoneId;
+        set => SetProperty(ref _primaryTimeZoneId, value);
+    }
+
+    public string SecondaryTimeZoneId
+    {
+        get => _secondaryTimeZoneId;
+        set => SetProperty(ref _secondaryTimeZoneId, value);
+    }
+
+    public string TimeText
+    {
+        get => _timeText;
+        set => SetProperty(ref _timeText, value);
+    }
+
+    public string ZoneText
+    {
+        get => _zoneText;
+        set => SetProperty(ref _zoneText, value);
+    }
+
+    public string WeatherGlyph
+    {
+        get => _weatherGlyph;
+        set => SetProperty(ref _weatherGlyph, value);
+    }
+
+    public string WeatherText
+    {
+        get => _weatherText;
+        set => SetProperty(ref _weatherText, value);
+    }
+
+    public string FlagGlyph
+    {
+        get => _flagGlyph;
+        set => SetProperty(ref _flagGlyph, value);
+    }
+
+    public string FlagCode
+    {
+        get => _flagCode;
+        set => SetProperty(ref _flagCode, value);
+    }
+
+    public bool SupportsWeather
+    {
+        get => _supportsWeather;
+        set => SetProperty(ref _supportsWeather, value);
+    }
+
+    public double Latitude
+    {
+        get => _latitude;
+        set => SetProperty(ref _latitude, value);
+    }
+
+    public double Longitude
+    {
+        get => _longitude;
+        set => SetProperty(ref _longitude, value);
+    }
+
+    public bool IsLocalSummary
+    {
+        get => _isLocalSummary;
+        set => SetProperty(ref _isLocalSummary, value);
+    }
+
+    public bool ShowExchangeDetails
+    {
+        get => _showExchangeDetails;
+        set => SetProperty(ref _showExchangeDetails, value);
+    }
+
+    public string ExchangeName
+    {
+        get => _exchangeName;
+        set => SetProperty(ref _exchangeName, value);
+    }
+
+    public string ExchangeSymbol
+    {
+        get => _exchangeSymbol;
+        set => SetProperty(ref _exchangeSymbol, value);
+    }
+
+    public string CalendarExchangeCode
+    {
+        get => _calendarExchangeCode;
+        set => SetProperty(ref _calendarExchangeCode, value);
+    }
+
+    public string MarketStatusText
+    {
+        get => _marketStatusText;
+        set => SetProperty(ref _marketStatusText, value);
+    }
+
+    public Brush MarketStatusForeground
+    {
+        get => _marketStatusForeground;
+        set => SetProperty(ref _marketStatusForeground, value);
+    }
+
+    public string IndexValueText
+    {
+        get => _indexValueText;
+        set => SetProperty(ref _indexValueText, value);
+    }
+
+    public string IndexChangeText
+    {
+        get => _indexChangeText;
+        set => SetProperty(ref _indexChangeText, value);
+    }
+
+    public Brush IndexChangeForeground
+    {
+        get => _indexChangeForeground;
+        set => SetProperty(ref _indexChangeForeground, value);
+    }
+
+    public Brush MiniGraphStroke
+    {
+        get => _miniGraphStroke;
+        set => SetProperty(ref _miniGraphStroke, value);
+    }
+
+    public PointCollection MiniGraphPoints
+    {
+        get => _miniGraphPoints;
+        set => SetProperty(ref _miniGraphPoints, value);
+    }
+
+    public Brush CardBackground
+    {
+        get => _cardBackground;
+        set => SetProperty(ref _cardBackground, value);
+    }
+
+    public Brush CardBorderBrush
+    {
+        get => _cardBorderBrush;
+        set => SetProperty(ref _cardBorderBrush, value);
+    }
+}
