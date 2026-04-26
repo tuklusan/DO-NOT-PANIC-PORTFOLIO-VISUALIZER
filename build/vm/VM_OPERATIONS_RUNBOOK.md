@@ -119,10 +119,29 @@ Successful method:
 - Copy inventory back to host:
 - `build\vm\tool-inventory\YYYY-MM-DD\`
 
-Current recorded inventory:
-- [VM_TOOL_RECORD.md](/D:/Users/vagab/Development/PortfolioScreensaver-Codex-Handoff-VisualStudio/build/vm/tool-inventory/2026-04-10/VM_TOOL_RECORD.md)
-- [summary.json](/D:/Users/vagab/Development/PortfolioScreensaver-Codex-Handoff-VisualStudio/build/vm/tool-inventory/2026-04-10/summary.json)
-- [program-files-scan-summary.csv](/D:/Users/vagab/Development/PortfolioScreensaver-Codex-Handoff-VisualStudio/build/vm/tool-inventory/2026-04-10/program-files-scan-summary.csv)
+Current recorded inventory summary:
+- Commands in PATH discovered: `788`
+- Tool probes attempted: `25`
+- Tool probes found: `16`
+- Installed software entries: `37`
+- `C:\Program Files` items: `14088` (`712` executable/script files)
+- `C:\Program Files (x86)` items: `16388` (`293` executable/script files)
+
+Operationally important discovered guest tools:
+- `PowerShell` (`5.1.19041.6456`)
+- `Git` (`2.53.0.windows.2`)
+- `winget` (`v1.28.220`)
+- `Python` (`3.14.4`)
+- `Node.js` (`v24.14.1`)
+- `npm` (`11.11.0`)
+- `7-Zip` CLI (`26.00`)
+- `VBoxControl` (`7.0.14r161095`)
+- `WinAppDriver` (`1.2.1.0`)
+
+Important negative finding:
+- `dotnet`, `msbuild`, `cmake`, `go`, `rustc`, `cargo`, `java`, and `cl` were not found in guest `PATH` at scan time.
+
+The raw CSV/JSON inventory artifacts still live under `build\vm\tool-inventory\YYYY-MM-DD\` when deep forensics are needed, but this runbook now contains the only markdown summary we need.
 
 ## 4) Robust Command Patterns (Use These)
 
