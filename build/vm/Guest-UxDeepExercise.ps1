@@ -1,7 +1,7 @@
 param(
-    [ValidateRange(1, 180)]
+    [ValidateRange(1, 1440)]
     [int]$ScreensaverDurationMinutes = 6,
-    [ValidateRange(1, 60)]
+    [ValidateRange(1, 3600)]
     [int]$CaptureIntervalSeconds = 5,
     [string]$RootPath = (Join-Path $env:USERPROFILE 'Desktop\PortfolioVmUx'),
     [string]$ResultName = ('ux-deep-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
