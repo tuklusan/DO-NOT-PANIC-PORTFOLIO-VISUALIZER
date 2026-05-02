@@ -9,23 +9,23 @@ This runbook captures the current Beta 5.5 desktop-first VM validation flow.
 - Shared settings library: `PortfolioSaver.Settings`
 - Legacy compatibility host: `PortfolioSaver.Screensaver`
 - Current pinned SDK in repo: `.NET 10.0.201`
+- Preferred VM transport/orchestration path: `SSH + SFTP`
+- Legacy fallback path: VirtualBox shared-folder scripts only if SSH is unavailable
 
 ## Verified host prerequisites
 
-- VirtualBox CLI available
 - Git available
-- .NET SDK 10 available on host
-- Shared-folder based guest workflow remains the preferred transport path
+- `.NET SDK 10` available on host
+- OpenSSH client available on host
+- `Posh-SSH` can be installed at current-user scope for password-based guest access
 
-## Verified guest tooling note
+## Verified guest tooling
 
-- The guest has `.NET 10 SDK 10.0.203` installed in the user profile.
-- Proof artifacts:
-  - `build/vm/artifacts/host-runs/dotnet10-vm-install-proof/dotnet10-install-result.json`
-  - `build/vm/artifacts/host-runs/dotnet10-vm-install-proof/guest-install-log.txt`
-- Caveat:
-  - a fresh default guest shell still resolves bare `dotnet` to the older machine-wide `8.0.420`
-  - use the explicit user-profile SDK path if guest-side CLI work is needed before machine-wide path precedence is changed
+- `sshd` running and enabled
+- machine-wide `.NET 10 SDK 10.0.203`
+- machine-wide `PowerShell 7.6.1`
+- `git`, `python`, `jq`, `rg`, `7z`, `PsExec`, `WinAppDriver`
+- canonical remote workspace root: `C:\vmharness\portfolio-saver`
 
 ## Canonical host build/publish flow
 
@@ -43,43 +43,49 @@ Safe-temp publish now stages three runnable payloads:
 - `build/artifacts/publish-safe-temp/config`
 - `build/artifacts/publish-safe-temp/screensaver`
 
-## Canonical guest staging flow
+## Canonical SSH-first VM flow
 
-Run from guest PowerShell:
+### 1. Bootstrap the guest workspace and tools
 
 ```powershell
-& "\\VBOXSVR\codexrepo\build\vm\Guest-PrepareVmUxFromShare.ps1"
+./build/vm/Push-VmWorkspace.ps1 -Bootstrap
 ```
 
-Expected staged layout under `%USERPROFILE%\Desktop\PortfolioVmUx\publish`:
-- `config\PortfolioSaver.Config.exe`
-- `desktop\PortfolioSaver.Desktop.exe`
-- `screensaver\PortfolioSaver.Screensaver.exe`
-- each with `release-manifest.json`
+That will:
+- connect to the guest over SSH
+- ensure `C:\vmharness\portfolio-saver` exists
+- ensure machine-wide `pwsh` and `.NET 10` exist in the guest
+- upload a clean repository snapshot
+
+### 2. Run remote restore/build/test/publish
+
+```powershell
+./build/vm/Invoke-VmBuildTest.ps1 -PushWorkspace
+```
+
+That will:
+- push a fresh repo snapshot
+- run remote `dotnet restore`, `dotnet build`, `dotnet test`
+- run remote `build/publish-safe-temp.ps1`
+- stage publish output under `C:\vmharness\portfolio-saver\publish`
+
+### 3. Pull the latest remote result bundle
+
+```powershell
+./build/vm/Pull-VmResults.ps1
+```
+
+Default host download location:
+- `build/vm/artifacts/ssh-runs`
 
 ## Canonical Beta 5.5 validation flow
 
 ### Desktop-first validation
 
-Run from guest PowerShell:
+Run through the SSH harness:
 
 ```powershell
-& "$env:USERPROFILE\Desktop\PortfolioVmUx\Run-VmUxValidation.ps1"
-```
-
-Expected desktop checks:
-- Config app launches
-- Desktop app launches windowed
-- Fullscreen toggle works (`F11`)
-- `Esc` returns to windowed mode
-- Screenshots land in results folder
-
-### Deep UX desktop cycle
-
-Run from guest PowerShell:
-
-```powershell
-& "$env:USERPROFILE\Desktop\PortfolioVmUx\Guest-UxDeepExercise.ps1" -ScreensaverDurationMinutes 20 -CaptureIntervalSeconds 5
+./build/vm/Invoke-VmBuildTest.ps1 -PushWorkspace -RunUxDeep -GuestScreensaverDurationMinutes 20 -CaptureIntervalSeconds 5
 ```
 
 Despite the historical parameter name, this is now the deep **desktop** UX cycle.
@@ -92,18 +98,29 @@ Expected summary signals:
 - `FullScreenToggleStatus=Completed`
 - `ScreensaverPhaseStatus=LegacyNotRun`
 
+### Direct guest script entry points
+
+Inside the guest, the reusable scripts now support an explicit workspace root:
+
+```powershell
+& 'C:\vmharness\portfolio-saver\repo\build\vm\Run-VmUxValidation.ps1' -RootPath 'C:\vmharness\portfolio-saver'
+& 'C:\vmharness\portfolio-saver\repo\build\vm\Guest-UxDeepExercise.ps1' -RootPath 'C:\vmharness\portfolio-saver' -ScreensaverDurationMinutes 20 -CaptureIntervalSeconds 5
+```
+
 ## Result locations
 
-- Guest root:
-  - `%USERPROFILE%\Desktop\PortfolioVmUx\results`
-- Host export roots:
+- Guest workspace root:
+  - `C:\vmharness\portfolio-saver\results`
+- Host pull root:
+  - `build/vm/artifacts/ssh-runs`
+- Legacy shared-folder export roots still understood by the guest scripts when available:
   - `build/vm/artifacts/vm-results`
   - `build/vm/artifacts/trace`
 
 ## Guardrails
 
-1. Keep the shared folder workflow.
-- It is still the most reliable path for staging and result export.
+1. Prefer SSH-first orchestration.
+- Do not use `VBoxManage` or shared folders for normal build/test/result transport.
 
 2. Keep hard timeouts on host commands.
 - Long publish and VM commands should remain bounded.
@@ -113,7 +130,8 @@ Expected summary signals:
 
 4. Validate actual capture behavior, not assumed behavior.
 - Windowed screenshots, fullscreen screenshots, and post-ESC screenshots are all part of the Beta 5.5 contract.
+- Verify actual capture dimensions before claiming multi-resolution pass behavior.
+- Keep `setvideomodehint` as a best-effort guest request, not proof by itself.
 
-## Known follow-up
-
-If guest-side CLI work becomes common, do a machine-wide .NET 10 install in the VM or update PATH precedence so bare `dotnet` resolves to 10.x by default.
+5. Keep traces with the result bundle.
+- `Guest-UxDeepExercise.ps1` now copies `trace.circular.log` and `trace.circular.idx` into the local result folder so SSH pull can retrieve a self-contained artifact.

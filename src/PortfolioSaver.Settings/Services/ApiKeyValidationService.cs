@@ -14,6 +14,12 @@ public sealed class ApiKeyValidationService
     private const string TiingoPlaceholder = "abcdefghijklmnopqrstuvwxyz01234567890abc";
     private const string FmpPlaceholder = "abcdefghijklmnopqrstuvwxyz012345";
     private const string EodhdPlaceholder = "abcdefghijklmn.01234567";
+    private readonly Func<TimeSpan, HttpClient> _httpClientFactory;
+
+    public ApiKeyValidationService(Func<TimeSpan, HttpClient>? httpClientFactory = null)
+    {
+        _httpClientFactory = httpClientFactory ?? HttpClientFactory.Create;
+    }
 
     public async Task<ApiKeyValidationResult> ValidateAsync(AppSettings settings, CancellationToken cancellationToken = default)
     {
@@ -43,7 +49,7 @@ public sealed class ApiKeyValidationService
         if (result.Errors.Count > 0)
             return result;
 
-        using HttpClient client = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
+        using HttpClient client = _httpClientFactory(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
 
         if (!await ValidateFinnhubAsync(client, settings.FinnhubApiKey, cancellationToken))
             result.Errors.Add("Finnhub API key did not validate.");
@@ -106,7 +112,7 @@ public sealed class ApiKeyValidationService
     private static async Task<bool> ValidateTiingoAsync(HttpClient client, string key, CancellationToken cancellationToken)
     {
         string startDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-7).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        string url = $"https://api.tiingo.com/tiingo/daily/AAPL/prices?token={Uri.EscapeDataString(key.Trim())}&startDate={startDate}&resampleFreq=1day";
+        string url = $"https://api.tiingo.com/tiingo/daily/AAPL/prices?token={Uri.EscapeDataString(key.Trim())}&startDate={startDate}";
         using HttpResponseMessage response = await client.GetAsync(url, cancellationToken);
         if (!response.IsSuccessStatusCode)
             return false;
@@ -118,24 +124,20 @@ public sealed class ApiKeyValidationService
 
     private static async Task<bool> ValidateFmpAsync(HttpClient client, string key, CancellationToken cancellationToken)
     {
-        string url = $"https://financialmodelingprep.com/api/v3/market-hours?apikey={Uri.EscapeDataString(key.Trim())}";
+        string url = $"https://financialmodelingprep.com/stable/all-exchange-market-hours?apikey={Uri.EscapeDataString(key.Trim())}";
         using HttpResponseMessage response = await client.GetAsync(url, cancellationToken);
         if (!response.IsSuccessStatusCode)
             return false;
 
-        string body = await response.Content.ReadAsStringAsync(cancellationToken);
-        if (body.Contains("Error", StringComparison.OrdinalIgnoreCase) ||
-            body.Contains("Invalid", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return !string.IsNullOrWhiteSpace(body);
+        await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        return document.RootElement.ValueKind == JsonValueKind.Array &&
+               document.RootElement.GetArrayLength() > 0;
     }
 
     private static async Task<bool> ValidateEodhdAsync(HttpClient client, string key, CancellationToken cancellationToken)
     {
-        string url = $"https://eodhd.com/api/exchange-details/US?api_token={Uri.EscapeDataString(key.Trim())}&fmt=json";
+        string url = $"https://eodhd.com/api/real-time/AAPL.US?api_token={Uri.EscapeDataString(key.Trim())}&fmt=json";
         using HttpResponseMessage response = await client.GetAsync(url, cancellationToken);
         if (!response.IsSuccessStatusCode)
             return false;
@@ -148,7 +150,7 @@ public sealed class ApiKeyValidationService
         if (document.RootElement.TryGetProperty("error", out _))
             return false;
 
-        return document.RootElement.TryGetProperty("Code", out JsonElement codeElement) &&
+        return document.RootElement.TryGetProperty("code", out JsonElement codeElement) &&
                codeElement.ValueKind == JsonValueKind.String &&
                !string.IsNullOrWhiteSpace(codeElement.GetString());
     }

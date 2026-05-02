@@ -17,8 +17,9 @@
   "latest_recorded_validation_state": {
     "automated_tests": {
       "command": "dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-build",
-      "result": "192 / 192 passing",
+      "result": "206 / 206 passing",
       "notes": [
+        "Host regression coverage now includes the SSH-first VM harness scripts and root-path-aware guest UX scripts.",
         "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer.",
         "A repo-local NuGet.Config now clears stale Visual Studio fallback package folders so restore works on this machine."
       ]
@@ -41,12 +42,19 @@
       ]
     },
     "vm_tooling": {
-      "dotnet10_sdk_in_guest": "installed",
+      "ssh_access": "enabled",
+      "dotnet10_sdk_in_guest": "installed-machine-wide",
+      "powershell7_in_guest": "installed-machine-wide",
+      "guest_workspace_root": "C:\\vmharness\\portfolio-saver",
       "proof_artifacts": [
-        "build/vm/artifacts/host-runs/dotnet10-vm-install-proof/dotnet10-install-result.json",
-        "build/vm/artifacts/host-runs/dotnet10-vm-install-proof/guest-install-log.txt"
+        "build/vm/artifacts/host-runs/ssh-push-20260502-174837.json",
+        "build/vm/artifacts/host-runs/ssh-push-20260502-175710.json"
       ],
-      "guest_caveat": "The VM has .NET 10 SDK 10.0.203 in the user profile, but a fresh default guest shell still resolves bare dotnet to the machine-wide 8.0.420 until PATH precedence is changed or a machine-wide install is done."
+      "notes": [
+        "The guest now resolves bare dotnet to 10.0.203 from C:\\Program Files\\dotnet.",
+        "The preferred VM harness path is SSH + SFTP using Push-VmWorkspace.ps1, Invoke-VmBuildTest.ps1, and Pull-VmResults.ps1.",
+        "Remote restore/build/test/publish succeeded end to end inside C:\\vmharness\\portfolio-saver\\repo."
+      ]
     }
   },
   "post_remote_recovery_replay": {
@@ -75,7 +83,7 @@
       "Extract the reusable settings experience into PortfolioSaver.Settings.",
       "Keep the legacy screensaver host during Beta 5.5 for compatibility while documenting the desktop app as the primary product surface."
     ],
-    "known_vm_tooling_note": "VM guest has .NET 10 SDK installed in the user profile; bare dotnet in a fresh guest shell still prefers the older machine-wide SDK unless PATH precedence is changed.",
+    "known_vm_tooling_note": "VM guest now has machine-wide .NET 10 SDK 10.0.203, PowerShell 7.6.1, and SSH-first harness support rooted at C:\\vmharness\\portfolio-saver.",
     "phases": [
       {
         "id": "P1",
@@ -146,11 +154,32 @@
       }
     ]
   },
+  "ssh_first_vm_harness": {
+    "status": "implemented",
+    "host_scripts": [
+      "build/vm/Push-VmWorkspace.ps1",
+      "build/vm/Invoke-VmBuildTest.ps1",
+      "build/vm/Pull-VmResults.ps1"
+    ],
+    "shared_helper": "build/vm/VmSshCommon.ps1",
+    "guest_bootstrap": "build/vm/Guest-BootstrapVmRemoteTools.ps1",
+    "guest_workspace_root": "C:\\vmharness\\portfolio-saver",
+    "validated_flows": [
+      "guest bootstrap",
+      "repository snapshot upload",
+      "remote dotnet restore",
+      "remote dotnet build",
+      "remote dotnet test",
+      "remote publish-safe-temp"
+    ],
+    "latest_remote_build_summary": "C:\\vmharness\\portfolio-saver\\results\\buildtest-20260502-175714.json"
+  },
   "remaining_validation_gaps": [],
   "current_operational_recommendations": [
+    "Use the SSH-first VM harness for normal guest build/test/UX validation work.",
     "Treat PortfolioSaver.Desktop as the primary runtime target for Beta 5.5 work.",
     "Retain the legacy screensaver host only while compatibility still matters.",
     "Use the safe-temp build/publish scripts for repeatable validation rather than ad-hoc repo-path publish commands.",
-    "Keep VM validation scripts aligned to the desktop-first artifact layout before starting broader Beta 5.5 UX work."
+    "Keep VBox shared-folder flows as fallback only, not the primary path."
   ]
 }

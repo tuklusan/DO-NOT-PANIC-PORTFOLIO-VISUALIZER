@@ -108,8 +108,53 @@ public sealed class ExchangeMarketCalendarIntegrationTests
         Assert.Contains("13:00", cachedJson, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task GetCalendarSetAsync_RemainsUsableWhenFmpSucceedsAndEodhdExchangeDetailsIsForbidden()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+        string cachePath = Path.Combine(tempRoot, "market-calendars.json");
+
+        CalendarApiHandler handler = new(forbidEodDetails: true);
+        Func<TimeSpan, HttpClient> httpFactory = _ => new HttpClient(handler);
+        ExchangeMarketCalendarService service = new(cachePath, httpFactory);
+        AppSettings settings = Defaults.CreateSettings();
+        settings.FinancialModelingPrepApiKey = "fmp-key";
+        settings.EodhdApiKey = "eod-key";
+
+        IReadOnlyList<ExchangeCalendarRequest> requests =
+        [
+            new ExchangeCalendarRequest
+            {
+                CityKey = "NewYork",
+                ExchangeCode = "NYSE",
+                ExchangeName = "NYSE",
+                TimeZoneId = "Eastern Standard Time",
+                AlternateTimeZoneId = "America/New_York"
+            }
+        ];
+
+        ExchangeCalendarSet set = await service.GetCalendarSetAsync(settings, requests, networkAvailable: true);
+        ExchangeTradingCalendar? calendar = set.TryGetByCityKey("NewYork");
+        Assert.NotNull(calendar);
+
+        Assert.True(handler.FmpHoursRequestCount >= 1);
+        Assert.True(handler.FmpHolidayRequestCount >= 1);
+        Assert.True(handler.EodDetailsRequestCount >= 1);
+        Assert.Equal(new TimeOnly(9, 45), calendar!.RegularOpenLocal);
+        Assert.Equal(new TimeOnly(16, 15), calendar.RegularCloseLocal);
+        Assert.Contains(new DateOnly(2026, 12, 25), calendar.ClosedDates);
+    }
+
     private sealed class CalendarApiHandler : HttpMessageHandler
     {
+        private readonly bool _forbidEodDetails;
+
+        public CalendarApiHandler(bool forbidEodDetails = false)
+        {
+            _forbidEodDetails = forbidEodDetails;
+        }
+
         public int FmpHoursRequestCount { get; private set; }
         public int FmpHolidayRequestCount { get; private set; }
         public int EodDetailsRequestCount { get; private set; }
@@ -151,6 +196,14 @@ public sealed class ExchangeMarketCalendarIntegrationTests
             if (url.Contains("/api/exchange-details/", StringComparison.OrdinalIgnoreCase))
             {
                 EodDetailsRequestCount++;
+                if (_forbidEodDetails)
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Forbidden)
+                    {
+                        Content = new StringContent("Only EOD data allowed for free users.", Encoding.UTF8, "text/plain")
+                    });
+                }
+
                 return Task.FromResult(JsonResponse(
                     """
                     {

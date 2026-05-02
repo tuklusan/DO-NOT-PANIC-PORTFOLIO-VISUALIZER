@@ -1,8 +1,11 @@
-﻿param(
+param(
     [ValidateRange(1, 180)]
     [int]$ScreensaverDurationMinutes = 6,
     [ValidateRange(1, 60)]
-    [int]$CaptureIntervalSeconds = 5
+    [int]$CaptureIntervalSeconds = 5,
+    [string]$RootPath = (Join-Path $env:USERPROFILE 'Desktop\PortfolioVmUx'),
+    [string]$ResultName = ('ux-deep-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
+    [string]$ResultRootPath
 )
 
 Set-StrictMode -Version Latest
@@ -13,12 +16,15 @@ Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 
-$root = Join-Path $env:USERPROFILE 'Desktop\PortfolioVmUx'
+$root = $RootPath
 $configExe = Join-Path $root 'publish\config\PortfolioSaver.Config.exe'
 $desktopExe = Join-Path $root 'publish\desktop\PortfolioSaver.Desktop.exe'
-$resultName = 'ux-deep-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
+if ([string]::IsNullOrWhiteSpace($ResultRootPath)) {
+    $ResultRootPath = Join-Path $root 'results'
+}
+$resultName = $ResultName
 $repoShare = "\\VBOXSVR\codexrepo"
-$localResultsRoot = Join-Path $root 'results'
+$localResultsRoot = $ResultRootPath
 $results = Join-Path $localResultsRoot $resultName
 $hostResultRoot = $null
 $usingDirectHostResults = $false
@@ -336,7 +342,7 @@ function Write-SummaryFiles {
     $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $legacySummaryPath -Encoding UTF8
 }
 
-$summary.ExportMode = if ($usingDirectHostResults) { 'DirectHostShare' } else { 'LocalThenCopy' }
+$summary.ExportMode = if ($usingDirectHostResults) { 'DirectHostShare' } else { 'LocalWorkspace' }
 $summary.ResultName = $resultName
 $summary.ResultPath = $results
 Write-SummaryFiles
@@ -494,8 +500,19 @@ finally {
     Write-SummaryFiles
     Stop-Transcript | Out-Null
     try {
+        $traceRoot = Join-Path $env:APPDATA "PortfolioSaver\Trace"
+        $localTraceTarget = Join-Path $results 'trace'
+        if (Test-Path $traceRoot) {
+            New-Item -ItemType Directory -Force -Path $localTraceTarget | Out-Null
+            foreach ($traceName in @("trace.circular.log", "trace.circular.idx")) {
+                $tracePath = Join-Path $traceRoot $traceName
+                if (Test-Path $tracePath) {
+                    Copy-Item -LiteralPath $tracePath -Destination (Join-Path $localTraceTarget $traceName) -Force
+                }
+            }
+        }
+
         if ((-not $usingDirectHostResults) -and (Test-Path $repoShare)) {
-            $traceRoot = Join-Path $env:APPDATA "PortfolioSaver\Trace"
             $traceTarget = Join-Path (Join-Path $repoShare "build\vm\artifacts\trace") ($resultName + "-trace")
             $hostRoot = Join-Path $repoShare "build\vm\artifacts\vm-results"
             $hostTarget = Join-Path $hostRoot $resultName
@@ -520,7 +537,6 @@ finally {
             }
         }
         elseif ($usingDirectHostResults -and (Test-Path $repoShare)) {
-            $traceRoot = Join-Path $env:APPDATA "PortfolioSaver\Trace"
             $traceTarget = Join-Path (Join-Path $repoShare "build\vm\artifacts\trace") ($resultName + "-trace")
             if (Test-Path $traceRoot) {
                 New-Item -ItemType Directory -Force -Path $traceTarget | Out-Null

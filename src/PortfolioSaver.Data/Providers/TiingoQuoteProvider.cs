@@ -30,8 +30,17 @@ public sealed class TiingoQuoteProvider : IQuoteProvider
 
             try
             {
-                QuoteSnapshot? snapshot = await FetchDailyQuoteAsync(symbol, cancellationToken)
-                    ?? await FetchIexQuoteAsync(symbol, cancellationToken);
+                QuoteSnapshot? snapshot = null;
+                try
+                {
+                    snapshot = await FetchDailyQuoteAsync(symbol, cancellationToken);
+                }
+                catch (HttpRequestException ex) when (ShouldSkipSymbol(ex))
+                {
+                    snapshot = null;
+                }
+
+                snapshot ??= await FetchIexQuoteAsync(symbol, cancellationToken);
                 if (snapshot is not null)
                     results.Add(snapshot);
             }
@@ -109,7 +118,7 @@ public sealed class TiingoQuoteProvider : IQuoteProvider
     {
         DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
         string startDate = today.AddDays(-7).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        string url = $"https://api.tiingo.com/tiingo/daily/{Uri.EscapeDataString(symbol)}/prices?token={Uri.EscapeDataString(_apiKey)}&startDate={startDate}&resampleFreq=1day";
+        string url = $"https://api.tiingo.com/tiingo/daily/{Uri.EscapeDataString(symbol)}/prices?token={Uri.EscapeDataString(_apiKey)}&startDate={startDate}";
         using HttpResponseMessage response = await _httpClient.GetAsync(url, cancellationToken);
         if (ShouldSkipSymbol(response.StatusCode))
             return null;

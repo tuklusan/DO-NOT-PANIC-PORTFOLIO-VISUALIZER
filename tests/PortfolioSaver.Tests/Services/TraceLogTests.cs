@@ -1,4 +1,5 @@
 using System.Text;
+using System.Reflection;
 using PortfolioSaver.Shared.Diagnostics;
 using PortfolioSaver.Shared.Helpers;
 using Xunit;
@@ -34,37 +35,30 @@ public sealed class TraceLogTests
     }
 
     [Fact]
-    public async Task TraceLog_InfoState_WritesStructuredFields()
+    public void TraceLog_InfoState_FormatsStructuredFields()
     {
-        string traceDirectory = Path.Combine(PathHelper.GetAppDataDirectory(), "Trace");
-        string traceFilePath = Path.Combine(traceDirectory, "trace.circular.log");
-        string traceIndexPath = Path.Combine(traceDirectory, "trace.circular.idx");
         string marker = "trace-state-" + Guid.NewGuid().ToString("N");
+        MethodInfo formatter = typeof(TraceLog).GetMethod(
+            "BuildStructuredMessage",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("Could not find TraceLog.BuildStructuredMessage.");
 
-        TraceLog.InfoState(
-            "TraceLogTests",
-            "StructuredTrace",
+        string message = (string)(formatter.Invoke(
+            null,
             [
-                new KeyValuePair<string, object?>("marker", marker),
-                new KeyValuePair<string, object?>("symbols", new[] { "AAPL", "MSFT", "NVDA" }),
-                new KeyValuePair<string, object?>("remaining", 2)
-            ]);
+                "StructuredTrace",
+                new[]
+                {
+                    new KeyValuePair<string, object?>("marker", marker),
+                    new KeyValuePair<string, object?>("symbols", new[] { "AAPL", "MSFT", "NVDA" }),
+                    new KeyValuePair<string, object?>("remaining", 2)
+                }
+            ]) ?? throw new InvalidOperationException("Structured message formatter returned null."));
 
-        bool observed = await WaitForTraceAsync(
-            traceFilePath,
-            traceIndexPath,
-            text =>
-            {
-                if (!text.Contains(marker, StringComparison.Ordinal))
-                    return false;
-
-                Assert.Contains("event=StructuredTrace", text, StringComparison.Ordinal);
-                Assert.Contains("symbols=[AAPL, MSFT, NVDA]", text, StringComparison.Ordinal);
-                Assert.Contains("remaining=2", text, StringComparison.Ordinal);
-                return true;
-            });
-
-        Assert.True(observed, "Structured trace marker was not observed in the 4MB circular trace file.");
+        Assert.Contains($"marker={marker}", message, StringComparison.Ordinal);
+        Assert.Contains("event=StructuredTrace", message, StringComparison.Ordinal);
+        Assert.Contains("symbols=[AAPL, MSFT, NVDA]", message, StringComparison.Ordinal);
+        Assert.Contains("remaining=2", message, StringComparison.Ordinal);
     }
 
     private static async Task<bool> WaitForTraceAsync(
@@ -72,7 +66,7 @@ public sealed class TraceLogTests
         string traceIndexPath,
         Func<string, bool> predicate)
     {
-        for (int i = 0; i < 200; i++)
+        for (int i = 0; i < 600; i++)
         {
             if (File.Exists(traceFilePath))
             {

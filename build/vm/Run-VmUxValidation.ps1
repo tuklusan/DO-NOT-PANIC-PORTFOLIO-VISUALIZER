@@ -1,4 +1,9 @@
-﻿Set-StrictMode -Version Latest
+param(
+    [string]$RootPath = (Join-Path $env:USERPROFILE 'Desktop\PortfolioVmUx'),
+    [string]$ResultName = ('vm-ux-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+)
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -35,10 +40,10 @@ public static class VmUxInterop
 }
 "@
 
-$root = Join-Path $env:USERPROFILE 'Desktop\PortfolioVmUx'
+$root = $RootPath
 $configExe = Join-Path $root 'publish\config\PortfolioSaver.Config.exe'
 $desktopExe = Join-Path $root 'publish\desktop\PortfolioSaver.Desktop.exe'
-$results = Join-Path $root ('results\' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$results = Join-Path $root ('results\' + $ResultName)
 New-Item -ItemType Directory -Force -Path $results | Out-Null
 
 function Capture-Screen {

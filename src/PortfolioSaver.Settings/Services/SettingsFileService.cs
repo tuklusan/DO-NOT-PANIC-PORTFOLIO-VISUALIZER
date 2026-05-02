@@ -1,8 +1,9 @@
-﻿using System.IO;
+using System.IO;
 using System.Text.Json;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Core.Services;
+using PortfolioSaver.Data.Services;
 using PortfolioSaver.Shared.Helpers;
 
 namespace PortfolioSaver.Config.Services;
@@ -14,19 +15,27 @@ public sealed class SettingsFileService
         PropertyNameCaseInsensitive = true
     };
 
+    private readonly ProviderSecretStoreService _providerSecretStoreService = new();
+
     public string SettingsPath => Path.Combine(PathHelper.GetAppDataDirectory(), "settings.json");
 
     public AppSettings Load()
     {
-        if (!File.Exists(SettingsPath))
-            return AppSettingsNormalizer.Normalize(Defaults.CreateSettings());
+        AppSettings settings = Defaults.CreateSettings();
+        if (File.Exists(SettingsPath))
+        {
+            string json = File.ReadAllText(SettingsPath);
+            settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? settings;
+        }
 
-        string json = File.ReadAllText(SettingsPath);
-        return AppSettingsNormalizer.Normalize(JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? Defaults.CreateSettings());
+        _providerSecretStoreService.OverlaySecrets(settings);
+        return AppSettingsNormalizer.Normalize(settings);
     }
 
     public void Save(AppSettings settings)
     {
+        _providerSecretStoreService.Save(settings);
+
         AppSettings persisted = CreateSanitizedCopy(settings);
         string json = JsonSerializer.Serialize(persisted, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(SettingsPath, json);

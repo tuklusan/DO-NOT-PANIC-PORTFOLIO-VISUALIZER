@@ -1,0 +1,109 @@
+param(
+    [string]$VmHost = '192.168.56.102',
+    [int]$VmPort = 22,
+    [string]$RootPath = 'C:\vmharness\portfolio-saver',
+    [switch]$Bootstrap,
+    [switch]$IncludePublishArtifacts
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot 'VmSshCommon.ps1')
+
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$tempRoot = Join-Path $env:TEMP ('PortfolioSaverVmPush-' + [guid]::NewGuid().ToString('N'))
+$archivePath = Join-Path $tempRoot 'repo-snapshot.zip'
+$publishRoot = Join-Path $repoRoot 'build\artifacts\publish-safe-temp'
+$localManifest = Join-Path $repoRoot 'build\vm\artifacts\host-runs'
+$bundle = $null
+
+try {
+    New-Item -ItemType Directory -Force -Path $tempRoot,$localManifest | Out-Null
+    $bundle = New-VmSshSessionBundle -HostName $VmHost -Port $VmPort
+
+    Write-VmSshStep "Ensuring guest workspace directories"
+    Ensure-VmDirectory -Bundle $bundle -RemotePath $RootPath
+    Ensure-VmDirectory -Bundle $bundle -RemotePath (Join-Path $RootPath 'scripts')
+    Ensure-VmDirectory -Bundle $bundle -RemotePath (Join-Path $RootPath 'artifacts')
+    Ensure-VmDirectory -Bundle $bundle -RemotePath (Join-Path $RootPath 'logs')
+
+    $bootstrapRemoteDirectory = Join-Path $RootPath 'scripts'
+    $bootstrapRemotePath = Join-Path $bootstrapRemoteDirectory 'Guest-BootstrapVmRemoteTools.ps1'
+    Send-VmItem -Bundle $bundle -LocalPath (Join-Path $PSScriptRoot 'Guest-BootstrapVmRemoteTools.ps1') -RemoteDestination $bootstrapRemoteDirectory
+
+    if ($Bootstrap) {
+        Write-VmSshStep "Bootstrapping the guest toolchain and workspace"
+        $bootstrapCommand = @"
+& '$bootstrapRemotePath' -RootPath '$RootPath'
+"@
+        Invoke-VmPwshCommand -Bundle $bundle -Command $bootstrapCommand -TimeOutSeconds 1800 | Out-Null
+    }
+
+    Write-VmSshStep "Building a clean workspace archive"
+    New-VmWorkspaceArchive -RepoRoot $repoRoot -ArchivePath $archivePath
+
+    $remoteArchive = Join-Path $RootPath 'artifacts\repo-snapshot.zip'
+    $remoteArtifactsDirectory = Join-Path $RootPath 'artifacts'
+    Write-VmSshStep "Uploading repository snapshot"
+    Send-VmItem -Bundle $bundle -LocalPath $archivePath -RemoteDestination $remoteArtifactsDirectory
+
+    $remoteRepo = Join-Path $RootPath 'repo'
+    $expandCommand = @"
+`$repoPath = '$remoteRepo'
+`$zipPath = '$remoteArchive'
+if (Test-Path `$repoPath) {
+    Remove-Item -LiteralPath `$repoPath -Recurse -Force -ErrorAction SilentlyContinue
+}
+New-Item -ItemType Directory -Force -Path `$repoPath | Out-Null
+Expand-Archive -LiteralPath `$zipPath -DestinationPath `$repoPath -Force
+"@
+    Write-VmSshStep "Expanding repository snapshot inside guest workspace"
+    Invoke-VmPwshCommand -Bundle $bundle -Command $expandCommand -TimeOutSeconds 1800 | Out-Null
+
+    if ($IncludePublishArtifacts -and (Test-Path $publishRoot)) {
+        $publishArchive = Join-Path $tempRoot 'publish-safe-temp.zip'
+        if (Test-Path $publishArchive) {
+            Remove-Item -LiteralPath $publishArchive -Force -ErrorAction SilentlyContinue
+        }
+
+        Write-VmSshStep "Packaging publish artifacts"
+        Compress-Archive -Path (Join-Path $publishRoot '*') -DestinationPath $publishArchive -CompressionLevel Optimal -Force
+        $remotePublishArchive = Join-Path $RootPath 'artifacts\publish-safe-temp.zip'
+        Send-VmItem -Bundle $bundle -LocalPath $publishArchive -RemoteDestination $remoteArtifactsDirectory
+
+        $expandPublishCommand = @"
+`$publishPath = Join-Path '$RootPath' 'publish'
+`$zipPath = '$remotePublishArchive'
+if (Test-Path `$publishPath) {
+    Remove-Item -LiteralPath `$publishPath -Recurse -Force -ErrorAction SilentlyContinue
+}
+New-Item -ItemType Directory -Force -Path `$publishPath | Out-Null
+Expand-Archive -LiteralPath `$zipPath -DestinationPath `$publishPath -Force
+"@
+        Write-VmSshStep "Expanding publish artifacts inside guest workspace"
+        Invoke-VmPwshCommand -Bundle $bundle -Command $expandPublishCommand -TimeOutSeconds 1800 | Out-Null
+    }
+
+    $manifest = [ordered]@{
+        GeneratedAt = (Get-Date).ToString('o')
+        VmHost = $VmHost
+        RootPath = $RootPath
+        Bootstrap = [bool]$Bootstrap
+        IncludePublishArtifacts = [bool]$IncludePublishArtifacts
+        ArchiveName = 'repo-snapshot.zip'
+        PublishArtifactPresent = [bool](Test-Path $publishRoot)
+    }
+    $manifestPath = Join-Path $localManifest ("ssh-push-{0:yyyyMMdd-HHmmss}.json" -f (Get-Date))
+    $manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
+
+    Write-Output ("VM_PUSH_MANIFEST=" + $manifestPath)
+}
+finally {
+    if ($null -ne $bundle) {
+        Remove-VmSshSessionBundle -Bundle $bundle
+    }
+    if (Test-Path $tempRoot) {
+        Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}

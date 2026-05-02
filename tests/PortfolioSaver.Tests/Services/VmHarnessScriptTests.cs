@@ -45,6 +45,21 @@ public sealed class VmHarnessScriptTests
     }
 
     [Fact]
+    public void RunVmUxValidation_AllowsCustomWorkspaceRootAndResultName()
+    {
+        string script = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "Run-VmUxValidation.ps1"));
+
+        Assert.Contains("[string]$RootPath", script, StringComparison.Ordinal);
+        Assert.Contains("[string]$ResultName", script, StringComparison.Ordinal);
+        Assert.Contains("$root = $RootPath", script, StringComparison.Ordinal);
+        Assert.Contains("$results = Join-Path $root ('results\\' + $ResultName)", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void GuestPrepareScript_ClearsPersistedPortfolioSaverStateForCleanBaseline()
     {
         string script = File.ReadAllText(Path.Combine(
@@ -75,6 +90,42 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("ScreensaverVersionCheck", script, StringComparison.Ordinal);
         Assert.Contains("ScreensaverHostWindow", script, StringComparison.Ordinal);
         Assert.Contains("MainWindowTitleFallback", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GuestUxDeepExercise_SupportsSshWorkspaceRoots_AndWritesLocalTraceBundles()
+    {
+        string script = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "Guest-UxDeepExercise.ps1"));
+
+        Assert.Contains("[string]$RootPath", script, StringComparison.Ordinal);
+        Assert.Contains("[string]$ResultRootPath", script, StringComparison.Ordinal);
+        Assert.Contains("$root = $RootPath", script, StringComparison.Ordinal);
+        Assert.Contains("$summary.ExportMode = if ($usingDirectHostResults) { 'DirectHostShare' } else { 'LocalWorkspace' }", script, StringComparison.Ordinal);
+        Assert.Contains("$localTraceTarget = Join-Path $results 'trace'", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SshHarnessScripts_UseVmharnessWorkspaceAndDoNotDependOnVBox()
+    {
+        string push = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "Push-VmWorkspace.ps1"));
+        string invoke = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "Invoke-VmBuildTest.ps1"));
+        string pull = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "Pull-VmResults.ps1"));
+        string bootstrap = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "Guest-BootstrapVmRemoteTools.ps1"));
+        string helper = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "VmSshCommon.ps1"));
+
+        Assert.Contains(@"C:\vmharness\portfolio-saver", push, StringComparison.Ordinal);
+        Assert.Contains(@"C:\vmharness\portfolio-saver", invoke, StringComparison.Ordinal);
+        Assert.Contains(@"C:\vmharness\portfolio-saver", pull, StringComparison.Ordinal);
+        Assert.Contains(@"C:\vmharness\portfolio-saver", bootstrap, StringComparison.Ordinal);
+        Assert.Contains("Posh-SSH", helper, StringComparison.Ordinal);
+        Assert.DoesNotContain("VBoxManage", push, StringComparison.Ordinal);
+        Assert.DoesNotContain("VBoxManage", invoke, StringComparison.Ordinal);
+        Assert.DoesNotContain("VBOXSVR", push, StringComparison.Ordinal);
+        Assert.DoesNotContain("guestcontrol", invoke, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string GetRepoRoot()

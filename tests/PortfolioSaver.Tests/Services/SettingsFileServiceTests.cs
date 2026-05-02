@@ -2,6 +2,7 @@ using System.Text.Json;
 using PortfolioSaver.Config.Services;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Screensaver.Services;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
@@ -51,7 +52,17 @@ public sealed class SettingsFileServiceTests
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
         string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        string? previousFinnhub = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_FINNHUB_API_KEY");
+        string? previousTwelve = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_TWELVEDATA_API_KEY");
+        string? previousTiingo = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_TIINGO_API_KEY");
+        string? previousFmp = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY");
+        string? previousEodhd = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY");
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FINNHUB_API_KEY", null);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TWELVEDATA_API_KEY", null);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TIINGO_API_KEY", null);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY", null);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY", null);
 
         try
         {
@@ -68,6 +79,78 @@ public sealed class SettingsFileServiceTests
         finally
         {
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FINNHUB_API_KEY", previousFinnhub);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TWELVEDATA_API_KEY", previousTwelve);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TIINGO_API_KEY", previousTiingo);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY", previousFmp);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY", previousEodhd);
+            if (Directory.Exists(tempRoot))
+                Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Save_PersistsProviderSecretsSecurely_AndRuntimeLoadRestoresThem()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        string? previousFinnhub = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_FINNHUB_API_KEY");
+        string? previousTwelve = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_TWELVEDATA_API_KEY");
+        string? previousTiingo = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_TIINGO_API_KEY");
+        string? previousFmp = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY");
+        string? previousEodhd = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FINNHUB_API_KEY", null);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TWELVEDATA_API_KEY", null);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TIINGO_API_KEY", null);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY", null);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY", null);
+
+        try
+        {
+            SettingsFileService service = new();
+            AppSettings settings = Defaults.CreateSettings();
+            settings.FinnhubApiKey = "live-finnhub-key";
+            settings.TwelveDataApiKey = "live-twelvedata-key";
+            settings.TiingoApiKey = "live-tiingo-key";
+            settings.FinancialModelingPrepApiKey = "live-fmp-key";
+            settings.EodhdApiKey = "live-eodhd-key";
+
+            service.Save(settings);
+
+            string settingsJson = File.ReadAllText(service.SettingsPath);
+            string secretsPath = Path.Combine(tempRoot, "provider-secrets.json");
+            string secretsJson = File.ReadAllText(secretsPath);
+
+            Assert.DoesNotContain("live-finnhub-key", settingsJson, StringComparison.Ordinal);
+            Assert.DoesNotContain("live-twelvedata-key", settingsJson, StringComparison.Ordinal);
+            Assert.DoesNotContain("live-finnhub-key", secretsJson, StringComparison.Ordinal);
+            Assert.DoesNotContain("live-twelvedata-key", secretsJson, StringComparison.Ordinal);
+
+            AppSettings configLoaded = service.Load();
+            ScreensaverSettingsService runtimeService = new();
+            AppSettings runtimeLoaded = runtimeService.Load();
+
+            Assert.Equal("live-finnhub-key", configLoaded.FinnhubApiKey);
+            Assert.Equal("live-twelvedata-key", configLoaded.TwelveDataApiKey);
+            Assert.Equal("live-tiingo-key", configLoaded.TiingoApiKey);
+            Assert.Equal("live-fmp-key", configLoaded.FinancialModelingPrepApiKey);
+            Assert.Equal("live-eodhd-key", configLoaded.EodhdApiKey);
+
+            Assert.Equal("live-finnhub-key", runtimeLoaded.FinnhubApiKey);
+            Assert.Equal("live-twelvedata-key", runtimeLoaded.TwelveDataApiKey);
+            Assert.Equal("live-tiingo-key", runtimeLoaded.TiingoApiKey);
+            Assert.Equal("live-fmp-key", runtimeLoaded.FinancialModelingPrepApiKey);
+            Assert.Equal("live-eodhd-key", runtimeLoaded.EodhdApiKey);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FINNHUB_API_KEY", previousFinnhub);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TWELVEDATA_API_KEY", previousTwelve);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TIINGO_API_KEY", previousTiingo);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY", previousFmp);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY", previousEodhd);
             if (Directory.Exists(tempRoot))
                 Directory.Delete(tempRoot, recursive: true);
         }
