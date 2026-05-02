@@ -922,7 +922,7 @@ public sealed class StartupCoordinatorAdvancedTests
     }
 
     [Fact]
-    public async Task LoadQuotesAsync_LowConfiguredRefreshStillHonorsSteadyStateFloorBeforeTurningStale()
+    public async Task LoadQuotesAsync_LowConfiguredRefreshRetriesSoonerWhileKeepingFreshCacheUsable()
     {
         AppSettings settings = Defaults.CreateSettings();
         settings.RefreshSecondsPortfolio = 60;
@@ -940,7 +940,7 @@ public sealed class StartupCoordinatorAdvancedTests
                 Symbol = "AAPL",
                 Last = 188.12m,
                 ChangePercent = 0.45m,
-                FetchTimestampUtc = nowUtc - TimeSpan.FromMinutes(16)
+                FetchTimestampUtc = nowUtc - TimeSpan.FromMinutes(14)
             }
         ]);
 
@@ -974,7 +974,7 @@ public sealed class StartupCoordinatorAdvancedTests
 
         QuoteSnapshot quote = Assert.Single(quotes).Value;
         Assert.False(quote.IsStale);
-        Assert.Equal(0, yahooProvider.CallCount);
+        Assert.Equal(1, yahooProvider.CallCount);
         Assert.Equal(188.12m, quote.Last);
     }
 

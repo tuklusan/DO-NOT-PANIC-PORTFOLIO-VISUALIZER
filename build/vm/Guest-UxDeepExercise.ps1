@@ -441,6 +441,8 @@ try {
         Capture-Screen -Path $desktopFull
         $summary.DesktopShots++
         $summary.ScreensaverShots++
+        $summary.DesktopPhaseStatus = "Running"
+        Write-SummaryFiles
 
         try { [System.Windows.Forms.SendKeys]::SendWait('{ESC}') } catch {}
         Start-Sleep -Seconds 2
@@ -449,6 +451,7 @@ try {
         $summary.DesktopShots++
         $summary.ScreensaverShots++
         $summary.FullScreenToggleStatus = "Completed"
+        Write-SummaryFiles
 
         $targetFrames = [Math]::Max(1, [int][Math]::Ceiling(($ScreensaverDurationMinutes * 60.0) / $CaptureIntervalSeconds))
         for ($i = 1; $i -le $targetFrames; $i++) {
@@ -460,6 +463,7 @@ try {
             Capture-Screen -Path $path
             $summary.ScreensaverShots++
             $summary.DesktopShots++
+            Write-SummaryFiles
             Start-Sleep -Seconds $CaptureIntervalSeconds
         }
 

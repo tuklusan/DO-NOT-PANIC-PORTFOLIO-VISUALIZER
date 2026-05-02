@@ -178,10 +178,10 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("UseLayoutRounding=\"True\"", floatingClockXaml, StringComparison.Ordinal);
         Assert.Contains("TextOptions.TextFormattingMode=\"Display\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("TextOptions.TextFormattingMode=\"Display\"", floatingClockXaml, StringComparison.Ordinal);
-        Assert.Contains("Width=\"96\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("<ColumnDefinition Width=\"Auto\" />", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("ClipToBounds=\"True\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("Width=\"56\"", floatingClockXaml, StringComparison.Ordinal);
-        Assert.Contains("MinWidth=\"34\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("MinWidth=\"128\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"30\"", floatingClockXaml, StringComparison.Ordinal);
     }
 
@@ -430,7 +430,7 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void GetRefreshSeconds_WhenAllTrackedSymbolsAreFresh_UsesTwentyMinuteSteadyStateMinimum()
+    public void GetRefreshSeconds_WhenAllTrackedSymbolsAreFresh_UsesFiveMinuteSteadyStateMinimum()
     {
         RunOnSta(() =>
         {
@@ -485,7 +485,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 ?? throw new InvalidOperationException("GetRefreshSeconds method not found.");
 
             double refreshSeconds = Assert.IsType<double>(method.Invoke(control, []));
-            Assert.Equal(1200d, refreshSeconds);
+            Assert.Equal(300d, refreshSeconds);
         });
     }
 
@@ -503,6 +503,21 @@ public sealed class ScreensaverRenderBehaviorTests
         ]));
 
         Assert.Equal("Provider: Live+Cache (Partial)", compact);
+    }
+
+    [Fact]
+    public void StatusFreshness_IsRecomputedFromLatestQuoteTimestamps()
+    {
+        string sceneCodeBehind = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "ScreensaverSceneControl.xaml.cs"));
+
+        Assert.Contains("UpdateStatusFreshnessText(_statusViewModel.UpdatedText);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void UpdateStatusFreshnessText(string? fallbackText = null)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("_statusViewModel.UpdatedText = $\"Updated: {TimeFormatHelper.ToAgeString(latestQuoteFetchUtc)}\";", sceneCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -748,9 +763,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("Text=\"{Binding ClockDateText}\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding ClockText}\"", statusBarXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding ProviderText}\"", statusBarXaml, StringComparison.Ordinal);
-        Assert.Contains("<ColumnDefinition Width=\"320\" />", statusBarXaml, StringComparison.Ordinal);
-        Assert.Contains("Width=\"128\"", statusBarXaml, StringComparison.Ordinal);
-        Assert.Contains("MaxWidth=\"700\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("<ColumnDefinition Width=\"Auto\" />", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("MinWidth=\"128\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("MaxWidth=\"700\"", statusBarXaml, StringComparison.Ordinal);
     }
 
     [Fact]

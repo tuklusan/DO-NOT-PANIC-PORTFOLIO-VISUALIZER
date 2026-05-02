@@ -20,16 +20,16 @@
 
             <Grid ClipToBounds="True">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="320" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="96" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Column="0"
                            Text="{Binding MarketStatusText}"
                            Foreground="White"
                            Margin="0,0,10,0"
-                           MaxWidth="310"
+                           MaxWidth="280"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Left"
                            TextWrapping="NoWrap"
@@ -39,7 +39,6 @@
                               HorizontalAlignment="Center"
                               VerticalAlignment="Center"
                               ItemsSource="{Binding MacroMeters}"
-                              MaxWidth="700"
                               ClipToBounds="True">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -54,7 +53,7 @@
                                     CornerRadius="8"
                                     Padding="6,4"
                                     Margin="0,0,8,0"
-                                    MinWidth="108">
+                                    MinWidth="102">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Grid Width="24" Height="24" Margin="0,0,6,0">
                                         <Path Data="{Binding TrackPath}"
@@ -88,12 +87,13 @@
                 </ItemsControl>
 
                 <Border Grid.Column="2"
-                        Width="128"
+                        MinWidth="128"
                         Padding="7,4"
                         Background="#CC05090D"
                         BorderBrush="#334F7489"
                         BorderThickness="1"
                         CornerRadius="8"
+                        Margin="8,0,0,0"
                         ClipToBounds="True"
                         VerticalAlignment="Center"
                         HorizontalAlignment="Right">

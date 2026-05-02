@@ -18,6 +18,7 @@ using PortfolioSaver.Render.Services;
 using PortfolioSaver.Render.ViewModels;
 using PortfolioSaver.Screensaver.Services;
 using PortfolioSaver.Shared.Diagnostics;
+using PortfolioSaver.Shared.Helpers;
 using PortfolioSaver.Shared;
 
 namespace PortfolioSaver.Screensaver.Controls;
@@ -317,7 +318,7 @@ public partial class ScreensaverSceneControl : UserControl
                 if (_statusViewModel is not null)
                 {
                     _statusViewModel.ProviderText = "Provider: Yahoo Finance warmup";
-                    _statusViewModel.UpdatedText = batch.StatusMessage;
+                    UpdateStatusFreshnessText(batch.StatusMessage);
                     DateTimeOffset referenceUtc = GetReferenceUtcNow();
                     _statusViewModel.ClockDateText = FormatStatusClockDate(referenceUtc);
                     _statusViewModel.ClockText = FormatClockTimeWithZone(referenceUtc, TimeZoneInfo.Utc);
@@ -866,6 +867,7 @@ public partial class ScreensaverSceneControl : UserControl
         {
             _statusViewModel.ClockDateText = FormatStatusClockDate(referenceUtc);
             _statusViewModel.ClockText = FormatClockTimeWithZone(referenceUtc, TimeZoneInfo.Utc);
+            UpdateStatusFreshnessText(_statusViewModel.UpdatedText);
             if (refreshStatusAncillary)
             {
                 _statusViewModel.MarketStatusText = _marketStatusService.FormatStatusLine(referenceUtc);
@@ -2025,6 +2027,35 @@ public partial class ScreensaverSceneControl : UserControl
 
         DateTimeOffset nowUtc = GetReferenceUtcNow();
         return nowUtc - quote.FetchTimestampUtc >= QuoteRefreshPolicy.GetHardStaleThreshold(_settings, nowUtc);
+    }
+
+    private void UpdateStatusFreshnessText(string? fallbackText = null)
+    {
+        if (_statusViewModel is null)
+            return;
+
+        if (TryGetLatestQuoteFetchUtc(out DateTimeOffset latestQuoteFetchUtc))
+        {
+            _statusViewModel.UpdatedText = $"Updated: {TimeFormatHelper.ToAgeString(latestQuoteFetchUtc)}";
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(fallbackText))
+            _statusViewModel.UpdatedText = fallbackText;
+    }
+
+    private bool TryGetLatestQuoteFetchUtc(out DateTimeOffset latestQuoteFetchUtc)
+    {
+        latestQuoteFetchUtc = DateTimeOffset.MinValue;
+        if (_latestQuotes.Count == 0)
+            return false;
+
+        latestQuoteFetchUtc = _latestQuotes.Values
+            .Select(quote => quote.FetchTimestampUtc)
+            .DefaultIfEmpty(DateTimeOffset.MinValue)
+            .Max();
+
+        return latestQuoteFetchUtc > DateTimeOffset.MinValue;
     }
 
     private static IReadOnlyDictionary<string, QuoteSnapshot> MergeQuotes(
