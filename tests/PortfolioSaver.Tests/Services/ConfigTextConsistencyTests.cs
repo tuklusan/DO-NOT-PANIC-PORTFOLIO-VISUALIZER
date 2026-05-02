@@ -150,10 +150,10 @@ public sealed class ConfigTextConsistencyTests
     {
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
-        Assert.Contains("Width=\"1120\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Height=\"740\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"1000\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Height=\"680\"", xaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"640\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("MinHeight=\"500\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("MinHeight=\"480\"", xaml, StringComparison.Ordinal);
         Assert.Contains("<TabItem Header=\"General\">", xaml, StringComparison.Ordinal);
         Assert.Contains("HorizontalScrollBarVisibility=\"Disabled\"", xaml, StringComparison.Ordinal);
         Assert.Contains("VerticalScrollBarVisibility=\"Auto\"", xaml, StringComparison.Ordinal);

@@ -290,7 +290,7 @@ public partial class TickerTapeControl : UserControl
         {
             Grid host = new();
             host.Children.Add(CreateBoundTextBlock(item, textProperty, foregroundProperty, double.NaN, 0d, alignment, fontWeight));
-            host.Children.Add(CreateWaitingGlyphHost());
+            host.Children.Add(CreateWaitingGlyphHost(item));
             border.Child = host;
         }
         else
@@ -302,7 +302,7 @@ public partial class TickerTapeControl : UserControl
         return border;
     }
 
-    private static FrameworkElement CreateWaitingGlyphHost()
+    private static FrameworkElement CreateWaitingGlyphHost(TapeItemViewModel item)
     {
         TextBlock glyph = new()
         {
@@ -317,6 +317,7 @@ public partial class TickerTapeControl : UserControl
         };
         glyph.SetBinding(TextBlock.VisibilityProperty, new Binding(nameof(TapeItemViewModel.IsWaitingOnData))
         {
+            Source = item,
             Converter = new BooleanToVisibilityConverter()
         });
         return glyph;

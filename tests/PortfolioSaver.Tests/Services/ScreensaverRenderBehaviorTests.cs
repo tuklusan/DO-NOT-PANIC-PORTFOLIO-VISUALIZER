@@ -536,6 +536,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("x:Name=\"ViewportHost\"", tapeXaml, StringComparison.Ordinal);
         Assert.Contains("Margin=\"4,0,4,0\"", tapeXaml, StringComparison.Ordinal);
         Assert.Contains("nameof(TapeItemViewModel.IsWaitingOnData)", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("Source = item", tapeCode, StringComparison.Ordinal);
         Assert.Contains("Text = \"🕒\"", tapeCode, StringComparison.Ordinal);
         Assert.Contains("MinHeight=\"68\"", statusXaml, StringComparison.Ordinal);
         Assert.Contains("TextWrapping=\"NoWrap\"", statusXaml, StringComparison.Ordinal);

@@ -36,6 +36,8 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("Header=\"_Help\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"_About\"", xaml, StringComparison.Ordinal);
         Assert.Contains("PortfolioSaver.Presentation", xaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"1180\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Height=\"720\"", xaml, StringComparison.Ordinal);
     }
 
     [Fact]

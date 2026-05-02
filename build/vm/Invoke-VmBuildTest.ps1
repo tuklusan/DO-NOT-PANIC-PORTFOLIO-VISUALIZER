@@ -99,7 +99,7 @@ Write-Output ('BUILD_SUMMARY=' + `$resultPath)
         $remotePassword = $vmCredParts.Password.Replace("'", "''")
         $launcherBody = @"
 @echo off
-"C:\Program Files\SysinternalsSuite\PsExec.exe" -accepteula -i 1 -d -u "$remoteUser" -p "$remotePassword" pwsh.exe -NoProfile -ExecutionPolicy Bypass -File "$remoteUxScript" -RootPath "$RootPath" -ResultName "$uxResultName" -ScreensaverDurationMinutes "$GuestScreensaverDurationMinutes" -CaptureIntervalSeconds "$CaptureIntervalSeconds"
+"C:\Program Files\SysinternalsSuite\PsExec.exe" -accepteula -i 1 -d -u "$remoteUser" -p "$remotePassword" powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "$remoteUxScript" -RootPath "$RootPath" -ResultName "$uxResultName" -ScreensaverDurationMinutes "$GuestScreensaverDurationMinutes" -CaptureIntervalSeconds "$CaptureIntervalSeconds"
 "@
         $escapedLauncherBody = $launcherBody.Replace("'", "''")
         $prepareLaunchCommand = @"
