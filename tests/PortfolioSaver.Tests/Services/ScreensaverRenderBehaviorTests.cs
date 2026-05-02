@@ -66,13 +66,13 @@ public sealed class ScreensaverRenderBehaviorTests
         string xaml = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml"));
         string codeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
 
@@ -191,7 +191,7 @@ public sealed class ScreensaverRenderBehaviorTests
         string codeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
 
@@ -333,13 +333,13 @@ public sealed class ScreensaverRenderBehaviorTests
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
         string sceneXaml = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml"));
         string globalTapeXaml = File.ReadAllText(Path.Combine(
@@ -366,7 +366,7 @@ public sealed class ScreensaverRenderBehaviorTests
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
 
@@ -529,7 +529,7 @@ public sealed class ScreensaverRenderBehaviorTests
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
 
@@ -549,13 +549,13 @@ public sealed class ScreensaverRenderBehaviorTests
         string sceneXaml = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml"));
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
         string fullScreenWindowCode = File.ReadAllText(Path.Combine(
@@ -601,7 +601,7 @@ public sealed class ScreensaverRenderBehaviorTests
         string sceneXaml = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml"));
 
@@ -617,7 +617,7 @@ public sealed class ScreensaverRenderBehaviorTests
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
 
@@ -689,7 +689,7 @@ public sealed class ScreensaverRenderBehaviorTests
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
         string floatingGraphXaml = File.ReadAllText(Path.Combine(
@@ -701,7 +701,7 @@ public sealed class ScreensaverRenderBehaviorTests
         string startupCoordinator = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Services",
             "StartupCoordinator.cs"));
 
@@ -721,7 +721,7 @@ public sealed class ScreensaverRenderBehaviorTests
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
 
@@ -758,7 +758,7 @@ public sealed class ScreensaverRenderBehaviorTests
         string sceneXaml = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml"));
 
@@ -932,7 +932,7 @@ public sealed class ScreensaverRenderBehaviorTests
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
 
@@ -957,7 +957,7 @@ public sealed class ScreensaverRenderBehaviorTests
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
 
@@ -971,7 +971,7 @@ public sealed class ScreensaverRenderBehaviorTests
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
 
@@ -1020,5 +1020,7 @@ public sealed class ScreensaverRenderBehaviorTests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 }
+
+
 
 

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using PortfolioSaver.Config.Windows;
 using PortfolioSaver.Shared.Diagnostics;
 using PortfolioSaver.Shared.Integrity;
 
@@ -38,5 +39,9 @@ public partial class App : Application
 
         TraceLog.Info("Config.App", $"Startup args: {string.Join(" ", e.Args)}");
         base.OnStartup(e);
+
+        var window = new MainWindow();
+        MainWindow = window;
+        window.Show();
     }
 }

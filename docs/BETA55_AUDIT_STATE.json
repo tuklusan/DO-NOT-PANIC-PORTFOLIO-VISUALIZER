@@ -1,1103 +1,156 @@
 ﻿{
-  "document_type": "feature_audit_test_checklist_release_gate",
-  "title": "BETA-5.5 Feature Audit, Test Checklist, and Release Gate Plan",
-  "date": "2026-04-26",
+  "document_type": "audit_state",
+  "title": "BETA-5.5 Audit State",
+  "date": "2026-05-02",
   "current_lane": "BETA-5.5",
-  "scope": "canonical feature audit, regression checklist, UX validation guide, and release-gate plan for the current main branch",
-  "purpose": [
-    "feature verification status",
-    "automated regression coverage",
-    "release-gate criteria",
-    "VM and installer validation evidence",
-    "remaining validation gaps worth tracking"
-  ],
   "current_snapshot": {
     "product": "DO NOT PANIC PORTFOLIO VISUALIZER",
     "publisher": "SANYALnet Labs",
     "author": "Supratim Sanyal",
     "license": "MIT LICENSE",
     "semantic_version_lane": "0.9.0-beta5.5",
-    "repository_history": "intentionally rebased to start at the BETA-5.4 baseline on main"
+    "target_framework": "net10.0-windows",
+    "primary_host": "PortfolioSaver.Desktop",
+    "legacy_host": "PortfolioSaver.Screensaver",
+    "repository_history": "main starts at the BETA-5.4 baseline; BETA-5.5 began at commit 3eec8e7"
   },
   "latest_recorded_validation_state": {
     "automated_tests": {
-      "command": "dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --no-restore -v minimal",
-      "result": "186 / 186 passing",
+      "command": "dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-build",
+      "result": "192 / 192 passing",
       "notes": [
-        "Host validation used the standard temporary global.json sidestep because this workstation currently has .NET SDK 10.0.201 installed while the repo pins 8.0.420.",
-        "The repository global.json was restored immediately after test execution."
+        "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer.",
+        "A repo-local NuGet.Config now clears stale Visual Studio fallback package folders so restore works on this machine."
       ]
     },
-    "latest_long_run_vm_validation": {
-      "launcher_run": "build/vm/artifacts/launcher-runs/20260425-223353",
-      "result_bundle": "build/vm/artifacts/vm-results/ux-deep-20260425-183504",
-      "trace_bundle": "build/vm/artifacts/trace/ux-deep-20260425-183504-trace",
-      "summary_state": [
-        "ConfigPhaseStatus=Completed",
-        "ScreensaverPhaseStatus=Completed",
-        "ConfigVersionCheck=Passed",
-        "ScreensaverVersionCheck=Passed",
-        "PlannedScreensaverDurationMinutes=20"
+    "build": {
+      "command": "dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore",
+      "result": "passed"
+    },
+    "publish": {
+      "command": ".\\build\\publish-safe-temp.ps1 -Configuration Release -TimeoutSeconds 300",
+      "result": "passed",
+      "artifacts": [
+        "build/artifacts/publish-safe-temp/screensaver",
+        "build/artifacts/publish-safe-temp/config",
+        "build/artifacts/publish-safe-temp/desktop"
+      ],
+      "notes": [
+        "The temp-workspace publish path now copies repo NuGet.Config into the workspace.",
+        "Safe-temp publish now publishes to default project output folders first and then copies results into the final artifact layout, avoiding the net10 custom publish-dir bug seen on the legacy screensaver host."
       ]
     },
-    "latest_trace_outcome": [
-      "Startup converged cleanly in three passes (28 -> 40 -> 48 quotes).",
-      "Macro and world-index lanes were resolved by native providers first.",
-      "No provider refusals were observed in the reconstructed 20-minute trace.",
-      "No provider skipped, failed, or Yahoo 429 events were observed.",
-      "The current conservative backup-first provider ladder remains the recommended operating point.",
-      "VM multi-resolution coverage is now treated as a resolution-truth workflow: the harness records actual capture dimensions and flags framebuffer mismatches instead of trusting requested sizes."
+    "vm_tooling": {
+      "dotnet10_sdk_in_guest": "installed",
+      "proof_artifacts": [
+        "build/vm/artifacts/host-runs/dotnet10-vm-install-proof/dotnet10-install-result.json",
+        "build/vm/artifacts/host-runs/dotnet10-vm-install-proof/guest-install-log.txt"
+      ],
+      "guest_caveat": "The VM has .NET 10 SDK 10.0.203 in the user profile, but a fresh default guest shell still resolves bare dotnet to the machine-wide 8.0.420 until PATH precedence is changed or a machine-wide install is done."
+    }
+  },
+  "post_remote_recovery_replay": {
+    "baseline_remote_commit": "3eec8e7395b81e680312560ebd34d5f87babf4b5",
+    "source_of_truth": "Recovered from the surviving chat record after catastrophic local storage loss.",
+    "replayed_changes": [
+      "Retargeted the solution from net8.0-windows / SDK 8.0.420 to net10.0-windows / SDK 10.0.201.",
+      "Created PortfolioSaver.Presentation and moved the reusable scene control plus runtime presentation services out of the screensaver host.",
+      "Created PortfolioSaver.Settings and moved the shared settings UI, content, services, and view models out of the Config launcher.",
+      "Created PortfolioSaver.Desktop as the new primary app host with File/Exit, View/Full Screen, Options/Settings, and Help/About.",
+      "Implemented fullscreen toggle plus ESC-to-windowed behavior in the desktop shell.",
+      "Kept PortfolioSaver.Config as a thin launcher around the shared Settings window.",
+      "Kept PortfolioSaver.Screensaver as a legacy compatibility host wired to the extracted Presentation scene.",
+      "Updated publish, installer, and VM staging scripts to understand the new desktop artifact alongside the legacy screensaver artifact.",
+      "Updated README and BUILD_AND_DEPLOY to describe the desktop-first Beta 5.5 product model.",
+      "Added DesktopShellMigrationTests and updated path-based regression tests for the moved code."
     ]
   },
-  "release_gates": [
-    "Installer install, repair, and uninstall succeed without manual file cleanup.",
-    "Config UI saves valid settings, blocks invalid symbols when online, and warns gracefully when offline.",
-    "Runtime scheduler honors provider budgets and routes symbols only to providers that are known or profiled as eligible.",
-    "Screensaver remains visually readable across the supported VM and desktop validation layouts without overlapping core elements.",
-    "Cached quotes, headlines, symbol profiles, exchange-photo cache, and history cache behave correctly across restart, offline operation, and uninstall."
-  ],
-  "canonical_validation_environments": [
-    "Windows host + Visual Studio 2022 for build/test/publish validation",
-    "Windows Sandbox for installer smoke testing",
-    "VirtualBox Windows10Pro VM harness for deep config/screensaver UX validation"
-  ],
-  "canonical_evidence_to_collect": [
-    "Config screenshots for General and Advanced tabs",
-    "Screensaver screenshots from early, warmup, steady-state, and long-run phases",
-    "Runtime trace showing provider routing and recovery decisions",
-    "Installer/uninstall validation output",
-    "Relevant cache/uninstall verification artifacts"
-  ],
-  "current_validation_gaps": [],
+  "beta55_migration_program": {
+    "goal": "Upgrade to .NET 10 and convert the screensaver product into a desktop app with fullscreen mode while retaining a temporary legacy screensaver compatibility host.",
+    "status": "completed",
+    "current_phase": "P7",
+    "design_decisions": [
+      "Use a new desktop host project instead of mutating the screensaver executable in place.",
+      "Extract the reusable scene/runtime into PortfolioSaver.Presentation.",
+      "Extract the reusable settings experience into PortfolioSaver.Settings.",
+      "Keep the legacy screensaver host during Beta 5.5 for compatibility while documenting the desktop app as the primary product surface."
+    ],
+    "known_vm_tooling_note": "VM guest has .NET 10 SDK installed in the user profile; bare dotnet in a fresh guest shell still prefers the older machine-wide SDK unless PATH precedence is changed.",
+    "phases": [
+      {
+        "id": "P1",
+        "name": ".NET 10 upgrade",
+        "status": "completed",
+        "acceptance": [
+          "All projects target net10.0-windows.",
+          "global.json pins 10.0.201.",
+          "Host build and tests pass under .NET 10."
+        ]
+      },
+      {
+        "id": "P2",
+        "name": "Extract reusable presentation/runtime layer",
+        "status": "completed",
+        "acceptance": [
+          "ScreensaverSceneControl and runtime presentation services live in PortfolioSaver.Presentation.",
+          "Legacy screensaver host compiles against the extracted presentation assembly."
+        ]
+      },
+      {
+        "id": "P3",
+        "name": "Create desktop app host",
+        "status": "completed",
+        "acceptance": [
+          "PortfolioSaver.Desktop exists and builds.",
+          "Desktop shell hosts the shared scene and provides the required menu structure.",
+          "Fullscreen toggle plus ESC exit behavior are implemented."
+        ]
+      },
+      {
+        "id": "P4",
+        "name": "Reuse settings UI inside desktop app",
+        "status": "completed",
+        "acceptance": [
+          "PortfolioSaver.Settings contains the shared settings window, content, services, and view models.",
+          "Options -> Settings opens the shared settings window.",
+          "PortfolioSaver.Config remains a thin launcher."
+        ]
+      },
+      {
+        "id": "P5",
+        "name": "Desktop About/help surface",
+        "status": "completed",
+        "acceptance": [
+          "Help -> About is implemented in the desktop shell.",
+          "About shows app identity, version, and MIT license statement."
+        ]
+      },
+      {
+        "id": "P6",
+        "name": "Demote legacy screensaver semantics",
+        "status": "completed",
+        "acceptance": [
+          "Desktop app is documented as the primary product path.",
+          "Legacy screensaver host is preserved only for compatibility."
+        ]
+      },
+      {
+        "id": "P7",
+        "name": "Rework packaging, VM automation, and docs",
+        "status": "completed",
+        "acceptance": [
+          "Safe-temp publish outputs desktop, config, and legacy screensaver artifacts.",
+          "VM prep/validation scripts know about the desktop artifact.",
+          "README, BUILD_AND_DEPLOY, and VM runbook are desktop-first for Beta 5.5."
+        ]
+      }
+    ]
+  },
+  "remaining_validation_gaps": [],
   "current_operational_recommendations": [
-    "Keep the current backup-first provider ladder and 4-symbol batch shape.",
-    "Do not make Yahoo more aggressive again unless a future long trace shows a real stale-data regression.",
-    "Treat remaining work primarily as UX/content polish unless a fresh trace reveals a real runtime regression.",
-    "Keep secrets, scratch notes, VM credentials, and local-only files out of Git history and future pushes."
-  ],
-  "remaining_low_severity_watch_items": [],
-  "status_legend": {
-    "Implemented": "feature exists in code and is currently wired.",
-    "Partial": "feature exists but still has a meaningful gap or validation hole.",
-    "Missing": "not found in code.",
-    "Superseded": "old expectation replaced by current product direction.",
-    "PASS / TODO / BLOCKED": "current test-coverage state."
-  },
-  "feature_verification_matrix": [
-    {
-      "id": "F-001",
-      "feature": "Config screen ships placeholder key formats",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Config/Services/SettingsFileService.cs:38-45",
-        "src/PortfolioSaver.Config/Services/ApiKeyValidationService.cs:12-17,39-41"
-      ],
-      "tests": [
-        "T-001",
-        "T-002"
-      ]
-    },
-    {
-      "id": "F-002",
-      "feature": "Tiingo/FMP/EODHD API key fields in config UI",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:104-109"
-      ],
-      "tests": [
-        "T-003"
-      ]
-    },
-    {
-      "id": "F-003",
-      "feature": "Validate button changes to OK only after full validation",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:127,196-230,298-303"
-      ],
-      "tests": [
-        "T-004"
-      ]
-    },
-    {
-      "id": "F-004",
-      "feature": "Internet required for active config validation work",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:112-114,201-210,576-585",
-        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:65,481-506"
-      ],
-      "tests": [
-        "T-005"
-      ]
-    },
-    {
-      "id": "F-005",
-      "feature": "Real-time Yahoo validation for entered symbols",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:376-409",
-        "src/PortfolioSaver.Config/Services/YahooSymbolValidationService.cs:33"
-      ],
-      "tests": [
-        "T-006"
-      ]
-    },
-    {
-      "id": "F-006",
-      "feature": "Apply fails when invalid ticker symbols are present",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:269-281"
-      ],
-      "tests": [
-        "T-007"
-      ]
-    },
-    {
-      "id": "F-007",
-      "feature": "Symbol display names auto-fill after successful validation",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:283-374",
-        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:234,314"
-      ],
-      "tests": [
-        "T-008"
-      ]
-    },
-    {
-      "id": "F-008",
-      "feature": "Invalid ticker auto-uncheck",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:275,340-379",
-        "src/PortfolioSaver.Config/Content/help.txt:7"
-      ],
-      "tests": [
-        "T-009"
-      ]
-    },
-    {
-      "id": "F-009",
-      "feature": "Maximum tapes = 4",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Core/Constants/Defaults.cs:15",
-        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:157-166"
-      ],
-      "tests": [
-        "T-010"
-      ]
-    },
-    {
-      "id": "F-010",
-      "feature": "Maximum tickers per tape = 8",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Core/Constants/Defaults.cs:16",
-        "src/PortfolioSaver.Config/ViewModels/TickerGroupEditorViewModel.cs:35-37,100-107",
-        "src/PortfolioSaver.Core/Services/AppSettingsNormalizer.cs:121"
-      ],
-      "tests": [
-        "T-011"
-      ]
-    },
-    {
-      "id": "F-011",
-      "feature": "Old note \"16 per tape\"",
-      "status": "superseded",
-      "evidence": [
-        "superseded by F-010"
-      ],
-      "tests": [
-        "T-011"
-      ]
-    },
-    {
-      "id": "F-012",
-      "feature": "Help badges on config screen",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:35-45,81-84,153-154,186-187,228-229,418-419"
-      ],
-      "tests": [
-        "T-012"
-      ]
-    },
-    {
-      "id": "F-013",
-      "feature": "Bundled help/about content remains packaged with license metadata",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Config/Content/help.txt",
-        "src/PortfolioSaver.Config/Content/about.txt"
-      ],
-      "tests": [
-        "T-013"
-      ]
-    },
-    {
-      "id": "F-014",
-      "feature": "RSS/XML feed validation with fallback to Yahoo default",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Config/Services/NewsFeedValidationService.cs:20-22,55-57,67-68",
-        "src/PortfolioSaver.Config/ViewModels/MainWindowViewModel.cs:239-255"
-      ],
-      "tests": [
-        "T-014"
-      ]
-    },
-    {
-      "id": "F-015",
-      "feature": "Advanced data-source policy table",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:427-474",
-        "src/PortfolioSaver.Config/ViewModels/DataSourcePolicyEditorViewModel.cs:29-64",
-        "src/PortfolioSaver.Core/Constants/DataSourceCatalog.cs:16-47"
-      ],
-      "tests": [
-        "T-015"
-      ]
-    },
-    {
-      "id": "F-016",
-      "feature": "Advanced tab responsive data-source grid uses stretch columns and bounded minimums",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:429-500"
-      ],
-      "tests": [
-        "T-016"
-      ]
-    },
-    {
-      "id": "F-017",
-      "feature": "General tab stays usable across supported config window sizes",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:136-421"
-      ],
-      "tests": [
-        "T-017"
-      ]
-    },
-    {
-      "id": "F-018",
-      "feature": "No separate benchmark/index toggle in current config",
-      "status": "implemented-as-removed",
-      "evidence": [
-        "src/PortfolioSaver.Config/Windows/MainWindow.xaml:228"
-      ],
-      "tests": [
-        "T-018"
-      ]
-    },
-    {
-      "id": "F-019",
-      "feature": "Startup Yahoo warm-fill with batching and inter-batch delay",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:182-227"
-      ],
-      "tests": [
-        "T-019"
-      ]
-    },
-    {
-      "id": "F-020",
-      "feature": "Yahoo primary + backup provider rotation + fallback handling",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:745-785,320-473"
-      ],
-      "tests": [
-        "T-020"
-      ]
-    },
-    {
-      "id": "F-021",
-      "feature": "Per-source minimum reuse 15 seconds",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:24,397-401",
-        "src/PortfolioSaver.Screensaver/Services/ProviderBudgetLedgerService.cs:39-43"
-      ],
-      "tests": [
-        "T-021"
-      ]
-    },
-    {
-      "id": "F-022",
-      "feature": "Provider hourly/daily budgets enforced",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Screensaver/Services/ProviderBudgetLedgerService.cs:45-50",
-        "src/PortfolioSaver.Core/Validation/SettingsValidator.cs:71-85"
-      ],
-      "tests": [
-        "T-022"
-      ]
-    },
-    {
-      "id": "F-023",
-      "feature": "Source-specific symbol eligibility filtering",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Core/Services/DataSourceSymbolEligibility.cs",
-        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:884-895"
-      ],
-      "tests": [
-        "T-023"
-      ]
-    },
-    {
-      "id": "F-024",
-      "feature": "Yahoo session cookie + crumb handling",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Data/Services/YahooFinanceSessionService.cs:58-88,111-117"
-      ],
-      "tests": [
-        "T-024"
-      ]
-    },
-    {
-      "id": "F-025",
-      "feature": "Yahoo live quotes via v8/spark + v8/chart fallback",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Data/Providers/YahooFinanceQuoteProvider.cs:89-126,128-196"
-      ],
-      "tests": [
-        "T-025"
-      ]
-    },
-    {
-      "id": "F-026",
-      "feature": "Historical quotes via Yahoo batch + chart fallback",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Data/Providers/HybridHistoricalDataProvider.cs:212-261,344-400"
-      ],
-      "tests": [
-        "T-026"
-      ]
-    },
-    {
-      "id": "F-027",
-      "feature": "Tapes alternate left/right",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Core/Constants/Defaults.cs:174",
-        "src/PortfolioSaver.Core/Services/AppSettingsNormalizer.cs:97-108"
-      ],
-      "tests": [
-        "T-027"
-      ]
-    },
-    {
-      "id": "F-028",
-      "feature": "Tape content wraps/repeats to prevent empty gaps",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:934-950",
-        "src/PortfolioSaver.Render/Controls/TickerTapeControl.xaml.cs:204-227"
-      ],
-      "tests": [
-        "T-028"
-      ]
-    },
-    {
-      "id": "F-029",
-      "feature": "News headlines repeat to prevent blank space",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:952-978",
-        "src/PortfolioSaver.Render/Controls/NewsFlasherControl.xaml.cs:175-197"
-      ],
-      "tests": [
-        "T-029"
-      ]
-    },
-    {
-      "id": "F-030",
-      "feature": "Symbols remain yellow when stale/unavailable",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:668"
-      ],
-      "tests": [
-        "T-030"
-      ]
-    },
-    {
-      "id": "F-031",
-      "feature": "Tape values flash once when updated",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:1592-1608",
-        "src/PortfolioSaver.Render/Controls/TickerTapeControl.xaml.cs:296-320",
-        "src/PortfolioSaver.Render/ViewModels/TapeItemViewModel.cs:65-69"
-      ],
-      "tests": [
-        "T-031"
-      ]
-    },
-    {
-      "id": "F-032",
-      "feature": "Graph card background flashes twice on update",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:1654-1655",
-        "src/PortfolioSaver.Render/Controls/FloatingGraphControl.xaml.cs:52-58"
-      ],
-      "tests": [
-        "T-032"
-      ]
-    },
-    {
-      "id": "F-033",
-      "feature": "Waiting-for-network bouncing overlay",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml:62-87",
-        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:645-657,680-681,1463-1487"
-      ],
-      "tests": [
-        "T-033"
-      ]
-    },
-    {
-      "id": "F-034",
-      "feature": "Global Markets / world-clock lane with weather/time/index context",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Render/Services/FloatingClockBuilder.cs:8-21",
-        "src/PortfolioSaver.Render/Controls/FloatingClockControl.xaml:34-118",
-        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:810-921,1007-1019"
-      ],
-      "tests": [
-        "T-034"
-      ]
-    },
-    {
-      "id": "F-035",
-      "feature": "New York status text with countdown",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Core/Services/NewYorkMarketStatusService.cs:30-55"
-      ],
-      "tests": [
-        "T-035"
-      ]
-    },
-    {
-      "id": "F-036",
-      "feature": "Holiday-aware trading calendar with live sync/cache/offline fallback",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Core/Services/NyseTradingCalendarSnapshot.cs",
-        "src/PortfolioSaver.Screensaver/Services/ExchangeMarketCalendarService.cs:62-97,185-397"
-      ],
-      "tests": [
-        "T-036",
-        "T-037"
-      ]
-    },
-    {
-      "id": "F-037",
-      "feature": "International exchange market status in Global Markets cards",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:967-987"
-      ],
-      "tests": [
-        "T-036"
-      ]
-    },
-    {
-      "id": "F-038",
-      "feature": "Exchange photos from internet + local cache + starter bundles + custom folder override",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Media/Services/ExchangePhotoCacheService.cs:13-153"
-      ],
-      "tests": [
-        "T-038"
-      ]
-    },
-    {
-      "id": "F-039",
-      "feature": "Uninstall removes AppData caches",
-      "status": "implemented",
-      "evidence": [
-        "build/installer/Uninstall-PortfolioSaverScreensaver.ps1:47-52,96-133"
-      ],
-      "tests": [
-        "T-039"
-      ]
-    },
-    {
-      "id": "F-040",
-      "feature": "Installer elevates before install",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Installer/Program.cs:20-24,46-60",
-        "src/PortfolioSaver.Installer/app.manifest:7"
-      ],
-      "tests": [
-        "T-039"
-      ]
-    },
-    {
-      "id": "F-041",
-      "feature": "No-network detection path",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Shared/Services/InternetProbeService.cs:18-77",
-        "src/PortfolioSaver.Config/Services/ConfigConnectivityService.cs:5-11",
-        "src/PortfolioSaver.Screensaver/Services/NetworkAvailabilityService.cs:5-11"
-      ],
-      "tests": [
-        "T-040"
-      ]
-    },
-    {
-      "id": "F-042",
-      "feature": "15-minute stale rule clears values and hides stale graph cards",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Screensaver/Services/StartupCoordinator.cs:663-699",
-        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:1735-1742"
-      ],
-      "tests": [
-        "T-041"
-      ]
-    },
-    {
-      "id": "F-043",
-      "feature": "Round macro meters",
-      "status": "implemented",
-      "evidence": [
-        "src/PortfolioSaver.Render/ViewModels/MacroMeterViewModel.cs",
-        "src/PortfolioSaver.Render/Controls/StatusBarControl.xaml:47",
-        "src/PortfolioSaver.Screensaver/Controls/ScreensaverSceneControl.xaml.cs:736-793"
-      ],
-      "tests": [
-        "T-042"
-      ]
-    },
-    {
-      "id": "F-044",
-      "feature": "VM resolution validation records actual capture dimensions when the guest framebuffer ignores requested sizes",
-      "status": "implemented",
-      "evidence": [
-        "build/vm/Run-VmUxValidation.ps1:247-356",
-        "build/vm/VM_OPERATIONS_RUNBOOK.md:210-298"
-      ],
-      "tests": [
-        "T-043"
-      ]
-    },
-    {
-      "id": "F-045",
-      "feature": "Version text reflects old BETA-3 naming",
-      "status": "superseded",
-      "evidence": [
-        "current lane is BETA-5.5; see src/PortfolioSaver.Shared/PortfolioVersion.cs, src/PortfolioSaver.Config/Windows/MainWindow.xaml, src/PortfolioSaver.Config/Content/about.txt"
-      ],
-      "tests": [
-        "T-044"
-      ]
-    }
-  ],
-  "automated_regression_coverage": [
-    {
-      "id": "T-001",
-      "scope": "Unit (AppSettingsNormalizerTests)",
-      "covers": [
-        "F-010",
-        "F-027"
-      ],
-      "status": "pass",
-      "notes": "tape count and tape-direction normalization"
-    },
-    {
-      "id": "T-002",
-      "scope": "Unit (SettingsValidatorTests)",
-      "covers": [
-        "F-001",
-        "F-015",
-        "F-022"
-      ],
-      "status": "pass",
-      "notes": "placeholder and policy validation"
-    },
-    {
-      "id": "T-003",
-      "scope": "Unit (DataSourceSymbolEligibilityTests)",
-      "covers": [
-        "F-002",
-        "F-023"
-      ],
-      "status": "pass",
-      "notes": "source eligibility routing"
-    },
-    {
-      "id": "T-004",
-      "scope": "Unit (NewYorkMarketStatusServiceTests)",
-      "covers": [
-        "F-003",
-        "F-035",
-        "F-036"
-      ],
-      "status": "pass",
-      "notes": "New York market-state text and countdowns"
-    },
-    {
-      "id": "T-005",
-      "scope": "Unit (SymbolProfileHeuristicsTests)",
-      "covers": [
-        "F-004",
-        "F-023"
-      ],
-      "status": "pass",
-      "notes": "profile-based symbol routing"
-    },
-    {
-      "id": "T-006",
-      "scope": "Unit (FinnhubQuoteProviderTests)",
-      "covers": [
-        "F-005"
-      ],
-      "status": "pass",
-      "notes": "config-time provider-facing symbol behavior subset"
-    },
-    {
-      "id": "T-007",
-      "scope": "Unit (MainWindowViewModelValidationTests)",
-      "covers": [
-        "F-006"
-      ],
-      "status": "pass",
-      "notes": "invalid symbols block Apply"
-    },
-    {
-      "id": "T-008",
-      "scope": "Unit (MainWindowViewModelValidationTests)",
-      "covers": [
-        "F-007"
-      ],
-      "status": "pass",
-      "notes": "name autofill on validation"
-    },
-    {
-      "id": "T-009",
-      "scope": "Unit (MainWindowViewModelValidationTests)",
-      "covers": [
-        "F-008"
-      ],
-      "status": "pass",
-      "notes": "invalid symbol auto-disable"
-    },
-    {
-      "id": "T-010",
-      "scope": "Unit (MainWindowViewModelValidationTests)",
-      "covers": [
-        "F-009"
-      ],
-      "status": "pass",
-      "notes": "tape-count clamp logic"
-    },
-    {
-      "id": "T-011",
-      "scope": "Unit (TickerGroupEditorViewModelTests)",
-      "covers": [
-        "F-010"
-      ],
-      "status": "pass",
-      "notes": "max 8 symbols per tape"
-    },
-    {
-      "id": "T-012",
-      "scope": "static UI coverage",
-      "covers": [
-        "F-012"
-      ],
-      "status": "pass",
-      "notes": "verify all visible config help badges remain present with non-empty tooltip copy"
-    },
-    {
-      "id": "T-013",
-      "scope": "packaged content coverage",
-      "covers": [
-        "F-013"
-      ],
-      "status": "pass",
-      "notes": "verify bundled help/about content remains non-empty and license-aligned"
-    },
-    {
-      "id": "T-014",
-      "scope": "Unit (NewsFeedValidationServiceTests)",
-      "covers": [
-        "F-014"
-      ],
-      "status": "pass",
-      "notes": "invalid feed fallback and no-network behavior"
-    },
-    {
-      "id": "T-015",
-      "scope": "Unit (DataSourcePolicyValidationTests)",
-      "covers": [
-        "F-015"
-      ],
-      "status": "pass",
-      "notes": "policy clamping and rejection of invalid values"
-    },
-    {
-      "id": "T-016",
-      "scope": "static layout coverage",
-      "covers": [
-        "F-016"
-      ],
-      "status": "pass",
-      "notes": "verify Advanced tab keeps stretch columns, scroll fallback, and bounded minimum widths"
-    },
-    {
-      "id": "T-017",
-      "scope": "static layout coverage",
-      "covers": [
-        "F-017"
-      ],
-      "status": "pass",
-      "notes": "verify General tab keeps shared columns, scroll fallback, and bounded editor widths"
-    },
-    {
-      "id": "T-018",
-      "scope": "Unit/UI text (ConfigTextConsistencyTests)",
-      "covers": [
-        "F-018"
-      ],
-      "status": "pass",
-      "notes": "no old benchmark/index toggle text"
-    },
-    {
-      "id": "T-019",
-      "scope": "Integration (StartupCoordinatorAdvancedTests)",
-      "covers": [
-        "F-019"
-      ],
-      "status": "pass",
-      "notes": "warm startup batching and inter-batch pacing"
-    },
-    {
-      "id": "T-020",
-      "scope": "Integration (StartupCoordinatorAdvancedTests)",
-      "covers": [
-        "F-020"
-      ],
-      "status": "pass",
-      "notes": "provider order and fallback behavior"
-    },
-    {
-      "id": "T-021",
-      "scope": "Unit (ProviderBudgetLedgerServiceTests)",
-      "covers": [
-        "F-021"
-      ],
-      "status": "pass",
-      "notes": "minimum reuse interval"
-    },
-    {
-      "id": "T-022",
-      "scope": "Unit (ProviderBudgetLedgerServiceTests)",
-      "covers": [
-        "F-022"
-      ],
-      "status": "pass",
-      "notes": "budgets and cooldown enforcement"
-    },
-    {
-      "id": "T-023",
-      "scope": "Unit (DataSourceSymbolEligibilityTests)",
-      "covers": [
-        "F-023"
-      ],
-      "status": "pass",
-      "notes": "mixed-symbol eligibility restrictions"
-    },
-    {
-      "id": "T-024",
-      "scope": "Integration (YahooFinanceSessionServiceTests)",
-      "covers": [
-        "F-024"
-      ],
-      "status": "pass",
-      "notes": "cookie + crumb refresh/retry"
-    },
-    {
-      "id": "T-025",
-      "scope": "Integration (YahooFinanceQuoteProviderTests)",
-      "covers": [
-        "F-025"
-      ],
-      "status": "pass",
-      "notes": "Spark + chart fallback path"
-    },
-    {
-      "id": "T-026",
-      "scope": "Integration (HybridHistoricalDataProviderTests)",
-      "covers": [
-        "F-026"
-      ],
-      "status": "pass",
-      "notes": "history batch + chart fallback"
-    },
-    {
-      "id": "T-027",
-      "scope": "Integration (StartupCoordinatorAdvancedTests)",
-      "covers": [
-        "F-027",
-        "F-028"
-      ],
-      "status": "pass",
-      "notes": "default tape directions and repeat fill"
-    },
-    {
-      "id": "T-028",
-      "scope": "Integration (StartupCoordinatorAdvancedTests)",
-      "covers": [
-        "F-028"
-      ],
-      "status": "pass",
-      "notes": "tape content signature stability"
-    },
-    {
-      "id": "T-029",
-      "scope": "Integration (StartupCoordinatorNewsTests)",
-      "covers": [
-        "F-029"
-      ],
-      "status": "pass",
-      "notes": "repeated headline fill and non-empty fallback"
-    },
-    {
-      "id": "T-030",
-      "scope": "Unit (StartupCoordinatorTapeItemTests)",
-      "covers": [
-        "F-030"
-      ],
-      "status": "pass",
-      "notes": "gold stale symbols and blank value fields"
-    },
-    {
-      "id": "T-031",
-      "scope": "Render integration (ScreensaverRenderBehaviorTests)",
-      "covers": [
-        "F-031"
-      ],
-      "status": "pass",
-      "notes": "single tape flash on live updates"
-    },
-    {
-      "id": "T-032",
-      "scope": "Render integration (ScreensaverRenderBehaviorTests)",
-      "covers": [
-        "F-032"
-      ],
-      "status": "pass",
-      "notes": "two-pulse graph flash animation"
-    },
-    {
-      "id": "T-033",
-      "scope": "Render integration (ScreensaverRenderBehaviorTests)",
-      "covers": [
-        "F-033"
-      ],
-      "status": "pass",
-      "notes": "waiting overlay template and motion"
-    },
-    {
-      "id": "T-034",
-      "scope": "Unit (FloatingClockBuilderTests)",
-      "covers": [
-        "F-034"
-      ],
-      "status": "pass",
-      "notes": "local summary + exchange card symbol mapping"
-    },
-    {
-      "id": "T-035",
-      "scope": "Unit (NewYorkMarketStatusServiceTests)",
-      "covers": [
-        "F-035"
-      ],
-      "status": "pass",
-      "notes": "explicit (New York) coverage"
-    },
-    {
-      "id": "T-036",
-      "scope": "Integration (ExchangeMarketCalendarIntegrationTests)",
-      "covers": [
-        "F-036",
-        "F-037"
-      ],
-      "status": "pass",
-      "notes": "live/offline exchange calendar merge"
-    },
-    {
-      "id": "T-037",
-      "scope": "Unit (ExchangeMarketCalendarServiceTests)",
-      "covers": [
-        "F-036"
-      ],
-      "status": "pass",
-      "notes": "ambiguous holiday payload handling"
-    },
-    {
-      "id": "T-038",
-      "scope": "Integration (ExchangePhotoCacheServiceTests)",
-      "covers": [
-        "F-038"
-      ],
-      "status": "pass",
-      "notes": "custom-folder override and managed photo cache"
-    },
-    {
-      "id": "T-039",
-      "scope": "Installer integration (sandbox/VM)",
-      "covers": [
-        "F-039",
-        "F-040"
-      ],
-      "status": "pass",
-      "notes": "install/uninstall probe artifact validation"
-    },
-    {
-      "id": "T-040",
-      "scope": "Unit (InternetProbeServiceTests)",
-      "covers": [
-        "F-041"
-      ],
-      "status": "pass",
-      "notes": "probe defaults and invalidation"
-    },
-    {
-      "id": "T-041",
-      "scope": "Integration/UI (StartupCoordinatorTapeItemTests, ScreensaverRenderBehaviorTests)",
-      "covers": [
-        "F-042"
-      ],
-      "status": "pass",
-      "notes": "stale quote hiding and value clearing"
-    },
-    {
-      "id": "T-042",
-      "scope": "Render integration (ScreensaverRenderBehaviorTests)",
-      "covers": [
-        "F-043"
-      ],
-      "status": "pass",
-      "notes": "arc-path macro meter rendering"
-    },
-    {
-      "id": "T-043",
-      "scope": "VM harness coverage",
-      "covers": [
-        "F-044"
-      ],
-      "status": "pass",
-      "notes": "verify the VM harness records actual capture dimensions and flags framebuffer mismatches instead of trusting requested resolutions"
-    },
-    {
-      "id": "T-044",
-      "scope": "Unit/UI text (ConfigTextConsistencyTests)",
-      "covers": [
-        "F-045"
-      ],
-      "status": "pass",
-      "notes": "current version markers are consistent"
-    }
-  ],
-  "canonical_test_and_debug_loop": {
-    "command_sequence": [
-      ".\\build\\build-safe-temp.ps1 -Configuration Release -TimeoutSeconds 300",
-      ".\\build\\publish-safe-temp.ps1 -Configuration Release -TimeoutSeconds 300",
-      "dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-build"
-    ],
-    "timeout_discipline": [
-      "Cap all host-shell build/publish commands at 300s.",
-      "Investigate any single build/publish step that exceeds 180s.",
-      "Launch long VM work asynchronously and poll it with bounded checks.",
-      "If a command exceeds its cap, terminate it and continue from logs/artifacts."
-    ],
-    "focused_rerun_pattern": "dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --no-build --filter \"FullyQualifiedName~<TestClassOrMethod>\""
-  },
-  "canonical_vm_validation_workflow": {
-    "steps": [
-      "Build/publish with the *-safe-temp.ps1 scripts.",
-      "Stage the fresh payload to the VM share-first workflow.",
-      "Run the deep UX harness from the real logged-in desktop session.",
-      "Confirm summary fields before trusting screenshots: ConfigPhaseStatus=Completed, ScreensaverPhaseStatus=Completed, ConfigVersionCheck=Passed, ScreensaverVersionCheck=Passed.",
-      "For long-run visual/runtime signoff, use a real 20 minute screensaver duration, not the shorter debug sweep."
-    ],
-    "runbook_ref": "build/vm/VM_OPERATIONS_RUNBOOK.md"
-  },
-  "milestone_summary": {
-    "BETA-5.3.2 final baseline": [
-      "UTC-pinned top-right clock",
-      "in-slot tape waiting glyphs during warmup",
-      "improved Global Markets tape seam behavior",
-      "expanded bundled exchange/city backgrounds"
-    ],
-    "Data-lane stabilization": [
-      "Added trace file + UDP trace forwarding support",
-      "Eliminated the earlier macro/world-index dropout problem",
-      "Reduced avoidable Yahoo `429` pressure through backup-first scheduling",
-      "Reached clean 20-minute runs with no observed provider refusals in the latest recorded traces"
-    ],
-    "Global Markets and status-band stabilization": [
-      "Reworked Global Markets into a dedicated moving tape above Finance News",
-      "Added bundled real flag assets instead of simulated flags",
-      "Added Global Markets open/closed status pills",
-      "Simplified the visible top-left status band and pinned the top-right status clock to UTC"
-    ],
-    "VM harness stabilization": [
-      "Moved deep UX results to direct host-share export",
-      "Closed config and screensaver version-probe gaps",
-      "Established a repeatable full 20-minute VM validation path with exported screenshots and traces"
-    ],
-    "Repository and documentation hygiene": [
-      "Repository history was rewritten to a clean `BETA-5.4` root",
-      "MIT LICENSE is bundled at repo root",
-      "Documentation was reduced to a small canonical set, with this file acting as the single audit + QA + release-gate document"
-    ]
-  },
-  "canonical_evidence_locations": {
-    "Audit / release-gate document": "docs/BETA55_AUDIT_STATE.json",
-    "VM runbook": "build/vm/VM_OPERATIONS_RUNBOOK.md",
-    "Publish artifacts": "build/artifacts/publish-safe-temp",
-    "VM result bundles": "build/vm/artifacts/vm-results/",
-    "VM trace bundles": "build/vm/artifacts/trace/",
-    "Installer sandbox/VM probe artifacts": "build/vm/artifacts/vm-results/t039-probe/"
-  },
-  "maintenance_rule": {
-    "summary": "Keep this document current and readable.",
-    "update_rules": [
-      "Update the current snapshot or milestone summary rather than appending another free-form session log.",
-      "Add new tests to the regression table, not to a separate markdown plan.",
-      "Keep evidence paths concise and current.",
-      "Archive obsolete historical detail by deleting or summarizing it rather than preserving numbering drift."
-    ]
-  },
-  "closed_wont_fix_items": [
-    "Background catalog expansion remains optional content work and is not required for the BETA-5.5 release gate.",
-    "Default tape-symbol curation beyond the current working defaults is accepted as future product polish rather than a release blocker.",
-    "A subtle UTC or NTP fallback hint is intentionally omitted to keep the status band quiet unless operator clarity becomes a future requirement.",
-    "Minor visual polish beyond the validated readability baseline is intentionally deferred to avoid destabilizing the current runtime."
+    "Treat PortfolioSaver.Desktop as the primary runtime target for Beta 5.5 work.",
+    "Retain the legacy screensaver host only while compatibility still matters.",
+    "Use the safe-temp build/publish scripts for repeatable validation rather than ad-hoc repo-path publish commands.",
+    "Keep VM validation scripts aligned to the desktop-first artifact layout before starting broader Beta 5.5 UX work."
   ]
 }
-

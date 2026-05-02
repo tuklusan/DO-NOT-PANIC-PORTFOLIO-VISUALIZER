@@ -10,7 +10,7 @@ This repository is meant to be built primarily in **Visual Studio 2022** on **Wi
 
 - Visual Studio 2022 current supported release
 - Desktop development with .NET workload
-- .NET 8 SDK
+- .NET 10 SDK
 - `x64` solution platform selected
 
 ## First session checklist
@@ -20,20 +20,23 @@ This repository is meant to be built primarily in **Visual Studio 2022** on **Wi
 3. Set solution platform to `x64`.
 4. Run `Clean Solution`.
 5. Run `Rebuild Solution`.
-6. Start `PortfolioSaver.Config`.
-7. Start `PortfolioSaver.Screensaver` with `/s`.
-8. If validating screensaver routing, also test `/c` and `/p 12345`.
+6. Start `PortfolioSaver.Desktop`.
+7. Start `PortfolioSaver.Config`.
+8. If validating legacy screensaver compatibility, also test `/s`, `/c`, and `/p 12345`.
 
 ## Suggested startup configuration
 
 For implementation work:
+- startup project: `PortfolioSaver.Desktop`
+
+For settings work:
 - startup project: `PortfolioSaver.Config`
 
-For screensaver behavior:
+For legacy screensaver behavior:
 - startup project: `PortfolioSaver.Screensaver`
 - command line args: `/s`
 
-For parser/config routing checks:
+For legacy parser/config routing checks:
 - command line args: `/c`
 - command line args: `/p 12345`
 
@@ -42,7 +45,8 @@ For parser/config routing checks:
 ### Basic compile
 - Core, Shared, Data, Media, Render compile.
 - Config app starts.
-- Screensaver app starts.
+- Desktop app starts.
+- Legacy screensaver host starts.
 
 ### Config app
 - Settings window opens.
@@ -50,9 +54,10 @@ For parser/config routing checks:
 - Ticker groups survive save/reload.
 - Validate flow works online and blocks bad symbols.
 
-### Screensaver full screen
-- `/s` opens full screen.
-- Mouse/keyboard exit works.
+### Desktop full screen
+- desktop app opens windowed.
+- `View -> Full Screen` enters fullscreen.
+- `Esc` returns to windowed mode.
 - Top market/status band renders.
 - Ticker tapes render.
 - Global Markets tape renders.
@@ -83,20 +88,21 @@ Preferred path:
    - `build\build-safe-temp.ps1`
    - `build\publish-safe-temp.ps1`
    - `build\publish-standalone-installer.ps1`
-3. Publish `PortfolioSaver.Screensaver` for `win-x64`.
+3. Publish `PortfolioSaver.Desktop` for `win-x64`.
 4. Publish `PortfolioSaver.Config` as a normal `.exe`.
-5. Test both locally before deployment.
+5. Publish `PortfolioSaver.Screensaver` only if legacy compatibility is still needed.
+6. Test desktop + config locally before deployment.
 
 ## Deploy
 
 ### Safer developer path
-- Keep the `.scr` and config app in a normal folder first.
-- Launch the `.scr` manually with `/s` for testing.
+- Keep the desktop app and config app in a normal folder first.
+- Launch `PortfolioSaver.Desktop.exe` directly for primary testing.
 
 ### Final Windows integration
-- Copy the `.scr` to the desired Windows screensaver location only after testing.
-- Select it in Windows Screen Saver Settings.
-- Verify config routing from Screen Saver Settings launches the config app path correctly.
+- Treat the desktop app as the primary shipped experience.
+- Only copy the `.scr` to the Windows screensaver location if legacy support is explicitly required.
+- If legacy support is installed, verify Screen Saver Settings still lists `PortfolioSaver.Screensaver`.
 
 ## Installer sandbox smoke test
 

@@ -7,9 +7,12 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\PortfolioSaver.Core\PortfolioSaver.Core.csproj" />
+    <ProjectReference Include="..\PortfolioSaver.Data\PortfolioSaver.Data.csproj" />
     <ProjectReference Include="..\PortfolioSaver.Shared\PortfolioSaver.Shared.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Assets\Flags\*.png" />
+    <Content Include="Content\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 </Project>

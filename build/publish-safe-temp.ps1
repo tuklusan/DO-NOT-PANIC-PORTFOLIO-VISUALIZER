@@ -13,7 +13,7 @@ function Write-Step {
 }
 
 function Resolve-DotNetCli {
-    $preferred = Join-Path $env:USERPROFILE ".dotnet8\dotnet.exe"
+    $preferred = Join-Path $env:USERPROFILE ".dotnet10\dotnet.exe"
     if (Test-Path $preferred) {
         return $preferred
     }
@@ -56,6 +56,7 @@ $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 $publishRoot = Join-Path $repoRoot "build\artifacts\publish-safe-temp"
 $screensaverOut = Join-Path $publishRoot "screensaver"
 $configOut = Join-Path $publishRoot "config"
+$desktopOut = Join-Path $publishRoot "desktop"
 $dotnetCli = Resolve-DotNetCli
 
 Write-Step "Preparing temp publish workspace: $tempRoot"
@@ -66,6 +67,9 @@ New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
 
 Copy-Item -LiteralPath (Join-Path $repoRoot "PortfolioScreensaver.sln") -Destination $tempRoot -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "Directory.Build.props") -Destination $tempRoot -Force
+if (Test-Path (Join-Path $repoRoot "NuGet.Config")) {
+    Copy-Item -LiteralPath (Join-Path $repoRoot "NuGet.Config") -Destination $tempRoot -Force
+}
 
 $srcTarget = Join-Path $tempRoot "src"
 $null = robocopy (Join-Path $repoRoot "src") $srcTarget /E /XD bin obj
@@ -102,10 +106,14 @@ foreach ($assetFile in $assetFiles) {
 if (Test-Path $publishRoot) {
     Remove-Item -LiteralPath $publishRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
-New-Item -ItemType Directory -Force -Path $screensaverOut,$configOut | Out-Null
+New-Item -ItemType Directory -Force -Path $screensaverOut,$configOut,$desktopOut | Out-Null
 
 $screensaverProject = ".\src\PortfolioSaver.Screensaver\PortfolioSaver.Screensaver.csproj"
 $configProject = ".\src\PortfolioSaver.Config\PortfolioSaver.Config.csproj"
+$desktopProject = ".\src\PortfolioSaver.Desktop\PortfolioSaver.Desktop.csproj"
+$screensaverTempPublish = ".\src\PortfolioSaver.Screensaver\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
+$configTempPublish = ".\src\PortfolioSaver.Config\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
+$desktopTempPublish = ".\src\PortfolioSaver.Desktop\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
 
 Push-Location $tempRoot
 try {
@@ -119,15 +127,41 @@ try {
     & $dotnetCli restore $configProject -r $RuntimeIdentifier --disable-parallel --ignore-failed-sources -m:1 -v minimal
     if ($LASTEXITCODE -ne 0) { throw "Restore failed for config" }
 
+    Test-Deadline -Deadline $deadline -NextStep "restore desktop"
+    Write-Step "Restoring desktop project"
+    & $dotnetCli restore $desktopProject -r $RuntimeIdentifier --disable-parallel --ignore-failed-sources -m:1 -v minimal
+    if ($LASTEXITCODE -ne 0) { throw "Restore failed for desktop" }
+
     Test-Deadline -Deadline $deadline -NextStep "publish screensaver"
     Write-Step "Publishing screensaver"
-    & $dotnetCli publish $screensaverProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore --disable-parallel -m:1 -o $screensaverOut -v minimal
+    & $dotnetCli publish $screensaverProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore --disable-parallel -m:1 -v minimal
     if ($LASTEXITCODE -ne 0) { throw "Publish failed for screensaver" }
 
     Test-Deadline -Deadline $deadline -NextStep "publish config"
     Write-Step "Publishing config app"
-    & $dotnetCli publish $configProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore --disable-parallel -m:1 -o $configOut -v minimal
+    & $dotnetCli publish $configProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore --disable-parallel -m:1 -v minimal
     if ($LASTEXITCODE -ne 0) { throw "Publish failed for config" }
+
+    Test-Deadline -Deadline $deadline -NextStep "publish desktop"
+    Write-Step "Publishing desktop app"
+    & $dotnetCli publish $desktopProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore --disable-parallel -m:1 -v minimal
+    if ($LASTEXITCODE -ne 0) { throw "Publish failed for desktop" }
+
+    foreach ($pair in @(
+        @{ From = $screensaverTempPublish; To = $screensaverOut },
+        @{ From = $configTempPublish; To = $configOut },
+        @{ From = $desktopTempPublish; To = $desktopOut }
+    )) {
+        if (-not (Test-Path $pair.From)) {
+            throw "Expected publish output not found: $($pair.From)"
+        }
+
+        $null = robocopy $pair.From $pair.To /E
+        $copyExit = $LASTEXITCODE
+        if ($copyExit -gt 7) {
+            throw "Publish output copy failed: $($pair.From) -> $($pair.To) (robocopy exit=$copyExit)"
+        }
+    }
 }
 finally {
     Pop-Location
@@ -136,12 +170,16 @@ finally {
 Test-Deadline -Deadline $deadline -NextStep "manifest generation"
 Write-Step "Generating release manifests"
 & $manifestScript -PublishDir $screensaverOut
-if ($LASTEXITCODE -ne 0) {
+if (-not (Test-Path (Join-Path $screensaverOut "release-manifest.json"))) {
     throw "Manifest generation failed for $screensaverOut"
 }
 & $manifestScript -PublishDir $configOut
-if ($LASTEXITCODE -ne 0) {
+if (-not (Test-Path (Join-Path $configOut "release-manifest.json"))) {
     throw "Manifest generation failed for $configOut"
+}
+& $manifestScript -PublishDir $desktopOut
+if (-not (Test-Path (Join-Path $desktopOut "release-manifest.json"))) {
+    throw "Manifest generation failed for $desktopOut"
 }
 
 Write-Step "SAFE_TEMP_PUBLISH_OK output=$publishRoot"

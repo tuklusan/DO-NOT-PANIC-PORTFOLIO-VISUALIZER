@@ -113,7 +113,7 @@ internal static class Program
 
             MessageBox.Show(
                 $"{AppIdentity.ApplicationName} installed successfully." + Environment.NewLine +
-                "Open Screen Saver Settings and choose PortfolioSaver.Screensaver.",
+                "Launch PortfolioSaver.Desktop.exe for the primary desktop experience. The legacy screensaver remains available for compatibility.",
                 InstallerTitle,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
@@ -145,7 +145,7 @@ internal static class Program
     private static string BuildFailureMessage(string standardOutput, string standardError)
     {
         StringBuilder builder = new();
-        builder.AppendLine("The screensaver installer did not complete.");
+        builder.AppendLine("The application installer did not complete.");
 
         string combined = string.Join(
             Environment.NewLine,

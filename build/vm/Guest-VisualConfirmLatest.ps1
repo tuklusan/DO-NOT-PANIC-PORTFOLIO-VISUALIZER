@@ -13,7 +13,7 @@ Add-Type -AssemblyName UIAutomationTypes
 
 $root = Join-Path $env:USERPROFILE 'Desktop\PortfolioVmUx'
 $configExe = Join-Path $root 'publish\config\PortfolioSaver.Config.exe'
-$saverExe = Join-Path $root 'publish\screensaver\PortfolioSaver.Screensaver.exe'
+$desktopExe = Join-Path $root 'publish\desktop\PortfolioSaver.Desktop.exe'
 $results = Join-Path $root ('results\visual-confirm-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory -Force -Path $results | Out-Null
 
@@ -84,7 +84,7 @@ function Find-TextByProcessId {
 }
 
 if (-not (Test-Path $configExe)) { throw "Missing config executable: $configExe" }
-if (-not (Test-Path $saverExe)) { throw "Missing screensaver executable: $saverExe" }
+if (-not (Test-Path $desktopExe)) { throw "Missing desktop executable: $desktopExe" }
 
 $summary = [ordered]@{
     StartedAt = (Get-Date).ToString('o')
@@ -104,8 +104,7 @@ $logPath = Join-Path $results 'visual-confirm-run.log'
 Start-Transcript -Path $logPath -Force | Out-Null
 
 try {
-    Get-Process PortfolioSaver.Config -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    Get-Process PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
     $config = Start-Process -FilePath $configExe -PassThru
     Start-Sleep -Milliseconds 250
@@ -135,29 +134,25 @@ finally {
 }
 
 try {
-    $priorDisableInputExit = $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT
-    $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = '1'
-    $saver = Start-Process -FilePath $saverExe -ArgumentList '/s' -PassThru
+    $desktop = Start-Process -FilePath $desktopExe -PassThru
     Start-Sleep -Seconds 5
-    $summary.ScreensaverVersionText = [string](Find-TextByProcessId -ProcessId $saver.Id -TextFragment 'beta5' -TimeoutSeconds 8)
+    $summary.ScreensaverVersionText = [string](Find-TextByProcessId -ProcessId $desktop.Id -TextFragment 'beta5' -TimeoutSeconds 8)
 
     $frames = [Math]::Max(1, [int][Math]::Ceiling($ScreensaverSeconds / [double]$CaptureIntervalSeconds))
     for ($i = 1; $i -le $frames; $i++) {
-        if ($saver.HasExited) {
+        if ($desktop.HasExited) {
             $summary.ScreensaverProcessExitedEarly = $true
-            $summary.Notes += "Screensaver exited early at frame $i with exit code $($saver.ExitCode)."
+            $summary.Notes += "Desktop app exited early at frame $i with exit code $($desktop.ExitCode)."
             break
         }
-        $summary.ScreensaverShots += Capture-Screen ("screensaver-global-{0:D3}.png" -f $i)
+        $summary.ScreensaverShots += Capture-Screen ("desktop-global-{0:D3}.png" -f $i)
         Start-Sleep -Seconds $CaptureIntervalSeconds
     }
 }
 finally {
-    if ($null -eq $priorDisableInputExit) { Remove-Item Env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT -ErrorAction SilentlyContinue }
-    else { $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = $priorDisableInputExit }
     try { [System.Windows.Forms.SendKeys]::SendWait('{ESC}') } catch {}
     Start-Sleep -Seconds 1
-    Get-Process PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-Process PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 }
 
 $summary.FinishedAt = (Get-Date).ToString('o')

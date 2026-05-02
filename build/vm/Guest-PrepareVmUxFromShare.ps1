@@ -37,25 +37,31 @@ function Get-PublishCandidateInfo {
     )
 
     $configExe = Join-Path $Candidate.Path "config\PortfolioSaver.Config.exe"
+    $desktopExe = Join-Path $Candidate.Path "desktop\PortfolioSaver.Desktop.exe"
     $saverExe = Join-Path $Candidate.Path "screensaver\PortfolioSaver.Screensaver.exe"
-    if ((-not (Test-Path $configExe)) -or (-not (Test-Path $saverExe))) {
+    if ((-not (Test-Path $configExe)) -or (-not (Test-Path $desktopExe)) -or (-not (Test-Path $saverExe))) {
         return $null
     }
 
     $configInfo = Get-Item -LiteralPath $configExe
+    $desktopInfo = Get-Item -LiteralPath $desktopExe
     $saverInfo = Get-Item -LiteralPath $saverExe
     $configManifestPath = Join-Path $Candidate.Path "config\release-manifest.json"
+    $desktopManifestPath = Join-Path $Candidate.Path "desktop\release-manifest.json"
     $saverManifestPath = Join-Path $Candidate.Path "screensaver\release-manifest.json"
 
     return [pscustomobject]@{
         Name = $Candidate.Name
         Path = $Candidate.Path
         ConfigExe = $configExe
+        DesktopExe = $desktopExe
         ScreensaverExe = $saverExe
         ConfigProductVersion = $configInfo.VersionInfo.ProductVersion
+        DesktopProductVersion = $desktopInfo.VersionInfo.ProductVersion
         ScreensaverProductVersion = $saverInfo.VersionInfo.ProductVersion
-        LastWriteTimeUtc = if ($configInfo.LastWriteTimeUtc -gt $saverInfo.LastWriteTimeUtc) { $configInfo.LastWriteTimeUtc } else { $saverInfo.LastWriteTimeUtc }
+        LastWriteTimeUtc = (@($configInfo.LastWriteTimeUtc, $desktopInfo.LastWriteTimeUtc, $saverInfo.LastWriteTimeUtc) | Sort-Object -Descending | Select-Object -First 1)
         HasConfigManifest = Test-Path $configManifestPath
+        HasDesktopManifest = Test-Path $desktopManifestPath
         HasScreensaverManifest = Test-Path $saverManifestPath
     }
 }
@@ -75,10 +81,11 @@ if (@($candidateInfos).Count -eq 0) {
 
 $selectedPublishInfo = $null
 if ($PublishSource -eq "auto") {
-    $eligibleInfos = $candidateInfos | Where-Object { $_.HasConfigManifest -and $_.HasScreensaverManifest }
+    $eligibleInfos = $candidateInfos | Where-Object { $_.HasConfigManifest -and $_.HasDesktopManifest -and $_.HasScreensaverManifest }
     if ($expectedSemanticVersion) {
         $eligibleInfos = $eligibleInfos | Where-Object {
             $_.ConfigProductVersion -like "*$expectedSemanticVersion*" -and
+            $_.DesktopProductVersion -like "*$expectedSemanticVersion*" -and
             $_.ScreensaverProductVersion -like "*$expectedSemanticVersion*"
         }
     }
@@ -96,15 +103,16 @@ if ($null -eq $selectedPublishInfo) {
     throw "No eligible publish source found for '$PublishSource'. ExpectedSemanticVersion=$expectedSemanticVersion. Candidates: $($details -join ' | ')"
 }
 
-if (-not $selectedPublishInfo.HasConfigManifest -or -not $selectedPublishInfo.HasScreensaverManifest) {
-    throw "Selected publish source '$($selectedPublishInfo.Name)' is missing release manifests. config=$($selectedPublishInfo.HasConfigManifest) screensaver=$($selectedPublishInfo.HasScreensaverManifest)"
+if (-not $selectedPublishInfo.HasConfigManifest -or -not $selectedPublishInfo.HasDesktopManifest -or -not $selectedPublishInfo.HasScreensaverManifest) {
+    throw "Selected publish source '$($selectedPublishInfo.Name)' is missing release manifests. config=$($selectedPublishInfo.HasConfigManifest) desktop=$($selectedPublishInfo.HasDesktopManifest) screensaver=$($selectedPublishInfo.HasScreensaverManifest)"
 }
 
 if ($expectedSemanticVersion) {
     $configMatches = $selectedPublishInfo.ConfigProductVersion -like "*$expectedSemanticVersion*"
+    $desktopMatches = $selectedPublishInfo.DesktopProductVersion -like "*$expectedSemanticVersion*"
     $saverMatches = $selectedPublishInfo.ScreensaverProductVersion -like "*$expectedSemanticVersion*"
-    if (-not ($configMatches -and $saverMatches)) {
-        throw "Selected publish source '$($selectedPublishInfo.Name)' is stale. expected=$expectedSemanticVersion config=$($selectedPublishInfo.ConfigProductVersion) screensaver=$($selectedPublishInfo.ScreensaverProductVersion)"
+    if (-not ($configMatches -and $desktopMatches -and $saverMatches)) {
+        throw "Selected publish source '$($selectedPublishInfo.Name)' is stale. expected=$expectedSemanticVersion config=$($selectedPublishInfo.ConfigProductVersion) desktop=$($selectedPublishInfo.DesktopProductVersion) screensaver=$($selectedPublishInfo.ScreensaverProductVersion)"
     }
 }
 
@@ -161,6 +169,8 @@ if ($ApplyVmSettings -and (Test-Path $vmSettingsShare)) {
 $required = @(
     (Join-Path $publishRoot "config\PortfolioSaver.Config.exe"),
     (Join-Path $publishRoot "config\release-manifest.json"),
+    (Join-Path $publishRoot "desktop\PortfolioSaver.Desktop.exe"),
+    (Join-Path $publishRoot "desktop\release-manifest.json"),
     (Join-Path $publishRoot "screensaver\PortfolioSaver.Screensaver.exe"),
     (Join-Path $publishRoot "screensaver\release-manifest.json"),
     (Join-Path $desktopRoot "Run-VmUxValidation.ps1"),
@@ -178,8 +188,10 @@ if (@($missing).Count -gt 0) {
 }
 
 $configExe = Join-Path $publishRoot "config\PortfolioSaver.Config.exe"
+$desktopExe = Join-Path $publishRoot "desktop\PortfolioSaver.Desktop.exe"
 $saverExe = Join-Path $publishRoot "screensaver\PortfolioSaver.Screensaver.exe"
 $configInfo = Get-Item -LiteralPath $configExe
+$desktopInfo = Get-Item -LiteralPath $desktopExe
 $saverInfo = Get-Item -LiteralPath $saverExe
 $manifest = [ordered]@{
     PreparedAt = (Get-Date).ToString("o")
@@ -195,6 +207,13 @@ $manifest = [ordered]@{
         LastWriteTimeUtc = $configInfo.LastWriteTimeUtc.ToString("o")
         ProductVersion = $configInfo.VersionInfo.ProductVersion
         FileVersion = $configInfo.VersionInfo.FileVersion
+    }
+    DesktopExe = @{
+        Path = $desktopExe
+        Length = $desktopInfo.Length
+        LastWriteTimeUtc = $desktopInfo.LastWriteTimeUtc.ToString("o")
+        ProductVersion = $desktopInfo.VersionInfo.ProductVersion
+        FileVersion = $desktopInfo.VersionInfo.FileVersion
     }
     ScreensaverExe = @{
         Path = $saverExe
@@ -216,4 +235,4 @@ try {
 catch {
     Write-Output ("VMUX_STAGE_MANIFEST_ERROR=" + $_.Exception.Message)
 }
-Write-Output ("VMUX_PREP_DONE source={0} saverBytes={1}" -f $selectedPublish.Name, $saverInfo.Length)
+Write-Output ("VMUX_PREP_DONE source={0} desktopBytes={1} saverBytes={2}" -f $selectedPublish.Name, $desktopInfo.Length, $saverInfo.Length)

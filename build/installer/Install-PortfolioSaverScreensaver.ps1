@@ -121,6 +121,7 @@ if (-not [string]::IsNullOrWhiteSpace($StagingRoot) -and (Test-Path $StagingRoot
 
 Write-Host ""
 Write-Host "DO NOT PANIC PORTFOLIO VISUALIZER installed to $installRootDisplay"
-Write-Host "Open Windows Screen Saver Settings and choose 'PortfolioSaver.Screensaver'."
+Write-Host "Launch 'PortfolioSaver.Desktop.exe' for the primary desktop experience."
+Write-Host "The legacy screensaver remains available via Windows Screen Saver Settings as 'PortfolioSaver.Screensaver'."
 Write-Host "To remove it later, run:"
 Write-Host "powershell.exe -ExecutionPolicy Bypass -File `"$uninstallScriptTarget`""

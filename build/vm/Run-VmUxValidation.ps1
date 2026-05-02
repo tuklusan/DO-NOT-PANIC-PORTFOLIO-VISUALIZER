@@ -37,7 +37,7 @@ public static class VmUxInterop
 
 $root = Join-Path $env:USERPROFILE 'Desktop\PortfolioVmUx'
 $configExe = Join-Path $root 'publish\config\PortfolioSaver.Config.exe'
-$saverExe = Join-Path $root 'publish\screensaver\PortfolioSaver.Screensaver.exe'
+$desktopExe = Join-Path $root 'publish\desktop\PortfolioSaver.Desktop.exe'
 $results = Join-Path $root ('results\' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory -Force -Path $results | Out-Null
 
@@ -239,7 +239,7 @@ function Invoke-Button {
 }
 
 if (-not (Test-Path $configExe)) { throw "Missing config executable: $configExe" }
-if (-not (Test-Path $saverExe)) { throw "Missing screensaver executable: $saverExe" }
+if (-not (Test-Path $desktopExe)) { throw "Missing desktop executable: $desktopExe" }
 
 $summary = [ordered]@{
     StartedAt = (Get-Date).ToString('o')
@@ -316,52 +316,47 @@ if ($window -ne $null -and (Invoke-Button -Window $window -Name 'Preview')) {
     Start-Sleep -Seconds 1
 }
 
-Get-Process PortfolioSaver.Config -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
-$saver = Start-Process -FilePath $saverExe -ArgumentList '/s' -PassThru
-Start-Sleep -Seconds 12
-$saver12 = Join-Path $results 'screensaver-12s.png'
-Capture-Screen -Path $saver12
-$summary.Captures += $saver12
-$saver12Size = Get-ImageSize -Path $saver12
+$desktop = Start-Process -FilePath $desktopExe -PassThru
+Start-Sleep -Seconds 6
+[void](Focus-Window -Process $desktop)
+$windowed = Join-Path $results 'desktop-windowed.png'
+Capture-Screen -Path $windowed
+$summary.Captures += $windowed
+$saver12Size = Get-ImageSize -Path $windowed
 $summary.ResolutionChecks += @{
-    Capture = $saver12
+    Capture = $windowed
     ExpectedWidth = $summary.RuntimeDesktopResolution.Width
     ExpectedHeight = $summary.RuntimeDesktopResolution.Height
     ActualWidth = $saver12Size.Width
     ActualHeight = $saver12Size.Height
 }
 
+[void](Focus-Window -Process $desktop)
+[System.Windows.Forms.SendKeys]::SendWait('{F11}')
+Start-Sleep -Seconds 2
+$fullscreen = Join-Path $results 'desktop-fullscreen.png'
+Capture-Screen -Path $fullscreen
+$summary.Captures += $fullscreen
+
+[System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+Start-Sleep -Seconds 2
+$windowedAfterEsc = Join-Path $results 'desktop-windowed-after-esc.png'
+Capture-Screen -Path $windowedAfterEsc
+$summary.Captures += $windowedAfterEsc
+
 Start-Sleep -Seconds 24
-$saver36 = Join-Path $results 'screensaver-36s.png'
-Capture-Screen -Path $saver36
-$summary.Captures += $saver36
-$saver36Size = Get-ImageSize -Path $saver36
-$summary.ResolutionChecks += @{
-    Capture = $saver36
-    ExpectedWidth = $summary.RuntimeDesktopResolution.Width
-    ExpectedHeight = $summary.RuntimeDesktopResolution.Height
-    ActualWidth = $saver36Size.Width
-    ActualHeight = $saver36Size.Height
-}
+$desktop24 = Join-Path $results 'desktop-24s.png'
+Capture-Screen -Path $desktop24
+$summary.Captures += $desktop24
 
 Start-Sleep -Seconds 30
-$saver66 = Join-Path $results 'screensaver-66s.png'
-Capture-Screen -Path $saver66
-$summary.Captures += $saver66
-$saver66Size = Get-ImageSize -Path $saver66
-$summary.ResolutionChecks += @{
-    Capture = $saver66
-    ExpectedWidth = $summary.RuntimeDesktopResolution.Width
-    ExpectedHeight = $summary.RuntimeDesktopResolution.Height
-    ActualWidth = $saver66Size.Width
-    ActualHeight = $saver66Size.Height
-}
+$desktop54 = Join-Path $results 'desktop-54s.png'
+Capture-Screen -Path $desktop54
+$summary.Captures += $desktop54
 
-[void](Focus-Window -Process $saver)
-[System.Windows.Forms.SendKeys]::SendWait('{ESC}')
-Start-Sleep -Seconds 1
-Get-Process PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Get-Process PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
 $summary.FinishedAt = (Get-Date).ToString('o')
 $summaryPath = Join-Path $results 'vm-ux-summary.json'

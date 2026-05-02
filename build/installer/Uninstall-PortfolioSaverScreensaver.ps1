@@ -27,10 +27,11 @@ function Start-ElevatedUninstall {
 function Stop-PortfolioSaverProcesses {
     $installedExecutables = @(
         (Join-Path $env:WINDIR "System32\PortfolioSaver.Screensaver.scr"),
-        (Join-Path $env:WINDIR "System32\PortfolioSaver.Config.exe")
+        (Join-Path $env:WINDIR "System32\PortfolioSaver.Config.exe"),
+        (Join-Path $env:WINDIR "System32\PortfolioSaver.Desktop.exe")
     )
 
-    Get-Process PortfolioSaver.Screensaver,PortfolioSaver.Config -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-Process PortfolioSaver.Screensaver,PortfolioSaver.Config,PortfolioSaver.Desktop -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
     $candidates = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
         $_.ExecutablePath -and ($installedExecutables -contains $_.ExecutablePath)

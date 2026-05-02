@@ -15,7 +15,7 @@ Add-Type -AssemblyName UIAutomationTypes
 
 $root = Join-Path $env:USERPROFILE 'Desktop\PortfolioVmUx'
 $configExe = Join-Path $root 'publish\config\PortfolioSaver.Config.exe'
-$saverExe = Join-Path $root 'publish\screensaver\PortfolioSaver.Screensaver.exe'
+$desktopExe = Join-Path $root 'publish\desktop\PortfolioSaver.Desktop.exe'
 $resultName = 'ux-deep-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
 $repoShare = "\\VBOXSVR\codexrepo"
 $localResultsRoot = Join-Path $root 'results'
@@ -307,17 +307,21 @@ function Find-ElementMetadataByProcessId {
 }
 
 if (-not (Test-Path $configExe)) { throw "Missing config executable: $configExe" }
-if (-not (Test-Path $saverExe)) { throw "Missing screensaver executable: $saverExe" }
+if (-not (Test-Path $desktopExe)) { throw "Missing desktop executable: $desktopExe" }
 
 $summary = [ordered]@{
     StartedAt = (Get-Date).ToString('o')
     ResultsPath = $results
     ConfigShots = 0
     ScreensaverShots = 0
+    DesktopShots = 0
     ConfigPhaseStatus = "Pending"
-    ScreensaverPhaseStatus = "Pending"
+    DesktopPhaseStatus = "Pending"
+    ScreensaverPhaseStatus = "LegacyNotRun"
     ConfigVersionCheck = "Pending"
-    ScreensaverVersionCheck = "Pending"
+    DesktopVersionCheck = "Pending"
+    ScreensaverVersionCheck = "LegacyNotRun"
+    FullScreenToggleStatus = "Pending"
     Notes = @()
     PlannedScreensaverDurationMinutes = $ScreensaverDurationMinutes
     CaptureIntervalSeconds = $CaptureIntervalSeconds
@@ -339,8 +343,7 @@ Write-SummaryFiles
 Start-Transcript -Path $logPath -Force | Out-Null
 
 try {
-    Get-Process PortfolioSaver.Config -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    Get-Process PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
     try {
         $config = Start-Process -FilePath $configExe -PassThru
@@ -412,70 +415,78 @@ try {
     }
 
     try {
-        $priorDisableInputExit = $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT
-        $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = '1'
-        $saver = Start-Process -FilePath $saverExe -ArgumentList '/s' -PassThru
+        $desktop = Start-Process -FilePath $desktopExe -PassThru
         Start-Sleep -Seconds 5
         $versionMatch = Find-ElementMetadataByProcessId `
-            -ProcessId $saver.Id `
-            -AutomationIds @('ScreensaverVersionWatermark', 'ScreensaverHostWindow') `
-            -NameFragments @('beta5', 'Version 0.9.0-beta', '0.9.0-beta', 'Portfolio Screensaver') `
+            -ProcessId $desktop.Id `
+            -AutomationIds @('ScreensaverVersionWatermark', 'ScreensaverHostWindow', 'MainWindowTitle') `
+            -NameFragments @('beta5', 'Version 0.9.0-beta', '0.9.0-beta', 'Portfolio Visualizer') `
             -TimeoutSeconds 10
         if ($null -eq $versionMatch) {
-            $saver.Refresh()
-            if ($saver.MainWindowTitle -like '*beta5*' -or
-                $saver.MainWindowTitle -like '*0.9.0-beta*' -or
-                $saver.MainWindowTitle -like '*Portfolio Screensaver*') {
+            $desktop.Refresh()
+            if ($desktop.MainWindowTitle -like '*beta5*' -or
+                $desktop.MainWindowTitle -like '*0.9.0-beta*' -or
+                $desktop.MainWindowTitle -like '*Portfolio Visualizer*') {
                 $versionMatch = [ordered]@{
-                    Name = $saver.MainWindowTitle
+                    Name = $desktop.MainWindowTitle
                     AutomationId = 'MainWindowTitleFallback'
                     HelpText = [string]::Empty
                 }
             }
         }
         if ($null -ne $versionMatch) {
-            $summary.ScreensaverVersionCheck = "Passed"
-            $summary.Notes += ("Screensaver version element observed: name='{0}' automation_id='{1}' help='{2}'" -f
+            $summary.DesktopVersionCheck = "Passed"
+            $summary.Notes += ("Desktop version element observed: name='{0}' automation_id='{1}' help='{2}'" -f
                 $versionMatch.Name,
                 $versionMatch.AutomationId,
                 $versionMatch.HelpText)
         }
         else {
-            $summary.ScreensaverVersionCheck = "Failed"
-            $summary.Notes += "Screensaver version element containing the expected beta marker was not detected."
+            $summary.DesktopVersionCheck = "Failed"
+            $summary.Notes += "Desktop version element containing the expected beta marker was not detected."
         }
+
+        Start-Sleep -Seconds 1
+        try { [System.Windows.Forms.SendKeys]::SendWait('{F11}') } catch {}
+        Start-Sleep -Seconds 2
+        $desktopFull = Join-Path $results 'desktop-fullscreen-entry.png'
+        Capture-Screen -Path $desktopFull
+        $summary.DesktopShots++
+        $summary.ScreensaverShots++
+
+        try { [System.Windows.Forms.SendKeys]::SendWait('{ESC}') } catch {}
+        Start-Sleep -Seconds 2
+        $desktopWindowed = Join-Path $results 'desktop-windowed-after-esc.png'
+        Capture-Screen -Path $desktopWindowed
+        $summary.DesktopShots++
+        $summary.ScreensaverShots++
+        $summary.FullScreenToggleStatus = "Completed"
 
         $targetFrames = [Math]::Max(1, [int][Math]::Ceiling(($ScreensaverDurationMinutes * 60.0) / $CaptureIntervalSeconds))
         for ($i = 1; $i -le $targetFrames; $i++) {
-            if ($saver.HasExited) {
-                throw "Screensaver process exited early at frame $i (exit code: $($saver.ExitCode))."
+            if ($desktop.HasExited) {
+                throw "Desktop process exited early at frame $i (exit code: $($desktop.ExitCode))."
             }
 
-            $path = Join-Path $results ("screensaver-{0:D3}.png" -f $i)
+            $path = Join-Path $results ("desktop-{0:D3}.png" -f $i)
             Capture-Screen -Path $path
             $summary.ScreensaverShots++
+            $summary.DesktopShots++
             Start-Sleep -Seconds $CaptureIntervalSeconds
         }
 
-        $summary.ScreensaverPhaseStatus = "Completed"
+        $summary.DesktopPhaseStatus = "Completed"
         Write-SummaryFiles
     }
     catch {
-        $summary.ScreensaverPhaseStatus = "Failed"
-        $summary.Notes += "Screensaver phase error: $($_.Exception.Message)"
+        $summary.DesktopPhaseStatus = "Failed"
+        $summary.Notes += "Desktop phase error: $($_.Exception.Message)"
         Write-SummaryFiles
     }
     finally {
-        if ($null -eq $priorDisableInputExit) {
-            Remove-Item Env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT -ErrorAction SilentlyContinue
-        }
-        else {
-            $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = $priorDisableInputExit
-        }
-
         try { [System.Windows.Forms.SendKeys]::SendWait('{ESC}') } catch {}
         Start-Sleep -Seconds 1
-        Get-Process PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        Get-Process PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     }
 }
 finally {

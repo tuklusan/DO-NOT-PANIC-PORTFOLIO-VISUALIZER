@@ -117,10 +117,12 @@ $artifactsRoot = Join-Path $root "build\artifacts"
 $publishRoot = Join-Path $artifactsRoot "publish"
 $screensaverPublishDir = Join-Path $publishRoot "screensaver"
 $configPublishDir = Join-Path $publishRoot "config"
+$desktopPublishDir = Join-Path $publishRoot "desktop"
 $installerPublishDir = Join-Path $publishRoot "installer"
 $scratchRoot = Join-Path $artifactsRoot "scratch"
 $screensaverScratchRoot = Join-Path $scratchRoot "screensaver"
 $configScratchRoot = Join-Path $scratchRoot "config"
+$desktopScratchRoot = Join-Path $scratchRoot "desktop"
 $installerScratchRoot = Join-Path $scratchRoot "installer"
 $stageRoot = Join-Path $artifactsRoot "installer-stage"
 $payloadRoot = Join-Path $stageRoot "payload"
@@ -130,11 +132,12 @@ $outputInstaller = Join-Path $artifactsRoot "PortfolioSaverScreensaverSetup.exe"
 $msbuildPath = Get-MSBuildPath
 $manifestScript = Join-Path $PSScriptRoot "generate-release-manifest.ps1"
 
-Remove-Item -LiteralPath $screensaverPublishDir,$configPublishDir,$installerPublishDir,$scratchRoot,$stageRoot,$payloadZip,$outputInstaller -Recurse -Force -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Force -Path $screensaverPublishDir,$configPublishDir,$installerPublishDir,$payloadRoot,$artifactsRoot,$screensaverScratchRoot,$configScratchRoot,$installerScratchRoot | Out-Null
+Remove-Item -LiteralPath $screensaverPublishDir,$configPublishDir,$desktopPublishDir,$installerPublishDir,$scratchRoot,$stageRoot,$payloadZip,$outputInstaller -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path $screensaverPublishDir,$configPublishDir,$desktopPublishDir,$installerPublishDir,$payloadRoot,$artifactsRoot,$screensaverScratchRoot,$configScratchRoot,$desktopScratchRoot,$installerScratchRoot | Out-Null
 
 $screensaverProject = Join-Path $root "src\PortfolioSaver.Screensaver\PortfolioSaver.Screensaver.csproj"
 $configProject = Join-Path $root "src\PortfolioSaver.Config\PortfolioSaver.Config.csproj"
+$desktopProject = Join-Path $root "src\PortfolioSaver.Desktop\PortfolioSaver.Desktop.csproj"
 $installerProject = Join-Path $root "src\PortfolioSaver.Installer\PortfolioSaver.Installer.csproj"
 
 Write-Host "Publishing screensaver with $msbuildPath..."
@@ -159,6 +162,17 @@ if ($LASTEXITCODE -ne 0) {
     throw "Manifest generation failed for $configPublishDir"
 }
 
+Write-Host "Publishing desktop app..."
+Publish-SelfContainedApp `
+    -MsBuildPath $msbuildPath `
+    -ProjectPath $desktopProject `
+    -PublishDir $desktopPublishDir `
+    -ScratchRoot $desktopScratchRoot
+& $manifestScript -PublishDir $desktopPublishDir
+if ($LASTEXITCODE -ne 0) {
+    throw "Manifest generation failed for $desktopPublishDir"
+}
+
 $screensaverExe = Join-Path $screensaverPublishDir "PortfolioSaver.Screensaver.exe"
 $screensaverScr = Join-Path $payloadRoot "PortfolioSaver.Screensaver.scr"
 if (-not (Test-Path $screensaverExe)) {
@@ -172,6 +186,12 @@ if (-not (Test-Path $configExe)) {
     throw "Published config executable not found: $configExe"
 }
 Copy-Item -LiteralPath $configExe -Destination (Join-Path $payloadRoot "PortfolioSaver.Config.exe") -Force
+
+$desktopExe = Join-Path $desktopPublishDir "PortfolioSaver.Desktop.exe"
+if (-not (Test-Path $desktopExe)) {
+    throw "Published desktop executable not found: $desktopExe"
+}
+Copy-Item -LiteralPath $desktopExe -Destination (Join-Path $payloadRoot "PortfolioSaver.Desktop.exe") -Force
 
 $sampleAssets = Join-Path $screensaverPublishDir "Assets"
 if (Test-Path $sampleAssets) {

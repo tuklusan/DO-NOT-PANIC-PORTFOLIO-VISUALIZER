@@ -1,6 +1,6 @@
 ﻿# DO NOT PANIC PORTFOLIO VISUALIZER
 
-Market-aware Windows screensaver and configuration suite by **SANYALnet Labs**, written by **Supratim Sanyal**.
+Market-aware Windows desktop visualizer and configuration suite by **SANYALnet Labs**, written by **Supratim Sanyal**.
 
 **License: MIT LICENSE**
 
@@ -8,7 +8,7 @@ This repository ships with the full [LICENSE](LICENSE) text in-tree and is licen
 
 ## Overview
 
-**DO NOT PANIC PORTFOLIO VISUALIZER** is a .NET 8 / WPF project that turns a Windows screensaver into a live market display with ticker tapes, floating graph cards, news, exchange backgrounds, and animated overlays.
+**DO NOT PANIC PORTFOLIO VISUALIZER** is a .NET 10 / WPF project centered on a Windows desktop app with an immersive fullscreen mode, live market display, ticker tapes, floating graph cards, news, exchange backgrounds, and animated overlays.
 
 This repository is maintained as a **Visual Studio 2022-first** codebase for Windows x64 development and deployment.
 
@@ -57,16 +57,20 @@ Official MIT reference:
   - Per-symbol JSON files
   - Automatic purge of history files older than 14 days
 
-## Screensaver Modes
+## Desktop App Modes
 
-- `/s` full-screen screensaver mode
-- `/c` route into configuration workflow
-- `/p <HWND>` preview-host mode (for Windows screensaver preview integration)
+- `PortfolioSaver.Desktop` is the primary app host
+- fullscreen toggle from `View -> Full Screen`
+- `Esc` exits fullscreen back to windowed mode
+- legacy screensaver `/s`, `/c`, and `/p <HWND>` paths remain for compatibility during Beta 5.5
 
 ## Project Structure
 
-- `src/PortfolioSaver.Screensaver` - screensaver executable host
-- `src/PortfolioSaver.Config` - configuration app
+- `src/PortfolioSaver.Desktop` - primary desktop executable host
+- `src/PortfolioSaver.Screensaver` - legacy screensaver compatibility host
+- `src/PortfolioSaver.Config` - thin configuration launcher
+- `src/PortfolioSaver.Settings` - shared settings window, view models, services, and content
+- `src/PortfolioSaver.Presentation` - reusable scene host and runtime presentation services
 - `src/PortfolioSaver.Render` - WPF visual controls and scene rendering
 - `src/PortfolioSaver.Data` - provider clients, cache, and scheduling services
 - `src/PortfolioSaver.Core` - domain models, constants, validation rules
@@ -82,7 +86,7 @@ Official MIT reference:
 - Windows 10/11 x64
 - Visual Studio 2022
 - Desktop development with .NET workload
-- .NET 8 SDK
+- .NET 10 SDK
 
 ## Recommended workflow
 
@@ -90,9 +94,9 @@ Official MIT reference:
 2. Select `Debug | x64` for development.
 3. Rebuild solution.
 4. Use startup project:
+   - `PortfolioSaver.Desktop` for runtime/visual behavior
    - `PortfolioSaver.Config` for settings work
-   - `PortfolioSaver.Screensaver` for runtime/visual behavior
-5. For screensaver argument testing, set command args to `/s`, `/c`, or `/p 12345`.
+5. For legacy screensaver argument testing only, set command args to `/s`, `/c`, or `/p 12345`.
 
 ## Installer Build Path
 

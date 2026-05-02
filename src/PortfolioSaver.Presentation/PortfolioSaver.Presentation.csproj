@@ -7,9 +7,9 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\PortfolioSaver.Core\PortfolioSaver.Core.csproj" />
+    <ProjectReference Include="..\PortfolioSaver.Data\PortfolioSaver.Data.csproj" />
+    <ProjectReference Include="..\PortfolioSaver.Render\PortfolioSaver.Render.csproj" />
+    <ProjectReference Include="..\PortfolioSaver.Media\PortfolioSaver.Media.csproj" />
     <ProjectReference Include="..\PortfolioSaver.Shared\PortfolioSaver.Shared.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Assets\Flags\*.png" />
   </ItemGroup>
 </Project>

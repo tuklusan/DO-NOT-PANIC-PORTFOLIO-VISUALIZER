@@ -16,7 +16,7 @@ public sealed class ConfigTextConsistencyTests
     [Fact]
     public void AboutDocument_ContainsBeta54PublisherAuthorAndLicense()
     {
-        string aboutText = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Content", "about.txt"));
+        string aboutText = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Content", "about.txt"));
 
         Assert.Contains("BETA-5.5 baseline", aboutText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Publisher: SANYALnet Labs", aboutText, StringComparison.Ordinal);
@@ -27,7 +27,7 @@ public sealed class ConfigTextConsistencyTests
     [Fact]
     public void MainWindowXaml_HasBeta54Title_AndNoBenchmarkEditorText()
     {
-        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Windows", "MainWindow.xaml"));
+        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
         Assert.Contains("Title=\"DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-5.5\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Floating benchmark cards", xaml, StringComparison.OrdinalIgnoreCase);
@@ -37,7 +37,7 @@ public sealed class ConfigTextConsistencyTests
     [Fact]
     public void MainWindowXaml_UsesRobustTabFooterAndCompactEditorLayout()
     {
-        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Windows", "MainWindow.xaml"));
+        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
         Assert.Contains("x:Name=\"MainTabs\"", xaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"ConfigTabItemStyle\"", xaml, StringComparison.Ordinal);
@@ -54,7 +54,7 @@ public sealed class ConfigTextConsistencyTests
     [Fact]
     public void MainWindowXaml_UsesReadOnlyAutoFilledNames_AndOmitsUnusedTickerFields()
     {
-        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Windows", "MainWindow.xaml"));
+        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
         Assert.Contains("Name fills in during Validate using Yahoo Finance symbol metadata.", xaml, StringComparison.Ordinal);
         Assert.Contains("Filled automatically during Validate from Yahoo Finance metadata.", xaml, StringComparison.Ordinal);
@@ -68,7 +68,7 @@ public sealed class ConfigTextConsistencyTests
     [Fact]
     public void MainWindowFooter_HasSinglePrimaryValidateBinding_AndSmallVersionLabel()
     {
-        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Windows", "MainWindow.xaml"));
+        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
         int primaryBindingCount = xaml.Split("Content=\"{Binding PrimaryButtonText}\"", StringSplitOptions.None).Length - 1;
         Assert.Equal(1, primaryBindingCount);
@@ -82,7 +82,7 @@ public sealed class ConfigTextConsistencyTests
     public void ConfigApp_ForcesSoftwareRendering_ToAvoidVirtualizedTextCorruption()
     {
         string source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "App.xaml.cs"));
-        string windowCode = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Windows", "MainWindow.xaml.cs"));
+        string windowCode = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml.cs"));
 
         Assert.Contains("RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;", source, StringComparison.Ordinal);
         Assert.Contains("Software rendering enabled.", source, StringComparison.Ordinal);
@@ -95,7 +95,7 @@ public sealed class ConfigTextConsistencyTests
     [Fact]
     public void AdvancedDataSourceGrid_UsesReadableDarkHeadersWithoutUnusedLimitColumn()
     {
-        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Windows", "MainWindow.xaml"));
+        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
         Assert.Contains("x:Key=\"DarkDataGridColumnHeaderStyle\"", xaml, StringComparison.Ordinal);
         Assert.Contains("ColumnHeaderStyle=\"{StaticResource DarkDataGridColumnHeaderStyle}\"", xaml, StringComparison.Ordinal);
@@ -117,7 +117,7 @@ public sealed class ConfigTextConsistencyTests
     [Fact]
     public void HelpBadges_ArePresentOnAllKeySections_WithNonEmptyTooltips()
     {
-        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Windows", "MainWindow.xaml"));
+        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
         int helpBadgeCount = xaml.Split("Style=\"{StaticResource HelpBadgeStyle}\"", StringSplitOptions.None).Length - 1;
         int tooltipCount = xaml.Split("ToolTip=\"", StringSplitOptions.None).Length - 1;
@@ -134,8 +134,8 @@ public sealed class ConfigTextConsistencyTests
     [Fact]
     public void HelpAndAboutDocuments_AreBundled_NonEmpty_AndLicenseAligned()
     {
-        string helpText = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Content", "help.txt"));
-        string aboutText = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Content", "about.txt"));
+        string helpText = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Content", "help.txt"));
+        string aboutText = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Content", "about.txt"));
 
         Assert.False(string.IsNullOrWhiteSpace(helpText));
         Assert.False(string.IsNullOrWhiteSpace(aboutText));
@@ -148,7 +148,7 @@ public sealed class ConfigTextConsistencyTests
     [Fact]
     public void GeneralTab_UsesResponsiveScrollAndSharedColumns()
     {
-        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Windows", "MainWindow.xaml"));
+        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
         Assert.Contains("Width=\"1120\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Height=\"740\"", xaml, StringComparison.Ordinal);
@@ -166,7 +166,7 @@ public sealed class ConfigTextConsistencyTests
     [Fact]
     public void AdvancedTab_UsesStretchGridAndBoundedColumnMinimums()
     {
-        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "Windows", "MainWindow.xaml"));
+        string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
         Assert.Contains("<TabItem Header=\"Advanced\">", xaml, StringComparison.Ordinal);
         Assert.Contains("<ScrollViewer HorizontalScrollBarVisibility=\"Auto\" VerticalScrollBarVisibility=\"Auto\" Background=\"#171717\">", xaml, StringComparison.Ordinal);
@@ -195,4 +195,5 @@ public sealed class ConfigTextConsistencyTests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 }
+
 

@@ -47,7 +47,7 @@ function Invoke-ProcessWithTimeout {
 }
 
 function Resolve-DotNetCli {
-    $preferred = Join-Path $env:USERPROFILE ".dotnet8\dotnet.exe"
+    $preferred = Join-Path $env:USERPROFILE ".dotnet10\dotnet.exe"
     if (Test-Path $preferred) {
         return $preferred
     }
@@ -81,6 +81,9 @@ New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
 
 Copy-Item -LiteralPath (Join-Path $repoRoot "PortfolioScreensaver.sln") -Destination $tempRoot -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "Directory.Build.props") -Destination $tempRoot -Force
+if (Test-Path (Join-Path $repoRoot "NuGet.Config")) {
+    Copy-Item -LiteralPath (Join-Path $repoRoot "NuGet.Config") -Destination $tempRoot -Force
+}
 
 $srcTarget = Join-Path $tempRoot "src"
 $testsTarget = Join-Path $tempRoot "tests"

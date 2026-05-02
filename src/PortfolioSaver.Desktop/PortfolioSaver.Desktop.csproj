@@ -1,15 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PortfolioSaver.Core\PortfolioSaver.Core.csproj" />
+    <ProjectReference Include="..\PortfolioSaver.Presentation\PortfolioSaver.Presentation.csproj" />
+    <ProjectReference Include="..\PortfolioSaver.Settings\PortfolioSaver.Settings.csproj" />
     <ProjectReference Include="..\PortfolioSaver.Shared\PortfolioSaver.Shared.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Assets\Flags\*.png" />
   </ItemGroup>
 </Project>
