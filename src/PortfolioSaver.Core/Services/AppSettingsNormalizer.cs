@@ -206,11 +206,27 @@ public static class AppSettingsNormalizer
 
     private static string NormalizeApiKey(string currentValue, string environmentVariableName)
     {
-        if (!string.IsNullOrWhiteSpace(currentValue))
-            return currentValue.Trim();
+        string environmentValue = (Environment.GetEnvironmentVariable(environmentVariableName) ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(environmentValue))
+            return environmentValue;
 
-        return (Environment.GetEnvironmentVariable(environmentVariableName) ?? string.Empty).Trim();
+        string trimmed = (currentValue ?? string.Empty).Trim();
+        if (IsApiKeyPlaceholder(trimmed))
+            return string.Empty;
+
+        return trimmed;
     }
+
+    private static bool IsApiKeyPlaceholder(string value)
+        => value switch
+        {
+            "" => false,
+            "abcdefghijklmnopqrstuvwxyz01234567890abc" => true,
+            "abcdefghijklmnopqrstuvwxyz012345" => true,
+            "abcdefghijklmn.01234567" => true,
+            _ => value.StartsWith("REPLACE_WITH_", StringComparison.OrdinalIgnoreCase) ||
+                 value.StartsWith("REDACTED", StringComparison.OrdinalIgnoreCase)
+        };
 
     private static int Clamp(int value, int min, int max, int fallback)
     {

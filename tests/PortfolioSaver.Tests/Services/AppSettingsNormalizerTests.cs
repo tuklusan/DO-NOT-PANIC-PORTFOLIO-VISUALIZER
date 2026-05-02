@@ -120,4 +120,48 @@ public sealed class AppSettingsNormalizerTests
         Assert.Equal(defaults.Groups[0].Name, normalized.Groups[0].Name);
         Assert.Equal(defaults.Groups[0].Tickers[0].Symbol, normalized.Groups[0].Tickers[0].Symbol);
     }
+
+    [Fact]
+    public void Normalize_ApiKeys_PreferEnvironmentVariables_OverPersistedValues()
+    {
+        const string environmentName = "PORTFOLIOSAVER_FINNHUB_API_KEY";
+        string? previous = Environment.GetEnvironmentVariable(environmentName);
+        Environment.SetEnvironmentVariable(environmentName, "env-finnhub-key");
+
+        try
+        {
+            AppSettings settings = Defaults.CreateSettings();
+            settings.FinnhubApiKey = "persisted-finnhub-key";
+
+            AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+            Assert.Equal("env-finnhub-key", normalized.FinnhubApiKey);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(environmentName, previous);
+        }
+    }
+
+    [Fact]
+    public void Normalize_ApiKeyPlaceholders_DoNotBlockEnvironmentVariableUsage()
+    {
+        const string environmentName = "PORTFOLIOSAVER_TWELVEDATA_API_KEY";
+        string? previous = Environment.GetEnvironmentVariable(environmentName);
+        Environment.SetEnvironmentVariable(environmentName, null);
+
+        try
+        {
+            AppSettings settings = Defaults.CreateSettings();
+            settings.TwelveDataApiKey = "abcdefghijklmnopqrstuvwxyz012345";
+
+            AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+            Assert.True(string.IsNullOrWhiteSpace(normalized.TwelveDataApiKey));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(environmentName, previous);
+        }
+    }
 }

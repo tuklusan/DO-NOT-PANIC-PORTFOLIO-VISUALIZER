@@ -19,11 +19,7 @@ public sealed class SettingsFileService
     public AppSettings Load()
     {
         if (!File.Exists(SettingsPath))
-        {
-            AppSettings seeded = AppSettingsNormalizer.Normalize(Defaults.CreateSettings());
-            SeedConfigOnlyApiKeyPlaceholders(seeded);
-            return seeded;
-        }
+            return AppSettingsNormalizer.Normalize(Defaults.CreateSettings());
 
         string json = File.ReadAllText(SettingsPath);
         return AppSettingsNormalizer.Normalize(JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? Defaults.CreateSettings());
@@ -31,16 +27,23 @@ public sealed class SettingsFileService
 
     public void Save(AppSettings settings)
     {
-        string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+        AppSettings persisted = CreateSanitizedCopy(settings);
+        string json = JsonSerializer.Serialize(persisted, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(SettingsPath, json);
     }
 
-    private static void SeedConfigOnlyApiKeyPlaceholders(AppSettings settings)
+    private static AppSettings CreateSanitizedCopy(AppSettings settings)
     {
-        settings.FinnhubApiKey = "abcdefghijklmnopqrstuvwxyz01234567890abc";
-        settings.TwelveDataApiKey = "abcdefghijklmnopqrstuvwxyz012345";
-        settings.TiingoApiKey = "abcdefghijklmnopqrstuvwxyz01234567890abc";
-        settings.FinancialModelingPrepApiKey = "abcdefghijklmnopqrstuvwxyz012345";
-        settings.EodhdApiKey = "abcdefghijklmn.01234567";
+        AppSettings copy = JsonSerializer.Deserialize<AppSettings>(
+            JsonSerializer.Serialize(settings),
+            JsonOptions) ?? Defaults.CreateSettings();
+
+        copy.FinnhubApiKey = string.Empty;
+        copy.TwelveDataApiKey = string.Empty;
+        copy.TiingoApiKey = string.Empty;
+        copy.FinancialModelingPrepApiKey = string.Empty;
+        copy.EodhdApiKey = string.Empty;
+
+        return copy;
     }
 }
