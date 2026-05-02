@@ -10,6 +10,8 @@ public static class Defaults
     public const string DefaultNewsFeedUrl = "https://finance.yahoo.com/news/rss";
     public const int MinRefreshSeconds = 5;
     public const int MaxRefreshSeconds = 4 * 60 * 60;
+    public const int DefaultDesktopRefreshSeconds = 300;
+    public const int LegacySteadyStateRefreshSeconds = 1200;
     public const int MinNewsRefreshMinutes = 5;
     public const int MaxNewsRefreshMinutes = 4 * 60;
     public const int MaxTapeCount = 4;
@@ -41,8 +43,8 @@ public static class Defaults
         FinancialModelingPrepApiKey = string.Empty,
         EodhdApiKey = string.Empty,
         MarketCalendarRefreshHours = 12,
-        RefreshSecondsPortfolio = 1200,
-        RefreshSecondsOffHours = 1200,
+        RefreshSecondsPortfolio = DefaultDesktopRefreshSeconds,
+        RefreshSecondsOffHours = DefaultDesktopRefreshSeconds,
         MinFinnhubRequestSpacingSeconds = 2,
         MinTwelveDataRequestSpacingSeconds = 15,
         NewsFeedUrl = DefaultNewsFeedUrl,

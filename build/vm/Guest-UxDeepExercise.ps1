@@ -320,8 +320,32 @@ $legacySummaryPath = Join-Path $results 'vm-ux-summary.json'
 $logPath = Join-Path $results 'ux-deep-run.log'
 
 function Write-SummaryFiles {
-    $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
-    $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $legacySummaryPath -Encoding UTF8
+    $json = $summary | ConvertTo-Json -Depth 6
+    Write-TextFileWithRetry -Path $summaryPath -Content $json
+    Write-TextFileWithRetry -Path $legacySummaryPath -Content $json
+}
+
+function Write-TextFileWithRetry {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Content
+    )
+
+    $attempts = 0
+    while ($true) {
+        try {
+            Set-Content -LiteralPath $Path -Value $Content -Encoding UTF8
+            return
+        }
+        catch {
+            $attempts++
+            if ($attempts -ge 20) {
+                throw
+            }
+
+            Start-Sleep -Milliseconds 200
+        }
+    }
 }
 
 $summary.ExportMode = 'LocalWorkspace'

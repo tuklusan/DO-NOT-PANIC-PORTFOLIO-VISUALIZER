@@ -164,4 +164,30 @@ public sealed class AppSettingsNormalizerTests
             Environment.SetEnvironmentVariable(environmentName, previous);
         }
     }
+
+    [Fact]
+    public void Normalize_MigratesLegacySteadyStateRefreshPair_ToDesktopDefaults()
+    {
+        AppSettings legacy = Defaults.CreateSettings();
+        legacy.RefreshSecondsPortfolio = Defaults.LegacySteadyStateRefreshSeconds;
+        legacy.RefreshSecondsOffHours = Defaults.LegacySteadyStateRefreshSeconds;
+
+        AppSettings normalized = AppSettingsNormalizer.Normalize(legacy);
+
+        Assert.Equal(Defaults.DefaultDesktopRefreshSeconds, normalized.RefreshSecondsPortfolio);
+        Assert.Equal(Defaults.DefaultDesktopRefreshSeconds, normalized.RefreshSecondsOffHours);
+    }
+
+    [Fact]
+    public void Normalize_PreservesIntentionalCustomRefreshValues()
+    {
+        AppSettings custom = Defaults.CreateSettings();
+        custom.RefreshSecondsPortfolio = 600;
+        custom.RefreshSecondsOffHours = 900;
+
+        AppSettings normalized = AppSettingsNormalizer.Normalize(custom);
+
+        Assert.Equal(600, normalized.RefreshSecondsPortfolio);
+        Assert.Equal(900, normalized.RefreshSecondsOffHours);
+    }
 }

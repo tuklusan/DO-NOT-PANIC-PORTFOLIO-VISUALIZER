@@ -10,6 +10,7 @@ public static class AppSettingsNormalizer
     public static AppSettings Normalize(AppSettings? settings)
     {
         AppSettings normalized = settings ?? Defaults.CreateSettings();
+        ApplyLegacyDesktopRefreshMigration(normalized);
 
         normalized.Groups ??= [];
         normalized.DataSources = [.. DataSourceCatalog.NormalizePolicies(normalized.DataSources)];
@@ -70,13 +71,13 @@ public static class AppSettingsNormalizer
             normalized.RefreshSecondsPortfolio,
             Defaults.MinRefreshSeconds,
             Defaults.MaxRefreshSeconds,
-            10);
+            Defaults.DefaultDesktopRefreshSeconds);
 
         normalized.RefreshSecondsOffHours = Clamp(
             normalized.RefreshSecondsOffHours,
             Defaults.MinRefreshSeconds,
             Defaults.MaxRefreshSeconds,
-            30);
+            Defaults.DefaultDesktopRefreshSeconds);
 
         normalized.BackgroundChangeSeconds = Clamp(
             normalized.BackgroundChangeSeconds,
@@ -93,6 +94,16 @@ public static class AppSettingsNormalizer
         normalized.NewsFeedUrl = NormalizeNewsFeedUrl(normalized.NewsFeedUrl);
 
         return normalized;
+    }
+
+    private static void ApplyLegacyDesktopRefreshMigration(AppSettings settings)
+    {
+        if (settings.RefreshSecondsPortfolio == Defaults.LegacySteadyStateRefreshSeconds &&
+            settings.RefreshSecondsOffHours == Defaults.LegacySteadyStateRefreshSeconds)
+        {
+            settings.RefreshSecondsPortfolio = Defaults.DefaultDesktopRefreshSeconds;
+            settings.RefreshSecondsOffHours = Defaults.DefaultDesktopRefreshSeconds;
+        }
     }
 
     private static void ApplyLegacyAlternatingDirectionFallback(IReadOnlyList<TickerGroup> groups)
