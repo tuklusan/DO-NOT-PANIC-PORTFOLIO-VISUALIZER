@@ -1,1 +1,0 @@
-powershell -NoProfile -Command "$p=Join-Path $env:TEMP 'PortfolioSaver.Screensaver.scene.log'; if(Test-Path $p){ Get-Item $p | Select-Object FullName,Length,LastWriteTime; Get-Content -Path $p -Tail 120 } else { 'NO_SCENE_LOG' }"

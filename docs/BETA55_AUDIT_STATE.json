@@ -53,7 +53,8 @@
       "notes": [
         "The guest now resolves bare dotnet to 10.0.203 from C:\\Program Files\\dotnet.",
         "The preferred VM harness path is SSH + SFTP using Push-VmWorkspace.ps1, Invoke-VmBuildTest.ps1, and Pull-VmResults.ps1.",
-        "Remote restore/build/test/publish succeeded end to end inside C:\\vmharness\\portfolio-saver\\repo."
+        "Remote restore/build/test/publish succeeded end to end inside C:\\vmharness\\portfolio-saver\\repo.",
+        "A full 20-minute desktop UX run now completes through the SSH-first harness using a guest-side PsExec launcher in the interactive session; the pulled bundle is build/vm/artifacts/ssh-runs/ux-deep-ssh-20260502-201148."
       ]
     }
   },
@@ -172,7 +173,9 @@
       "remote dotnet test",
       "remote publish-safe-temp"
     ],
-    "latest_remote_build_summary": "C:\\vmharness\\portfolio-saver\\results\\buildtest-20260502-175714.json"
+    "latest_remote_build_summary": "C:\\vmharness\\portfolio-saver\\results\\buildtest-20260502-201534.json",
+    "interactive_launch_method": "Invoke-VmBuildTest.ps1 writes a guest-side launch-<result>.cmd wrapper and invokes PsExec into the active desktop session over SSH.",
+    "latest_full_ux_result": "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260502-201148"
   },
   "remaining_validation_gaps": [],
   "current_operational_recommendations": [
@@ -180,6 +183,6 @@
     "Treat PortfolioSaver.Desktop as the primary runtime target for Beta 5.5 work.",
     "Retain the legacy screensaver host only while compatibility still matters.",
     "Use the safe-temp build/publish scripts for repeatable validation rather than ad-hoc repo-path publish commands.",
-    "Keep VBox shared-folder flows as fallback only, not the primary path."
+    "Treat the remote target as a generic Windows machine so the same harness can move from a VM to a physical PC without orchestration changes."
   ]
 }

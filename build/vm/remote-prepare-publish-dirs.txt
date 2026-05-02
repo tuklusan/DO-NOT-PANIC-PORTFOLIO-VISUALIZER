@@ -1,4 +1,0 @@
-cmd /c if exist "%USERPROFILE%\Desktop\PortfolioVmUx\publish" rmdir /s /q "%USERPROFILE%\Desktop\PortfolioVmUx\publish"
-cmd /c mkdir "%USERPROFILE%\Desktop\PortfolioVmUx\publish\config\Content"
-cmd /c mkdir "%USERPROFILE%\Desktop\PortfolioVmUx\publish\screensaver\Assets\ExchangePhotos"
-cmd /c dir "%USERPROFILE%\Desktop\PortfolioVmUx\publish\config"

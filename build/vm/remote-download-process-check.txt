@@ -1,1 +1,0 @@
-powershell -NoProfile -Command "Get-Process powershell,cmd -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*powershell*' -or $_.Path -like '*cmd.exe' } | Select-Object Name,Id,StartTime | ConvertTo-Json -Compress"

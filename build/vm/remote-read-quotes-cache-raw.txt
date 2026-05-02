@@ -1,1 +1,0 @@
-powershell -NoProfile -Command "$p=Join-Path $env:LOCALAPPDATA 'PortfolioSaver\quotes-cache.json'; if(Test-Path $p){ Get-Content -Path $p -TotalCount 80 }"

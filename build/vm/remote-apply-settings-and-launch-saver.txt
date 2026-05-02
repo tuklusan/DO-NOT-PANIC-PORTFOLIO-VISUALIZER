@@ -1,4 +1,0 @@
-cmd /c copy /y %USERPROFILE%\Desktop\PortfolioVmUx\settings.json %APPDATA%\PortfolioSaver\settings.json >nul
-taskkill /F /IM PortfolioSaver.Config.exe >nul 2>&1
-taskkill /F /IM PortfolioSaver.Screensaver.exe >nul 2>&1
-powershell -NoProfile -ExecutionPolicy Bypass -File %USERPROFILE%\Desktop\PortfolioVmUx\Create-InteractiveScreensaverTask.ps1

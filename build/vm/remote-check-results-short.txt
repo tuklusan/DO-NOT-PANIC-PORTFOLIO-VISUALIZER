@@ -1,1 +1,0 @@
-powershell -NoProfile -Command "$root='%USERPROFILE%\Desktop\PortfolioVmUx\results'; Get-ChildItem $root -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 5 FullName,LastWriteTime | Format-Table -AutoSize"

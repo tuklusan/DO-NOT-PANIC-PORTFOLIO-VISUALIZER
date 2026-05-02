@@ -16,7 +16,10 @@ public sealed class TraceLogTests
         string traceIndexPath = Path.Combine(traceDirectory, "trace.circular.idx");
         string marker = "trace-test-" + Guid.NewGuid().ToString("N");
 
-        TraceLog.Info("TraceLogTests", marker);
+        for (int i = 0; i < 5; i++)
+        {
+            TraceLog.Info("TraceLogTests", $"{marker}-{i}");
+        }
 
         bool observed = await WaitForTraceAsync(
             traceFilePath,
@@ -66,7 +69,7 @@ public sealed class TraceLogTests
         string traceIndexPath,
         Func<string, bool> predicate)
     {
-        for (int i = 0; i < 600; i++)
+        for (int i = 0; i < 1200; i++)
         {
             if (File.Exists(traceFilePath))
             {

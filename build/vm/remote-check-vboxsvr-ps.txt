@@ -1,1 +1,0 @@
-powershell -NoProfile -Command "Get-ChildItem -Path '\\VBOXSVR' -ErrorAction SilentlyContinue | Select-Object Name | ConvertTo-Json -Compress"

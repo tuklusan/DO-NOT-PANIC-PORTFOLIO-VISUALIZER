@@ -1,4 +1,0 @@
-schtasks /Delete /TN PortfolioVmUxValidation /F
-schtasks /Create /SC ONCE /TN PortfolioVmUxValidation /TR "powershell -NoProfile -ExecutionPolicy Bypass -File %USERPROFILE%\Desktop\PortfolioVmUx\Run-VmUxValidation.ps1" /ST 23:59 /RU %USERNAME% /RL HIGHEST /F /IT
-schtasks /Run /TN PortfolioVmUxValidation
-schtasks /Query /TN PortfolioVmUxValidation /V /FO LIST

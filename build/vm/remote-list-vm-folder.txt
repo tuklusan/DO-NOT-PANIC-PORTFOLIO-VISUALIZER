@@ -1,1 +1,0 @@
-powershell -NoProfile -Command "Get-ChildItem -Force '%USERPROFILE%\Desktop\PortfolioVmUx' | Select-Object Name,Length,LastWriteTime | Sort-Object Name | ConvertTo-Json -Compress"

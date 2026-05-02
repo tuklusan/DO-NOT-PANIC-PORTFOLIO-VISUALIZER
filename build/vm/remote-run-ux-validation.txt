@@ -1,1 +1,0 @@
-powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\Desktop\PortfolioVmUx\Run-VmUxValidation.ps1"

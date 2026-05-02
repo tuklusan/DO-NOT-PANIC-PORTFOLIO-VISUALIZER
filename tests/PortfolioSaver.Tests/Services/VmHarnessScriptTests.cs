@@ -60,18 +60,18 @@ public sealed class VmHarnessScriptTests
     }
 
     [Fact]
-    public void GuestPrepareScript_ClearsPersistedPortfolioSaverStateForCleanBaseline()
+    public void InvokeVmBuildTest_UsesGuestSideLauncherAndPollsForFinishedSummary()
     {
         string script = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "build",
             "vm",
-            "Guest-PrepareVmUxFromShare.ps1"));
+            "Invoke-VmBuildTest.ps1"));
 
-        Assert.Contains("$roamingData = Join-Path $env:APPDATA \"PortfolioSaver\"", script, StringComparison.Ordinal);
-        Assert.Contains("$localData = Join-Path $env:LOCALAPPDATA \"PortfolioSaver\"", script, StringComparison.Ordinal);
-        Assert.Contains("Remove-Item -LiteralPath $roamingData -Recurse -Force", script, StringComparison.Ordinal);
-        Assert.Contains("Remove-Item -LiteralPath $localData -Recurse -Force", script, StringComparison.Ordinal);
+        Assert.Contains("scripts\\launch-$uxResultName.cmd", script, StringComparison.Ordinal);
+        Assert.Contains("PsExec.exe", script, StringComparison.Ordinal);
+        Assert.Contains("cmd /c", script, StringComparison.Ordinal);
+        Assert.Contains("$summary.PSObject.Properties.Name -contains 'FinishedAt'", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -104,8 +104,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[string]$RootPath", script, StringComparison.Ordinal);
         Assert.Contains("[string]$ResultRootPath", script, StringComparison.Ordinal);
         Assert.Contains("$root = $RootPath", script, StringComparison.Ordinal);
-        Assert.Contains("$summary.ExportMode = if ($usingDirectHostResults) { 'DirectHostShare' } else { 'LocalWorkspace' }", script, StringComparison.Ordinal);
+        Assert.Contains("$summary.ExportMode = 'LocalWorkspace'", script, StringComparison.Ordinal);
         Assert.Contains("$localTraceTarget = Join-Path $results 'trace'", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("VBOXSVR", script, StringComparison.Ordinal);
     }
 
     [Fact]

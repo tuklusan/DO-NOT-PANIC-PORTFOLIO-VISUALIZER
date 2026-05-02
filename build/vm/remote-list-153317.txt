@@ -1,1 +1,0 @@
-powershell -NoProfile -Command "$p='%USERPROFILE%\Desktop\PortfolioVmUx\results\20260409-153317'; Get-ChildItem $p | Select-Object Name,Length,LastWriteTime | Format-Table -AutoSize"

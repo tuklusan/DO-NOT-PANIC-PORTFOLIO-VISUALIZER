@@ -1,1 +1,0 @@
-powershell -NoProfile -Command "$base=Join-Path $env:USERPROFILE 'Desktop\PortfolioVmUx\publish\screensaver\Assets'; New-Item -ItemType Directory -Force -Path (Join-Path $base 'ExchangeBackgrounds') | Out-Null; New-Item -ItemType Directory -Force -Path (Join-Path $base 'SampleBackgrounds') | Out-Null;'OK'"

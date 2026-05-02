@@ -15,7 +15,7 @@ function Ensure-PoshSshModule {
     Import-Module Posh-SSH -ErrorAction Stop
 }
 
-function Get-VmSshCredentialFromEnv {
+function Get-VmSshCredentialPartsFromEnv {
     param([string]$EnvironmentVariable = 'PORTFOLIOSAVER_TESTVM_WIN10_SSH_CREDS')
 
     $raw = [Environment]::GetEnvironmentVariable($EnvironmentVariable, 'Process')
@@ -41,8 +41,19 @@ function Get-VmSshCredentialFromEnv {
         throw "Environment variable '$EnvironmentVariable' does not contain both a username and password."
     }
 
-    $securePassword = ConvertTo-SecureString -String $password -AsPlainText -Force
-    return [pscredential]::new($user, $securePassword)
+    return [pscustomobject]@{
+        UserName = $user
+        Password = $password
+    }
+}
+
+function Get-VmSshCredentialFromEnv {
+    param([string]$EnvironmentVariable = 'PORTFOLIOSAVER_TESTVM_WIN10_SSH_CREDS')
+
+    $parts = Get-VmSshCredentialPartsFromEnv -EnvironmentVariable $EnvironmentVariable
+
+    $securePassword = ConvertTo-SecureString -String $parts.Password -AsPlainText -Force
+    return [pscredential]::new($parts.UserName, $securePassword)
 }
 
 function New-VmSshSessionBundle {
@@ -104,6 +115,28 @@ function Invoke-VmPwshCommand {
     $result = Invoke-SSHCommand -SSHSession $Bundle.SshSession -Command $remoteCommand -TimeOut $TimeOutSeconds -ErrorAction Stop
     if ($result.ExitStatus -ne 0) {
         $joined = ($result.Output + $result.Error) -join [Environment]::NewLine
+        throw "Remote command failed with exit code $($result.ExitStatus): $joined"
+    }
+
+    return $result
+}
+
+function Invoke-VmRawCommand {
+    param(
+        [Parameter(Mandatory = $true)]$Bundle,
+        [Parameter(Mandatory = $true)][string]$Command,
+        [int]$TimeOutSeconds = 600,
+        [int[]]$AllowedExitCodes = @(0),
+        [string]$SuccessOutputPattern
+    )
+
+    $result = Invoke-SSHCommand -SSHSession $Bundle.SshSession -Command $Command -TimeOut $TimeOutSeconds -ErrorAction Stop
+    $joined = ($result.Output + $result.Error) -join [Environment]::NewLine
+    if ($AllowedExitCodes -notcontains $result.ExitStatus) {
+        if (-not [string]::IsNullOrWhiteSpace($SuccessOutputPattern) -and $joined -match $SuccessOutputPattern) {
+            return $result
+        }
+
         throw "Remote command failed with exit code $($result.ExitStatus): $joined"
     }
 

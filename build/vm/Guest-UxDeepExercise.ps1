@@ -23,25 +23,7 @@ if ([string]::IsNullOrWhiteSpace($ResultRootPath)) {
     $ResultRootPath = Join-Path $root 'results'
 }
 $resultName = $ResultName
-$repoShare = "\\VBOXSVR\codexrepo"
-$localResultsRoot = $ResultRootPath
-$results = Join-Path $localResultsRoot $resultName
-$hostResultRoot = $null
-$usingDirectHostResults = $false
-
-if (Test-Path $repoShare) {
-    try {
-        $hostResultRoot = Join-Path $repoShare 'build\vm\artifacts\vm-results'
-        New-Item -ItemType Directory -Force -Path $hostResultRoot | Out-Null
-        $results = Join-Path $hostResultRoot $resultName
-        $usingDirectHostResults = $true
-    }
-    catch {
-        $hostResultRoot = $null
-        $results = Join-Path $localResultsRoot $resultName
-        $usingDirectHostResults = $false
-    }
-}
+$results = Join-Path $ResultRootPath $resultName
 
 New-Item -ItemType Directory -Force -Path $results | Out-Null
 
@@ -342,7 +324,7 @@ function Write-SummaryFiles {
     $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $legacySummaryPath -Encoding UTF8
 }
 
-$summary.ExportMode = if ($usingDirectHostResults) { 'DirectHostShare' } else { 'LocalWorkspace' }
+$summary.ExportMode = 'LocalWorkspace'
 $summary.ResultName = $resultName
 $summary.ResultPath = $results
 Write-SummaryFiles
@@ -509,47 +491,6 @@ finally {
                 if (Test-Path $tracePath) {
                     Copy-Item -LiteralPath $tracePath -Destination (Join-Path $localTraceTarget $traceName) -Force
                 }
-            }
-        }
-
-        if ((-not $usingDirectHostResults) -and (Test-Path $repoShare)) {
-            $traceTarget = Join-Path (Join-Path $repoShare "build\vm\artifacts\trace") ($resultName + "-trace")
-            $hostRoot = Join-Path $repoShare "build\vm\artifacts\vm-results"
-            $hostTarget = Join-Path $hostRoot $resultName
-            New-Item -ItemType Directory -Force -Path $hostRoot | Out-Null
-            if (Test-Path $hostTarget) {
-                Remove-Item -LiteralPath $hostTarget -Recurse -Force -ErrorAction SilentlyContinue
-            }
-
-            Copy-Item -LiteralPath $results -Destination $hostTarget -Recurse -Force
-            if (Test-Path $traceRoot) {
-                New-Item -ItemType Directory -Force -Path $traceTarget | Out-Null
-                foreach ($traceName in @("trace.circular.log", "trace.circular.idx")) {
-                    $tracePath = Join-Path $traceRoot $traceName
-                    if (Test-Path $tracePath) {
-                        Copy-Item -LiteralPath $tracePath -Destination (Join-Path $traceTarget $traceName) -Force
-                    }
-                }
-            }
-            Write-Output ("HOST_RESULT_DIR=" + $hostTarget)
-            if (Test-Path $traceTarget) {
-                Write-Output ("HOST_TRACE_DIR=" + $traceTarget)
-            }
-        }
-        elseif ($usingDirectHostResults -and (Test-Path $repoShare)) {
-            $traceTarget = Join-Path (Join-Path $repoShare "build\vm\artifacts\trace") ($resultName + "-trace")
-            if (Test-Path $traceRoot) {
-                New-Item -ItemType Directory -Force -Path $traceTarget | Out-Null
-                foreach ($traceName in @("trace.circular.log", "trace.circular.idx")) {
-                    $tracePath = Join-Path $traceRoot $traceName
-                    if (Test-Path $tracePath) {
-                        Copy-Item -LiteralPath $tracePath -Destination (Join-Path $traceTarget $traceName) -Force
-                    }
-                }
-            }
-            Write-Output ("HOST_RESULT_DIR=" + $results)
-            if (Test-Path $traceTarget) {
-                Write-Output ("HOST_TRACE_DIR=" + $traceTarget)
             }
         }
     }

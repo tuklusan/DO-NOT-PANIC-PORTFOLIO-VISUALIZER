@@ -1,3 +1,0 @@
-taskkill /F /IM PortfolioSaver.Config.exe >nul 2>&1
-taskkill /F /IM PortfolioSaver.Screensaver.exe >nul 2>&1
-%USERPROFILE%\Desktop\PortfolioVmUx\PsExec.exe -accepteula -i 1 -d %USERPROFILE%\Desktop\PortfolioVmUx\publish\screensaver\PortfolioSaver.Screensaver.exe /s

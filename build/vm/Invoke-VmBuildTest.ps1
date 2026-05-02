@@ -22,6 +22,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $hostArtifactsRoot = Join-Path $repoRoot 'build\vm\artifacts\ssh-runs'
 $bundle = $null
 $uxResultName = 'ux-deep-ssh-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
+$vmCredParts = Get-VmSshCredentialPartsFromEnv
 
 if ($PushWorkspace) {
     & (Join-Path $PSScriptRoot 'Push-VmWorkspace.ps1') -VmHost $VmHost -VmPort $VmPort -RootPath $RootPath -Bootstrap:$Bootstrap
@@ -93,32 +94,38 @@ Write-Output ('BUILD_SUMMARY=' + `$resultPath)
     if ($RunUxDeep) {
         $remoteUxScript = Join-Path $RootPath 'repo\build\vm\Guest-UxDeepExercise.ps1'
         $remoteUxSummary = Join-Path $RootPath ("results\$uxResultName\ux-deep-summary.json")
-        $launchCommand = @"
+        $remoteUxLauncher = Join-Path $RootPath ("scripts\launch-$uxResultName.cmd")
+        $remoteUser = $vmCredParts.UserName.Replace("'", "''")
+        $remotePassword = $vmCredParts.Password.Replace("'", "''")
+        $launcherBody = @"
+@echo off
+"C:\Program Files\SysinternalsSuite\PsExec.exe" -accepteula -i 1 -d -u "$remoteUser" -p "$remotePassword" pwsh.exe -NoProfile -ExecutionPolicy Bypass -File "$remoteUxScript" -RootPath "$RootPath" -ResultName "$uxResultName" -ScreensaverDurationMinutes "$GuestScreensaverDurationMinutes" -CaptureIntervalSeconds "$CaptureIntervalSeconds"
+"@
+        $escapedLauncherBody = $launcherBody.Replace("'", "''")
+        $prepareLaunchCommand = @"
 `$psexec = 'C:\Program Files\SysinternalsSuite\PsExec.exe'
-if (-not (Test-Path `$psexec)) {
-    throw 'PsExec.exe is required for interactive desktop launch but was not found.'
-}
 `$scriptPath = '$remoteUxScript'
+`$launcherPath = '$remoteUxLauncher'
+if (-not (Test-Path `$psexec)) {
+    throw 'Missing PsExec.exe in guest.'
+}
 if (-not (Test-Path `$scriptPath)) {
     throw \"Missing guest UX script: $remoteUxScript\"
 }
-Start-Process -FilePath `$psexec -ArgumentList @(
-    '-accepteula',
-    '-i', '1',
-    '-d',
-    'pwsh.exe',
-    '-NoProfile',
-    '-ExecutionPolicy', 'Bypass',
-    '-File', `$scriptPath,
-    '-RootPath', '$RootPath',
-    '-ResultName', '$uxResultName',
-    '-ScreensaverDurationMinutes', '$GuestScreensaverDurationMinutes',
-    '-CaptureIntervalSeconds', '$CaptureIntervalSeconds'
-) | Out-Null
-Write-Output 'UX_LAUNCHED'
+New-Item -ItemType Directory -Force -Path (Split-Path -Path `$launcherPath -Parent) | Out-Null
+Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue |
+    Stop-Process -Force -ErrorAction SilentlyContinue
+Set-Content -LiteralPath `$launcherPath -Value @'
+$escapedLauncherBody
+'@ -Encoding ASCII
+Write-Output 'UX_LAUNCHER_READY'
 "@
-        Write-VmSshStep "Launching remote 20-minute UX run through PsExec"
-        Invoke-VmPwshCommand -Bundle $bundle -Command $launchCommand -TimeOutSeconds 120 | Out-Null
+        Write-VmSshStep "Preparing remote UX launcher"
+        Invoke-VmPwshCommand -Bundle $bundle -Command $prepareLaunchCommand -TimeOutSeconds 120 | Out-Null
+
+        $launchRemoteCommand = ('cmd /c ""{0}""' -f $remoteUxLauncher)
+        Write-VmSshStep "Launching remote 20-minute UX run through PsExec in session 1"
+        Invoke-VmRawCommand -Bundle $bundle -Command $launchRemoteCommand -TimeOutSeconds 120 -SuccessOutputPattern 'started on .* with process ID \d+\.' | Out-Null
 
         $deadline = (Get-Date).AddSeconds($UxTimeoutSeconds)
         do {
@@ -132,7 +139,8 @@ if (Test-Path '$remoteUxSummary') {
             $json = ($poll.Output -join [Environment]::NewLine).Trim()
             if (-not [string]::IsNullOrWhiteSpace($json)) {
                 $summary = $json | ConvertFrom-Json
-                if ($null -ne $summary.FinishedAt -and -not [string]::IsNullOrWhiteSpace([string]$summary.FinishedAt)) {
+                $hasFinishedAt = $summary.PSObject.Properties.Name -contains 'FinishedAt'
+                if ($hasFinishedAt -and -not [string]::IsNullOrWhiteSpace([string]$summary.FinishedAt)) {
                     Write-VmSshStep "Remote UX run finished"
                     break
                 }
@@ -140,7 +148,14 @@ if (Test-Path '$remoteUxSummary') {
         } while ((Get-Date) -lt $deadline)
 
         if ((Get-Date) -ge $deadline) {
-            throw "Timed out waiting for remote UX summary: $remoteUxSummary"
+            $statusCommand = @"
+Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver,pwsh,powershell -ErrorAction SilentlyContinue |
+    Select-Object ProcessName,Id,SessionId,StartTime |
+    ConvertTo-Json -Compress
+"@
+            $taskInfo = Invoke-VmPwshCommand -Bundle $bundle -Command $statusCommand -TimeOutSeconds 120
+            $taskInfoText = ($taskInfo.Output -join [Environment]::NewLine).Trim()
+            throw "Timed out waiting for remote UX summary: $remoteUxSummary`nProcessInfo=$taskInfoText"
         }
 
         & (Join-Path $PSScriptRoot 'Pull-VmResults.ps1') -VmHost $VmHost -VmPort $VmPort -RootPath $RootPath -RemotePath (Join-Path $RootPath ("results\$uxResultName"))
