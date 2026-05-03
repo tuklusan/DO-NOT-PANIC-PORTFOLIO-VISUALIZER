@@ -552,7 +552,8 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("Margin=\"4,0,4,0\"", tapeXaml, StringComparison.Ordinal);
         Assert.Contains("nameof(TapeItemViewModel.IsWaitingOnData)", tapeCode, StringComparison.Ordinal);
         Assert.Contains("Source = item", tapeCode, StringComparison.Ordinal);
-        Assert.Contains("Text = \"🕒\"", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("nameof(TapeItemViewModel.WaitingGlyphText)", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("nameof(TapeItemViewModel.WaitingGlyphForeground)", tapeCode, StringComparison.Ordinal);
         Assert.Contains("MinHeight=\"68\"", statusXaml, StringComparison.Ordinal);
         Assert.Contains("TextWrapping=\"NoWrap\"", statusXaml, StringComparison.Ordinal);
         Assert.Contains("double statusHeight = Math.Max(68d, StatusBarHost.ActualHeight);", sceneCodeBehind, StringComparison.Ordinal);
@@ -700,7 +701,7 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void FloatingGraphCards_HaveDensityCollisionControl_AndRightLabelGutter()
+    public void FloatingGraphCards_UseIndependentMotionAcrossFullCanvas_AndRightLabelGutter()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
@@ -722,7 +723,8 @@ public sealed class ScreensaverRenderBehaviorTests
             "StartupCoordinator.cs"));
 
         Assert.Contains("private const int MaxVisibleGraphCards = 10;", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("SeparateVisibleGraphCards(bounds);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("SeparateVisibleGraphCards(bounds);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("GraphCardSeparationGap", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("foreach (FloatingGraphViewModel graph in EnumerateVisibleGraphCards())", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("graph.PlotWidth = Math.Max(106d, graphWidth - 62d);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Margin=\"2,3,12,0\"", floatingGraphXaml, StringComparison.Ordinal);
@@ -766,6 +768,39 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("<ColumnDefinition Width=\"Auto\" />", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"128\"", statusBarXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("MaxWidth=\"700\"", statusBarXaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TickerTape_WaitingGlyphLivesBesideSymbolWithoutReplacingStaleValues()
+    {
+        string tapeCode = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Render",
+            "Controls",
+            "TickerTapeControl.xaml.cs"));
+
+        Assert.Contains("CreateSymbolHost(item)", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("private static FrameworkElement CreateSymbolHost(TapeItemViewModel item)", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("CreateWaitingGlyphHost(item)", tapeCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("showWaitingGlyph: true", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("FontSize = 12", tapeCode, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ScreensaverScene_EmitsDisplayedTapeSamplesForSoakComparison()
+    {
+        string sceneCodeBehind = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "ScreensaverSceneControl.xaml.cs"));
+
+        Assert.Contains("TraceDisplayedTapeSample();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void TraceDisplayedTapeSample()", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DisplayedTapeSample", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("~{NormalizeTapeSnapshotValue(item.LastText)}~", sceneCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]

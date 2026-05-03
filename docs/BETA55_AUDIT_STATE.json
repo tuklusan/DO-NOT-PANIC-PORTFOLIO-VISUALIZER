@@ -17,11 +17,13 @@
     "latest_recorded_validation_state":  {
                                              "automated_tests":  {
                                                                      "command":  "dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-build",
-                                                                     "result":  "210 / 210 passing",
+                                                                     "result":  "213 / 213 passing",
                                                                      "notes":  [
                                                                                    "Host regression coverage now includes the SSH-first VM harness scripts, root-path-aware guest UX scripts, and the desktop refresh-cadence migration tests.",
                                                                                    "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don\u0027t-Panic-Portfolio-Visualizer.",
-                                                                                   "A repo-local NuGet.Config now clears stale Visual Studio fallback package folders so restore works on this machine."
+                                                                                   "A repo-local NuGet.Config now clears stale Visual Studio fallback package folders so restore works on this machine.",
+                                                                                   "Tape rendering now preserves stale values, distinguishes missing versus stale wait states, and keeps the status glyph beside the symbol instead of replacing the value text.",
+                                                                                   "Guest long-run UX captures now write external Yahoo Finance spot checks plus displayed-versus-reference comparison artifacts."
                                                                                ]
                                                                  },
                                              "build":  {

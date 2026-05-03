@@ -318,6 +318,8 @@ $summary = [ordered]@{
 $summaryPath = Join-Path $results 'ux-deep-summary.json'
 $legacySummaryPath = Join-Path $results 'vm-ux-summary.json'
 $logPath = Join-Path $results 'ux-deep-run.log'
+$referenceSpotCheckPath = Join-Path $results 'reference-spot-checks.jsonl'
+$referenceComparisonPath = Join-Path $results 'reference-spot-check-comparisons.jsonl'
 
 function Write-SummaryFiles {
     $json = $summary | ConvertTo-Json -Depth 6
@@ -346,6 +348,173 @@ function Write-TextFileWithRetry {
             Start-Sleep -Milliseconds 200
         }
     }
+}
+
+function Write-ReferenceSpotCheck {
+    param(
+        [Parameter(Mandatory = $true)][string]$OutputPath,
+        [Parameter(Mandatory = $true)][int]$CaptureIndex
+    )
+
+    $displayedSample = Get-LatestDisplayedTapeSample
+    $symbols = if ($displayedSample.Count -gt 0) {
+        @($displayedSample | Select-Object -ExpandProperty Symbol -Unique | Select-Object -First 6)
+    }
+    else {
+        @('SPY', 'AAPL', 'MSFT', '^VIX', '^FTSE', 'DX-Y.NYB')
+    }
+    $payload = [ordered]@{
+        CapturedAt = (Get-Date).ToString('o')
+        CaptureIndex = $CaptureIndex
+        Source = 'YahooFinanceQuote'
+        Symbols = $symbols
+        DisplayedSample = $displayedSample
+        Results = @()
+    }
+
+    try {
+        $encodedSymbols = [Uri]::EscapeDataString(($symbols -join ','))
+        $response = Invoke-RestMethod -Uri ("https://query1.finance.yahoo.com/v7/finance/quote?symbols=$encodedSymbols") -TimeoutSec 20 -Headers @{ 'User-Agent' = 'PortfolioSaverVmHarness/1.0' }
+        foreach ($quote in ($response.quoteResponse.result | Where-Object { $_ -ne $null })) {
+            $payload.Results += [ordered]@{
+                Symbol = [string]$quote.symbol
+                Last = $quote.regularMarketPrice
+                ChangePercent = $quote.regularMarketChangePercent
+                MarketTime = if ($quote.regularMarketTime) { [DateTimeOffset]::FromUnixTimeSeconds([long]$quote.regularMarketTime).ToString('o') } else { $null }
+                Currency = [string]$quote.currency
+            }
+        }
+    }
+    catch {
+        $payload.Error = $_.Exception.Message
+    }
+
+    Add-Content -LiteralPath $OutputPath -Value ($payload | ConvertTo-Json -Compress) -Encoding UTF8
+    Write-ReferenceSpotCheckComparison -OutputPath $referenceComparisonPath -Payload $payload
+}
+
+function Get-LatestDisplayedTapeSample {
+    $tracePath = Join-Path $env:APPDATA 'PortfolioSaver\Trace\trace.circular.log'
+    if (-not (Test-Path $tracePath)) {
+        return @()
+    }
+
+    $line = Get-Content -LiteralPath $tracePath -Tail 800 |
+        Where-Object { $_ -like '*event=DisplayedTapeSample*' } |
+        Select-Object -Last 1
+
+    if ([string]::IsNullOrWhiteSpace($line)) {
+        return @()
+    }
+
+    $match = [regex]::Match($line, 'sample=\[(.*)\]\s*$')
+    if (-not $match.Success) {
+        return @()
+    }
+
+    $sampleText = $match.Groups[1].Value
+    if ([string]::IsNullOrWhiteSpace($sampleText)) {
+        return @()
+    }
+
+    $items = New-Object System.Collections.Generic.List[object]
+    foreach ($entry in ($sampleText -split ', ')) {
+        $parts = $entry -split '~', 4
+        if ($parts.Count -lt 4) {
+            continue
+        }
+
+        $items.Add([ordered]@{
+            Symbol = $parts[0]
+            LastText = $parts[1]
+            ChangeText = $parts[2]
+            State = $parts[3]
+        })
+    }
+
+    return @($items)
+}
+
+function Try-ParseInvariantDecimal {
+    param([string]$Text)
+
+    $value = 0m
+    if ([decimal]::TryParse($Text, [System.Globalization.NumberStyles]::Any, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$value)) {
+        return $value
+    }
+
+    return $null
+}
+
+function Write-ReferenceSpotCheckComparison {
+    param(
+        [Parameter(Mandatory = $true)][string]$OutputPath,
+        [Parameter(Mandatory = $true)]$Payload
+    )
+
+    $comparison = [ordered]@{
+        CapturedAt = $Payload.CapturedAt
+        CaptureIndex = $Payload.CaptureIndex
+        Source = 'DisplayedVsYahooFinance'
+        Comparisons = @()
+    }
+
+    $resultMap = @{}
+    foreach ($result in @($Payload.Results)) {
+        if ($null -eq $result.Symbol) { continue }
+        $resultMap[[string]$result.Symbol] = $result
+    }
+
+    foreach ($displayed in @($Payload.DisplayedSample)) {
+        $symbol = [string]$displayed.Symbol
+        $state = [string]$displayed.State
+
+        if (-not $resultMap.ContainsKey($symbol)) {
+            $comparison.Comparisons += [ordered]@{
+                Symbol = $symbol
+                State = $state
+                Status = 'reference-missing'
+            }
+            continue
+        }
+
+        $reference = $resultMap[$symbol]
+        $entry = [ordered]@{
+            Symbol = $symbol
+            State = $state
+            DisplayedLast = [string]$displayed.LastText
+            ReferenceLast = $reference.Last
+        }
+
+        if ($state -ne 'live') {
+            $entry.Status = 'waiting'
+            $comparison.Comparisons += $entry
+            continue
+        }
+
+        $displayedValue = Try-ParseInvariantDecimal -Text ([string]$displayed.LastText)
+        $referenceValue = $reference.Last
+        if ($null -eq $displayedValue -or $null -eq $referenceValue) {
+            $entry.Status = 'unparsable'
+            $comparison.Comparisons += $entry
+            continue
+        }
+
+        $absDiff = [Math]::Abs([decimal]$displayedValue - [decimal]$referenceValue)
+        $pctDiff = if ([decimal]$referenceValue -ne 0) {
+            [Math]::Abs(([double](([decimal]$displayedValue - [decimal]$referenceValue) / [decimal]$referenceValue)))
+        }
+        else {
+            0.0
+        }
+
+        $entry.AbsoluteDifference = [decimal]::Round($absDiff, 4)
+        $entry.PercentDifference = [Math]::Round($pctDiff * 100.0, 4)
+        $entry.Status = if ($absDiff -le 0.05m -or $pctDiff -le 0.0035d) { 'close' } else { 'drift' }
+        $comparison.Comparisons += $entry
+    }
+
+    Add-Content -LiteralPath $OutputPath -Value ($comparison | ConvertTo-Json -Compress) -Encoding UTF8
 }
 
 $summary.ExportMode = 'LocalWorkspace'
@@ -487,6 +656,9 @@ try {
             Capture-Screen -Path $path
             $summary.ScreensaverShots++
             $summary.DesktopShots++
+            if ($i -eq 1 -or ($i % 6) -eq 0) {
+                Write-ReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $i
+            }
             Write-SummaryFiles
             Start-Sleep -Seconds $CaptureIntervalSeconds
         }

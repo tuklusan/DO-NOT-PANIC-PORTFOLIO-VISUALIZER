@@ -908,6 +908,8 @@ public sealed class StartupCoordinator
             new KeyValuePair<string, object?>("result_quote_count", results.Count),
             new KeyValuePair<string, object?>("refreshed_symbol_count", refreshedSymbols.Count),
             new KeyValuePair<string, object?>("stale_symbol_count", results.Values.Count(quote => quote.IsStale)),
+            new KeyValuePair<string, object?>("stale_symbols", PreviewSymbols(results.Values.Where(quote => quote.IsStale).Select(quote => quote.Symbol))),
+            new KeyValuePair<string, object?>("missing_value_symbols", PreviewSymbols(results.Values.Where(quote => !quote.Last.HasValue && !quote.PreviousClose.HasValue).Select(quote => quote.Symbol))),
             new KeyValuePair<string, object?>("remaining_symbol_count", remainingSymbols.Count),
             new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(remainingSymbols)),
             new KeyValuePair<string, object?>("macro_missing_symbols", PreviewMissingSymbols(GetMacroIndicatorSymbols(), results, settings)),
@@ -1086,15 +1088,13 @@ public sealed class StartupCoordinator
     {
         decimal? last = quote?.Last ?? quote?.PreviousClose;
         decimal? percent = quote?.ChangePercent;
-        bool isStale = IsQuoteBeyondStaleThreshold(quote, settings, nowUtc) || last is null;
-        string lastText = isStale
-            ? string.Empty
-            : last is decimal lastValue ? lastValue.ToString("0.00", CultureInfo.InvariantCulture) : string.Empty;
-        string percentText = isStale
-            ? string.Empty
-            : percent is decimal percentValue
-                ? $"{(percentValue >= 0 ? "+" : string.Empty)}{percentValue:0.00}%"
-                : string.Empty;
+        bool hasUsableValue = last is not null;
+        bool isMissing = !hasUsableValue;
+        bool isStale = !isMissing && IsQuoteBeyondStaleThreshold(quote, settings, nowUtc);
+        string lastText = last is decimal lastValue ? lastValue.ToString("0.00", CultureInfo.InvariantCulture) : string.Empty;
+        string percentText = percent is decimal percentValue
+            ? $"{(percentValue >= 0 ? "+" : string.Empty)}{percentValue:0.00}%"
+            : string.Empty;
         Brush changeBrush = percent switch
         {
             > 0 => Brushes.LimeGreen,
@@ -1107,8 +1107,11 @@ public sealed class StartupCoordinator
             SymbolText = symbol,
             LastText = lastText,
             ChangeText = percentText,
-            IsWaitingOnData = isStale,
-            SymbolForeground = isStale ? Brushes.Gold : changeBrush,
+            IsWaitingOnData = isStale || isMissing,
+            HasMissingData = isMissing,
+            WaitingGlyphText = isMissing ? "◌" : "🕒",
+            WaitingGlyphForeground = isMissing ? Brushes.DarkOrange : Brushes.Goldenrod,
+            SymbolForeground = isMissing ? Brushes.DarkOrange : isStale ? Brushes.Gold : changeBrush,
             LastForeground = Brushes.WhiteSmoke,
             ChangeForeground = changeBrush,
             QuoteUpdateToken = quote?.FetchTimestampUtc.UtcTicks ?? 0
@@ -1584,6 +1587,9 @@ public sealed class StartupCoordinator
         LastText = item.LastText,
         ChangeText = item.ChangeText,
         IsWaitingOnData = item.IsWaitingOnData,
+        HasMissingData = item.HasMissingData,
+        WaitingGlyphText = item.WaitingGlyphText,
+        WaitingGlyphForeground = item.WaitingGlyphForeground,
         SymbolForeground = item.SymbolForeground,
         LastForeground = item.LastForeground,
         ChangeForeground = item.ChangeForeground

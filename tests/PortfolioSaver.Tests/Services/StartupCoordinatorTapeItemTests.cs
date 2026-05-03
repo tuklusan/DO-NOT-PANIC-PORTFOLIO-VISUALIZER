@@ -11,20 +11,22 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class StartupCoordinatorTapeItemTests
 {
     [Fact]
-    public void BuildTapeItem_NullQuote_UsesGoldSymbolAndBlankValues()
+    public void BuildTapeItem_NullQuote_UsesMissingIndicatorAndBlankValues()
     {
         DateTimeOffset now = new(2026, 4, 10, 12, 0, 0, TimeSpan.Zero);
 
         TapeItemViewModel item = InvokeBuildTapeItem("AAPL", null, "Apple", now);
 
-        Assert.Equal(Brushes.Gold, item.SymbolForeground);
+        Assert.Equal(Brushes.DarkOrange, item.SymbolForeground);
         Assert.True(item.IsWaitingOnData);
+        Assert.True(item.HasMissingData);
+        Assert.Equal("◌", item.WaitingGlyphText);
         Assert.Equal(string.Empty, item.LastText);
         Assert.Equal(string.Empty, item.ChangeText);
     }
 
     [Fact]
-    public void BuildTapeItem_StaleQuote_UsesGoldSymbolAndBlankValues()
+    public void BuildTapeItem_StaleQuote_KeepsLastKnownValuesWhileFlaggingWaitState()
     {
         DateTimeOffset now = new(2026, 4, 10, 12, 0, 0, TimeSpan.Zero);
         QuoteSnapshot staleQuote = new()
@@ -40,8 +42,10 @@ public sealed class StartupCoordinatorTapeItemTests
 
         Assert.Equal(Brushes.Gold, item.SymbolForeground);
         Assert.True(item.IsWaitingOnData);
-        Assert.Equal(string.Empty, item.LastText);
-        Assert.Equal(string.Empty, item.ChangeText);
+        Assert.False(item.HasMissingData);
+        Assert.Equal("🕒", item.WaitingGlyphText);
+        Assert.Equal("100.00", item.LastText);
+        Assert.Equal("+1.00%", item.ChangeText);
     }
 
     [Fact]
@@ -61,6 +65,7 @@ public sealed class StartupCoordinatorTapeItemTests
 
         Assert.Equal(Brushes.LimeGreen, item.SymbolForeground);
         Assert.False(item.IsWaitingOnData);
+        Assert.False(item.HasMissingData);
         Assert.Equal("250.12", item.LastText);
         Assert.Equal("+2.50%", item.ChangeText);
     }

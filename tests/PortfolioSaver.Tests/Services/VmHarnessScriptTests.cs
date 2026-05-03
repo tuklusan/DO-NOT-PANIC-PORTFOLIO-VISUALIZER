@@ -112,6 +112,24 @@ public sealed class VmHarnessScriptTests
     }
 
     [Fact]
+    public void GuestUxDeepExercise_CapturesReferenceSpotChecksForLongRuns()
+    {
+        string script = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "Guest-UxDeepExercise.ps1"));
+
+        Assert.Contains("reference-spot-checks.jsonl", script, StringComparison.Ordinal);
+        Assert.Contains("reference-spot-check-comparisons.jsonl", script, StringComparison.Ordinal);
+        Assert.Contains("function Write-ReferenceSpotCheck", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-LatestDisplayedTapeSample", script, StringComparison.Ordinal);
+        Assert.Contains("function Write-ReferenceSpotCheckComparison", script, StringComparison.Ordinal);
+        Assert.Contains("query1.finance.yahoo.com/v7/finance/quote", script, StringComparison.Ordinal);
+        Assert.Contains("DisplayedVsYahooFinance", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SshHarnessScripts_UseVmharnessWorkspaceAndDoNotDependOnVBox()
     {
         string push = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "Push-VmWorkspace.ps1"));

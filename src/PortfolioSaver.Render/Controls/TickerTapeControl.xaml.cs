@@ -251,8 +251,8 @@ public partial class TickerTapeControl : UserControl
             VerticalAlignment = VerticalAlignment.Center
         };
 
-        panel.Children.Add(CreateBoundTextBlock(item, nameof(TapeItemViewModel.SymbolText), nameof(TapeItemViewModel.SymbolForeground), 62d, 4d, TextAlignment.Left, FontWeights.Bold));
-        panel.Children.Add(CreateValueHost(item, nameof(TapeItemViewModel.LastText), nameof(TapeItemViewModel.LastForeground), 70d, 4d, TextAlignment.Right, FontWeights.SemiBold, registerTargets, showWaitingGlyph: true));
+        panel.Children.Add(CreateSymbolHost(item));
+        panel.Children.Add(CreateValueHost(item, nameof(TapeItemViewModel.LastText), nameof(TapeItemViewModel.LastForeground), 70d, 4d, TextAlignment.Right, FontWeights.SemiBold, registerTargets));
         panel.Children.Add(CreateValueHost(item, nameof(TapeItemViewModel.ChangeText), nameof(TapeItemViewModel.ChangeForeground), 76d, 0d, TextAlignment.Right, FontWeights.SemiBold, registerTargets));
         panel.Children.Add(new Border
         {
@@ -263,6 +263,29 @@ public partial class TickerTapeControl : UserControl
             VerticalAlignment = VerticalAlignment.Center
         });
         return panel;
+    }
+
+    private static FrameworkElement CreateSymbolHost(TapeItemViewModel item)
+    {
+        Grid host = new()
+        {
+            Width = 76d,
+            Margin = new Thickness(0, 0, 4, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        host.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        TextBlock symbol = CreateBoundTextBlock(item, nameof(TapeItemViewModel.SymbolText), nameof(TapeItemViewModel.SymbolForeground), double.NaN, 0d, TextAlignment.Left, FontWeights.Bold);
+        Grid.SetColumn(symbol, 0);
+        host.Children.Add(symbol);
+
+        FrameworkElement glyph = CreateWaitingGlyphHost(item);
+        glyph.Margin = new Thickness(4, 0, 0, 0);
+        Grid.SetColumn(glyph, 1);
+        host.Children.Add(glyph);
+
+        return host;
     }
 
     private Border CreateValueHost(
@@ -306,15 +329,21 @@ public partial class TickerTapeControl : UserControl
     {
         TextBlock glyph = new()
         {
-            Text = "🕒",
             FontFamily = new FontFamily("Segoe UI Emoji"),
-            FontSize = 13,
-            Foreground = new SolidColorBrush(Color.FromRgb(255, 214, 102)),
+            FontSize = 12,
             VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            TextAlignment = TextAlignment.Right,
-            Opacity = 0.96
+            HorizontalAlignment = HorizontalAlignment.Left,
+            TextAlignment = TextAlignment.Left,
+            Opacity = 0.82
         };
+        glyph.SetBinding(TextBlock.TextProperty, new Binding(nameof(TapeItemViewModel.WaitingGlyphText))
+        {
+            Source = item
+        });
+        glyph.SetBinding(TextBlock.ForegroundProperty, new Binding(nameof(TapeItemViewModel.WaitingGlyphForeground))
+        {
+            Source = item
+        });
         glyph.SetBinding(TextBlock.VisibilityProperty, new Binding(nameof(TapeItemViewModel.IsWaitingOnData))
         {
             Source = item,

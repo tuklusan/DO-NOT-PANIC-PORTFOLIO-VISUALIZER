@@ -13,6 +13,9 @@ public sealed class TapeItemViewModel : BindableBase
     private Brush _changeForeground = Brushes.White;
     private Brush _valueFlashBrush = Brushes.Transparent;
     private bool _isWaitingOnData;
+    private bool _hasMissingData;
+    private string _waitingGlyphText = "🕒";
+    private Brush _waitingGlyphForeground = Brushes.Goldenrod;
     private int _updateSequence;
     private long _quoteUpdateToken;
 
@@ -62,6 +65,24 @@ public sealed class TapeItemViewModel : BindableBase
     {
         get => _isWaitingOnData;
         set => SetProperty(ref _isWaitingOnData, value);
+    }
+
+    public bool HasMissingData
+    {
+        get => _hasMissingData;
+        set => SetProperty(ref _hasMissingData, value);
+    }
+
+    public string WaitingGlyphText
+    {
+        get => _waitingGlyphText;
+        set => SetProperty(ref _waitingGlyphText, value);
+    }
+
+    public Brush WaitingGlyphForeground
+    {
+        get => _waitingGlyphForeground;
+        set => SetProperty(ref _waitingGlyphForeground, value);
     }
 
     public int UpdateSequence

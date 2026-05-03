@@ -26,7 +26,6 @@ namespace PortfolioSaver.Screensaver.Controls;
 public partial class ScreensaverSceneControl : UserControl
 {
     private const int MaxVisibleGraphCards = 10;
-    private const double GraphCardSeparationGap = 10d;
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly ObservableCollection<TapeViewModel> _tapes = [];
     private readonly StartupCoordinator _startupCoordinator = new();
@@ -250,6 +249,7 @@ public partial class ScreensaverSceneControl : UserControl
         ApplyClockMarketData(force: true);
         ConfigureTimers();
         _ = RefreshClockDataAsync(force: false);
+        TraceDisplayedTapeSample();
         TraceSceneStateSummary("ApplySceneStateComplete", preserveLayout);
     }
 
@@ -762,62 +762,11 @@ public partial class ScreensaverSceneControl : UserControl
         if (_networkWaitingViewModel is not null)
             _motionController.Step(_networkWaitingViewModel, GetWaitingBounds(), elapsedSeconds);
 
-        SeparateVisibleGraphCards(bounds);
         ClampSpritesToSafeBounds();
     }
 
     private IEnumerable<FloatingGraphViewModel> EnumerateVisibleGraphCards()
         => _graphs.Where(graph => graph.IsVisible).Take(MaxVisibleGraphCards);
-
-    private void SeparateVisibleGraphCards(Rect bounds)
-    {
-        List<FloatingGraphViewModel> visibleGraphs = EnumerateVisibleGraphCards().ToList();
-        if (visibleGraphs.Count < 2)
-            return;
-
-        for (int pass = 0; pass < 2; pass++)
-        {
-            for (int i = 0; i < visibleGraphs.Count; i++)
-            {
-                FloatingGraphViewModel first = visibleGraphs[i];
-                Rect firstRect = InflateRect(GetSpriteRect(first), GraphCardSeparationGap);
-                for (int j = i + 1; j < visibleGraphs.Count; j++)
-                {
-                    FloatingGraphViewModel second = visibleGraphs[j];
-                    Rect secondRect = InflateRect(GetSpriteRect(second), GraphCardSeparationGap);
-                    if (!firstRect.IntersectsWith(secondRect))
-                        continue;
-
-                    double firstCenterX = first.X + first.Width / 2d;
-                    double firstCenterY = first.Y + first.Height / 2d;
-                    double secondCenterX = second.X + second.Width / 2d;
-                    double secondCenterY = second.Y + second.Height / 2d;
-                    double dx = secondCenterX - firstCenterX;
-                    double dy = secondCenterY - firstCenterY;
-                    if (Math.Abs(dx) < 0.01d && Math.Abs(dy) < 0.01d)
-                    {
-                        dx = 1d;
-                        dy = 0.5d;
-                    }
-
-                    double distance = Math.Max(1d, Math.Sqrt(dx * dx + dy * dy));
-                    double push = Math.Min(14d, Math.Max(4d, GraphCardSeparationGap));
-                    double pushX = dx / distance * push;
-                    double pushY = dy / distance * push;
-
-                    first.X -= pushX;
-                    first.Y -= pushY;
-                    second.X += pushX;
-                    second.Y += pushY;
-                    ClampSpriteToBounds(first, bounds);
-                    ClampSpriteToBounds(second, bounds);
-                }
-            }
-        }
-    }
-
-    private static Rect InflateRect(Rect rect, double amount)
-        => new(rect.X - amount, rect.Y - amount, rect.Width + amount * 2d, rect.Height + amount * 2d);
 
     private Rect GetBaseMotionBounds()
     {
@@ -1929,6 +1878,9 @@ public partial class ScreensaverSceneControl : UserControl
         LastText = item.LastText,
         ChangeText = item.ChangeText,
         IsWaitingOnData = item.IsWaitingOnData,
+        HasMissingData = item.HasMissingData,
+        WaitingGlyphText = item.WaitingGlyphText,
+        WaitingGlyphForeground = item.WaitingGlyphForeground,
         SymbolForeground = item.SymbolForeground,
         LastForeground = item.LastForeground,
         ChangeForeground = item.ChangeForeground
@@ -1945,6 +1897,9 @@ public partial class ScreensaverSceneControl : UserControl
         target.LastText = source.LastText;
         target.ChangeText = source.ChangeText;
         target.IsWaitingOnData = source.IsWaitingOnData;
+        target.HasMissingData = source.HasMissingData;
+        target.WaitingGlyphText = source.WaitingGlyphText;
+        target.WaitingGlyphForeground = source.WaitingGlyphForeground;
         target.SymbolForeground = source.SymbolForeground;
         target.LastForeground = source.LastForeground;
         target.ChangeForeground = source.ChangeForeground;
@@ -1954,6 +1909,38 @@ public partial class ScreensaverSceneControl : UserControl
         if (hadPriorSymbol && (valueChanged || updateTokenChanged) && !string.IsNullOrWhiteSpace(source.LastText))
             target.TriggerValueFlash(source.ChangeForeground);
     }
+
+    private void TraceDisplayedTapeSample()
+    {
+        List<string> sample = _tapes
+            .SelectMany(tape => tape.Items)
+            .Where(item => !string.IsNullOrWhiteSpace(item.SymbolText))
+            .GroupBy(item => item.SymbolText, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .Take(8)
+            .Select(item =>
+            {
+                string state = item.HasMissingData
+                    ? "missing"
+                    : item.IsWaitingOnData
+                        ? "stale"
+                        : "live";
+
+                return $"{item.SymbolText}~{NormalizeTapeSnapshotValue(item.LastText)}~{NormalizeTapeSnapshotValue(item.ChangeText)}~{state}";
+            })
+            .ToList();
+
+        if (sample.Count == 0)
+            return;
+
+        TraceSceneState(
+            "DisplayedTapeSample",
+            new KeyValuePair<string, object?>("sample_count", sample.Count),
+            new KeyValuePair<string, object?>("sample", sample));
+    }
+
+    private static string NormalizeTapeSnapshotValue(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
 
     private static NewsHeadlineViewModel CloneHeadline(NewsHeadlineViewModel item) => new()
     {
