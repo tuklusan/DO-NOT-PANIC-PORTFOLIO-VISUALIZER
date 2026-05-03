@@ -13,7 +13,7 @@ namespace PortfolioSaver.Render.Controls;
 
 public partial class TickerTapeControl : UserControl
 {
-    private const double TapeCopySpacing = 24d;
+    private const double TapeCopySpacing = 20d;
     private readonly TapeAnimationController _animationController = new();
     private readonly Dictionary<TapeItemViewModel, List<Border>> _flashTargets = [];
     private readonly HashSet<TapeItemViewModel> _subscribedItems = [];
@@ -247,18 +247,18 @@ public partial class TickerTapeControl : UserControl
         StackPanel panel = new()
         {
             Orientation = Orientation.Horizontal,
-            Margin = new Thickness(0, 0, 26, 0),
+            Margin = new Thickness(0, 0, 18, 0),
             VerticalAlignment = VerticalAlignment.Center
         };
 
         panel.Children.Add(CreateSymbolHost(item));
-        panel.Children.Add(CreateValueHost(item, nameof(TapeItemViewModel.LastText), nameof(TapeItemViewModel.LastForeground), 70d, 4d, TextAlignment.Right, FontWeights.SemiBold, registerTargets));
-        panel.Children.Add(CreateValueHost(item, nameof(TapeItemViewModel.ChangeText), nameof(TapeItemViewModel.ChangeForeground), 76d, 0d, TextAlignment.Right, FontWeights.SemiBold, registerTargets));
+        panel.Children.Add(CreateValueHost(item, nameof(TapeItemViewModel.LastText), nameof(TapeItemViewModel.LastForeground), 64d, 2d, TextAlignment.Right, FontWeights.SemiBold, registerTargets));
+        panel.Children.Add(CreateValueHost(item, nameof(TapeItemViewModel.ChangeText), nameof(TapeItemViewModel.ChangeForeground), 72d, 0d, TextAlignment.Right, FontWeights.SemiBold, registerTargets));
         panel.Children.Add(new Border
         {
             Width = 1,
             Height = 16,
-            Margin = new Thickness(12, 0, 0, 0),
+            Margin = new Thickness(9, 0, 0, 0),
             Background = new SolidColorBrush(Color.FromArgb(0x5A, 0x76, 0x8B, 0x9F)),
             VerticalAlignment = VerticalAlignment.Center
         });
@@ -269,8 +269,8 @@ public partial class TickerTapeControl : UserControl
     {
         Grid host = new()
         {
-            Width = 76d,
-            Margin = new Thickness(0, 0, 4, 0),
+            Width = 62d,
+            Margin = new Thickness(0, 0, 2, 0),
             VerticalAlignment = VerticalAlignment.Center
         };
         host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -281,7 +281,7 @@ public partial class TickerTapeControl : UserControl
         host.Children.Add(symbol);
 
         FrameworkElement glyph = CreateWaitingGlyphHost(item);
-        glyph.Margin = new Thickness(4, 0, 0, 0);
+        glyph.Margin = new Thickness(1, 0, 0, 0);
         Grid.SetColumn(glyph, 1);
         host.Children.Add(glyph);
 
@@ -303,7 +303,7 @@ public partial class TickerTapeControl : UserControl
         {
             Width = width,
             Margin = new Thickness(0, 0, rightMargin, 0),
-            Padding = new Thickness(3, 1, 3, 1),
+            Padding = new Thickness(2, 1, 2, 1),
             CornerRadius = new CornerRadius(4),
             Background = Brushes.Transparent,
             VerticalAlignment = VerticalAlignment.Center
@@ -330,7 +330,7 @@ public partial class TickerTapeControl : UserControl
         TextBlock glyph = new()
         {
             FontFamily = new FontFamily("Segoe UI Emoji"),
-            FontSize = 12,
+            FontSize = 11,
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Left,
             TextAlignment = TextAlignment.Left,

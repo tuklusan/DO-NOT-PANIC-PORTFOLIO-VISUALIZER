@@ -675,6 +675,10 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("private const double CopySpacing = 14d;", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("private const double SequenceLeadInSpacing = 10d;", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("private const double SequenceTailSpacing = 10d;", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("Background = Brushes.Transparent", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("BorderThickness = new Thickness(0)", globalTapeCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("Binding(nameof(ClockCityViewModel.CardBackground))", globalTapeCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("Binding(nameof(ClockCityViewModel.CardBorderBrush))", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("Height=\"68\"", globalTapeXaml, StringComparison.Ordinal);
         Assert.Contains("Margin=\"12,0,16,0\"", globalTapeXaml, StringComparison.Ordinal);
         Assert.Contains("Margin=\"34,0,46,0\"", globalTapeXaml, StringComparison.Ordinal);
@@ -784,7 +788,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("private static FrameworkElement CreateSymbolHost(TapeItemViewModel item)", tapeCode, StringComparison.Ordinal);
         Assert.Contains("CreateWaitingGlyphHost(item)", tapeCode, StringComparison.Ordinal);
         Assert.DoesNotContain("showWaitingGlyph: true", tapeCode, StringComparison.Ordinal);
-        Assert.Contains("FontSize = 12", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("Width = 62d", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("Margin = new Thickness(1, 0, 0, 0)", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("FontSize = 11", tapeCode, StringComparison.Ordinal);
     }
 
     [Fact]

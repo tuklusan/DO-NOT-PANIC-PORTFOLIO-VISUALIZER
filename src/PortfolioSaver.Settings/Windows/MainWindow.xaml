@@ -216,39 +216,6 @@
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,10">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="News" Foreground="White" FontSize="20" />
-                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Apply validates the RSS feed. If it is not a readable RSS or Atom feed, the app resets it to the default Yahoo Finance feed.">
-                                            <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
-                                        </Border>
-                                    </StackPanel>
-                                </DockPanel>
-
-                                <Grid Margin="0,4,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" MinWidth="156" SharedSizeGroup="GeneralLabelCol" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="RSS feed URL:" Style="{StaticResource FieldLabelStyle}" />
-                                    <TextBox Grid.Column="1" MinWidth="128" Text="{Binding Settings.NewsFeedUrl, UpdateSourceTrigger=PropertyChanged}" />
-                                </Grid>
-                                <TextBlock Text="The bottom scroller repeats headlines automatically so the band stays full." Style="{StaticResource SectionNoteStyle}" />
-
-                                <Grid Margin="0,8,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" MinWidth="156" SharedSizeGroup="GeneralLabelCol" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="92" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Headline refresh:" Style="{StaticResource FieldLabelStyle}" />
-                                    <Slider x:Name="NewsRefreshSlider" Grid.Column="1" Minimum="5" Maximum="240" SmallChange="5" LargeChange="15" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.NewsRefreshMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Grid.Column="2" Margin="12,0,0,0" Foreground="#F3D57F" VerticalAlignment="Center" Text="{Binding ElementName=NewsRefreshSlider, Path=Value, StringFormat={}{0:0}m}" />
-                                </Grid>
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource SectionCardStyle}">
-                            <StackPanel>
-                                <DockPanel Margin="0,0,0,10">
-                                    <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Background" Foreground="White" FontSize="20" />
                                         <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Managed exchange photos are cached under AppData. You can override them with a custom image folder at any time.">
                                             <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
@@ -431,6 +398,7 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <DockPanel Margin="0,0,0,20">
@@ -442,6 +410,63 @@
                             </StackPanel>
                         </DockPanel>
                         <Border Grid.Row="1" Style="{StaticResource SectionCardStyle}">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,10">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="News Scroller" Foreground="White" FontSize="20" />
+                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Summarized Financial News uses the DeepSeek API from the DEEPSEEK_API_KEY environment variable and refreshes no more often than every 15 minutes. RSS Feed keeps the Yahoo Finance default unless you supply a different readable feed URL.">
+                                            <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
+                                        </Border>
+                                    </StackPanel>
+                                </DockPanel>
+
+                                <StackPanel Margin="0,4,0,8">
+                                    <RadioButton Content="Summarized Financial News"
+                                                 Foreground="#EAF3FA"
+                                                 GroupName="NewsScrollerMode"
+                                                 IsChecked="{Binding IsSummarizedFinancialNewsSelected, Mode=TwoWay}"
+                                                 Margin="0,0,0,8" />
+                                    <RadioButton Content="RSS Feed"
+                                                 Foreground="#EAF3FA"
+                                                 GroupName="NewsScrollerMode"
+                                                 IsChecked="{Binding IsRssFeedSelected, Mode=TwoWay}" />
+                                </StackPanel>
+
+                                <Grid Margin="0,4,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" MinWidth="156" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="RSS feed URL:" Style="{StaticResource FieldLabelStyle}" />
+                                    <TextBox Grid.Column="1"
+                                             MinWidth="128"
+                                             IsEnabled="{Binding IsRssFeedSelected}"
+                                             Text="{Binding Settings.NewsFeedUrl, UpdateSourceTrigger=PropertyChanged}" />
+                                </Grid>
+
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" MinWidth="156" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="92" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Headline refresh:" Style="{StaticResource FieldLabelStyle}" />
+                                    <Slider x:Name="NewsRefreshSlider"
+                                            Grid.Column="1"
+                                            Minimum="5"
+                                            Maximum="240"
+                                            SmallChange="5"
+                                            LargeChange="15"
+                                            TickFrequency="5"
+                                            IsSnapToTickEnabled="True"
+                                            Value="{Binding Settings.NewsRefreshMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Grid.Column="2" Margin="12,0,0,0" Foreground="#F3D57F" VerticalAlignment="Center" Text="{Binding ElementName=NewsRefreshSlider, Path=Value, StringFormat={}{0:0}m}" />
+                                </Grid>
+                                <TextBlock Text="Summarized mode sends the prompt &quot;Enable Web Search and Summarize the latest global financial news in one paragraph&quot; to DeepSeek and keeps the most recent full paragraph scrolling across the band." Style="{StaticResource SectionNoteStyle}" />
+                                <TextBlock Text="RSS mode validates the feed during Apply and falls back to the Yahoo Finance default when needed." Style="{StaticResource SectionNoteStyle}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="2" Style="{StaticResource SectionCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Data Sources" Foreground="White" FontSize="20" Margin="0,0,0,8" />
                                 <TextBlock Text="Single means one symbol per request. Multiple means batched symbols when that provider supports them. Hard limits are enforced at the service maximums." Style="{StaticResource SectionNoteStyle}" Margin="0,0,0,12" />

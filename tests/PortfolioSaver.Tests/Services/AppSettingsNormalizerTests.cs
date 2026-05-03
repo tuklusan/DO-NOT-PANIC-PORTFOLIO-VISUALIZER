@@ -190,4 +190,15 @@ public sealed class AppSettingsNormalizerTests
         Assert.Equal(600, normalized.RefreshSecondsPortfolio);
         Assert.Equal(900, normalized.RefreshSecondsOffHours);
     }
+
+    [Fact]
+    public void Normalize_DefaultsNewsScrollerModeToSummarizedFinancialNews()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = (NewsScrollerMode)999;
+
+        AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+        Assert.Equal(NewsScrollerMode.SummarizedFinancialNews, normalized.NewsScrollerMode);
+    }
 }

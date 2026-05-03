@@ -26,7 +26,7 @@ public sealed class StartupCoordinatorNewsTests
 
         Assert.True(news.Headlines.Count >= 1);
         Assert.Contains(news.Headlines, headline =>
-            headline.Text.Contains("Waiting for Yahoo Finance headlines", StringComparison.OrdinalIgnoreCase));
+            headline.Text.Contains("Waiting for summarized financial news", StringComparison.OrdinalIgnoreCase));
     }
 
     private static NewsFlasherViewModel InvokeBuildNews(IReadOnlyList<string> headlines)

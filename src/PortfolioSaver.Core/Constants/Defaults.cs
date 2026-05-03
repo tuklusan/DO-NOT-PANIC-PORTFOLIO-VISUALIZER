@@ -12,6 +12,7 @@ public static class Defaults
     public const int MaxRefreshSeconds = 4 * 60 * 60;
     public const int DefaultDesktopRefreshSeconds = 300;
     public const int LegacySteadyStateRefreshSeconds = 1200;
+    public const int MinimumSummarizedNewsRefreshMinutes = 15;
     public const int MinNewsRefreshMinutes = 5;
     public const int MaxNewsRefreshMinutes = 4 * 60;
     public const int MaxTapeCount = 4;
@@ -47,6 +48,7 @@ public static class Defaults
         RefreshSecondsOffHours = DefaultDesktopRefreshSeconds,
         MinFinnhubRequestSpacingSeconds = 2,
         MinTwelveDataRequestSpacingSeconds = 15,
+        NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
         NewsFeedUrl = DefaultNewsFeedUrl,
         NewsRefreshMinutes = 15,
         EnableFloatingGraphs = true,

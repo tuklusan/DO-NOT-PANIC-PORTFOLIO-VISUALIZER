@@ -286,16 +286,15 @@ public partial class GlobalMarketsTapeControl : UserControl
     {
         Border border = new()
         {
-            CornerRadius = new CornerRadius(7),
-            BorderThickness = new Thickness(1),
-            Padding = new Thickness(isPinned ? 8 : 7, 4, isPinned ? 8 : 7, 4),
+            Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(isPinned ? 6 : 5, 3, isPinned ? 6 : 5, 3),
             Width = CardWidth,
             Height = CardHeight,
             DataContext = city,
             Margin = isPinned ? new Thickness(0, 0, 8, 0) : default
         };
-        BindingOperations.SetBinding(border, Border.BackgroundProperty, new Binding(nameof(ClockCityViewModel.CardBackground)));
-        BindingOperations.SetBinding(border, Border.BorderBrushProperty, new Binding(nameof(ClockCityViewModel.CardBorderBrush)));
 
         Grid grid = new();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });

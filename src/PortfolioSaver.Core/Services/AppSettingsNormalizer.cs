@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
@@ -91,6 +92,7 @@ public static class AppSettingsNormalizer
             Defaults.MaxNewsRefreshMinutes,
             15);
 
+        normalized.NewsScrollerMode = NormalizeNewsScrollerMode(normalized.NewsScrollerMode);
         normalized.NewsFeedUrl = NormalizeNewsFeedUrl(normalized.NewsFeedUrl);
 
         return normalized;
@@ -256,6 +258,11 @@ public static class AppSettingsNormalizer
 
         return Defaults.DefaultNewsFeedUrl;
     }
+
+    private static NewsScrollerMode NormalizeNewsScrollerMode(NewsScrollerMode currentValue)
+        => Enum.IsDefined(typeof(NewsScrollerMode), currentValue)
+            ? currentValue
+            : NewsScrollerMode.SummarizedFinancialNews;
 
     private static string NormalizeTapeName(string? currentValue, int index)
     {

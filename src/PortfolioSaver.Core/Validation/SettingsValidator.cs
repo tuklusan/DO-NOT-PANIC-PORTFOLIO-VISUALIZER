@@ -29,8 +29,9 @@ public sealed class SettingsValidator
         if (settings.MaxFloatingGraphsPerTape is < 0 or > 8)
             errors.Add("Max floating graphs per tape must be between 0 and 8.");
 
-        if (!Uri.TryCreate(settings.NewsFeedUrl, UriKind.Absolute, out Uri? newsUri) ||
-            (newsUri.Scheme != Uri.UriSchemeHttps && newsUri.Scheme != Uri.UriSchemeHttp))
+        if (settings.NewsScrollerMode == Core.Enums.NewsScrollerMode.RssFeed &&
+            (!Uri.TryCreate(settings.NewsFeedUrl, UriKind.Absolute, out Uri? newsUri) ||
+             (newsUri.Scheme != Uri.UriSchemeHttps && newsUri.Scheme != Uri.UriSchemeHttp)))
         {
             errors.Add("News feed URL must be a valid http or https URL.");
         }

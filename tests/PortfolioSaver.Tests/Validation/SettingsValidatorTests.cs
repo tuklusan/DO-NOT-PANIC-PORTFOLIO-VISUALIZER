@@ -1,4 +1,5 @@
 using PortfolioSaver.Core.Constants;
+using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Core.Services;
 using PortfolioSaver.Core.Validation;
@@ -34,5 +35,31 @@ public sealed class SettingsValidatorTests
 
         AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
         Assert.Equal(Defaults.GetHistoricalCacheFolder(), normalized.HistoricalCacheRootFolder);
+    }
+
+    [Fact]
+    public void Validate_SummarizedNewsMode_DoesNotRequireValidRssUrl()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+        settings.NewsFeedUrl = "not a url";
+
+        SettingsValidator validator = new();
+        IReadOnlyList<string> errors = validator.Validate(settings);
+
+        Assert.DoesNotContain(errors, error => error.Contains("News feed URL", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Validate_RssFeedMode_StillRequiresValidRssUrl()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.RssFeed;
+        settings.NewsFeedUrl = "not a url";
+
+        SettingsValidator validator = new();
+        IReadOnlyList<string> errors = validator.Validate(settings);
+
+        Assert.Contains(errors, error => error.Contains("News feed URL", StringComparison.OrdinalIgnoreCase));
     }
 }

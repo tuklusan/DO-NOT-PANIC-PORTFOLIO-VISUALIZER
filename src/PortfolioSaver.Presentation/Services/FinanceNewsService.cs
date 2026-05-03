@@ -1,7 +1,12 @@
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using PortfolioSaver.Core.Constants;
+using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Shared.Helpers;
 
 namespace PortfolioSaver.Screensaver.Services;
@@ -10,23 +15,43 @@ public sealed class FinanceNewsService
 {
     private const string CacheFileName = "finance-news-cache.json";
     private const string DefaultFeedUrl = "https://finance.yahoo.com/news/rss";
+    private const string DeepSeekApiUrl = "https://api.deepseek.com/chat/completions";
+    private const string DeepSeekModel = "deepseek-v4-flash";
+    private const string DeepSeekApiKeyEnvironmentVariable = "DEEPSEEK_API_KEY";
+    private const string SummarizedNewsPrompt = "Enable Web Search and Summarize the latest global financial news in one paragraph";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
-    private readonly string _cachePath = Path.Combine(PathHelper.GetLocalDataDirectory(), CacheFileName);
+    private readonly string _cachePath;
+    private readonly Func<string> _deepSeekApiKeyResolver;
+
+    public FinanceNewsService(string? cachePath = null, Func<string>? deepSeekApiKeyResolver = null)
+    {
+        _cachePath = string.IsNullOrWhiteSpace(cachePath)
+            ? Path.Combine(PathHelper.GetLocalDataDirectory(), CacheFileName)
+            : cachePath;
+        _deepSeekApiKeyResolver = deepSeekApiKeyResolver ?? (() =>
+            (Environment.GetEnvironmentVariable(DeepSeekApiKeyEnvironmentVariable) ?? string.Empty).Trim());
+    }
 
     public async Task<IReadOnlyList<string>> GetHeadlinesAsync(
         HttpClient httpClient,
+        NewsScrollerMode mode,
         string? feedUrl,
         int refreshMinutes,
         bool networkAvailable,
         CancellationToken cancellationToken = default)
     {
         string requestUrl = NormalizeFeedUrl(feedUrl);
-        TimeSpan refreshInterval = TimeSpan.FromMinutes(Math.Clamp(refreshMinutes, 5, 240));
+        TimeSpan refreshInterval = GetRefreshInterval(mode, refreshMinutes);
         NewsHeadlineCache cache = await LoadCacheAsync(cancellationToken);
+        IReadOnlyList<string> matchingCachedHeadlines =
+            string.Equals(cache.ModeKey, GetModeKey(mode), StringComparison.OrdinalIgnoreCase)
+                ? cache.Headlines
+                : [];
         if (!networkAvailable)
-            return GetFallbackHeadlines(cache.Headlines);
+            return GetFallbackHeadlines(mode, matchingCachedHeadlines);
 
         if (cache.FetchTimestampUtc != DateTimeOffset.MinValue &&
+            string.Equals(cache.ModeKey, GetModeKey(mode), StringComparison.OrdinalIgnoreCase) &&
             string.Equals(cache.FeedUrl, requestUrl, StringComparison.OrdinalIgnoreCase) &&
             DateTimeOffset.UtcNow - cache.FetchTimestampUtc < refreshInterval &&
             cache.Headlines.Count > 0)
@@ -36,17 +61,20 @@ public sealed class FinanceNewsService
 
         try
         {
-            using HttpResponseMessage response = await httpClient.GetAsync(requestUrl, cancellationToken);
-            response.EnsureSuccessStatusCode();
-            string xml = await response.Content.ReadAsStringAsync(cancellationToken);
-            List<string> headlines = ParseHeadlines(xml);
+            List<string> headlines = mode switch
+            {
+                NewsScrollerMode.RssFeed => await FetchRssHeadlinesAsync(httpClient, requestUrl, cancellationToken),
+                _ => await FetchSummarizedFinancialNewsAsync(httpClient, _deepSeekApiKeyResolver(), cancellationToken)
+            };
+
             if (headlines.Count == 0)
-                return GetFallbackHeadlines(cache.Headlines);
+                return GetFallbackHeadlines(mode, matchingCachedHeadlines);
 
             NewsHeadlineCache refreshed = new()
             {
                 FetchTimestampUtc = DateTimeOffset.UtcNow,
                 FeedUrl = requestUrl,
+                ModeKey = GetModeKey(mode),
                 Headlines = headlines
             };
 
@@ -55,25 +83,99 @@ public sealed class FinanceNewsService
         }
         catch
         {
-            return GetFallbackHeadlines(cache.Headlines);
+            return GetFallbackHeadlines(mode, matchingCachedHeadlines);
         }
     }
 
-    public IReadOnlyList<string> GetCachedHeadlines()
+    public IReadOnlyList<string> GetCachedHeadlines(NewsScrollerMode mode)
     {
         if (!File.Exists(_cachePath))
-            return GetFallbackHeadlines([]);
+            return GetFallbackHeadlines(mode, []);
 
         try
         {
             string json = File.ReadAllText(_cachePath);
             NewsHeadlineCache? cache = JsonSerializer.Deserialize<NewsHeadlineCache>(json, JsonOptions);
-            return GetFallbackHeadlines(cache?.Headlines ?? []);
+            IReadOnlyList<string> matchingHeadlines =
+                cache is not null &&
+                string.Equals(cache.ModeKey, GetModeKey(mode), StringComparison.OrdinalIgnoreCase)
+                    ? cache.Headlines
+                    : [];
+            return GetFallbackHeadlines(mode, matchingHeadlines);
         }
         catch
         {
-            return GetFallbackHeadlines([]);
+            return GetFallbackHeadlines(mode, []);
         }
+    }
+
+    private static async Task<List<string>> FetchRssHeadlinesAsync(
+        HttpClient httpClient,
+        string requestUrl,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await httpClient.GetAsync(requestUrl, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        string xml = await response.Content.ReadAsStringAsync(cancellationToken);
+        return ParseHeadlines(xml);
+    }
+
+    private static async Task<List<string>> FetchSummarizedFinancialNewsAsync(
+        HttpClient httpClient,
+        string apiKey,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(apiKey))
+            return [];
+
+        var payload = new
+        {
+            model = DeepSeekModel,
+            temperature = 0.2,
+            max_tokens = 500,
+            messages = new object[]
+            {
+                new
+                {
+                    role = "system",
+                    content = "Respond with a single compact paragraph suitable for a financial news ticker. Do not use bullets or numbered lists."
+                },
+                new
+                {
+                    role = "user",
+                    content = SummarizedNewsPrompt
+                }
+            }
+        };
+
+        using HttpRequestMessage request = new(HttpMethod.Post, DeepSeekApiUrl);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        request.Content = new StringContent(
+            JsonSerializer.Serialize(payload),
+            Encoding.UTF8,
+            "application/json");
+
+        using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+
+        if (!document.RootElement.TryGetProperty("choices", out JsonElement choicesElement) ||
+            choicesElement.ValueKind != JsonValueKind.Array ||
+            choicesElement.GetArrayLength() == 0)
+        {
+            return [];
+        }
+
+        JsonElement firstChoice = choicesElement[0];
+        if (!firstChoice.TryGetProperty("message", out JsonElement messageElement) ||
+            !messageElement.TryGetProperty("content", out JsonElement contentElement))
+        {
+            return [];
+        }
+
+        string normalized = NormalizeSummaryText(contentElement.GetString());
+        return string.IsNullOrWhiteSpace(normalized) ? [] : [normalized];
     }
 
     private static List<string> ParseHeadlines(string xml)
@@ -87,10 +189,22 @@ public sealed class FinanceNewsService
             .ToList();
     }
 
-    private static IReadOnlyList<string> GetFallbackHeadlines(IReadOnlyList<string> cached)
+    private static string NormalizeSummaryText(string? text)
+    {
+        string candidate = (text ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+            return string.Empty;
+
+        candidate = Regex.Replace(candidate, @"\s+", " ");
+        return candidate.Trim();
+    }
+
+    private static IReadOnlyList<string> GetFallbackHeadlines(NewsScrollerMode mode, IReadOnlyList<string> cached)
         => cached.Count > 0
             ? cached
-            : ["Waiting for Yahoo Finance headlines..."];
+            : mode == NewsScrollerMode.RssFeed
+                ? ["Waiting for Yahoo Finance headlines..."]
+                : ["Waiting for summarized financial news..."];
 
     private async Task<NewsHeadlineCache> LoadCacheAsync(CancellationToken cancellationToken)
     {
@@ -109,6 +223,15 @@ public sealed class FinanceNewsService
         await JsonSerializer.SerializeAsync(stream, cache, JsonOptions, cancellationToken);
     }
 
+    private static TimeSpan GetRefreshInterval(NewsScrollerMode mode, int refreshMinutes)
+    {
+        int minimumMinutes = mode == NewsScrollerMode.SummarizedFinancialNews
+            ? Defaults.MinimumSummarizedNewsRefreshMinutes
+            : Defaults.MinNewsRefreshMinutes;
+        int clampedMinutes = Math.Clamp(refreshMinutes, minimumMinutes, Defaults.MaxNewsRefreshMinutes);
+        return TimeSpan.FromMinutes(clampedMinutes);
+    }
+
     private static string NormalizeFeedUrl(string? feedUrl)
     {
         string candidate = (feedUrl ?? string.Empty).Trim();
@@ -120,11 +243,19 @@ public sealed class FinanceNewsService
 
         return DefaultFeedUrl;
     }
+
+    private static string GetModeKey(NewsScrollerMode mode)
+        => mode switch
+        {
+            NewsScrollerMode.RssFeed => "rss",
+            _ => "summarized-financial-news"
+        };
 }
 
 public sealed class NewsHeadlineCache
 {
     public DateTimeOffset FetchTimestampUtc { get; set; }
     public string FeedUrl { get; set; } = string.Empty;
+    public string ModeKey { get; set; } = string.Empty;
     public List<string> Headlines { get; set; } = [];
 }

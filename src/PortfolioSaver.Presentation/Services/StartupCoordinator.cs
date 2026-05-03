@@ -89,7 +89,7 @@ public sealed class StartupCoordinator
             .GroupBy(quote => quote.Symbol, StringComparer.OrdinalIgnoreCase)
             .Select(group => group.Last())
             .ToDictionary(quote => quote.Symbol, StringComparer.OrdinalIgnoreCase);
-        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines();
+        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode);
 
         TraceRuntimeState(
             "BootstrapSceneBuilt",
@@ -173,6 +173,7 @@ public sealed class StartupCoordinator
             cancellationToken);
         Task<IReadOnlyList<string>> headlinesTask = _financeNewsService.GetHeadlinesAsync(
             httpClient,
+            settings.NewsScrollerMode,
             settings.NewsFeedUrl,
             settings.NewsRefreshMinutes,
             networkAvailable,
@@ -1077,7 +1078,7 @@ public sealed class StartupCoordinator
         }
 
         if (news.Headlines.Count == 0)
-            news.Headlines.Add(new NewsHeadlineViewModel { Text = "Waiting for Yahoo Finance headlines..." });
+            news.Headlines.Add(new NewsHeadlineViewModel { Text = "Waiting for summarized financial news..." });
 
         ExpandHeadlineItems(news.Headlines, MinimumHeadlineCount);
         news.MarqueeText = string.Join(" | ", news.Headlines.Select(headline => headline.Text));

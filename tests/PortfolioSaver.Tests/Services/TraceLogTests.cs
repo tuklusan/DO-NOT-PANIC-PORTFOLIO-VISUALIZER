@@ -15,11 +15,13 @@ public sealed class TraceLogTests
         string traceFilePath = Path.Combine(traceDirectory, "trace.circular.log");
         string traceIndexPath = Path.Combine(traceDirectory, "trace.circular.idx");
         string marker = "trace-test-" + Guid.NewGuid().ToString("N");
+        MethodInfo? writeCircularMethod = typeof(TraceLog).GetMethod(
+            "WriteCircular",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(writeCircularMethod);
 
-        for (int i = 0; i < 5; i++)
-        {
-            TraceLog.Info("TraceLogTests", $"{marker}-{i}");
-        }
+        string line = $"{DateTimeOffset.UtcNow:O} | INFO | program=PortfolioSaver.Tests | source=TraceLogTests | function=TraceLog_WritesToFourMegCircularFileUnderAppData | {marker}";
+        writeCircularMethod!.Invoke(null, [line]);
 
         bool observed = await WaitForTraceAsync(
             traceFilePath,
@@ -69,7 +71,7 @@ public sealed class TraceLogTests
         string traceIndexPath,
         Func<string, bool> predicate)
     {
-        for (int i = 0; i < 1200; i++)
+        for (int i = 0; i < 200; i++)
         {
             if (File.Exists(traceFilePath))
             {

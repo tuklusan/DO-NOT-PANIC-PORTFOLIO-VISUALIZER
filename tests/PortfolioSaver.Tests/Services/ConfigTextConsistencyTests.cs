@@ -125,7 +125,7 @@ public sealed class ConfigTextConsistencyTests
         Assert.Equal(5, helpBadgeCount);
         Assert.True(tooltipCount >= 5, "Expected every visible help badge to carry a tooltip.");
         Assert.Contains("API keys are optional until you want live access to that provider.", xaml, StringComparison.Ordinal);
-        Assert.Contains("Apply validates the RSS feed.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Summarized Financial News uses the DeepSeek API from the DEEPSEEK_API_KEY environment variable", xaml, StringComparison.Ordinal);
         Assert.Contains("Managed exchange photos are cached under AppData.", xaml, StringComparison.Ordinal);
         Assert.Contains("Ticker names auto-fill during Apply when validation can resolve them.", xaml, StringComparison.Ordinal);
         Assert.Contains("These budgets cap how often the screensaver is allowed to hit each cloud source.", xaml, StringComparison.Ordinal);
@@ -161,6 +161,7 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("ColumnDefinition Width=\"*\"", xaml, StringComparison.Ordinal);
         Assert.Contains("ColumnDefinition Width=\"1.5*\" MinWidth=\"92\"", xaml, StringComparison.Ordinal);
         Assert.Contains("ColumnDefinition Width=\"2.2*\" MinWidth=\"132\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("<TextBlock Text=\"News\" Foreground=\"White\" FontSize=\"20\" />", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -178,6 +179,10 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("Width=\"1.35*\" MinWidth=\"156\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Width=\"1.0*\" MinWidth=\"118\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Width=\"1.15*\" MinWidth=\"132\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"News Scroller\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"Summarized Financial News\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"RSS Feed\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("IsEnabled=\"{Binding IsRssFeedSelected}\"", xaml, StringComparison.Ordinal);
     }
 
     private static string GetRepoRoot()

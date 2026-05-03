@@ -83,7 +83,14 @@ public sealed class MainWindowViewModel : BindableBase
     public AppSettings Settings
     {
         get => _settings;
-        set => SetProperty(ref _settings, value);
+        set
+        {
+            if (!SetProperty(ref _settings, value))
+                return;
+
+            RaisePropertyChanged(nameof(IsSummarizedFinancialNewsSelected));
+            RaisePropertyChanged(nameof(IsRssFeedSelected));
+        }
     }
 
     public string StatusMessage
@@ -123,6 +130,35 @@ public sealed class MainWindowViewModel : BindableBase
 
     public string PrimaryButtonText => "Validate";
     public string VersionLabel => $"{PortfolioVersion.BaselineLabel} ({PortfolioVersion.SemanticVersion})";
+    public bool IsSummarizedFinancialNewsSelected
+    {
+        get => Settings.NewsScrollerMode == NewsScrollerMode.SummarizedFinancialNews;
+        set
+        {
+            if (!value || Settings.NewsScrollerMode == NewsScrollerMode.SummarizedFinancialNews)
+                return;
+
+            Settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+            RaisePropertyChanged(nameof(IsSummarizedFinancialNewsSelected));
+            RaisePropertyChanged(nameof(IsRssFeedSelected));
+            InvalidateValidationState("Configuration changed. Click Validate.");
+        }
+    }
+
+    public bool IsRssFeedSelected
+    {
+        get => Settings.NewsScrollerMode == NewsScrollerMode.RssFeed;
+        set
+        {
+            if (!value || Settings.NewsScrollerMode == NewsScrollerMode.RssFeed)
+                return;
+
+            Settings.NewsScrollerMode = NewsScrollerMode.RssFeed;
+            RaisePropertyChanged(nameof(IsSummarizedFinancialNewsSelected));
+            RaisePropertyChanged(nameof(IsRssFeedSelected));
+            InvalidateValidationState("Configuration changed. Click Validate.");
+        }
+    }
 
     public ObservableCollection<TickerGroupEditorViewModel> Groups { get; }
     public ObservableCollection<DataSourcePolicyEditorViewModel> DataSources { get; }
@@ -198,22 +234,25 @@ public sealed class MainWindowViewModel : BindableBase
             ApplyNormalizedAdvancedSettings(candidate);
             Settings = candidate;
 
-            NewsFeedValidationResult feedValidation = await _newsFeedValidationService.ValidateAsync(
-                candidate.NewsFeedUrl,
-                candidate.HttpTimeoutSeconds,
-                IsNetworkAvailable);
-            if (feedValidation.WasResetToDefault)
+            if (candidate.NewsScrollerMode == NewsScrollerMode.RssFeed)
             {
-                candidate.NewsFeedUrl = feedValidation.ResolvedFeedUrl;
-                MessageBox.Show(
-                    feedValidation.Message,
-                    "News Feed Reset",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-            }
-            else
-            {
-                candidate.NewsFeedUrl = feedValidation.ResolvedFeedUrl;
+                NewsFeedValidationResult feedValidation = await _newsFeedValidationService.ValidateAsync(
+                    candidate.NewsFeedUrl,
+                    candidate.HttpTimeoutSeconds,
+                    IsNetworkAvailable);
+                if (feedValidation.WasResetToDefault)
+                {
+                    candidate.NewsFeedUrl = feedValidation.ResolvedFeedUrl;
+                    MessageBox.Show(
+                        feedValidation.Message,
+                        "News Feed Reset",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+                else
+                {
+                    candidate.NewsFeedUrl = feedValidation.ResolvedFeedUrl;
+                }
             }
 
             IReadOnlyList<string> configErrors = _settingsValidator.Validate(candidate);

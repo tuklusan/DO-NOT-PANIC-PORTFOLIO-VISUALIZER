@@ -41,7 +41,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("ActualHeight = $saver12Size.Height", script, StringComparison.Ordinal);
         Assert.Contains("dimension mismatch", script, StringComparison.Ordinal);
         Assert.Contains("verify actual capture dimensions before claiming multi-resolution pass", runbook, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("setvideomodehint", runbook, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Treat the remote Windows target as a generic machine", runbook, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
