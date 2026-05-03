@@ -53,6 +53,9 @@ try {
 }
 Push-Location `$repoRoot
 try {
+    Get-Process PortfolioSaver.VmAgent,PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue |
+        Stop-Process -Force -ErrorAction SilentlyContinue
+
     & dotnet restore .\PortfolioScreensaver.sln --disable-parallel --nologo
     if (`$LASTEXITCODE -ne 0) { throw 'dotnet restore failed.' }
 
@@ -92,58 +95,101 @@ Write-Output ('BUILD_SUMMARY=' + `$resultPath)
     $buildOutput.Output | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { Write-Host $_ }
 
     if ($RunUxDeep) {
-        $remoteUxScript = Join-Path $RootPath 'repo\build\vm\Guest-UxDeepExercise.ps1'
         $remoteUxSummary = Join-Path $RootPath ("results\$uxResultName\ux-deep-summary.json")
-        $remoteUxLauncher = Join-Path $RootPath ("scripts\launch-$uxResultName.ps1")
+        $remoteAgentStatus = Join-Path $RootPath 'agent\agent-status.json'
+        $remoteAgentResult = Join-Path $RootPath ("agent\command-results\$uxResultName.result.json")
+        $remoteAgentCommand = Join-Path $RootPath ("commands\$uxResultName.json")
+        $remoteAutomationSetup = Join-Path $RootPath 'repo\build\vm\Guest-ConfigureDesktopAutomation.ps1'
+        $remoteAgentExe = Join-Path $RootPath 'publish\agent\PortfolioSaver.VmAgent.exe'
         $remoteUser = $vmCredParts.UserName.Replace("'", "''")
         $remotePassword = $vmCredParts.Password.Replace("'", "''")
-        $launcherBody = @"
-`$psexec = 'C:\Program Files\SysinternalsSuite\PsExec.exe'
-`$arguments = @(
-    '-accepteula',
-    '-i', '1',
-    '-d',
-    '-u', '$remoteUser',
-    '-p', '$remotePassword',
-    'powershell.exe',
-    '-NoProfile',
-    '-WindowStyle', 'Hidden',
-    '-ExecutionPolicy', 'Bypass',
-    '-File', '$remoteUxScript',
-    '-RootPath', '$RootPath',
-    '-ResultName', '$uxResultName',
-    '-ScreensaverDurationMinutes', '$GuestScreensaverDurationMinutes',
-    '-CaptureIntervalSeconds', '$CaptureIntervalSeconds'
-)
-& `$psexec @arguments
+        $prepareAutomationCommand = @"
+& '$remoteAutomationSetup' -RootPath '$RootPath' -UserName '$remoteUser' -Password '$remotePassword'
 "@
-        $escapedLauncherBody = $launcherBody.Replace("'", "''")
-        $prepareLaunchCommand = @"
+        Write-VmSshStep "Configuring remote desktop automation"
+        Invoke-VmPwshCommand -Bundle $bundle -Command $prepareAutomationCommand -TimeOutSeconds 120 | Out-Null
+
+        $stopExistingAgentCommand = @"
+Get-Process PortfolioSaver.VmAgent -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath '$remoteAgentStatus' -Force -ErrorAction SilentlyContinue
+"@
+        Write-VmSshStep "Stopping any existing desktop-session agent"
+        Invoke-VmPwshCommand -Bundle $bundle -Command $stopExistingAgentCommand -TimeOutSeconds 60 | Out-Null
+
+        $startAgentCommand = @"
 `$psexec = 'C:\Program Files\SysinternalsSuite\PsExec.exe'
-`$scriptPath = '$remoteUxScript'
-`$launcherPath = '$remoteUxLauncher'
 if (-not (Test-Path `$psexec)) {
     throw 'Missing PsExec.exe in guest.'
 }
-if (-not (Test-Path `$scriptPath)) {
-    throw \"Missing guest UX script: $remoteUxScript\"
+if (-not (Test-Path '$remoteAgentExe')) {
+    throw 'Missing desktop-session agent executable.'
 }
-New-Item -ItemType Directory -Force -Path (Split-Path -Path `$launcherPath -Parent) | Out-Null
-Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue |
-    Stop-Process -Force -ErrorAction SilentlyContinue
-Set-Content -LiteralPath `$launcherPath -Value @'
-$escapedLauncherBody
-'@ -Encoding UTF8
-Write-Output 'UX_LAUNCHER_READY'
+& `$psexec -accepteula -i 1 -d -u '$remoteUser' -p '$remotePassword' '$remoteAgentExe' --root-path '$RootPath'
 "@
-        Write-VmSshStep "Preparing remote UX launcher"
-        Invoke-VmPwshCommand -Bundle $bundle -Command $prepareLaunchCommand -TimeOutSeconds 120 | Out-Null
+        Write-VmSshStep "Starting desktop-session agent"
+        Invoke-VmRawCommand -Bundle $bundle -Command ('pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ' + (ConvertTo-VmPwshEncodedCommand -Command $startAgentCommand)) -TimeOutSeconds 120 -SuccessOutputPattern 'started on WINDOWS10 with process ID' | Out-Null
 
-        $launchRemoteCommand = @"
-& '$remoteUxLauncher'
+        $agentDeadline = (Get-Date).AddSeconds(120)
+        do {
+            Start-Sleep -Seconds 5
+            $pollAgentCommand = @"
+if (Test-Path '$remoteAgentStatus') {
+    Get-Content -LiteralPath '$remoteAgentStatus' -Raw
+}
 "@
-        Write-VmSshStep "Launching remote UX run through PsExec in session 1"
-        Invoke-VmPwshCommand -Bundle $bundle -Command $launchRemoteCommand -TimeOutSeconds 120 | Out-Null
+            $agentPoll = Invoke-VmPwshCommand -Bundle $bundle -Command $pollAgentCommand -TimeOutSeconds 60
+            $agentJson = ($agentPoll.Output -join [Environment]::NewLine).Trim()
+            if (-not [string]::IsNullOrWhiteSpace($agentJson)) {
+                $agentStatus = $agentJson | ConvertFrom-Json
+                $heartbeatUtc = [datetime]$agentStatus.LastHeartbeatUtc
+                if ($agentStatus.UserInteractive -and $agentStatus.SessionId -eq 1 -and ((Get-Date).ToUniversalTime() - $heartbeatUtc).TotalSeconds -lt 30) {
+                    break
+                }
+            }
+        } while ((Get-Date) -lt $agentDeadline)
+
+        if ((Get-Date) -ge $agentDeadline) {
+            throw "Timed out waiting for remote desktop-session agent heartbeat: $remoteAgentStatus"
+        }
+
+        $commandPayload = [ordered]@{
+            Id = $uxResultName
+            Type = 'run-ux-deep'
+            Payload = [ordered]@{
+                ResultName = $uxResultName
+                ResultRootPath = (Join-Path $RootPath 'results')
+                ScreensaverDurationMinutes = $GuestScreensaverDurationMinutes
+                CaptureIntervalSeconds = $CaptureIntervalSeconds
+            }
+        } | ConvertTo-Json -Depth 5
+        $escapedCommandPayload = $commandPayload.Replace("'", "''")
+        $queueCommand = @"
+New-Item -ItemType Directory -Force -Path (Split-Path -Path '$remoteAgentCommand' -Parent) | Out-Null
+Set-Content -LiteralPath '$remoteAgentCommand' -Value @'
+$escapedCommandPayload
+'@ -Encoding UTF8
+"@
+        Write-VmSshStep "Queuing UX run through desktop-session agent"
+        Invoke-VmPwshCommand -Bundle $bundle -Command $queueCommand -TimeOutSeconds 60 | Out-Null
+
+        $commandDeadline = (Get-Date).AddSeconds(120)
+        do {
+            Start-Sleep -Seconds 5
+            $pollCommandResult = @"
+if (Test-Path '$remoteAgentResult') {
+    Get-Content -LiteralPath '$remoteAgentResult' -Raw
+}
+"@
+            $resultPoll = Invoke-VmPwshCommand -Bundle $bundle -Command $pollCommandResult -TimeOutSeconds 60
+            $resultJson = ($resultPoll.Output -join [Environment]::NewLine).Trim()
+            if (-not [string]::IsNullOrWhiteSpace($resultJson)) {
+                break
+            }
+        } while ((Get-Date) -lt $commandDeadline)
+
+        if ((Get-Date) -ge $commandDeadline) {
+            throw "Timed out waiting for agent command acknowledgement: $remoteAgentResult"
+        }
 
         $deadline = (Get-Date).AddSeconds($UxTimeoutSeconds)
         do {

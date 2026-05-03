@@ -60,7 +60,7 @@ public sealed class VmHarnessScriptTests
     }
 
     [Fact]
-    public void InvokeVmBuildTest_UsesGuestSideLauncherAndPollsForFinishedSummary()
+    public void InvokeVmBuildTest_UsesDesktopSessionAgentAndPollsForFinishedSummary()
     {
         string script = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
@@ -68,11 +68,31 @@ public sealed class VmHarnessScriptTests
             "vm",
             "Invoke-VmBuildTest.ps1"));
 
-        Assert.Contains("scripts\\launch-$uxResultName.ps1", script, StringComparison.Ordinal);
+        Assert.Contains("Guest-ConfigureDesktopAutomation.ps1", script, StringComparison.Ordinal);
+        Assert.Contains("agent\\agent-status.json", script, StringComparison.Ordinal);
+        Assert.Contains("agent\\command-results\\$uxResultName.result.json", script, StringComparison.Ordinal);
+        Assert.Contains("commands\\$uxResultName.json", script, StringComparison.Ordinal);
         Assert.Contains("PsExec.exe", script, StringComparison.Ordinal);
-        Assert.Contains("& '$remoteUxLauncher'", script, StringComparison.Ordinal);
-        Assert.Contains("& `$psexec @arguments", script, StringComparison.Ordinal);
+        Assert.Contains("Starting desktop-session agent", script, StringComparison.Ordinal);
+        Assert.Contains("Queuing UX run through desktop-session agent", script, StringComparison.Ordinal);
+        Assert.Contains("Timed out waiting for remote desktop-session agent heartbeat", script, StringComparison.Ordinal);
         Assert.Contains("$summary.PSObject.Properties.Name -contains 'FinishedAt'", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GuestConfigureDesktopAutomation_SetsStartupLauncherAndDisablesScreenSaver()
+    {
+        string script = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "Guest-ConfigureDesktopAutomation.ps1"));
+
+        Assert.Contains("PortfolioSaver VmAgent.lnk", script, StringComparison.Ordinal);
+        Assert.Contains("Start-PortfolioSaverVmAgent.cmd", script, StringComparison.Ordinal);
+        Assert.Contains("ScreenSaveActive", script, StringComparison.Ordinal);
+        Assert.Contains("AutoAdminLogon", script, StringComparison.Ordinal);
+        Assert.Contains("DefaultPassword", script, StringComparison.Ordinal);
     }
 
     [Fact]

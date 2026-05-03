@@ -356,7 +356,7 @@ function Write-ReferenceSpotCheck {
         [Parameter(Mandatory = $true)][int]$CaptureIndex
     )
 
-    $displayedSample = Get-LatestDisplayedTapeSample
+    $displayedSample = @(Get-LatestDisplayedTapeSample)
     $symbols = if ($displayedSample.Count -gt 0) {
         @($displayedSample | Select-Object -ExpandProperty Symbol -Unique | Select-Object -First 6)
     }
@@ -399,7 +399,12 @@ function Get-LatestDisplayedTapeSample {
         return @()
     }
 
-    $line = Get-Content -LiteralPath $tracePath -Tail 800 |
+    $tailText = Read-TextFileTailShared -Path $tracePath -MaxBytes 262144
+    if ([string]::IsNullOrWhiteSpace($tailText)) {
+        return @()
+    }
+
+    $line = ($tailText -split "`r?`n") |
         Where-Object { $_ -like '*event=DisplayedTapeSample*' } |
         Select-Object -Last 1
 
@@ -433,6 +438,42 @@ function Get-LatestDisplayedTapeSample {
     }
 
     return @($items)
+}
+
+function Read-TextFileTailShared {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [int]$MaxBytes = 262144
+    )
+
+    try {
+        $fileStream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        try {
+            $length = $fileStream.Length
+            if ($length -le 0) {
+                return ''
+            }
+
+            $bytesToRead = [int][Math]::Min([int64]$MaxBytes, $length)
+            $start = [Math]::Max(0, $length - $bytesToRead)
+            $null = $fileStream.Seek($start, [System.IO.SeekOrigin]::Begin)
+            $buffer = New-Object byte[] $bytesToRead
+            $offset = 0
+            while ($offset -lt $bytesToRead) {
+                $read = $fileStream.Read($buffer, $offset, $bytesToRead - $offset)
+                if ($read -le 0) { break }
+                $offset += $read
+            }
+
+            return [System.Text.Encoding]::UTF8.GetString($buffer, 0, $offset)
+        }
+        finally {
+            $fileStream.Dispose()
+        }
+    }
+    catch {
+        return ''
+    }
 }
 
 function Try-ParseInvariantDecimal {
@@ -510,7 +551,7 @@ function Write-ReferenceSpotCheckComparison {
 
         $entry.AbsoluteDifference = [decimal]::Round($absDiff, 4)
         $entry.PercentDifference = [Math]::Round($pctDiff * 100.0, 4)
-        $entry.Status = if ($absDiff -le 0.05m -or $pctDiff -le 0.0035d) { 'close' } else { 'drift' }
+        $entry.Status = if ($absDiff -le ([decimal]0.05) -or $pctDiff -le 0.0035) { 'close' } else { 'drift' }
         $comparison.Comparisons += $entry
     }
 

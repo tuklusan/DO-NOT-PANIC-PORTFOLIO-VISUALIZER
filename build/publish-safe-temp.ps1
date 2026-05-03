@@ -57,6 +57,7 @@ $publishRoot = Join-Path $repoRoot "build\artifacts\publish-safe-temp"
 $screensaverOut = Join-Path $publishRoot "screensaver"
 $configOut = Join-Path $publishRoot "config"
 $desktopOut = Join-Path $publishRoot "desktop"
+$agentOut = Join-Path $publishRoot "agent"
 $dotnetCli = Resolve-DotNetCli
 
 Write-Step "Preparing temp publish workspace: $tempRoot"
@@ -106,14 +107,16 @@ foreach ($assetFile in $assetFiles) {
 if (Test-Path $publishRoot) {
     Remove-Item -LiteralPath $publishRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
-New-Item -ItemType Directory -Force -Path $screensaverOut,$configOut,$desktopOut | Out-Null
+New-Item -ItemType Directory -Force -Path $screensaverOut,$configOut,$desktopOut,$agentOut | Out-Null
 
 $screensaverProject = ".\src\PortfolioSaver.Screensaver\PortfolioSaver.Screensaver.csproj"
 $configProject = ".\src\PortfolioSaver.Config\PortfolioSaver.Config.csproj"
 $desktopProject = ".\src\PortfolioSaver.Desktop\PortfolioSaver.Desktop.csproj"
+$agentProject = ".\src\PortfolioSaver.VmAgent\PortfolioSaver.VmAgent.csproj"
 $screensaverTempPublish = ".\src\PortfolioSaver.Screensaver\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
 $configTempPublish = ".\src\PortfolioSaver.Config\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
 $desktopTempPublish = ".\src\PortfolioSaver.Desktop\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
+$agentTempPublish = ".\src\PortfolioSaver.VmAgent\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
 
 Push-Location $tempRoot
 try {
@@ -132,6 +135,11 @@ try {
     & $dotnetCli restore $desktopProject -r $RuntimeIdentifier --disable-parallel --ignore-failed-sources -m:1 -v minimal
     if ($LASTEXITCODE -ne 0) { throw "Restore failed for desktop" }
 
+    Test-Deadline -Deadline $deadline -NextStep "restore agent"
+    Write-Step "Restoring VM agent project"
+    & $dotnetCli restore $agentProject -r $RuntimeIdentifier --disable-parallel --ignore-failed-sources -m:1 -v minimal
+    if ($LASTEXITCODE -ne 0) { throw "Restore failed for agent" }
+
     Test-Deadline -Deadline $deadline -NextStep "publish screensaver"
     Write-Step "Publishing screensaver"
     & $dotnetCli publish $screensaverProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore --disable-parallel -m:1 -v minimal
@@ -147,10 +155,16 @@ try {
     & $dotnetCli publish $desktopProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore --disable-parallel -m:1 -v minimal
     if ($LASTEXITCODE -ne 0) { throw "Publish failed for desktop" }
 
+    Test-Deadline -Deadline $deadline -NextStep "publish agent"
+    Write-Step "Publishing VM agent"
+    & $dotnetCli publish $agentProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore --disable-parallel -m:1 -v minimal
+    if ($LASTEXITCODE -ne 0) { throw "Publish failed for agent" }
+
     foreach ($pair in @(
         @{ From = $screensaverTempPublish; To = $screensaverOut },
         @{ From = $configTempPublish; To = $configOut },
-        @{ From = $desktopTempPublish; To = $desktopOut }
+        @{ From = $desktopTempPublish; To = $desktopOut },
+        @{ From = $agentTempPublish; To = $agentOut }
     )) {
         if (-not (Test-Path $pair.From)) {
             throw "Expected publish output not found: $($pair.From)"
@@ -180,6 +194,10 @@ if (-not (Test-Path (Join-Path $configOut "release-manifest.json"))) {
 & $manifestScript -PublishDir $desktopOut
 if (-not (Test-Path (Join-Path $desktopOut "release-manifest.json"))) {
     throw "Manifest generation failed for $desktopOut"
+}
+& $manifestScript -PublishDir $agentOut
+if (-not (Test-Path (Join-Path $agentOut "release-manifest.json"))) {
+    throw "Manifest generation failed for $agentOut"
 }
 
 Write-Step "SAFE_TEMP_PUBLISH_OK output=$publishRoot"

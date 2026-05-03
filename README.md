@@ -18,7 +18,7 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
 - Floating graph cards designed as compact sparkline overlays
 - UTC-pinned top-right status clock plus exchange-local times in the Global Markets lane
 - Direction-colored graph rendering: green for rising segments, red for falling segments
-- Slow, bounded bounce-style motion for graph cards and other floating overlay elements
+- Slow, continuous free-roaming motion for graph cards and other floating overlay elements
 - News headline scroller with configurable RSS source and validation
 - Dynamic background image system with managed exchange photos or user custom folders
 - Provider-aware quote retrieval with budget/rate-limit policy controls
@@ -71,6 +71,7 @@ Official MIT reference:
 - `src/PortfolioSaver.Config` - thin configuration launcher
 - `src/PortfolioSaver.Settings` - shared settings window, view models, services, and content
 - `src/PortfolioSaver.Presentation` - reusable scene host and runtime presentation services
+- `src/PortfolioSaver.VmAgent` - remote desktop-session agent for Windows target UX automation
 - `src/PortfolioSaver.Render` - WPF visual controls and scene rendering
 - `src/PortfolioSaver.Data` - provider clients, cache, and scheduling services
 - `src/PortfolioSaver.Core` - domain models, constants, validation rules
@@ -121,7 +122,7 @@ The active documentation set has been intentionally reduced to a small core:
 
 - `BUILD_AND_DEPLOY.md` - Visual Studio build, run, publish, and installer-sandbox workflow
 - `docs/BETA55_AUDIT_STATE.json` - single canonical machine-maintained audit, test, and release-gate state
-- `build/vm/VM_OPERATIONS_RUNBOOK.md` - repeatable SSH-first remote Windows UX validation workflow
+- `build/vm/VM_OPERATIONS_RUNBOOK.md` - repeatable SSH-first remote Windows UX validation workflow using PortfolioSaver.VmAgent and WinAppDriver in the interactive session
 
 ## License
 
@@ -129,4 +130,6 @@ This project is licensed under the **MIT LICENSE**.
 
 - Bundled full text: [LICENSE](LICENSE)
 - Official text: [https://opensource.org/license/mit/](https://opensource.org/license/mit/)
+
+
 
