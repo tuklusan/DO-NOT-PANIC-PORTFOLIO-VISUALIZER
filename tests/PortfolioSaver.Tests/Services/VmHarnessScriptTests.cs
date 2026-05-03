@@ -70,6 +70,7 @@ public sealed class VmHarnessScriptTests
 
         Assert.Contains("Guest-ConfigureDesktopAutomation.ps1", script, StringComparison.Ordinal);
         Assert.Contains("Guest-ApplyTestSecrets.ps1", script, StringComparison.Ordinal);
+        Assert.Contains("[ValidateRange(1, 10080)]", script, StringComparison.Ordinal);
         Assert.Contains("agent\\agent-status.json", script, StringComparison.Ordinal);
         Assert.Contains("agent\\command-results\\$uxResultName.result.json", script, StringComparison.Ordinal);
         Assert.Contains("commands\\$uxResultName.json", script, StringComparison.Ordinal);
@@ -125,6 +126,7 @@ public sealed class VmHarnessScriptTests
 
         Assert.Contains("[string]$RootPath", script, StringComparison.Ordinal);
         Assert.Contains("[string]$ResultRootPath", script, StringComparison.Ordinal);
+        Assert.Contains("[ValidateRange(1, 10080)]", script, StringComparison.Ordinal);
         Assert.Contains("$root = $RootPath", script, StringComparison.Ordinal);
         Assert.Contains("$summary.ExportMode = 'LocalWorkspace'", script, StringComparison.Ordinal);
         Assert.Contains("$localTraceTarget = Join-Path $results 'trace'", script, StringComparison.Ordinal);

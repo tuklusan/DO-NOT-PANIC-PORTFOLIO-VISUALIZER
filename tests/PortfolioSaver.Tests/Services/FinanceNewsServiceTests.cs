@@ -44,7 +44,7 @@ public sealed class FinanceNewsServiceTests
         });
 
         using HttpClient client = new(handler);
-        FinanceNewsService service = new(cachePath, () => "test-deepseek-key");
+        FinanceNewsService service = new(cachePath, () => string.Empty);
 
         IReadOnlyList<string> first = await service.GetHeadlinesAsync(
             client,
@@ -67,6 +67,45 @@ public sealed class FinanceNewsServiceTests
         Assert.Equal(1, requestCount);
         Assert.Contains("Enable Web Search and Summarize the latest global financial news in one paragraph", capturedBody, StringComparison.Ordinal);
         Assert.DoesNotContain(Environment.NewLine, first[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetHeadlinesAsync_SummarizedMode_UsesResolverKeyWhenExplicitKeyMissing()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        string? capturedAuthorization = null;
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            capturedAuthorization = request.Headers.Authorization?.Parameter;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "content": "Markets traded sideways as investors weighed soft manufacturing data against resilient labor figures and steady energy prices."
+                      }
+                    }
+                  ]
+                }
+                """, Encoding.UTF8, "application/json")
+            };
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => "resolver-deepseek-key");
+
+        IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(
+            client,
+            NewsScrollerMode.SummarizedFinancialNews,
+            string.Empty,
+            Defaults.DefaultNewsFeedUrl,
+            refreshMinutes: 15,
+            networkAvailable: true);
+
+        Assert.Single(headlines);
+        Assert.Equal("resolver-deepseek-key", capturedAuthorization);
     }
 
     [Fact]

@@ -53,6 +53,7 @@ For legacy parser/config routing checks:
 - Existing sample settings can be loaded or copied into runtime settings.
 - Ticker groups survive save/reload.
 - Validate flow works online and blocks bad symbols.
+- Summarized Financial News mode accepts a DeepSeek API key from the config screen and survives save/reload through protected local storage.
 
 ### Desktop full screen
 - desktop app opens windowed.
@@ -68,6 +69,7 @@ For legacy parser/config routing checks:
 - Conservative spacing and hour/day provider caps are respected.
 - History fetch does not run on every live quote refresh.
 - `%LocalAppData%\PortfolioSaver\Caches\History` exists and purges files older than 14 days.
+- Summarized news uses DeepSeek no more often than every 15 minutes and falls back cleanly when the key is unavailable.
 
 ### Floating overlays
 - Graph cards render.
@@ -92,6 +94,23 @@ Preferred path:
 4. Publish `PortfolioSaver.Config` as a normal `.exe`.
 5. Publish `PortfolioSaver.Screensaver` only if legacy compatibility is still needed.
 6. Test desktop + config locally before deployment.
+
+## Remote Windows validation secrets
+
+For live remote validation against the SSH-first Windows target, place optional local-only secrets in:
+
+- `build\vm\test-secrets.json`
+
+Supported fields:
+
+- `FinnhubApiKey`
+- `TwelveDataApiKey`
+- `TiingoApiKey`
+- `FinancialModelingPrepApiKey`
+- `EodhdApiKey`
+- `DeepSeekApiKey`
+
+The remote harness uploads this ignored file when present, applies the values to the remote user environment, and clears stale remote test-secret overlays when the local file is absent.
 
 ## Deploy
 

@@ -14,6 +14,9 @@ public sealed class TraceLogTests
         string traceDirectory = Path.Combine(PathHelper.GetAppDataDirectory(), "Trace");
         string traceFilePath = Path.Combine(traceDirectory, "trace.circular.log");
         string traceIndexPath = Path.Combine(traceDirectory, "trace.circular.idx");
+        Directory.CreateDirectory(traceDirectory);
+        File.Delete(traceFilePath);
+        File.Delete(traceIndexPath);
         string marker = "trace-test-" + Guid.NewGuid().ToString("N");
         MethodInfo? writeCircularMethod = typeof(TraceLog).GetMethod(
             "WriteCircular",

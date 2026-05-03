@@ -19,7 +19,7 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
 - UTC-pinned top-right status clock plus exchange-local times in the Global Markets lane
 - Direction-colored graph rendering: green for rising segments, red for falling segments
 - Slow, continuous free-roaming motion for graph cards and other floating overlay elements
-- News headline scroller with configurable RSS source and validation
+- News headline scroller with configurable RSS mode or DeepSeek-based summarized-financial-news mode
 - Dynamic background image system with managed exchange photos or user custom folders
 - Provider-aware quote retrieval with budget/rate-limit policy controls
 - Offline-aware UI behavior and network gating for validation workflows
@@ -28,6 +28,7 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
 
 - Rich settings UI for:
   - Data providers and API keys
+  - DeepSeek API key for summarized financial news
   - Ticker tapes and graph overlays
   - Refresh intervals (portfolio, off-hours, news, backgrounds)
   - Data source policy budgets (hour/day + single/batch query controls)
@@ -51,7 +52,9 @@ Official MIT reference:
 ## Data, Caching, and Runtime Paths
 
 - Settings file: `%AppData%\PortfolioSaver\settings.json`
+- Protected provider/news secret store: `%AppData%\PortfolioSaver\provider-secrets.json`
 - Quote cache: `%LocalAppData%\PortfolioSaver\quotes-cache.json`
+- News cache: `%LocalAppData%\PortfolioSaver\finance-news-cache.json`
 - Historical cache: `%LocalAppData%\PortfolioSaver\Caches\History`
 - Cache policy:
   - Per-symbol JSON files
@@ -123,6 +126,7 @@ The active documentation set has been intentionally reduced to a small core:
 - `BUILD_AND_DEPLOY.md` - Visual Studio build, run, publish, and installer-sandbox workflow
 - `docs/BETA55_AUDIT_STATE.json` - single canonical machine-maintained audit, test, and release-gate state
 - `build/vm/VM_OPERATIONS_RUNBOOK.md` - repeatable SSH-first remote Windows UX validation workflow using PortfolioSaver.VmAgent and WinAppDriver in the interactive session
+- `build/vm/test-secrets.json` - ignored local-only remote-test secret overlay for API keys, including DeepSeek, when you need live remote validation
 
 ## License
 

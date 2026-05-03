@@ -1,5 +1,5 @@
 param(
-    [ValidateRange(1, 1440)]
+    [ValidateRange(1, 10080)]
     [int]$ScreensaverDurationMinutes = 6,
     [ValidateRange(1, 3600)]
     [int]$CaptureIntervalSeconds = 5,

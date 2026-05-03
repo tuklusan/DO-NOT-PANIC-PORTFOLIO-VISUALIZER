@@ -16,14 +16,17 @@
                          },
     "latest_recorded_validation_state":  {
                                              "automated_tests":  {
-                                                                     "command":  "dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-build",
-                                                                     "result":  "214 / 214 passing",
+                                                                     "command":  "dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo",
+                                                                     "result":  "221 / 221 passing",
                                                                      "notes":  [
                                                                                    "Host regression coverage now includes the SSH-first VM harness scripts, the desktop-session agent workflow, and the remote WinAppDriver startup path.",
                                                                                    "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don\u0027t-Panic-Portfolio-Visualizer.",
                                                                                    "A repo-local NuGet.Config now clears stale Visual Studio fallback package folders so restore works on this machine.",
                                                                                    "The UX harness no longer relies on direct interactive PowerShell launch through PsExec; commands are now queued to PortfolioSaver.VmAgent inside session 1.",
-                                                                                   "Guest long-run UX captures continue to write external Yahoo Finance spot checks plus displayed-versus-reference comparison artifacts."
+                                                                                   "Guest long-run UX captures continue to write external Yahoo Finance spot checks plus displayed-versus-reference comparison artifacts.",
+                                                                                   "DeepSeek summarized-news mode now uses the same protected local secret store and environment-override flow as the market-data providers.",
+                                                                                   "Remote live validation can now apply DeepSeek and provider API keys from ignored local build/vm/test-secrets.json via Guest-ApplyTestSecrets.ps1.",
+                                                                                   "The SSH-first remote harness now supports desktop soak durations up to 10080 minutes."
                                                                                ]
                                                                  },
                                              "build":  {
@@ -31,7 +34,7 @@
                                                            "result":  "passed"
                                                        },
                                              "publish":  {
-                                                             "command":  ".\\build\\publish-safe-temp.ps1 -Configuration Release -TimeoutSeconds 300",
+                                                             "command":  ".\\\\build\\\\publish-safe-temp.ps1 -Configuration Release -TimeoutSeconds 1200",
                                                              "result":  "passed",
                                                              "artifacts":  [
                                                                                "build/artifacts/publish-safe-temp/screensaver",
@@ -59,7 +62,8 @@
                                                                               "Remote restore/build/test/publish succeeded end to end inside C:\\vmharness\\portfolio-saver\\repo.",
                                                                               "The remote machine is now configured for desktop-session automation with autologon-style Winlogon settings, disabled screen saver, and a startup launcher for PortfolioSaver.VmAgent.",
                                                                               "PortfolioSaver.VmAgent now owns the interactive desktop session, starts WinAppDriver when needed, and executes queued UX runs from inside session 1.",
-                                                                              "Latest short remote desktop UX validation completed cleanly through the agent-based harness in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260503-152112."
+                                                                              "Latest short remote desktop UX validation completed cleanly through the agent-based harness in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260503-152112.",
+                                                                              "The guest secret-overlay flow now supports DeepSeek alongside the existing market-data providers."
                                                                           ]
                                                             }
                                          },
@@ -194,6 +198,7 @@
                                                 "Retain the legacy screensaver host only while compatibility still matters.",
                                                 "Use the safe-temp build/publish scripts for repeatable validation rather than ad-hoc repo-path publish commands.",
                                                 "Treat the remote target as a generic Windows machine so the same harness can move from a VM to a physical PC without orchestration changes.",
-                                                "Let PortfolioSaver.VmAgent own interactive-session automation instead of attempting to launch UX runs directly through SSH-driven PowerShell."
+                                                "Let PortfolioSaver.VmAgent own interactive-session automation instead of attempting to launch UX runs directly through SSH-driven PowerShell.",
+                                                "Use build/vm/test-secrets.json for remote live validation secrets instead of persisting any API keys into plaintext settings.json."
                                             ]
 }

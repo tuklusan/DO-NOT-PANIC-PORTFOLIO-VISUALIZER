@@ -52,6 +52,7 @@ It does **not** depend on hypervisor features, shared folders, `VBoxManage`, or 
 - [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\VmSshCommon.ps1](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\VmSshCommon.ps1)
 - [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-BootstrapVmRemoteTools.ps1](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-BootstrapVmRemoteTools.ps1)
 - [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-ConfigureDesktopAutomation.ps1](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-ConfigureDesktopAutomation.ps1)
+- [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-ApplyTestSecrets.ps1](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-ApplyTestSecrets.ps1)
 - [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-UxDeepExercise.ps1](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-UxDeepExercise.ps1)
 
 ## Workspace layout on the remote Windows target
@@ -76,6 +77,27 @@ This does all of the following over SSH/SFTP:
 - ensures the remote workspace root exists
 - ensures machine-wide `pwsh` and `.NET 10` are present
 - uploads a clean repository snapshot
+- uploads `build\vm\test-secrets.json` when present and removes any stale remote copy when absent
+
+## Optional live secret overlay
+
+If you want the remote Windows target to use live API credentials during validation, create the ignored local file:
+
+- `build\vm\test-secrets.json`
+
+Supported fields:
+
+- `FinnhubApiKey`
+- `TwelveDataApiKey`
+- `TiingoApiKey`
+- `FinancialModelingPrepApiKey`
+- `EodhdApiKey`
+- `DeepSeekApiKey`
+
+The harness applies them to the remote user environment before the remote build/UX cycle starts. DeepSeek is written to both:
+
+- `DEEPSEEK_API_KEY`
+- `PORTFOLIOSAVER_DEEPSEEK_API_KEY`
 
 ### 2. Run remote restore/build/test/publish
 
@@ -103,6 +125,7 @@ It then stages runnable artifacts under:
 Before the UX cycle starts, the harness now:
 
 - runs `Guest-ConfigureDesktopAutomation.ps1`
+- runs `Guest-ApplyTestSecrets.ps1`
 - configures autologon-style Winlogon registry values for the dedicated test account
 - disables the screen saver for that user profile
 - prepares a startup launcher for `PortfolioSaver.VmAgent`
@@ -241,3 +264,4 @@ This is a debugging convenience only. The canonical harness path is still the ho
    - post-ESC screenshots
    - verify actual capture dimensions before claiming multi-resolution pass behavior
 6. Keep all long-running host commands bounded by explicit timeouts.
+7. The current harness allows up to `10080` minutes per desktop phase, so multi-day soak runs remain within the supported validation range.

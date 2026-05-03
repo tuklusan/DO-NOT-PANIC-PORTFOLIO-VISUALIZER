@@ -5,7 +5,7 @@ param(
     [switch]$Bootstrap,
     [switch]$PushWorkspace,
     [switch]$RunUxDeep,
-    [ValidateRange(1, 1440)]
+    [ValidateRange(1, 10080)]
     [int]$GuestScreensaverDurationMinutes = 20,
     [ValidateRange(1, 3600)]
     [int]$CaptureIntervalSeconds = 5,
