@@ -94,12 +94,28 @@ Write-Output ('BUILD_SUMMARY=' + `$resultPath)
     if ($RunUxDeep) {
         $remoteUxScript = Join-Path $RootPath 'repo\build\vm\Guest-UxDeepExercise.ps1'
         $remoteUxSummary = Join-Path $RootPath ("results\$uxResultName\ux-deep-summary.json")
-        $remoteUxLauncher = Join-Path $RootPath ("scripts\launch-$uxResultName.cmd")
+        $remoteUxLauncher = Join-Path $RootPath ("scripts\launch-$uxResultName.ps1")
         $remoteUser = $vmCredParts.UserName.Replace("'", "''")
         $remotePassword = $vmCredParts.Password.Replace("'", "''")
         $launcherBody = @"
-@echo off
-"C:\Program Files\SysinternalsSuite\PsExec.exe" -accepteula -i 1 -d -u "$remoteUser" -p "$remotePassword" powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "$remoteUxScript" -RootPath "$RootPath" -ResultName "$uxResultName" -ScreensaverDurationMinutes "$GuestScreensaverDurationMinutes" -CaptureIntervalSeconds "$CaptureIntervalSeconds"
+`$psexec = 'C:\Program Files\SysinternalsSuite\PsExec.exe'
+`$arguments = @(
+    '-accepteula',
+    '-i', '1',
+    '-d',
+    '-u', '$remoteUser',
+    '-p', '$remotePassword',
+    'powershell.exe',
+    '-NoProfile',
+    '-WindowStyle', 'Hidden',
+    '-ExecutionPolicy', 'Bypass',
+    '-File', '$remoteUxScript',
+    '-RootPath', '$RootPath',
+    '-ResultName', '$uxResultName',
+    '-ScreensaverDurationMinutes', '$GuestScreensaverDurationMinutes',
+    '-CaptureIntervalSeconds', '$CaptureIntervalSeconds'
+)
+& `$psexec @arguments
 "@
         $escapedLauncherBody = $launcherBody.Replace("'", "''")
         $prepareLaunchCommand = @"
@@ -117,15 +133,17 @@ Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensa
     Stop-Process -Force -ErrorAction SilentlyContinue
 Set-Content -LiteralPath `$launcherPath -Value @'
 $escapedLauncherBody
-'@ -Encoding ASCII
+'@ -Encoding UTF8
 Write-Output 'UX_LAUNCHER_READY'
 "@
         Write-VmSshStep "Preparing remote UX launcher"
         Invoke-VmPwshCommand -Bundle $bundle -Command $prepareLaunchCommand -TimeOutSeconds 120 | Out-Null
 
-        $launchRemoteCommand = ('cmd /c ""{0}""' -f $remoteUxLauncher)
-        Write-VmSshStep "Launching remote 20-minute UX run through PsExec in session 1"
-        Invoke-VmRawCommand -Bundle $bundle -Command $launchRemoteCommand -TimeOutSeconds 120 -SuccessOutputPattern 'started on .* with process ID \d+\.' | Out-Null
+        $launchRemoteCommand = @"
+& '$remoteUxLauncher'
+"@
+        Write-VmSshStep "Launching remote UX run through PsExec in session 1"
+        Invoke-VmPwshCommand -Bundle $bundle -Command $launchRemoteCommand -TimeOutSeconds 120 | Out-Null
 
         $deadline = (Get-Date).AddSeconds($UxTimeoutSeconds)
         do {

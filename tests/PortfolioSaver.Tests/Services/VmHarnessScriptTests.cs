@@ -68,9 +68,10 @@ public sealed class VmHarnessScriptTests
             "vm",
             "Invoke-VmBuildTest.ps1"));
 
-        Assert.Contains("scripts\\launch-$uxResultName.cmd", script, StringComparison.Ordinal);
+        Assert.Contains("scripts\\launch-$uxResultName.ps1", script, StringComparison.Ordinal);
         Assert.Contains("PsExec.exe", script, StringComparison.Ordinal);
-        Assert.Contains("cmd /c", script, StringComparison.Ordinal);
+        Assert.Contains("& '$remoteUxLauncher'", script, StringComparison.Ordinal);
+        Assert.Contains("& `$psexec @arguments", script, StringComparison.Ordinal);
         Assert.Contains("$summary.PSObject.Properties.Name -contains 'FinishedAt'", script, StringComparison.Ordinal);
     }
 
