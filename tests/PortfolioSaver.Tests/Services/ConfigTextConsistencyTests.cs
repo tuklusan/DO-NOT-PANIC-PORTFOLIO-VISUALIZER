@@ -125,7 +125,7 @@ public sealed class ConfigTextConsistencyTests
         Assert.Equal(5, helpBadgeCount);
         Assert.True(tooltipCount >= 5, "Expected every visible help badge to carry a tooltip.");
         Assert.Contains("API keys are optional until you want live access to that provider.", xaml, StringComparison.Ordinal);
-        Assert.Contains("Summarized Financial News uses the DeepSeek API from the DEEPSEEK_API_KEY environment variable", xaml, StringComparison.Ordinal);
+        Assert.Contains("Summarized Financial News uses the DeepSeek API key from the config screen, protected local secret storage, or environment overrides", xaml, StringComparison.Ordinal);
         Assert.Contains("Managed exchange photos are cached under AppData.", xaml, StringComparison.Ordinal);
         Assert.Contains("Ticker names auto-fill during Apply when validation can resolve them.", xaml, StringComparison.Ordinal);
         Assert.Contains("These budgets cap how often the screensaver is allowed to hit each cloud source.", xaml, StringComparison.Ordinal);
@@ -183,6 +183,7 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("Content=\"Summarized Financial News\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"RSS Feed\"", xaml, StringComparison.Ordinal);
         Assert.Contains("IsEnabled=\"{Binding IsRssFeedSelected}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("DeepSeek API key:", xaml, StringComparison.Ordinal);
     }
 
     private static string GetRepoRoot()

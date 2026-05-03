@@ -201,4 +201,26 @@ public sealed class AppSettingsNormalizerTests
 
         Assert.Equal(NewsScrollerMode.SummarizedFinancialNews, normalized.NewsScrollerMode);
     }
+
+    [Fact]
+    public void Normalize_DeepSeekApiKey_PrefersEnvironmentVariable_OverPersistedValue()
+    {
+        const string environmentName = "DEEPSEEK_API_KEY";
+        string? previous = Environment.GetEnvironmentVariable(environmentName);
+        Environment.SetEnvironmentVariable(environmentName, "env-deepseek-key");
+
+        try
+        {
+            AppSettings settings = Defaults.CreateSettings();
+            settings.DeepSeekApiKey = "persisted-deepseek-key";
+
+            AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+            Assert.Equal("env-deepseek-key", normalized.DeepSeekApiKey);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(environmentName, previous);
+        }
+    }
 }

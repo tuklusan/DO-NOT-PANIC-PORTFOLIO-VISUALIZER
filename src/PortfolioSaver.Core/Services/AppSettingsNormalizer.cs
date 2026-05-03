@@ -62,6 +62,11 @@ public static class AppSettingsNormalizer
             normalized.EodhdApiKey,
             "PORTFOLIOSAVER_EODHD_API_KEY");
 
+        normalized.DeepSeekApiKey = NormalizeApiKey(
+            normalized.DeepSeekApiKey,
+            "DEEPSEEK_API_KEY",
+            "PORTFOLIOSAVER_DEEPSEEK_API_KEY");
+
         normalized.MarketCalendarRefreshHours = Clamp(
             normalized.MarketCalendarRefreshHours,
             1,
@@ -217,9 +222,9 @@ public static class AppSettingsNormalizer
             StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string NormalizeApiKey(string currentValue, string environmentVariableName)
+    private static string NormalizeApiKey(string currentValue, params string[] environmentVariableNames)
     {
-        string environmentValue = (Environment.GetEnvironmentVariable(environmentVariableName) ?? string.Empty).Trim();
+        string environmentValue = GetFirstEnvironmentVariableValue(environmentVariableNames);
         if (!string.IsNullOrWhiteSpace(environmentValue))
             return environmentValue;
 
@@ -228,6 +233,18 @@ public static class AppSettingsNormalizer
             return string.Empty;
 
         return trimmed;
+    }
+
+    private static string GetFirstEnvironmentVariableValue(IEnumerable<string> environmentVariableNames)
+    {
+        foreach (string name in environmentVariableNames)
+        {
+            string value = (Environment.GetEnvironmentVariable(name) ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+        }
+
+        return string.Empty;
     }
 
     private static bool IsApiKeyPlaceholder(string value)

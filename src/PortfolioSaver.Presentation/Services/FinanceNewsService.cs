@@ -17,7 +17,6 @@ public sealed class FinanceNewsService
     private const string DefaultFeedUrl = "https://finance.yahoo.com/news/rss";
     private const string DeepSeekApiUrl = "https://api.deepseek.com/chat/completions";
     private const string DeepSeekModel = "deepseek-v4-flash";
-    private const string DeepSeekApiKeyEnvironmentVariable = "DEEPSEEK_API_KEY";
     private const string SummarizedNewsPrompt = "Enable Web Search and Summarize the latest global financial news in one paragraph";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private readonly string _cachePath;
@@ -28,13 +27,13 @@ public sealed class FinanceNewsService
         _cachePath = string.IsNullOrWhiteSpace(cachePath)
             ? Path.Combine(PathHelper.GetLocalDataDirectory(), CacheFileName)
             : cachePath;
-        _deepSeekApiKeyResolver = deepSeekApiKeyResolver ?? (() =>
-            (Environment.GetEnvironmentVariable(DeepSeekApiKeyEnvironmentVariable) ?? string.Empty).Trim());
+        _deepSeekApiKeyResolver = deepSeekApiKeyResolver ?? (() => string.Empty);
     }
 
     public async Task<IReadOnlyList<string>> GetHeadlinesAsync(
         HttpClient httpClient,
         NewsScrollerMode mode,
+        string? deepSeekApiKey,
         string? feedUrl,
         int refreshMinutes,
         bool networkAvailable,
@@ -64,7 +63,7 @@ public sealed class FinanceNewsService
             List<string> headlines = mode switch
             {
                 NewsScrollerMode.RssFeed => await FetchRssHeadlinesAsync(httpClient, requestUrl, cancellationToken),
-                _ => await FetchSummarizedFinancialNewsAsync(httpClient, _deepSeekApiKeyResolver(), cancellationToken)
+                _ => await FetchSummarizedFinancialNewsAsync(httpClient, ResolveDeepSeekApiKey(deepSeekApiKey), cancellationToken)
             };
 
             if (headlines.Count == 0)
@@ -197,6 +196,15 @@ public sealed class FinanceNewsService
 
         candidate = Regex.Replace(candidate, @"\s+", " ");
         return candidate.Trim();
+    }
+
+    private string ResolveDeepSeekApiKey(string? explicitApiKey)
+    {
+        string candidate = (explicitApiKey ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(candidate))
+            return candidate;
+
+        return (_deepSeekApiKeyResolver() ?? string.Empty).Trim();
     }
 
     private static IReadOnlyList<string> GetFallbackHeadlines(NewsScrollerMode mode, IReadOnlyList<string> cached)

@@ -25,6 +25,7 @@ public sealed class SettingsFileServiceTests
             settings.TiingoApiKey = "live-tiingo-key";
             settings.FinancialModelingPrepApiKey = "live-fmp-key";
             settings.EodhdApiKey = "live-eodhd-key";
+            settings.DeepSeekApiKey = "live-deepseek-key";
 
             service.Save(settings);
 
@@ -36,8 +37,10 @@ public sealed class SettingsFileServiceTests
             Assert.True(string.IsNullOrWhiteSpace(persisted.TiingoApiKey));
             Assert.True(string.IsNullOrWhiteSpace(persisted.FinancialModelingPrepApiKey));
             Assert.True(string.IsNullOrWhiteSpace(persisted.EodhdApiKey));
+            Assert.True(string.IsNullOrWhiteSpace(persisted.DeepSeekApiKey));
             Assert.DoesNotContain("live-finnhub-key", json, StringComparison.Ordinal);
             Assert.DoesNotContain("live-twelvedata-key", json, StringComparison.Ordinal);
+            Assert.DoesNotContain("live-deepseek-key", json, StringComparison.Ordinal);
         }
         finally
         {
@@ -57,12 +60,14 @@ public sealed class SettingsFileServiceTests
         string? previousTiingo = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_TIINGO_API_KEY");
         string? previousFmp = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY");
         string? previousEodhd = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY");
+        string? previousDeepSeek = Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY");
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FINNHUB_API_KEY", null);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TWELVEDATA_API_KEY", null);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TIINGO_API_KEY", null);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY", null);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY", null);
+        Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", null);
 
         try
         {
@@ -75,6 +80,7 @@ public sealed class SettingsFileServiceTests
             Assert.True(string.IsNullOrWhiteSpace(settings.TiingoApiKey));
             Assert.True(string.IsNullOrWhiteSpace(settings.FinancialModelingPrepApiKey));
             Assert.True(string.IsNullOrWhiteSpace(settings.EodhdApiKey));
+            Assert.True(string.IsNullOrWhiteSpace(settings.DeepSeekApiKey));
         }
         finally
         {
@@ -84,6 +90,7 @@ public sealed class SettingsFileServiceTests
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TIINGO_API_KEY", previousTiingo);
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY", previousFmp);
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY", previousEodhd);
+            Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", previousDeepSeek);
             if (Directory.Exists(tempRoot))
                 Directory.Delete(tempRoot, recursive: true);
         }
@@ -99,12 +106,14 @@ public sealed class SettingsFileServiceTests
         string? previousTiingo = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_TIINGO_API_KEY");
         string? previousFmp = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY");
         string? previousEodhd = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY");
+        string? previousDeepSeek = Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY");
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FINNHUB_API_KEY", null);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TWELVEDATA_API_KEY", null);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TIINGO_API_KEY", null);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY", null);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY", null);
+        Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", null);
 
         try
         {
@@ -115,6 +124,7 @@ public sealed class SettingsFileServiceTests
             settings.TiingoApiKey = "live-tiingo-key";
             settings.FinancialModelingPrepApiKey = "live-fmp-key";
             settings.EodhdApiKey = "live-eodhd-key";
+            settings.DeepSeekApiKey = "live-deepseek-key";
 
             service.Save(settings);
 
@@ -126,6 +136,8 @@ public sealed class SettingsFileServiceTests
             Assert.DoesNotContain("live-twelvedata-key", settingsJson, StringComparison.Ordinal);
             Assert.DoesNotContain("live-finnhub-key", secretsJson, StringComparison.Ordinal);
             Assert.DoesNotContain("live-twelvedata-key", secretsJson, StringComparison.Ordinal);
+            Assert.DoesNotContain("live-deepseek-key", settingsJson, StringComparison.Ordinal);
+            Assert.DoesNotContain("live-deepseek-key", secretsJson, StringComparison.Ordinal);
 
             AppSettings configLoaded = service.Load();
             ScreensaverSettingsService runtimeService = new();
@@ -136,12 +148,14 @@ public sealed class SettingsFileServiceTests
             Assert.Equal("live-tiingo-key", configLoaded.TiingoApiKey);
             Assert.Equal("live-fmp-key", configLoaded.FinancialModelingPrepApiKey);
             Assert.Equal("live-eodhd-key", configLoaded.EodhdApiKey);
+            Assert.Equal("live-deepseek-key", configLoaded.DeepSeekApiKey);
 
             Assert.Equal("live-finnhub-key", runtimeLoaded.FinnhubApiKey);
             Assert.Equal("live-twelvedata-key", runtimeLoaded.TwelveDataApiKey);
             Assert.Equal("live-tiingo-key", runtimeLoaded.TiingoApiKey);
             Assert.Equal("live-fmp-key", runtimeLoaded.FinancialModelingPrepApiKey);
             Assert.Equal("live-eodhd-key", runtimeLoaded.EodhdApiKey);
+            Assert.Equal("live-deepseek-key", runtimeLoaded.DeepSeekApiKey);
         }
         finally
         {
@@ -151,6 +165,7 @@ public sealed class SettingsFileServiceTests
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TIINGO_API_KEY", previousTiingo);
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY", previousFmp);
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY", previousEodhd);
+            Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", previousDeepSeek);
             if (Directory.Exists(tempRoot))
                 Directory.Delete(tempRoot, recursive: true);
         }

@@ -174,6 +174,7 @@
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
                                     <TextBlock Text="Finnhub API key:" Style="{StaticResource FieldLabelStyle}" />
                                     <PasswordBox Grid.Column="1" MinWidth="120" infra:BindablePasswordBox.BoundPassword="{Binding Settings.FinnhubApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -185,8 +186,10 @@
                                     <PasswordBox Grid.Row="3" Grid.Column="1" MinWidth="120" Margin="0,8,0,0" infra:BindablePasswordBox.BoundPassword="{Binding Settings.FinancialModelingPrepApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <TextBlock Grid.Row="4" Text="EODHD API key:" Style="{StaticResource FieldLabelStyle}" Margin="0,8,12,0" />
                                     <PasswordBox Grid.Row="4" Grid.Column="1" MinWidth="120" Margin="0,8,0,0" infra:BindablePasswordBox.BoundPassword="{Binding Settings.EodhdApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Grid.Row="5" Text="DeepSeek API key:" Style="{StaticResource FieldLabelStyle}" Margin="0,8,12,0" />
+                                    <PasswordBox Grid.Row="5" Grid.Column="1" MinWidth="120" Margin="0,8,0,0" infra:BindablePasswordBox.BoundPassword="{Binding Settings.DeepSeekApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
-                                <TextBlock Text="On first launch these fields show sample key formats only. Replace all sample values with your real provider keys before relying on live data." Style="{StaticResource SectionNoteStyle}" />
+                                <TextBlock Text="On first launch these fields show sample key formats only. Replace all sample values with your real provider keys before relying on live data. Saved keys are kept out of settings.json and restored from protected local storage, while environment variables still override them when present." Style="{StaticResource SectionNoteStyle}" />
 
                                 <Grid Margin="0,8,0,0">
                                     <Grid.ColumnDefinitions>
@@ -414,7 +417,7 @@
                                 <DockPanel Margin="0,0,0,10">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="News Scroller" Foreground="White" FontSize="20" />
-                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Summarized Financial News uses the DeepSeek API from the DEEPSEEK_API_KEY environment variable and refreshes no more often than every 15 minutes. RSS Feed keeps the Yahoo Finance default unless you supply a different readable feed URL.">
+                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Summarized Financial News uses the DeepSeek API key from the config screen, protected local secret storage, or environment overrides and refreshes no more often than every 15 minutes. RSS Feed keeps the Yahoo Finance default unless you supply a different readable feed URL.">
                                             <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
                                         </Border>
                                     </StackPanel>
@@ -462,7 +465,7 @@
                                             Value="{Binding Settings.NewsRefreshMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <TextBlock Grid.Column="2" Margin="12,0,0,0" Foreground="#F3D57F" VerticalAlignment="Center" Text="{Binding ElementName=NewsRefreshSlider, Path=Value, StringFormat={}{0:0}m}" />
                                 </Grid>
-                                <TextBlock Text="Summarized mode sends the prompt &quot;Enable Web Search and Summarize the latest global financial news in one paragraph&quot; to DeepSeek and keeps the most recent full paragraph scrolling across the band." Style="{StaticResource SectionNoteStyle}" />
+                                <TextBlock Text="Summarized mode sends the prompt &quot;Enable Web Search and Summarize the latest global financial news in one paragraph&quot; to DeepSeek and keeps the most recent full paragraph scrolling across the band. The DeepSeek key follows the same protected storage and environment override rules as the market-data provider keys." Style="{StaticResource SectionNoteStyle}" />
                                 <TextBlock Text="RSS mode validates the feed during Apply and falls back to the Yahoo Finance default when needed." Style="{StaticResource SectionNoteStyle}" />
                             </StackPanel>
                         </Border>

@@ -26,6 +26,7 @@ public sealed class AppSettings
     public string TiingoApiKey { get; set; } = string.Empty;
     public string FinancialModelingPrepApiKey { get; set; } = string.Empty;
     public string EodhdApiKey { get; set; } = string.Empty;
+    public string DeepSeekApiKey { get; set; } = string.Empty;
     public int MarketCalendarRefreshHours { get; set; } = 12;
 
     public int MinFinnhubRequestSpacingSeconds { get; set; } = 2;

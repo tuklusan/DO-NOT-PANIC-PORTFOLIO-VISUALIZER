@@ -49,6 +49,7 @@ public sealed class FinanceNewsServiceTests
         IReadOnlyList<string> first = await service.GetHeadlinesAsync(
             client,
             NewsScrollerMode.SummarizedFinancialNews,
+            "test-deepseek-key",
             Defaults.DefaultNewsFeedUrl,
             refreshMinutes: 5,
             networkAvailable: true);
@@ -56,6 +57,7 @@ public sealed class FinanceNewsServiceTests
         IReadOnlyList<string> second = await service.GetHeadlinesAsync(
             client,
             NewsScrollerMode.SummarizedFinancialNews,
+            "test-deepseek-key",
             Defaults.DefaultNewsFeedUrl,
             refreshMinutes: 5,
             networkAvailable: true);
@@ -77,6 +79,7 @@ public sealed class FinanceNewsServiceTests
         IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(
             client,
             NewsScrollerMode.SummarizedFinancialNews,
+            string.Empty,
             Defaults.DefaultNewsFeedUrl,
             refreshMinutes: 15,
             networkAvailable: true);

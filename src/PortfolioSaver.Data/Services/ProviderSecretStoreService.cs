@@ -30,6 +30,7 @@ public sealed class ProviderSecretStoreService
         ApplySecret(settings, dto.TiingoApiKey, static s => s.TiingoApiKey, static (s, v) => s.TiingoApiKey = v);
         ApplySecret(settings, dto.FinancialModelingPrepApiKey, static s => s.FinancialModelingPrepApiKey, static (s, v) => s.FinancialModelingPrepApiKey = v);
         ApplySecret(settings, dto.EodhdApiKey, static s => s.EodhdApiKey, static (s, v) => s.EodhdApiKey = v);
+        ApplySecret(settings, dto.DeepSeekApiKey, static s => s.DeepSeekApiKey, static (s, v) => s.DeepSeekApiKey = v);
     }
 
     public void Save(AppSettings settings)
@@ -41,6 +42,7 @@ public sealed class ProviderSecretStoreService
         dto.TiingoApiKey = ResolvePersistedProtectedValue(settings.TiingoApiKey, "PORTFOLIOSAVER_TIINGO_API_KEY", dto.TiingoApiKey);
         dto.FinancialModelingPrepApiKey = ResolvePersistedProtectedValue(settings.FinancialModelingPrepApiKey, "PORTFOLIOSAVER_FMP_API_KEY", dto.FinancialModelingPrepApiKey);
         dto.EodhdApiKey = ResolvePersistedProtectedValue(settings.EodhdApiKey, "PORTFOLIOSAVER_EODHD_API_KEY", dto.EodhdApiKey);
+        dto.DeepSeekApiKey = ResolvePersistedProtectedValue(settings.DeepSeekApiKey, new[] { "DEEPSEEK_API_KEY", "PORTFOLIOSAVER_DEEPSEEK_API_KEY" }, dto.DeepSeekApiKey);
 
         if (!dto.HasAnySecrets())
         {
@@ -73,9 +75,12 @@ public sealed class ProviderSecretStoreService
     }
 
     private string ResolvePersistedProtectedValue(string currentValue, string environmentVariableName, string existingProtectedValue)
+        => ResolvePersistedProtectedValue(currentValue, new[] { environmentVariableName }, existingProtectedValue);
+
+    private string ResolvePersistedProtectedValue(string currentValue, IEnumerable<string> environmentVariableNames, string existingProtectedValue)
     {
         string trimmed = (currentValue ?? string.Empty).Trim();
-        string environmentValue = (Environment.GetEnvironmentVariable(environmentVariableName) ?? string.Empty).Trim();
+        string environmentValue = GetFirstEnvironmentVariableValue(environmentVariableNames);
 
         if (!string.IsNullOrWhiteSpace(environmentValue) &&
             string.Equals(trimmed, environmentValue, StringComparison.Ordinal))
@@ -87,6 +92,18 @@ public sealed class ProviderSecretStoreService
             return string.Empty;
 
         return _settingsProtectionService.Protect(trimmed);
+    }
+
+    private static string GetFirstEnvironmentVariableValue(IEnumerable<string> environmentVariableNames)
+    {
+        foreach (string name in environmentVariableNames)
+        {
+            string value = (Environment.GetEnvironmentVariable(name) ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+        }
+
+        return string.Empty;
     }
 
     private ProviderSecretsDto LoadSecretsDto()
@@ -127,12 +144,14 @@ public sealed class ProviderSecretStoreService
         public string TiingoApiKey { get; set; } = string.Empty;
         public string FinancialModelingPrepApiKey { get; set; } = string.Empty;
         public string EodhdApiKey { get; set; } = string.Empty;
+        public string DeepSeekApiKey { get; set; } = string.Empty;
 
         public bool HasAnySecrets()
             => !string.IsNullOrWhiteSpace(FinnhubApiKey) ||
                !string.IsNullOrWhiteSpace(TwelveDataApiKey) ||
                !string.IsNullOrWhiteSpace(TiingoApiKey) ||
                !string.IsNullOrWhiteSpace(FinancialModelingPrepApiKey) ||
-               !string.IsNullOrWhiteSpace(EodhdApiKey);
+               !string.IsNullOrWhiteSpace(EodhdApiKey) ||
+               !string.IsNullOrWhiteSpace(DeepSeekApiKey);
     }
 }

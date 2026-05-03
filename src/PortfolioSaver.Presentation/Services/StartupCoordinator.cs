@@ -174,6 +174,7 @@ public sealed class StartupCoordinator
         Task<IReadOnlyList<string>> headlinesTask = _financeNewsService.GetHeadlinesAsync(
             httpClient,
             settings.NewsScrollerMode,
+            settings.DeepSeekApiKey,
             settings.NewsFeedUrl,
             settings.NewsRefreshMinutes,
             networkAvailable,

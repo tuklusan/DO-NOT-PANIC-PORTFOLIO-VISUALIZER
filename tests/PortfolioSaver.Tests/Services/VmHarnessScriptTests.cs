@@ -69,6 +69,7 @@ public sealed class VmHarnessScriptTests
             "Invoke-VmBuildTest.ps1"));
 
         Assert.Contains("Guest-ConfigureDesktopAutomation.ps1", script, StringComparison.Ordinal);
+        Assert.Contains("Guest-ApplyTestSecrets.ps1", script, StringComparison.Ordinal);
         Assert.Contains("agent\\agent-status.json", script, StringComparison.Ordinal);
         Assert.Contains("agent\\command-results\\$uxResultName.result.json", script, StringComparison.Ordinal);
         Assert.Contains("commands\\$uxResultName.json", script, StringComparison.Ordinal);
@@ -157,13 +158,17 @@ public sealed class VmHarnessScriptTests
         string invoke = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "Invoke-VmBuildTest.ps1"));
         string pull = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "Pull-VmResults.ps1"));
         string bootstrap = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "Guest-BootstrapVmRemoteTools.ps1"));
+        string applySecrets = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "Guest-ApplyTestSecrets.ps1"));
         string helper = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "VmSshCommon.ps1"));
 
         Assert.Contains(@"C:\vmharness\portfolio-saver", push, StringComparison.Ordinal);
         Assert.Contains(@"C:\vmharness\portfolio-saver", invoke, StringComparison.Ordinal);
         Assert.Contains(@"C:\vmharness\portfolio-saver", pull, StringComparison.Ordinal);
         Assert.Contains(@"C:\vmharness\portfolio-saver", bootstrap, StringComparison.Ordinal);
+        Assert.Contains(@"C:\vmharness\portfolio-saver", applySecrets, StringComparison.Ordinal);
         Assert.Contains("Posh-SSH", helper, StringComparison.Ordinal);
+        Assert.Contains("build\\vm\\test-secrets.json", push, StringComparison.Ordinal);
+        Assert.Contains("DEEPSEEK_API_KEY", applySecrets, StringComparison.Ordinal);
         Assert.DoesNotContain("VBoxManage", push, StringComparison.Ordinal);
         Assert.DoesNotContain("VBoxManage", invoke, StringComparison.Ordinal);
         Assert.DoesNotContain("VBOXSVR", push, StringComparison.Ordinal);

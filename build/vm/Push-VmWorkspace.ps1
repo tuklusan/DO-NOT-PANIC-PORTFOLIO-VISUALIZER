@@ -16,6 +16,7 @@ $tempRoot = Join-Path $env:TEMP ('PortfolioSaverVmPush-' + [guid]::NewGuid().ToS
 $archivePath = Join-Path $tempRoot 'repo-snapshot.zip'
 $publishRoot = Join-Path $repoRoot 'build\artifacts\publish-safe-temp'
 $localManifest = Join-Path $repoRoot 'build\vm\artifacts\host-runs'
+$localTestSecretsPath = Join-Path $repoRoot 'build\vm\test-secrets.json'
 $bundle = $null
 
 try {
@@ -45,8 +46,21 @@ try {
 
     $remoteArchive = Join-Path $RootPath 'artifacts\repo-snapshot.zip'
     $remoteArtifactsDirectory = Join-Path $RootPath 'artifacts'
+    $remoteTestSecretsPath = Join-Path $RootPath 'artifacts\test-secrets.json'
     Write-VmSshStep "Uploading repository snapshot"
     Send-VmItem -Bundle $bundle -LocalPath $archivePath -RemoteDestination $remoteArtifactsDirectory
+
+    if (Test-Path $localTestSecretsPath) {
+        Write-VmSshStep "Uploading VM test secrets overlay"
+        Send-VmItem -Bundle $bundle -LocalPath $localTestSecretsPath -RemoteDestination $remoteArtifactsDirectory
+    }
+    else {
+        $clearSecretsCommand = @"
+Remove-Item -LiteralPath '$remoteTestSecretsPath' -Force -ErrorAction SilentlyContinue
+"@
+        Write-VmSshStep "Clearing any stale VM test secrets overlay"
+        Invoke-VmPwshCommand -Bundle $bundle -Command $clearSecretsCommand -TimeOutSeconds 60 | Out-Null
+    }
 
     $remoteRepo = Join-Path $RootPath 'repo'
     $expandCommand = @"
@@ -93,6 +107,7 @@ Expand-Archive -LiteralPath `$zipPath -DestinationPath `$publishPath -Force
         IncludePublishArtifacts = [bool]$IncludePublishArtifacts
         ArchiveName = 'repo-snapshot.zip'
         PublishArtifactPresent = [bool](Test-Path $publishRoot)
+        TestSecretsPresent = [bool](Test-Path $localTestSecretsPath)
     }
     $manifestPath = Join-Path $localManifest ("ssh-push-{0:yyyyMMdd-HHmmss}.json" -f (Get-Date))
     $manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $manifestPath -Encoding UTF8

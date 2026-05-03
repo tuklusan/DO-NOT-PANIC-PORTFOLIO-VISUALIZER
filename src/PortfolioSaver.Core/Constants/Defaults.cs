@@ -43,6 +43,7 @@ public static class Defaults
         TiingoApiKey = string.Empty,
         FinancialModelingPrepApiKey = string.Empty,
         EodhdApiKey = string.Empty,
+        DeepSeekApiKey = string.Empty,
         MarketCalendarRefreshHours = 12,
         RefreshSecondsPortfolio = DefaultDesktopRefreshSeconds,
         RefreshSecondsOffHours = DefaultDesktopRefreshSeconds,

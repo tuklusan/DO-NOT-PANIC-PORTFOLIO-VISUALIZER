@@ -75,6 +75,19 @@ function Import-TestSecrets {
         [Environment]::SetEnvironmentVariable("PORTFOLIOSAVER_TIINGO_API_KEY", [string]$secrets.TiingoApiKey, "Process")
     }
 
+    if (-not [string]::IsNullOrWhiteSpace($secrets.FinancialModelingPrepApiKey)) {
+        [Environment]::SetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY", [string]$secrets.FinancialModelingPrepApiKey, "Process")
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($secrets.EodhdApiKey)) {
+        [Environment]::SetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY", [string]$secrets.EodhdApiKey, "Process")
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($secrets.DeepSeekApiKey)) {
+        [Environment]::SetEnvironmentVariable("DEEPSEEK_API_KEY", [string]$secrets.DeepSeekApiKey, "Process")
+        [Environment]::SetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY", [string]$secrets.DeepSeekApiKey, "Process")
+    }
+
     Write-Log "Loaded sandbox test API keys into process environment."
 }
 
@@ -101,6 +114,9 @@ function Write-TestSettings {
         FinnhubApiKey = ""
         TwelveDataApiKey = ""
         TiingoApiKey = ""
+        FinancialModelingPrepApiKey = ""
+        EodhdApiKey = ""
+        DeepSeekApiKey = ""
         MinFinnhubRequestSpacingSeconds = 2
         MinTwelveDataRequestSpacingSeconds = 15
         DataSources = @(

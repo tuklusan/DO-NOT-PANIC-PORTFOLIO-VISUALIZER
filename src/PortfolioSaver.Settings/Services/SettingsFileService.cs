@@ -52,6 +52,7 @@ public sealed class SettingsFileService
         copy.TiingoApiKey = string.Empty;
         copy.FinancialModelingPrepApiKey = string.Empty;
         copy.EodhdApiKey = string.Empty;
+        copy.DeepSeekApiKey = string.Empty;
 
         return copy;
     }

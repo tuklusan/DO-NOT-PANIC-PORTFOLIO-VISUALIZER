@@ -41,6 +41,13 @@ try {
 
     $buildStamp = Get-Date -Format 'yyyyMMdd-HHmmss'
     $remoteBuildSummary = Join-Path $RootPath ("results\buildtest-$buildStamp.json")
+    $remoteApplyTestSecrets = Join-Path $RootPath 'repo\build\vm\Guest-ApplyTestSecrets.ps1'
+    $applySecretsCommand = @"
+& '$remoteApplyTestSecrets' -RootPath '$RootPath'
+"@
+    Write-VmSshStep "Applying remote VM test secrets overlay"
+    Invoke-VmPwshCommand -Bundle $bundle -Command $applySecretsCommand -TimeOutSeconds 120 | Out-Null
+
     $buildCommand = @"
 `$repoRoot = Join-Path '$RootPath' 'repo'
 `$resultPath = '$remoteBuildSummary'
