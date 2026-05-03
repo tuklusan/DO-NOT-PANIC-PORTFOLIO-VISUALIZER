@@ -103,6 +103,34 @@ function ConvertTo-VmPwshEncodedCommand {
     return [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($Command))
 }
 
+function Test-IsIgnorableVmPwshFailure {
+    param([Parameter(Mandatory = $true)]$Result)
+
+    if ($Result.ExitStatus -eq 0) {
+        return $false
+    }
+
+    $errorText = ($Result.Error) -join [Environment]::NewLine
+    if ($errorText -notmatch 'InitializeDefaultDrives operation on the .+FileSystem.+ provider failed') {
+        return $false
+    }
+
+    $normalized = $errorText `
+        -replace '#< CLIXML', '' `
+        -replace '_x[0-9A-Fa-f]{4}_', ' ' `
+        -replace '<[^>]+>', ' ' `
+        -replace '\x1B\[[0-9;]*m', ' '
+    $normalized = [regex]::Replace($normalized, '\s+', ' ').Trim()
+    $normalized = [regex]::Replace(
+        $normalized,
+        'Attempting to perform the InitializeDefaultDrives operation on the .+?FileSystem.+? provider failed\.?',
+        '',
+        [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    $normalized = [regex]::Replace($normalized, '\s+', ' ').Trim()
+
+    return [string]::IsNullOrWhiteSpace($normalized)
+}
+
 function Invoke-VmPwshCommand {
     param(
         [Parameter(Mandatory = $true)]$Bundle,
@@ -114,6 +142,10 @@ function Invoke-VmPwshCommand {
     $remoteCommand = "pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encoded"
     $result = Invoke-SSHCommand -SSHSession $Bundle.SshSession -Command $remoteCommand -TimeOut $TimeOutSeconds -ErrorAction Stop
     if ($result.ExitStatus -ne 0) {
+        if (Test-IsIgnorableVmPwshFailure -Result $result) {
+            return $result
+        }
+
         $joined = ($result.Output + $result.Error) -join [Environment]::NewLine
         throw "Remote command failed with exit code $($result.ExitStatus): $joined"
     }

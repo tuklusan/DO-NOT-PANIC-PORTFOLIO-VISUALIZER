@@ -131,6 +131,16 @@ public sealed class VmHarnessScriptTests
         Assert.DoesNotContain("guestcontrol", invoke, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void VmSshCommon_IgnoresKnownPwshStartupNoiseWithoutMaskingRealFailures()
+    {
+        string helper = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "VmSshCommon.ps1"));
+
+        Assert.Contains("function Test-IsIgnorableVmPwshFailure", helper, StringComparison.Ordinal);
+        Assert.Contains("InitializeDefaultDrives operation", helper, StringComparison.Ordinal);
+        Assert.Contains("if (Test-IsIgnorableVmPwshFailure -Result $result)", helper, StringComparison.Ordinal);
+    }
+
     private static string GetRepoRoot()
     {
         DirectoryInfo? current = new(AppContext.BaseDirectory);
