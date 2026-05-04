@@ -1,7 +1,7 @@
 ﻿{
     "document_type":  "audit_state",
     "title":  "BETA-5.5 Audit State",
-    "date":  "2026-05-03",
+    "date":  "2026-05-04",
     "current_lane":  "BETA-5.5",
     "current_snapshot":  {
                              "product":  "DO NOT PANIC PORTFOLIO VISUALIZER",
@@ -17,7 +17,7 @@
     "latest_recorded_validation_state":  {
                                              "automated_tests":  {
                                                                      "command":  "dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo",
-                                                                     "result":  "221 / 221 passing",
+                                                                     "result":  "224 / 224 passing",
                                                                      "notes":  [
                                                                                    "Host regression coverage now includes the SSH-first VM harness scripts, the desktop-session agent workflow, and the remote WinAppDriver startup path.",
                                                                                    "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don\u0027t-Panic-Portfolio-Visualizer.",
@@ -26,7 +26,8 @@
                                                                                    "Guest long-run UX captures continue to write external Yahoo Finance spot checks plus displayed-versus-reference comparison artifacts.",
                                                                                    "DeepSeek summarized-news mode now uses the same protected local secret store and environment-override flow as the market-data providers.",
                                                                                    "Remote live validation can now apply DeepSeek and provider API keys from ignored local build/vm/test-secrets.json via Guest-ApplyTestSecrets.ps1.",
-                                                                                   "The SSH-first remote harness now supports desktop soak durations up to 10080 minutes."
+                                                                                   "The SSH-first remote harness now supports desktop soak durations up to 10080 minutes.",
+                                                                                   "The NB-001 through NB-010 fixes were revalidated with a final local green run plus a clean 20-minute remote desktop-session run in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526."
                                                                                ]
                                                                  },
                                              "build":  {
@@ -63,7 +64,8 @@
                                                                               "The remote machine is now configured for desktop-session automation with autologon-style Winlogon settings, disabled screen saver, and a startup launcher for PortfolioSaver.VmAgent.",
                                                                               "PortfolioSaver.VmAgent now owns the interactive desktop session, starts WinAppDriver when needed, and executes queued UX runs from inside session 1.",
                                                                               "Latest short remote desktop UX validation completed cleanly through the agent-based harness in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260503-152112.",
-                                                                              "The guest secret-overlay flow now supports DeepSeek alongside the existing market-data providers."
+                                                                              "The guest secret-overlay flow now supports DeepSeek alongside the existing market-data providers.",
+                                                                              "Latest clean direct-agent UX validation completed on the refreshed publish in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526."
                                                                           ]
                                                             }
                                          },
@@ -187,8 +189,107 @@
                                                      ],
                                  "latest_remote_build_summary":  "C:\\vmharness\\portfolio-saver\\results\\buildtest-20260503-152105.json",
                                  "interactive_launch_method":  "Invoke-VmBuildTest.ps1 starts PortfolioSaver.VmAgent.exe in session 1 with PsExec, waits for agent-status.json, then queues a UX command JSON under commands\\ that the agent executes inside the interactive desktop session while supervising WinAppDriver.",
-                                 "latest_full_ux_result":  "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260503-152112"
+                                 "latest_full_ux_result":  "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526"
                              },
+    "pending_next_build_issues":  [
+                                      {
+                                          "id":  "NB-001",
+                                          "area":  "macro_data",
+                                          "title":  "CRUDE and GOLD macros are not updating reliably",
+                                          "status":  "resolved",
+                                          "notes":  [
+                                                        "Verified in the final 20-minute remote run: GOLD and CRUDE rendered with live values, changed between frames, and trace MacroSnapshot entries reported missing_symbols=[] for the latest run."
+                                                    ]
+                                      },
+                                      {
+                                          "id":  "NB-002",
+                                          "area":  "config_ui",
+                                          "title":  "Advanced tab of the config applet is too large for the screen",
+                                          "status":  "resolved",
+                                          "notes":  [
+                                                        "Verified in config-tab-002-Advanced.png from ux-deep-ssh-20260504-130526: the Advanced tab fits on-screen with vertical scrolling only and no horizontal cutoff."
+                                                    ]
+                                      },
+                                      {
+                                          "id":  "NB-003",
+                                          "area":  "top_band_layout",
+                                          "title":  "Top-left market open/close info needs to split across lines without widening the band",
+                                          "status":  "resolved",
+                                          "notes":  [
+                                                        "Verified in desktop screenshots from ux-deep-ssh-20260504-130526: market status, countdown, and Updated timestamp now occupy three lines inside the existing top band without widening it."
+                                                    ]
+                                      },
+                                      {
+                                          "id":  "NB-004",
+                                          "area":  "ai_news",
+                                          "title":  "DeepSeek summarized news must only restyle supplied current facts",
+                                          "status":  "resolved",
+                                          "notes":  [
+                                                        "Summarized-news mode now passes curated live headlines to DeepSeek for style-only rewriting, explicitly forbids investment recommendations, and forbids specific numerical facts in the rewritten paragraph.",
+                                                        "Verified visually in the final remote run: the band stayed factual and macro-oriented without stock-picking language or numeric price clutter."
+                                                    ]
+                                      },
+                                      {
+                                          "id":  "NB-005",
+                                          "area":  "graph_cards",
+                                          "title":  "Vary graph-card swimming speed dynamically in a plus/minus 20 percent range",
+                                          "status":  "resolved",
+                                          "notes":  [
+                                                        "Graph cards now modulate their motion around nominal velocity in a plus/minus 20 percent range via a time-varying speed factor.",
+                                                        "Observed in the final 20-minute run as continued non-uniform card drift across captures."
+                                                    ]
+                                      },
+                                      {
+                                          "id":  "NB-006",
+                                          "area":  "backgrounds",
+                                          "title":  "Optionally mix in remote open-source cityscape images when not using a custom folder",
+                                          "status":  "resolved",
+                                          "notes":  [
+                                                        "Remote open-source cityscape URLs are now mixed into the non-custom background rotation without local persistence.",
+                                                        "Verified in the final trace: backgrounds=15, confirming remote additions beyond the packaged local set."
+                                                    ]
+                                      },
+                                      {
+                                          "id":  "NB-007",
+                                          "area":  "ticker_tape",
+                                          "title":  "Ticker scrolling should be smooth",
+                                          "status":  "resolved",
+                                          "notes":  [
+                                                        "Ticker animation now uses RenderingEventArgs.RenderingTime instead of wall-clock deltas to smooth the scroll cadence.",
+                                                        "Validated by unit coverage and a clean 20-minute desktop run without ticker hitching regressions."
+                                                    ]
+                                      },
+                                      {
+                                          "id":  "NB-008",
+                                          "area":  "global_markets",
+                                          "title":  "Pinned New York card is too wide and Sydney/London delimiter needs visual correction",
+                                          "status":  "resolved",
+                                          "notes":  [
+                                                        "Pinned New York card width and inter-card delimiter spacing were tightened.",
+                                                        "Verified in the final desktop captures: the pinned card is slimmer and the strip spacing reads cleanly without the earlier merge/cutoff effect."
+                                                    ]
+                                      },
+                                      {
+                                          "id":  "NB-009",
+                                          "area":  "clock_widget",
+                                          "title":  "Top-right date/time widget is too wide",
+                                          "status":  "resolved",
+                                          "notes":  [
+                                                        "Clock widget width, padding, and date format were reduced.",
+                                                        "Verified in the final desktop captures: the clock stays compact without colliding with the macro lane."
+                                                    ]
+                                      },
+                                      {
+                                          "id":  "NB-010",
+                                          "area":  "graph_cards",
+                                          "title":  "Graph-card refresh direction cue needs visible fast travel, not teleportation",
+                                          "status":  "resolved",
+                                          "notes":  [
+                                                        "Refresh cues now queue a fast visible travel toward the top or bottom rather than teleporting instantly to the edge.",
+                                                        "Validated by dedicated render tests and by the final 20-minute remote run on the updated motion code."
+                                                    ]
+                                      }
+                                  ],
     "remaining_validation_gaps":  [
 
                                   ],

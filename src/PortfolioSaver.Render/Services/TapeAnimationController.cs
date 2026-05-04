@@ -13,7 +13,7 @@ public sealed class TapeAnimationController
     private double _progress;
     private double _anchorOffset;
     private ScrollDirection _direction = ScrollDirection.Left;
-    private DateTime _lastFrameUtc = DateTime.UtcNow;
+    private TimeSpan? _lastRenderingTime;
     private bool _running;
 
     public void Attach(UIElement element)
@@ -44,7 +44,7 @@ public sealed class TapeAnimationController
             return;
 
         _running = true;
-        _lastFrameUtc = DateTime.UtcNow;
+        _lastRenderingTime = null;
         CompositionTarget.Rendering += OnRendering;
     }
 
@@ -62,9 +62,14 @@ public sealed class TapeAnimationController
         if (_transform is null || _cycleDistance <= 0 || _pixelsPerSecond <= 0)
             return;
 
-        DateTime now = DateTime.UtcNow;
-        double elapsedSeconds = Math.Max(0.001d, (now - _lastFrameUtc).TotalSeconds);
-        _lastFrameUtc = now;
+        if (e is not RenderingEventArgs renderingArgs)
+            return;
+
+        TimeSpan renderingTime = renderingArgs.RenderingTime;
+        double elapsedSeconds = _lastRenderingTime is null
+            ? 1d / 60d
+            : Math.Max(1d / 240d, (renderingTime - _lastRenderingTime.Value).TotalSeconds);
+        _lastRenderingTime = renderingTime;
 
         _progress += _pixelsPerSecond * elapsedSeconds;
         NormalizeProgress();

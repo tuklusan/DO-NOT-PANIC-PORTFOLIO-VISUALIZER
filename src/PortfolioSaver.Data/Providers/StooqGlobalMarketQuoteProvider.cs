@@ -10,6 +10,8 @@ public sealed class StooqGlobalMarketQuoteProvider : IQuoteProvider
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["DX-Y.NYB"] = "dx.f",
+            ["CL=F"] = "cl.f",
+            ["GC=F"] = "gc.f",
             ["^SPX"] = "^spx",
             ["^FTSE"] = "^ukx",
             ["^N225"] = "^nkx",

@@ -182,7 +182,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("<ColumnDefinition Width=\"Auto\" />", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("ClipToBounds=\"True\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("Width=\"56\"", floatingClockXaml, StringComparison.Ordinal);
-        Assert.Contains("MinWidth=\"122\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("MinWidth=\"102\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"30\"", floatingClockXaml, StringComparison.Ordinal);
     }
 
@@ -272,7 +272,7 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void ApplyQuoteToGraph_PositiveRefreshMovesGraphToTopEdge()
+    public void ApplyQuoteToGraph_PositiveRefreshQueuesFastTravelToTopEdge()
     {
         RunOnSta(() =>
         {
@@ -295,6 +295,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 X = 240,
                 Y = 260,
                 VelocityY = -7,
+                NominalVelocityY = -7,
                 IsVisible = true
             };
 
@@ -328,13 +329,14 @@ public sealed class ScreensaverRenderBehaviorTests
                 ?? throw new InvalidOperationException("GetGraphMotionBounds method not found.");
             Rect bounds = Assert.IsType<Rect>(boundsMethod.Invoke(control, []));
 
-            Assert.Equal(bounds.Top, graph.Y);
+            Assert.Equal(bounds.Top, graph.RefreshTravelTargetY);
+            Assert.Equal(260, graph.Y);
             Assert.True(graph.VelocityY > 0d);
         });
     }
 
     [Fact]
-    public void ApplyQuoteToGraph_NegativeRefreshMovesGraphToBottomEdge()
+    public void ApplyQuoteToGraph_NegativeRefreshQueuesFastTravelToBottomEdge()
     {
         RunOnSta(() =>
         {
@@ -357,6 +359,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 X = 240,
                 Y = 120,
                 VelocityY = 9,
+                NominalVelocityY = 9,
                 IsVisible = true
             };
 
@@ -390,7 +393,8 @@ public sealed class ScreensaverRenderBehaviorTests
                 ?? throw new InvalidOperationException("GetGraphMotionBounds method not found.");
             Rect bounds = Assert.IsType<Rect>(boundsMethod.Invoke(control, []));
 
-            Assert.Equal(bounds.Bottom - graph.Height, graph.Y);
+            Assert.Equal(bounds.Bottom - graph.Height, graph.RefreshTravelTargetY);
+            Assert.Equal(120, graph.Y);
             Assert.True(graph.VelocityY < 0d);
         });
     }
@@ -679,9 +683,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("Source = item", tapeCode, StringComparison.Ordinal);
         Assert.Contains("nameof(TapeItemViewModel.WaitingGlyphText)", tapeCode, StringComparison.Ordinal);
         Assert.Contains("nameof(TapeItemViewModel.WaitingGlyphForeground)", tapeCode, StringComparison.Ordinal);
-        Assert.Contains("MinHeight=\"68\"", statusXaml, StringComparison.Ordinal);
-        Assert.Contains("TextWrapping=\"NoWrap\"", statusXaml, StringComparison.Ordinal);
-        Assert.Contains("double statusHeight = Math.Max(68d, StatusBarHost.ActualHeight);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MinHeight=\"72\"", statusXaml, StringComparison.Ordinal);
+        Assert.Contains("TextWrapping=\"Wrap\"", statusXaml, StringComparison.Ordinal);
+        Assert.Contains("double statusHeight = Math.Max(72d, StatusBarHost.ActualHeight);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("double tapeTopMargin = Math.Clamp(statusHeight + 12d, 78d, 126d);", sceneCodeBehind, StringComparison.Ordinal);
     }
 
@@ -795,7 +799,8 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("BuildFlagBadge(city)", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("nameof(ClockCityViewModel.FlagCode)", globalTapeCode, StringComparison.Ordinal);
         Assert.DoesNotContain("nameof(ClockCityViewModel.FlagGlyph)", globalTapeCode, StringComparison.Ordinal);
-        Assert.Contains("private const double CardWidth = 182d;", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("private const double CardWidth = 164d;", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("private const double PinnedCardWidth = 150d;", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("private const double CardHeight = 54d;", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("private const double CopySpacing = 14d;", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("private const double SequenceLeadInSpacing = 10d;", globalTapeCode, StringComparison.Ordinal);
@@ -805,15 +810,15 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.DoesNotContain("Binding(nameof(ClockCityViewModel.CardBackground))", globalTapeCode, StringComparison.Ordinal);
         Assert.DoesNotContain("Binding(nameof(ClockCityViewModel.CardBorderBrush))", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("Height=\"68\"", globalTapeXaml, StringComparison.Ordinal);
-        Assert.Contains("Margin=\"12,0,16,0\"", globalTapeXaml, StringComparison.Ordinal);
-        Assert.Contains("Margin=\"34,0,46,0\"", globalTapeXaml, StringComparison.Ordinal);
+        Assert.Contains("Margin=\"8,0,10,0\"", globalTapeXaml, StringComparison.Ordinal);
+        Assert.Contains("Margin=\"16,0,28,0\"", globalTapeXaml, StringComparison.Ordinal);
         Assert.Contains("<Grid.OpacityMask>", globalTapeXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"LeftEdgeShroud\"", globalTapeXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"RightEdgeShroud\"", globalTapeXaml, StringComparison.Ordinal);
-        Assert.Contains("Width=\"170\"", globalTapeXaml, StringComparison.Ordinal);
-        Assert.Contains("Width=\"56\"", globalTapeXaml, StringComparison.Ordinal);
-        Assert.Contains("Offset=\"0.32\"", globalTapeXaml, StringComparison.Ordinal);
-        Assert.Contains("Offset=\"0.84\"", globalTapeXaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"118\"", globalTapeXaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"36\"", globalTapeXaml, StringComparison.Ordinal);
+        Assert.Contains("Offset=\"0.22\"", globalTapeXaml, StringComparison.Ordinal);
+        Assert.Contains("Offset=\"0.90\"", globalTapeXaml, StringComparison.Ordinal);
         Assert.Contains("Offset=\"1.00\"", globalTapeXaml, StringComparison.Ordinal);
         Assert.Contains("Width = SequenceLeadInSpacing", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("Width = SequenceTailSpacing", globalTapeCode, StringComparison.Ordinal);
@@ -855,6 +860,8 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.DoesNotContain("SeparateVisibleGraphCards(bounds);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("GraphCardSeparationGap", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("foreach (FloatingGraphViewModel graph in EnumerateVisibleGraphCards())", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ApplyGraphMotionVariance(graph, now);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ApplyGraphRefreshTravel(graph, bounds, elapsedSeconds);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("graph.PlotWidth = Math.Max(106d, graphWidth - 62d);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Margin=\"2,3,12,0\"", floatingGraphXaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"24\"", floatingGraphXaml, StringComparison.Ordinal);
@@ -899,10 +906,12 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("Text=\"{Binding ClockText}\"", statusBarXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding ProviderText}\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("<ColumnDefinition Width=\"Auto\" />", statusBarXaml, StringComparison.Ordinal);
-        Assert.Contains("MinWidth=\"122\"", statusBarXaml, StringComparison.Ordinal);
-        Assert.Contains("MinWidth=\"88\"", statusBarXaml, StringComparison.Ordinal);
-        Assert.Contains("MaxWidth=\"244\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding UpdatedText}\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("MinWidth=\"102\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("MinWidth=\"80\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("MaxWidth=\"208\"", statusBarXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("MaxWidth=\"700\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("LineHeight=\"15\"", statusBarXaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -922,6 +931,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("Width = 62d", tapeCode, StringComparison.Ordinal);
         Assert.Contains("Margin = new Thickness(1, 0, 0, 0)", tapeCode, StringComparison.Ordinal);
         Assert.Contains("FontSize = 11", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("RenderingEventArgs", File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Render", "Services", "TapeAnimationController.cs")), StringComparison.Ordinal);
     }
 
     [Fact]

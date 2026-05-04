@@ -8,6 +8,13 @@ namespace PortfolioSaver.Media.Services;
 public sealed class ExchangePhotoCacheService
 {
     private const string BundledFolderName = "ExchangeBackgrounds";
+    private static readonly IReadOnlyList<string> RemoteCityscapeUrls =
+    [
+        "https://commons.wikimedia.org/wiki/Special:Redirect/file/London_Skyline_%28199638369%29.jpeg",
+        "https://commons.wikimedia.org/wiki/Special:Redirect/file/Sydney_skyline,_January_2021.jpg",
+        "https://commons.wikimedia.org/wiki/Special:Redirect/file/Shanghai_skyline_from_the_bund.jpg",
+        "https://commons.wikimedia.org/wiki/Special:Redirect/file/Frankfurt_Stock_Exchange.jpg"
+    ];
 
     private readonly BackgroundImageService _backgroundImageService = new();
     private readonly IReadOnlyList<ExchangePhotoCatalogEntry> _catalog =
@@ -96,7 +103,14 @@ public sealed class ExchangePhotoCacheService
         await TryDownloadNextMissingImageAsync(cacheFolder, httpClient, cancellationToken);
 
         IReadOnlyList<string> refreshed = GetImages(cacheFolder, includeSubfolders: false);
-        return refreshed.Count > 0 ? refreshed : immediateBackgrounds;
+        List<string> combined = refreshed.Count > 0 ? [.. refreshed] : [.. immediateBackgrounds];
+        foreach (string remoteUrl in RemoteCityscapeUrls)
+        {
+            if (!combined.Contains(remoteUrl, StringComparer.OrdinalIgnoreCase))
+                combined.Add(remoteUrl);
+        }
+
+        return combined;
     }
 
     public IReadOnlyList<string> GetImmediateBackgrounds(AppSettings settings)

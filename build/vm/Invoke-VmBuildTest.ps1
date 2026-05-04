@@ -21,6 +21,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $hostArtifactsRoot = Join-Path $repoRoot 'build\vm\artifacts\ssh-runs'
 $bundle = $null
+$localAgentCommandPath = $null
 $uxResultName = 'ux-deep-ssh-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
 $vmCredParts = Get-VmSshCredentialPartsFromEnv
 
@@ -41,13 +42,6 @@ try {
 
     $buildStamp = Get-Date -Format 'yyyyMMdd-HHmmss'
     $remoteBuildSummary = Join-Path $RootPath ("results\buildtest-$buildStamp.json")
-    $remoteApplyTestSecrets = Join-Path $RootPath 'repo\build\vm\Guest-ApplyTestSecrets.ps1'
-    $applySecretsCommand = @"
-& '$remoteApplyTestSecrets' -RootPath '$RootPath'
-"@
-    Write-VmSshStep "Applying remote VM test secrets overlay"
-    Invoke-VmPwshCommand -Bundle $bundle -Command $applySecretsCommand -TimeOutSeconds 120 | Out-Null
-
     $buildCommand = @"
 `$repoRoot = Join-Path '$RootPath' 'repo'
 `$resultPath = '$remoteBuildSummary'
@@ -102,6 +96,13 @@ Write-Output ('BUILD_SUMMARY=' + `$resultPath)
     $buildOutput.Output | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { Write-Host $_ }
 
     if ($RunUxDeep) {
+        $remoteApplyTestSecrets = Join-Path $RootPath 'repo\build\vm\Guest-ApplyTestSecrets.ps1'
+        $applySecretsCommand = @"
+& '$remoteApplyTestSecrets' -RootPath '$RootPath'
+"@
+        Write-VmSshStep "Applying remote VM test secrets overlay"
+        Invoke-VmPwshCommand -Bundle $bundle -Command $applySecretsCommand -TimeOutSeconds 120 | Out-Null
+
         $remoteUxSummary = Join-Path $RootPath ("results\$uxResultName\ux-deep-summary.json")
         $remoteAgentStatus = Join-Path $RootPath 'agent\agent-status.json'
         $remoteAgentResult = Join-Path $RootPath ("agent\command-results\$uxResultName.result.json")
@@ -169,15 +170,11 @@ if (Test-Path '$remoteAgentStatus') {
                 CaptureIntervalSeconds = $CaptureIntervalSeconds
             }
         } | ConvertTo-Json -Depth 5
-        $escapedCommandPayload = $commandPayload.Replace("'", "''")
-        $queueCommand = @"
-New-Item -ItemType Directory -Force -Path (Split-Path -Path '$remoteAgentCommand' -Parent) | Out-Null
-Set-Content -LiteralPath '$remoteAgentCommand' -Value @'
-$escapedCommandPayload
-'@ -Encoding UTF8
-"@
         Write-VmSshStep "Queuing UX run through desktop-session agent"
-        Invoke-VmPwshCommand -Bundle $bundle -Command $queueCommand -TimeOutSeconds 60 | Out-Null
+        $localAgentCommandPath = Join-Path ([System.IO.Path]::GetTempPath()) ($uxResultName + '.json')
+        $commandPayload | Set-Content -LiteralPath $localAgentCommandPath -Encoding UTF8
+        Ensure-VmDirectory -Bundle $bundle -RemotePath (Split-Path -Path $remoteAgentCommand -Parent)
+        Send-VmItem -Bundle $bundle -LocalPath $localAgentCommandPath -RemoteDestination (Split-Path -Path $remoteAgentCommand -Parent)
 
         $commandDeadline = (Get-Date).AddSeconds(120)
         do {
@@ -235,5 +232,8 @@ Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensa
 finally {
     if ($null -ne $bundle) {
         Remove-VmSshSessionBundle -Bundle $bundle
+    }
+    if ($null -ne $localAgentCommandPath -and (Test-Path $localAgentCommandPath)) {
+        Remove-Item -LiteralPath $localAgentCommandPath -Force -ErrorAction SilentlyContinue
     }
 }

@@ -77,6 +77,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("PsExec.exe", script, StringComparison.Ordinal);
         Assert.Contains("Starting desktop-session agent", script, StringComparison.Ordinal);
         Assert.Contains("Queuing UX run through desktop-session agent", script, StringComparison.Ordinal);
+        Assert.Contains("Set-Content -LiteralPath $localAgentCommandPath -Encoding UTF8", script, StringComparison.Ordinal);
+        Assert.Contains("Send-VmItem -Bundle $bundle -LocalPath $localAgentCommandPath", script, StringComparison.Ordinal);
         Assert.Contains("Timed out waiting for remote desktop-session agent heartbeat", script, StringComparison.Ordinal);
         Assert.Contains("$summary.PSObject.Properties.Name -contains 'FinishedAt'", script, StringComparison.Ordinal);
     }

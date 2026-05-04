@@ -105,11 +105,11 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("HorizontalContentAlignment\" Value=\"Center\"", xaml, StringComparison.Ordinal);
         Assert.Contains("<Grid Margin=\"16\">", xaml, StringComparison.Ordinal);
         Assert.Contains("<Grid.RowDefinitions>", xaml, StringComparison.Ordinal);
-        Assert.Contains("Header=\"Service\" Binding=\"{Binding DisplayName}\" IsReadOnly=\"True\" Width=\"2.6*\" MinWidth=\"280\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Header=\"Per Hour\" Width=\"1.35*\" MinWidth=\"156\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Header=\"Per Day\" Width=\"1.35*\" MinWidth=\"156\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Header=\"Single\" Width=\"1.0*\" MinWidth=\"118\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Header=\"Multiple\" Width=\"1.15*\" MinWidth=\"132\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Service\" Binding=\"{Binding DisplayName}\" IsReadOnly=\"True\" Width=\"2.45*\" MinWidth=\"236\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Per Hour\" Width=\"1.2*\" MinWidth=\"132\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Per Day\" Width=\"1.2*\" MinWidth=\"132\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Single\" Width=\"0.95*\" MinWidth=\"108\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Multiple\" Width=\"1.05*\" MinWidth=\"118\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Header=\"Known Limit\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("KnownLimitText", xaml, StringComparison.Ordinal);
     }
@@ -150,8 +150,8 @@ public sealed class ConfigTextConsistencyTests
     {
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
-        Assert.Contains("Width=\"1000\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Height=\"680\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"940\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Height=\"620\"", xaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"640\"", xaml, StringComparison.Ordinal);
         Assert.Contains("MinHeight=\"480\"", xaml, StringComparison.Ordinal);
         Assert.Contains("<TabItem Header=\"General\">", xaml, StringComparison.Ordinal);
@@ -170,15 +170,15 @@ public sealed class ConfigTextConsistencyTests
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
         Assert.Contains("<TabItem Header=\"Advanced\">", xaml, StringComparison.Ordinal);
-        Assert.Contains("<ScrollViewer HorizontalScrollBarVisibility=\"Auto\" VerticalScrollBarVisibility=\"Auto\" Background=\"#171717\">", xaml, StringComparison.Ordinal);
+        Assert.Contains("<ScrollViewer HorizontalScrollBarVisibility=\"Disabled\" VerticalScrollBarVisibility=\"Auto\" Background=\"#171717\">", xaml, StringComparison.Ordinal);
         Assert.Contains("<RowDefinition Height=\"*\" />", xaml, StringComparison.Ordinal);
         Assert.Contains("HorizontalAlignment=\"Stretch\"", xaml, StringComparison.Ordinal);
         Assert.Contains("ColumnWidth=\"*\"", xaml, StringComparison.Ordinal);
         Assert.Contains("MinColumnWidth=\"100\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Width=\"2.6*\" MinWidth=\"280\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Width=\"1.35*\" MinWidth=\"156\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Width=\"1.0*\" MinWidth=\"118\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Width=\"1.15*\" MinWidth=\"132\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"2.45*\" MinWidth=\"236\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"1.2*\" MinWidth=\"132\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"0.95*\" MinWidth=\"108\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"1.05*\" MinWidth=\"118\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"News Scroller\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"Summarized Financial News\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"RSS Feed\"", xaml, StringComparison.Ordinal);

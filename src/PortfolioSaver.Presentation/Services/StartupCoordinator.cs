@@ -107,12 +107,12 @@ public sealed class StartupCoordinator
             News = BuildNews(headlines),
             Status = new StatusBarViewModel
             {
-                MarketStatusText = _marketStatusService.FormatStatusLine(DateTimeOffset.UtcNow),
+                MarketStatusText = FormatStatusBandText(_marketStatusService.FormatStatusLine(DateTimeOffset.UtcNow)),
                 ProviderText = networkAvailable
                     ? (cachedQuotes.Count > 0 ? "Provider: Cache + live warmup" : "Provider: Loading live data")
                     : (cachedQuotes.Count > 0 ? "Provider: Local Cache" : "Provider: Waiting for network"),
                 UpdatedText = cachedQuotes.Count > 0 ? "Updated: Cache warm start" : "Updated: Starting...",
-                ClockDateText = DateTimeOffset.UtcNow.ToString("ddd dd-MMM-yyyy", CultureInfo.InvariantCulture).ToUpperInvariant(),
+                ClockDateText = DateTimeOffset.UtcNow.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
                 ClockText = $"{DateTimeOffset.UtcNow:HH:mm} UTC"
             },
             Graphs = [],
@@ -195,10 +195,10 @@ public sealed class StartupCoordinator
 
         StatusBarViewModel status = new()
         {
-            MarketStatusText = _marketStatusService.FormatStatusLine(nowUtc),
+            MarketStatusText = FormatStatusBandText(_marketStatusService.FormatStatusLine(nowUtc)),
             ProviderText = $"Provider: {providerLabel}",
             UpdatedText = $"Updated: {TimeFormatHelper.ToAgeString(lastUpdate)}",
-            ClockDateText = nowUtc.ToString("ddd dd-MMM-yyyy", CultureInfo.InvariantCulture).ToUpperInvariant(),
+            ClockDateText = nowUtc.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
             ClockText = $"{nowUtc:HH:mm} UTC"
         };
 
@@ -1678,6 +1678,11 @@ public sealed class StartupCoordinator
             .ToList();
     }
 
+    private static string FormatStatusBandText(string statusLine)
+        => string.IsNullOrWhiteSpace(statusLine)
+            ? "Market (New York): --"
+            : statusLine.Replace(" | ", Environment.NewLine, StringComparison.Ordinal);
+
     private static bool IsDedicatedYahooSymbol(string symbol)
         => DedicatedYahooSymbols.Contains(SymbolProfileHeuristics.Normalize(symbol));
 
@@ -1810,7 +1815,7 @@ public sealed class StartupCoordinator
         => new(GetTreasuryMacroSymbols().Select(SymbolProfileHeuristics.Normalize), StringComparer.OrdinalIgnoreCase);
 
     private static IReadOnlyList<string> GetYahooDedicatedMacroSymbols()
-        => ["DX-Y.NYB", "CL=F", "GC=F"];
+        => ["DX-Y.NYB"];
 
     private static IReadOnlyList<string> GetOfficialMacroSymbols()
         => ["^VIX"];

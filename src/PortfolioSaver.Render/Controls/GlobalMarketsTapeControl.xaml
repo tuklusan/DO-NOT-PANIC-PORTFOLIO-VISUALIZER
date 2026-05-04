@@ -35,7 +35,7 @@
 
             <Border Grid.Column="1"
                     x:Name="PinnedCardHost"
-                    Margin="12,0,16,0"
+                    Margin="8,0,10,0"
                     VerticalAlignment="Center"
                     Background="Transparent" />
 
@@ -43,19 +43,19 @@
                   x:Name="ViewportHost"
                   ClipToBounds="True"
                   Height="68"
-                  Margin="34,0,46,0"
+                  Margin="16,0,28,0"
                   VerticalAlignment="Center">
                 <Grid.OpacityMask>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                         <GradientStop Color="#00FFFFFF" Offset="0.00" />
-                        <GradientStop Color="#FFFFFFFF" Offset="0.32" />
-                        <GradientStop Color="#FFFFFFFF" Offset="0.84" />
+                        <GradientStop Color="#FFFFFFFF" Offset="0.22" />
+                        <GradientStop Color="#FFFFFFFF" Offset="0.90" />
                         <GradientStop Color="#00FFFFFF" Offset="1.00" />
                     </LinearGradientBrush>
                 </Grid.OpacityMask>
                 <Canvas x:Name="TrackPanel" />
                 <Rectangle x:Name="LeftEdgeShroud"
-                           Width="170"
+                           Width="118"
                            HorizontalAlignment="Left"
                            IsHitTestVisible="False">
                     <Rectangle.Fill>
@@ -67,7 +67,7 @@
                     </Rectangle.Fill>
                 </Rectangle>
                 <Rectangle x:Name="RightEdgeShroud"
-                           Width="56"
+                           Width="36"
                            HorizontalAlignment="Right"
                            IsHitTestVisible="False">
                     <Rectangle.Fill>

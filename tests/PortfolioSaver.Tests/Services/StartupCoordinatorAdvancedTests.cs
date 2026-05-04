@@ -22,7 +22,7 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class StartupCoordinatorAdvancedTests
 {
     [Fact]
-    public async Task WarmStartupYahooQuotesAsync_WarmsDedicatedCrudeSymbolAlongsideDedicatedMacroLane()
+    public async Task WarmStartupYahooQuotesAsync_SkipsCommodityMacrosNowThatTheyResolveOutsideDedicatedYahooLane()
     {
         RecordingQuoteProvider provider = new();
         List<TimeSpan> delays = [];
@@ -56,16 +56,13 @@ public sealed class StartupCoordinatorAdvancedTests
         await foreach (StartupWarmupBatch batch in coordinator.WarmStartupYahooQuotesAsync(settings))
             batches.Add(batch);
 
-        StartupWarmupBatch warmupBatch = Assert.Single(batches);
-        IReadOnlyList<string> requested = Assert.Single(provider.BatchRequests);
-        Assert.Single(requested);
-        Assert.Equal("CL=F", requested[0]);
-        Assert.Contains("CL=F", warmupBatch.Quotes.Keys, StringComparer.OrdinalIgnoreCase);
+        Assert.Empty(batches);
+        Assert.Empty(provider.BatchRequests);
         Assert.Empty(delays);
     }
 
     [Fact]
-    public async Task WarmStartupYahooQuotesAsync_WhenProbeUnavailable_StillAttemptsDedicatedCrudeWarmup()
+    public async Task WarmStartupYahooQuotesAsync_WhenProbeUnavailable_DoesNotForceCommodityWarmupThroughYahoo()
     {
         RecordingQuoteProvider provider = new();
         StartupCoordinator coordinator = CreateCoordinatorWithIsolatedLedger(
@@ -93,15 +90,12 @@ public sealed class StartupCoordinatorAdvancedTests
         await foreach (StartupWarmupBatch batch in coordinator.WarmStartupYahooQuotesAsync(settings))
             batches.Add(batch);
 
-        StartupWarmupBatch warmupBatch = Assert.Single(batches);
-        IReadOnlyList<string> requested = Assert.Single(provider.BatchRequests);
-        Assert.Single(requested);
-        Assert.Equal("CL=F", requested[0]);
-        Assert.Contains("CL=F", warmupBatch.Quotes.Keys, StringComparer.OrdinalIgnoreCase);
+        Assert.Empty(batches);
+        Assert.Empty(provider.BatchRequests);
     }
 
     [Fact]
-    public async Task WarmStartupYahooQuotesAsync_WhenDedicatedCrudeWarmupRateLimits_StopsAfterSingleAttempt()
+    public async Task WarmStartupYahooQuotesAsync_WhenNoDedicatedYahooWarmupSymbolsExist_DoesNotAttemptRateLimitedCommodityWarmup()
     {
         ThrowingQuoteProvider provider = new(new HttpRequestException("429 rate limited", null, System.Net.HttpStatusCode.TooManyRequests));
         List<TimeSpan> delays = [];
@@ -134,7 +128,7 @@ public sealed class StartupCoordinatorAdvancedTests
         await foreach (StartupWarmupBatch batch in coordinator.WarmStartupYahooQuotesAsync(settings))
             batches.Add(batch);
 
-        Assert.Equal(1, provider.CallCount);
+        Assert.Equal(0, provider.CallCount);
         Assert.Empty(batches);
         Assert.Empty(delays);
     }
@@ -612,7 +606,7 @@ public sealed class StartupCoordinatorAdvancedTests
 
         IReadOnlyList<string> requested = Assert.Single(yahooProvider.BatchRequests);
         Assert.Single(requested);
-        Assert.Contains(requested[0], new[] { "DX-Y.NYB", "CL=F", "GC=F" }, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal("DX-Y.NYB", requested[0]);
     }
 
     [Fact]
@@ -660,10 +654,11 @@ public sealed class StartupCoordinatorAdvancedTests
         }
 
         Assert.Equal(5, requestedSymbols.Count);
-        Assert.Equal("DX-Y.NYB", requestedSymbols[0]);
-        Assert.Contains("CL=F", requestedSymbols, StringComparer.OrdinalIgnoreCase);
-        Assert.Contains("GC=F", requestedSymbols, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("DX-Y.NYB", requestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("^SPX", requestedSymbols, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("^FTSE", requestedSymbols, StringComparer.OrdinalIgnoreCase);
+        Assert.DoesNotContain("CL=F", requestedSymbols, StringComparer.OrdinalIgnoreCase);
+        Assert.DoesNotContain("GC=F", requestedSymbols, StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -708,7 +703,7 @@ public sealed class StartupCoordinatorAdvancedTests
 
         Assert.Single(requested);
         Assert.DoesNotContain("DX-Y.NYB", requested, StringComparer.OrdinalIgnoreCase);
-        Assert.Contains(requested[0], new[] { "CL=F", "GC=F", "^SPX", "^FTSE" }, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains(requested[0], new[] { "^SPX", "^FTSE" }, StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]

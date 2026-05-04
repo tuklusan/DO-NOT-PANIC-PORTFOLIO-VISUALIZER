@@ -8,8 +8,8 @@
         xmlns:enums="clr-namespace:PortfolioSaver.Core.Enums;assembly=PortfolioSaver.Core"
         mc:Ignorable="d"
         Title="DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-5.5"
-        Width="1000"
-        Height="680"
+        Width="940"
+        Height="620"
         MinWidth="640"
         MinHeight="480"
         WindowStartupLocation="CenterScreen"
@@ -396,7 +396,7 @@
             </TabItem>
 
             <TabItem Header="Advanced">
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#171717">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Background="#171717">
                     <Grid Margin="16">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -484,7 +484,7 @@
                                             Value="{Binding Settings.NewsRefreshMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <TextBlock Grid.Column="2" Margin="12,0,0,0" Foreground="#F3D57F" VerticalAlignment="Center" Text="{Binding ElementName=NewsRefreshSlider, Path=Value, StringFormat={}{0:0}m}" />
                                 </Grid>
-                                <TextBlock Text="Summarized mode sends live global market headlines plus a live crude snapshot to DeepSeek, then keeps the most recent full paragraph scrolling across the band. The DeepSeek key follows the same protected storage and environment override rules as the market-data provider keys, and the writing style can be switched between Douglas Adams and William Shakespeare." Style="{StaticResource SectionNoteStyle}" />
+                                <TextBlock Text="Summarized mode sends curated live global financial headlines to DeepSeek for style-only rewriting, then keeps the most recent full paragraph scrolling across the band. The DeepSeek key follows the same protected storage and environment override rules as the market-data provider keys, and the writing style can be switched between Douglas Adams and William Shakespeare." Style="{StaticResource SectionNoteStyle}" />
                                 <TextBlock Text="RSS mode validates the feed during Apply and falls back to the Yahoo Finance default when needed." Style="{StaticResource SectionNoteStyle}" />
                             </StackPanel>
                         </Border>
@@ -513,29 +513,29 @@
                                           CanUserResizeColumns="False"
                                           HorizontalAlignment="Stretch">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Service" Binding="{Binding DisplayName}" IsReadOnly="True" Width="2.6*" MinWidth="280" ElementStyle="{StaticResource DarkDataGridTextStyle}" />
-                                        <DataGridTemplateColumn Header="Per Hour" Width="1.35*" MinWidth="156">
+                                        <DataGridTextColumn Header="Service" Binding="{Binding DisplayName}" IsReadOnly="True" Width="2.45*" MinWidth="236" ElementStyle="{StaticResource DarkDataGridTextStyle}" />
+                                        <DataGridTemplateColumn Header="Per Hour" Width="1.2*" MinWidth="132">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <TextBox Text="{Binding MaxQueriesPerHour, UpdateSourceTrigger=PropertyChanged}" />
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
-                                        <DataGridTemplateColumn Header="Per Day" Width="1.35*" MinWidth="156">
+                                        <DataGridTemplateColumn Header="Per Day" Width="1.2*" MinWidth="132">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <TextBox Text="{Binding MaxQueriesPerDay, UpdateSourceTrigger=PropertyChanged}" />
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
-                                        <DataGridTemplateColumn Header="Single" Width="1.0*" MinWidth="118">
+                                        <DataGridTemplateColumn Header="Single" Width="0.95*" MinWidth="108">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <CheckBox IsChecked="{Binding EnableSingleTickerQueries}" IsEnabled="{Binding CanUseSingleTickerQueries}" HorizontalAlignment="Center" />
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
-                                        <DataGridTemplateColumn Header="Multiple" Width="1.15*" MinWidth="132">
+                                        <DataGridTemplateColumn Header="Multiple" Width="1.05*" MinWidth="118">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <CheckBox IsChecked="{Binding EnableBatchTickerQueries}" IsEnabled="{Binding CanUseBatchTickerQueries}" HorizontalAlignment="Center" />

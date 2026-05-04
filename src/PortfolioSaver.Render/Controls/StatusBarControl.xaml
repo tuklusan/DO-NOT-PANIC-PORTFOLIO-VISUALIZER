@@ -11,130 +11,114 @@
     <UserControl.Resources>
         <FontFamily x:Key="StableClockFont">Cascadia Mono,Consolas,Lucida Console</FontFamily>
     </UserControl.Resources>
-    <Border Background="#55000000" Padding="10" MinHeight="68" ClipToBounds="True">
+    <Border Background="#55000000" Padding="8,7" MinHeight="72" ClipToBounds="True">
         <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-            <Grid ClipToBounds="True">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <TextBlock Grid.Column="0"
-                           Text="{Binding MarketStatusText}"
+            <StackPanel Grid.Column="0"
+                        MaxWidth="208"
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center">
+                <TextBlock Text="{Binding MarketStatusText}"
                            Foreground="White"
-                           Margin="0,0,8,0"
-                           MaxWidth="244"
-                           VerticalAlignment="Center"
                            HorizontalAlignment="Left"
-                           TextWrapping="NoWrap"
-                           TextTrimming="CharacterEllipsis" />
-
-                <ItemsControl Grid.Column="1"
-                              HorizontalAlignment="Center"
-                              VerticalAlignment="Center"
-                              ItemsSource="{Binding MacroMeters}"
-                              ClipToBounds="True">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border Background="#40131A23"
-                                    BorderBrush="#5F6C7A8A"
-                                    BorderThickness="1"
-                                    CornerRadius="8"
-                                    Padding="5,3"
-                                    Margin="0,0,6,0"
-                                    MinWidth="88">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Grid Width="22" Height="22" Margin="0,0,5,0">
-                                        <Path Data="{Binding TrackPath}"
-                                              Stroke="#44596C82"
-                                              StrokeThickness="1.9"
-                                              StrokeStartLineCap="Round"
-                                              StrokeEndLineCap="Round" />
-                                        <Path Data="{Binding ArcPath}"
-                                              Stroke="{Binding AccentBrush}"
-                                              StrokeThickness="2.5"
-                                              StrokeStartLineCap="Round"
-                                              StrokeEndLineCap="Round" />
-                                        <Path Data="{Binding NeedlePath}"
-                                              Stroke="#F6FBFF"
-                                              StrokeThickness="1.2"
-                                              StrokeStartLineCap="Round"
-                                              StrokeEndLineCap="Round" />
-                                        <Ellipse Width="3.2" Height="3.2" Fill="#E6F2FF" Stroke="#5F6C7A8A" StrokeThickness="0.5" />
-                                    </Grid>
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Label}" Foreground="#C8D6E5" FontSize="9.5" FontWeight="SemiBold" />
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding ValueText}" Foreground="White" FontFamily="{StaticResource StableClockFont}" FontSize="10.5" MinWidth="31" TextAlignment="Right" />
-                                            <TextBlock Text="{Binding ChangeText}" Foreground="{Binding AccentBrush}" FontFamily="{StaticResource StableClockFont}" FontSize="10.5" Margin="4,0,0,0" MinWidth="24" TextAlignment="Right" />
-                                        </StackPanel>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <Border Grid.Column="2"
-                        MinWidth="122"
-                        Padding="7,4"
-                        Background="#CC05090D"
-                        BorderBrush="#334F7489"
-                        BorderThickness="1"
-                        CornerRadius="8"
-                        Margin="6,0,0,0"
-                        ClipToBounds="True"
-                        VerticalAlignment="Center"
-                        HorizontalAlignment="Right">
-                    <StackPanel>
-                        <TextBlock Text="{Binding ClockDateText}"
-                                   Foreground="#D8E9F8"
-                                   FontFamily="{StaticResource StableClockFont}"
-                                   FontSize="10"
-                                   FontWeight="SemiBold"
-                                   TextAlignment="Right"
-                                   TextTrimming="CharacterEllipsis"
-                                   SnapsToDevicePixels="True" />
-                        <TextBlock Text="{Binding ClockText}"
-                                   Foreground="White"
-                                   FontFamily="{StaticResource StableClockFont}"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"
-                                   TextAlignment="Right"
-                                   TextTrimming="CharacterEllipsis"
-                                   SnapsToDevicePixels="True" />
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <Grid Grid.Row="1" Margin="0,6,0,0" ClipToBounds="True">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-
-                <TextBlock Grid.Column="0"
-                           Text="{Binding UpdatedText}"
+                           TextWrapping="Wrap"
+                           TextTrimming="CharacterEllipsis"
+                           LineStackingStrategy="BlockLineHeight"
+                           LineHeight="15" />
+                <TextBlock Text="{Binding UpdatedText}"
                            Foreground="#D2DFEB"
-                           Margin="0,0,10,0"
-                           VerticalAlignment="Center"
+                           Margin="0,2,0,0"
                            TextWrapping="NoWrap"
                            TextTrimming="CharacterEllipsis"
                            MaxWidth="196" />
+            </StackPanel>
 
-                <Border Grid.Column="1" Background="Transparent" />
-            </Grid>
+            <ItemsControl Grid.Column="1"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          ItemsSource="{Binding MacroMeters}"
+                          ClipToBounds="True">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="#40131A23"
+                                BorderBrush="#5F6C7A8A"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="4,3"
+                                Margin="0,0,4,0"
+                                MinWidth="80">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Grid Width="20" Height="20" Margin="0,0,4,0">
+                                    <Path Data="{Binding TrackPath}"
+                                          Stroke="#44596C82"
+                                          StrokeThickness="1.8"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round" />
+                                    <Path Data="{Binding ArcPath}"
+                                          Stroke="{Binding AccentBrush}"
+                                          StrokeThickness="2.3"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round" />
+                                    <Path Data="{Binding NeedlePath}"
+                                          Stroke="#F6FBFF"
+                                          StrokeThickness="1.2"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round" />
+                                    <Ellipse Width="3.2" Height="3.2" Fill="#E6F2FF" Stroke="#5F6C7A8A" StrokeThickness="0.5" />
+                                </Grid>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Label}" Foreground="#C8D6E5" FontSize="9" FontWeight="SemiBold" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding ValueText}" Foreground="White" FontFamily="{StaticResource StableClockFont}" FontSize="10" MinWidth="28" TextAlignment="Right" />
+                                        <TextBlock Text="{Binding ChangeText}" Foreground="{Binding AccentBrush}" FontFamily="{StaticResource StableClockFont}" FontSize="10" Margin="3,0,0,0" MinWidth="22" TextAlignment="Right" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Border Grid.Column="2"
+                    MinWidth="102"
+                    Padding="6,4"
+                    Background="#CC05090D"
+                    BorderBrush="#334F7489"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Margin="4,0,0,0"
+                    ClipToBounds="True"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Right">
+                <StackPanel>
+                    <TextBlock Text="{Binding ClockDateText}"
+                               Foreground="#D8E9F8"
+                               FontFamily="{StaticResource StableClockFont}"
+                               FontSize="9"
+                               FontWeight="SemiBold"
+                               TextAlignment="Right"
+                               TextTrimming="CharacterEllipsis"
+                               SnapsToDevicePixels="True" />
+                    <TextBlock Text="{Binding ClockText}"
+                               Foreground="White"
+                               FontFamily="{StaticResource StableClockFont}"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               TextAlignment="Right"
+                               TextTrimming="CharacterEllipsis"
+                               SnapsToDevicePixels="True" />
+                </StackPanel>
+            </Border>
         </Grid>
     </Border>
 </UserControl>

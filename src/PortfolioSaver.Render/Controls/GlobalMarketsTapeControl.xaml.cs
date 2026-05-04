@@ -18,7 +18,8 @@ namespace PortfolioSaver.Render.Controls;
 public partial class GlobalMarketsTapeControl : UserControl
 {
     private const string PinnedExchangeKey = "NewYork";
-    private const double CardWidth = 182d;
+    private const double CardWidth = 164d;
+    private const double PinnedCardWidth = 150d;
     private const double CardHeight = 54d;
     private const double CopySpacing = 14d;
     private const double SequenceLeadInSpacing = 10d;
@@ -267,7 +268,7 @@ public partial class GlobalMarketsTapeControl : UserControl
                     FontFamily = new FontFamily("Bahnschrift SemiCondensed"),
                     FontSize = 16,
                     FontWeight = FontWeights.Bold,
-                    Margin = new Thickness(12, 0, 18, 0),
+                    Margin = new Thickness(10, 0, 14, 0),
                     VerticalAlignment = VerticalAlignment.Center
                 });
             }
@@ -290,10 +291,10 @@ public partial class GlobalMarketsTapeControl : UserControl
             BorderBrush = Brushes.Transparent,
             BorderThickness = new Thickness(0),
             Padding = new Thickness(isPinned ? 6 : 5, 3, isPinned ? 6 : 5, 3),
-            Width = CardWidth,
+            Width = isPinned ? PinnedCardWidth : CardWidth,
             Height = CardHeight,
             DataContext = city,
-            Margin = isPinned ? new Thickness(0, 0, 8, 0) : default
+            Margin = isPinned ? new Thickness(0, 0, 6, 0) : default
         };
 
         Grid grid = new();
@@ -301,7 +302,7 @@ public partial class GlobalMarketsTapeControl : UserControl
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        StackPanel left = new() { Orientation = Orientation.Vertical, Margin = new Thickness(0, 0, 6, 0), Width = 62 };
+        StackPanel left = new() { Orientation = Orientation.Vertical, Margin = new Thickness(0, 0, 5, 0), Width = isPinned ? 56 : 58 };
         StackPanel locationHeader = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 1) };
         locationHeader.Children.Add(BuildFlagBadge(city));
         TextBlock label = new()
@@ -310,7 +311,7 @@ public partial class GlobalMarketsTapeControl : UserControl
             FontFamily = new FontFamily("Bahnschrift SemiCondensed"),
             FontSize = 10,
             FontWeight = FontWeights.Bold,
-            MaxWidth = 44,
+            MaxWidth = 40,
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -331,7 +332,7 @@ public partial class GlobalMarketsTapeControl : UserControl
             FontSize = 7.5,
             Margin = new Thickness(0, 2, 0, 0),
             TextTrimming = TextTrimming.CharacterEllipsis,
-            MaxWidth = 58
+            MaxWidth = 54
         };
         MultiBinding weatherBinding = new() { StringFormat = "{0} {1}" };
         weatherBinding.Bindings.Add(new Binding(nameof(ClockCityViewModel.WeatherGlyph)));
@@ -343,7 +344,7 @@ public partial class GlobalMarketsTapeControl : UserControl
         Grid.SetColumn(left, 0);
         grid.Children.Add(left);
 
-        StackPanel center = new() { Orientation = Orientation.Vertical, VerticalAlignment = VerticalAlignment.Center, Width = 54 };
+        StackPanel center = new() { Orientation = Orientation.Vertical, VerticalAlignment = VerticalAlignment.Center, Width = isPinned ? 48 : 50 };
         StackPanel exchangeHeader = new() { Orientation = Orientation.Horizontal };
         TextBlock exchange = new()
         {
@@ -352,7 +353,7 @@ public partial class GlobalMarketsTapeControl : UserControl
             FontSize = 8,
             FontWeight = FontWeights.SemiBold,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            MaxWidth = 54
+            MaxWidth = isPinned ? 48 : 50
         };
         BindingOperations.SetBinding(exchange, TextBlock.TextProperty, new Binding(nameof(ClockCityViewModel.ExchangeName)));
         exchangeHeader.Children.Add(exchange);
@@ -367,7 +368,7 @@ public partial class GlobalMarketsTapeControl : UserControl
         };
         BindingOperations.SetBinding(marketStatus, TextBlock.TextProperty, new Binding(nameof(ClockCityViewModel.MarketStatusText)));
         BindingOperations.SetBinding(marketStatus, TextBlock.ForegroundProperty, new Binding(nameof(ClockCityViewModel.MarketStatusForeground)));
-        Grid sparkline = new() { Height = 14, Width = 54, Margin = new Thickness(0, 2, 0, 0) };
+        Grid sparkline = new() { Height = 14, Width = isPinned ? 48 : 50, Margin = new Thickness(0, 2, 0, 0) };
         sparkline.Children.Add(new Rectangle
         {
             Height = 1,
@@ -393,7 +394,7 @@ public partial class GlobalMarketsTapeControl : UserControl
         center.Children.Add(exchangeHeader);
         center.Children.Add(marketStatus);
         center.Children.Add(sparkline);
-        Grid axis = new() { Width = 54, Height = 8, Margin = new Thickness(0, 1, 0, 0) };
+        Grid axis = new() { Width = isPinned ? 48 : 50, Height = 8, Margin = new Thickness(0, 1, 0, 0) };
         axis.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         axis.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         axis.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -419,7 +420,7 @@ public partial class GlobalMarketsTapeControl : UserControl
         Grid.SetColumn(center, 1);
         grid.Children.Add(center);
 
-        StackPanel right = new() { Orientation = Orientation.Vertical, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(4, 0, 0, 0), Width = 50 };
+        StackPanel right = new() { Orientation = Orientation.Vertical, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(3, 0, 0, 0), Width = isPinned ? 40 : 44 };
         TextBlock value = new()
         {
             Foreground = Brushes.White,
@@ -427,7 +428,7 @@ public partial class GlobalMarketsTapeControl : UserControl
             FontSize = 10,
             FontWeight = FontWeights.Bold,
             TextAlignment = TextAlignment.Right,
-            MinWidth = 46
+            MinWidth = isPinned ? 38 : 40
         };
         BindingOperations.SetBinding(value, TextBlock.TextProperty, new Binding(nameof(ClockCityViewModel.IndexValueText)));
         TextBlock change = new()
@@ -436,7 +437,7 @@ public partial class GlobalMarketsTapeControl : UserControl
             FontSize = 10,
             FontWeight = FontWeights.Bold,
             TextAlignment = TextAlignment.Right,
-            MinWidth = 46
+            MinWidth = isPinned ? 38 : 40
         };
         BindingOperations.SetBinding(change, TextBlock.TextProperty, new Binding(nameof(ClockCityViewModel.IndexChangeText)));
         BindingOperations.SetBinding(change, TextBlock.ForegroundProperty, new Binding(nameof(ClockCityViewModel.IndexChangeForeground)));

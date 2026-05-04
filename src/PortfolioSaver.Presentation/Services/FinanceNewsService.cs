@@ -21,7 +21,6 @@ public sealed class FinanceNewsService
     private const string CnbcWorldFeedUrl = "https://www.cnbc.com/id/19832390/device/rss/rss.html";
     private const string BbcBusinessFeedUrl = "https://feeds.bbci.co.uk/news/business/rss.xml";
     private const string NytEconomyFeedUrl = "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml";
-    private const string BrentRealtimeUrl = "https://eodhd.com/api/real-time/BRNT.PA?api_token={0}&fmt=json";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private static readonly string[] SummarizedNewsFeedUrls =
     [
@@ -137,7 +136,7 @@ public sealed class FinanceNewsService
             return [];
 
         SummarizedNewsContext context = await FetchSummarizedNewsContextAsync(httpClient, settings, cancellationToken);
-        if (context.Headlines.Count == 0 && context.BrentPriceUsd is null)
+        if (context.Headlines.Count == 0)
             return [];
 
         var payload = new
@@ -150,7 +149,7 @@ public sealed class FinanceNewsService
                 new
                 {
                     role = "system",
-                    content = "You are given freshly fetched internet headlines and market data. Write a single compact paragraph suitable for a financial news ticker, using only the supplied live context. Do not use bullets or numbered lists. Do not claim to have browsed the web yourself. Never include investment recommendations, stock-picking language, or advice about whether an asset is a buy, sell, or hold. If a Brent crude snapshot is provided, explicitly mention Brent crude using that exact approximate USD per barrel value."
+                    content = "You are given freshly fetched internet headlines. Rewrite only the supplied facts into one compact paragraph suitable for a financial news ticker. Do not use bullets or numbered lists. Do not claim to have browsed the web yourself. Do not introduce, infer, update, correct, or embellish facts beyond the supplied text. Never include investment recommendations, stock-picking language, or advice about whether an asset is a buy, sell, or hold. Do not include any specific numerical values, prices, percentages, dates, or times in the rewritten paragraph."
                 },
                 new
                 {
@@ -187,7 +186,6 @@ public sealed class FinanceNewsService
         }
 
         string normalized = NormalizeSummaryText(contentElement.GetString());
-        normalized = EnsureBrentSnapshotIncluded(normalized, context.BrentPriceUsd);
         return string.IsNullOrWhiteSpace(normalized) ? [] : [normalized];
     }
 
@@ -221,35 +219,7 @@ public sealed class FinanceNewsService
                 break;
         }
 
-        decimal? brentPriceUsd = await FetchBrentPriceUsdAsync(httpClient, settings.EodhdApiKey, cancellationToken);
-        return new SummarizedNewsContext(DateTimeOffset.UtcNow, mergedHeadlines, brentPriceUsd);
-    }
-
-    private static async Task<decimal?> FetchBrentPriceUsdAsync(
-        HttpClient httpClient,
-        string? eodhdApiKey,
-        CancellationToken cancellationToken)
-    {
-        string apiKey = (eodhdApiKey ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(apiKey))
-            return null;
-
-        using HttpResponseMessage response = await httpClient.GetAsync(
-            string.Format(BrentRealtimeUrl, Uri.EscapeDataString(apiKey)),
-            cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-        if (!document.RootElement.TryGetProperty("close", out JsonElement closeElement))
-            return null;
-
-        return closeElement.ValueKind switch
-        {
-            JsonValueKind.Number when closeElement.TryGetDecimal(out decimal value) => decimal.Round(value, 2),
-            JsonValueKind.String when decimal.TryParse(closeElement.GetString(), out decimal value) => decimal.Round(value, 2),
-            _ => null
-        };
+        return new SummarizedNewsContext(DateTimeOffset.UtcNow, mergedHeadlines);
     }
 
     private static List<string> ParseHeadlines(string xml)
@@ -281,7 +251,9 @@ public sealed class FinanceNewsService
         builder.Append("Summarize this live financial snapshot captured at ");
         builder.Append(context.CapturedAtUtc.ToString("yyyy-MM-dd HH:mm 'UTC'"));
         builder.AppendLine(" in one paragraph.");
+        builder.AppendLine("Only restyle the supplied facts into a cohesive paragraph. Do not add, remove, alter, correct, or infer factual content.");
         builder.AppendLine("Never include investment recommendations, stock-picking language, or advice about whether an asset is a buy, sell, or hold.");
+        builder.AppendLine("Do not include any specific numerical values, prices, percentages, dates, or times in the rewritten paragraph.");
         builder.AppendLine("Ignore soft feature stories, local consumer pieces, and duplicate headlines unless they clearly move global markets.");
 
         if (context.Headlines.Count > 0)
@@ -294,26 +266,8 @@ public sealed class FinanceNewsService
             }
         }
 
-        if (context.BrentPriceUsd is not null)
-        {
-            builder.Append("Market snapshot: Brent crude is around $");
-            builder.Append(context.BrentPriceUsd.Value.ToString("0.00"));
-            builder.AppendLine(" per barrel.");
-        }
-
-        builder.Append("Write one compact paragraph and explicitly mention Brent crude using the supplied price if present.");
+        builder.Append("Write one compact paragraph and preserve the macro-financial meaning of the supplied headlines without adding fresh facts.");
         return builder.ToString();
-    }
-
-    private static string EnsureBrentSnapshotIncluded(string summary, decimal? brentPriceUsd)
-    {
-        if (string.IsNullOrWhiteSpace(summary) || brentPriceUsd is null)
-            return summary;
-
-        if (summary.Contains("brent", StringComparison.OrdinalIgnoreCase))
-            return summary;
-
-        return summary.TrimEnd('.', ' ') + $" Brent crude is around ${brentPriceUsd.Value:0.00}/barrel.";
     }
 
     private static string GetWritingStyleInstruction(DeepSeekWritingStyle writingStyle)
@@ -386,8 +340,7 @@ public sealed class FinanceNewsService
 
     private sealed record SummarizedNewsContext(
         DateTimeOffset CapturedAtUtc,
-        IReadOnlyList<string> Headlines,
-        decimal? BrentPriceUsd);
+        IReadOnlyList<string> Headlines);
 }
 
 public sealed class NewsHeadlineCache

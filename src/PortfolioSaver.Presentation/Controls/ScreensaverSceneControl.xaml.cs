@@ -193,7 +193,7 @@ public partial class ScreensaverSceneControl : UserControl
         SyncNews(state.News);
         ApplyDimOpacity(state.Settings.DimOpacity);
         _backgroundPaths = state.BackgroundPaths
-            .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            .Where(IsSupportedBackgroundReference)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (string.IsNullOrWhiteSpace(_currentBackgroundPath) || !_backgroundPaths.Contains(_currentBackgroundPath, StringComparer.OrdinalIgnoreCase))
@@ -646,7 +646,7 @@ public partial class ScreensaverSceneControl : UserControl
             graph.PlotHeight = Math.Max(34d, graphHeight - 38d);
         }
 
-        double statusHeight = Math.Max(68d, StatusBarHost.ActualHeight);
+        double statusHeight = Math.Max(72d, StatusBarHost.ActualHeight);
         double tapeTopMargin = Math.Clamp(statusHeight + 12d, 78d, 126d);
         TapeItemsControl.Margin = new Thickness(0, tapeTopMargin, 0, 0);
 
@@ -723,6 +723,11 @@ public partial class ScreensaverSceneControl : UserControl
                 PlaceSprite(graph, segmentBounds, preferredX, preferredY, occupied);
                 graph.VelocityX = NextVelocity();
                 graph.VelocityY = NextVelocity();
+                graph.NominalVelocityX = graph.VelocityX;
+                graph.NominalVelocityY = graph.VelocityY;
+                graph.MotionPhaseOffset = _random.NextDouble() * Math.PI * 2d;
+                graph.RefreshTravelTargetY = null;
+                graph.RefreshTravelSpeed = 0d;
                 graph.BounceWithinViewport = _settings.EnableBouncingGraphCards;
                 graphIndex++;
             }
@@ -757,7 +762,11 @@ public partial class ScreensaverSceneControl : UserControl
         _lastMotionTick = now;
 
         foreach (FloatingGraphViewModel graph in EnumerateVisibleGraphCards())
+        {
+            ApplyGraphMotionVariance(graph, now);
+            ApplyGraphRefreshTravel(graph, bounds, elapsedSeconds);
             _motionController.Step(graph, bounds, elapsedSeconds);
+        }
 
         if (_networkWaitingViewModel is not null)
             _motionController.Step(_networkWaitingViewModel, GetWaitingBounds(), elapsedSeconds);
@@ -819,7 +828,7 @@ public partial class ScreensaverSceneControl : UserControl
             UpdateStatusFreshnessText(_statusViewModel.UpdatedText);
             if (refreshStatusAncillary)
             {
-                _statusViewModel.MarketStatusText = _marketStatusService.FormatStatusLine(referenceUtc);
+                _statusViewModel.MarketStatusText = FormatStatusBandText(_marketStatusService.FormatStatusLine(referenceUtc));
                 UpdateStatusMacroMeters(force: true);
                 _lastStatusAncillaryRefreshUtc = referenceUtc;
             }
@@ -1211,7 +1220,12 @@ public partial class ScreensaverSceneControl : UserControl
         => $"{pointInTime:HH:mm} {GetTimeZoneAbbreviation(zone, pointInTime)}";
 
     private static string FormatStatusClockDate(DateTimeOffset pointInTime)
-        => pointInTime.ToString("ddd dd-MMM-yyyy", CultureInfo.InvariantCulture).ToUpperInvariant();
+        => pointInTime.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant();
+
+    private static string FormatStatusBandText(string statusLine)
+        => string.IsNullOrWhiteSpace(statusLine)
+            ? "Market (New York): --"
+            : statusLine.Replace(" | ", Environment.NewLine, StringComparison.Ordinal);
 
     private static string FormatExchangeCardStatusText(ExchangeCalendarStatus status)
         => status.IsOpen ? "OPEN" : "CLOSED";
@@ -1298,7 +1312,7 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void LoadBackground(string? path)
     {
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        if (!IsSupportedBackgroundReference(path))
         {
             _backgroundZoomTimer.Stop();
             if (_activeBackgroundImage is not null)
@@ -1308,9 +1322,11 @@ public partial class ScreensaverSceneControl : UserControl
             return;
         }
 
+        string backgroundPath = path!;
+
         if (_activeBackgroundImage is null || _inactiveBackgroundImage is null)
         {
-            BackgroundImageA.Source = CreateBackgroundBitmap(path);
+            BackgroundImageA.Source = CreateBackgroundBitmap(backgroundPath);
             BackgroundImageA.Opacity = 0.45d;
             BackgroundImageB.Source = null;
             BackgroundImageB.Opacity = 0d;
@@ -1327,7 +1343,7 @@ public partial class ScreensaverSceneControl : UserControl
             StopBackgroundAnimations(_inactiveBackgroundImage);
             ResetBackgroundTransform(_activeBackgroundImage);
             ResetBackgroundTransform(_inactiveBackgroundImage);
-            _activeBackgroundImage.Source = CreateBackgroundBitmap(path);
+            _activeBackgroundImage.Source = CreateBackgroundBitmap(backgroundPath);
             _activeBackgroundImage.Opacity = 0.45d;
             _inactiveBackgroundImage.Source = null;
             _inactiveBackgroundImage.Opacity = 0d;
@@ -1336,7 +1352,7 @@ public partial class ScreensaverSceneControl : UserControl
             return;
         }
 
-        BeginBackgroundTransition(path);
+        BeginBackgroundTransition(backgroundPath);
     }
 
     private void ApplyDimOpacity(double opacity)
@@ -1362,6 +1378,14 @@ public partial class ScreensaverSceneControl : UserControl
         target.Y = source.Y;
         target.VelocityX = source.VelocityX;
         target.VelocityY = source.VelocityY;
+        if (source is FloatingGraphViewModel sourceGraph && target is FloatingGraphViewModel targetGraph)
+        {
+            targetGraph.NominalVelocityX = sourceGraph.NominalVelocityX;
+            targetGraph.NominalVelocityY = sourceGraph.NominalVelocityY;
+            targetGraph.MotionPhaseOffset = sourceGraph.MotionPhaseOffset;
+            targetGraph.RefreshTravelTargetY = sourceGraph.RefreshTravelTargetY;
+            targetGraph.RefreshTravelSpeed = sourceGraph.RefreshTravelSpeed;
+        }
     }
 
     private IEnumerable<FloatingSpriteViewModel> EnumerateSprites()
@@ -1515,14 +1539,14 @@ public partial class ScreensaverSceneControl : UserControl
         if (bounds == Rect.Empty)
             return;
 
-        double inwardVelocity = Math.Max(18d, Math.Abs(graph.VelocityY));
+        double inwardVelocity = Math.Max(22d, Math.Abs(graph.NominalVelocityY > 0d ? graph.NominalVelocityY : graph.VelocityY));
         double targetY = percent > 0m
             ? bounds.Top
             : Math.Max(bounds.Top, bounds.Bottom - Math.Max(1d, graph.Height));
-
-        graph.Y = targetY;
-        graph.VelocityY = percent > 0m ? inwardVelocity : -inwardVelocity;
-        ClampSpriteToBounds(graph, bounds);
+        graph.RefreshTravelTargetY = targetY;
+        graph.RefreshTravelSpeed = Math.Max(180d, inwardVelocity * 4.5d);
+        graph.NominalVelocityY = percent > 0m ? Math.Abs(inwardVelocity) : -Math.Abs(inwardVelocity);
+        graph.VelocityY = graph.NominalVelocityY;
     }
 
     private void ClampSpritesToSafeBounds()
@@ -1656,6 +1680,57 @@ public partial class ScreensaverSceneControl : UserControl
         bitmap.EndInit();
         bitmap.Freeze();
         return bitmap;
+    }
+
+    private static bool IsSupportedBackgroundReference(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+
+        if (File.Exists(path))
+            return true;
+
+        return Uri.TryCreate(path, UriKind.Absolute, out Uri? uri) &&
+               (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp);
+    }
+
+    private void ApplyGraphMotionVariance(FloatingGraphViewModel graph, DateTime nowUtc)
+    {
+        double seconds = nowUtc.TimeOfDay.TotalSeconds;
+        double factor = 1d + 0.2d * Math.Sin(seconds * 0.35d + graph.MotionPhaseOffset);
+        double nominalX = graph.NominalVelocityX == 0d ? graph.VelocityX : graph.NominalVelocityX;
+        double nominalY = graph.NominalVelocityY == 0d ? graph.VelocityY : graph.NominalVelocityY;
+
+        graph.VelocityX = Math.Sign(graph.VelocityX == 0d ? nominalX : graph.VelocityX) * Math.Max(6d, Math.Abs(nominalX) * factor);
+        if (graph.RefreshTravelTargetY is null)
+            graph.VelocityY = Math.Sign(graph.VelocityY == 0d ? nominalY : graph.VelocityY) * Math.Max(6d, Math.Abs(nominalY) * factor);
+    }
+
+    private void ApplyGraphRefreshTravel(FloatingGraphViewModel graph, Rect bounds, double elapsedSeconds)
+    {
+        if (graph.RefreshTravelTargetY is not double targetY)
+            return;
+
+        double delta = targetY - graph.Y;
+        if (Math.Abs(delta) <= 4d)
+        {
+            graph.Y = targetY;
+            graph.RefreshTravelTargetY = null;
+            graph.RefreshTravelSpeed = 0d;
+            graph.VelocityY = targetY <= bounds.Top + 1d
+                ? Math.Abs(graph.NominalVelocityY == 0d ? 24d : graph.NominalVelocityY)
+                : -Math.Abs(graph.NominalVelocityY == 0d ? 24d : graph.NominalVelocityY);
+            return;
+        }
+
+        double direction = Math.Sign(delta);
+        double travelSpeed = Math.Max(180d, graph.RefreshTravelSpeed);
+        double step = direction * travelSpeed * elapsedSeconds;
+        if (Math.Abs(step) > Math.Abs(delta))
+            step = delta;
+
+        graph.Y += step;
+        graph.VelocityY = direction * travelSpeed;
     }
 
     private static void StopBackgroundAnimations(Image image)

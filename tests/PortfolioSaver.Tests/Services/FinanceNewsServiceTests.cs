@@ -12,7 +12,7 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class FinanceNewsServiceTests
 {
     [Fact]
-    public async Task GetHeadlinesAsync_SummarizedMode_UsesDeepSeekPrompt_AndCachesAtFifteenMinuteFloor()
+    public async Task GetHeadlinesAsync_SummarizedMode_UsesRestylingOnlyPrompt_AndCachesAtFifteenMinuteFloor()
     {
         string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
         int requestCount = 0;
@@ -55,16 +55,6 @@ public sealed class FinanceNewsServiceTests
                       <item><title>Fed Officials Cite Inflation Concerns in Defending Dissents</title></item>
                     </channel></rss>
                     """, Encoding.UTF8, "application/xml")
-                };
-            }
-
-            if (requestUrl == "https://eodhd.com/api/real-time/BRNT.PA?api_token=test-eodhd-key&fmt=json")
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent("""
-                    { "close": 79.61 }
-                    """, Encoding.UTF8, "application/json")
                 };
             }
 
@@ -118,9 +108,11 @@ public sealed class FinanceNewsServiceTests
         Assert.Contains("You write in the style of Douglas Adams.", capturedBody, StringComparison.Ordinal);
         Assert.Contains("Oil prices fall after Iran sends updated peace proposal to mediators in Pakistan", capturedBody, StringComparison.Ordinal);
         Assert.Contains("Fed Officials Cite Inflation Concerns in Defending Dissents", capturedBody, StringComparison.Ordinal);
+        Assert.Contains("Only restyle the supplied facts into a cohesive paragraph.", capturedBody, StringComparison.Ordinal);
         Assert.Contains("Never include investment recommendations", capturedBody, StringComparison.Ordinal);
-        Assert.Contains("Brent crude is around $79.61 per barrel.", capturedBody, StringComparison.Ordinal);
-        Assert.Contains("Brent crude is around $79.61/barrel.", first[0], StringComparison.Ordinal);
+        Assert.Contains("Do not include any specific numerical values, prices, percentages, dates, or times", capturedBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("79.61", capturedBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("79.61", first[0], StringComparison.Ordinal);
         Assert.DoesNotContain(Environment.NewLine, first[0], StringComparison.Ordinal);
     }
 

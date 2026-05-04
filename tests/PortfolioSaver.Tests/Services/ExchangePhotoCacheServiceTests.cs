@@ -54,6 +54,7 @@ public sealed class ExchangePhotoCacheServiceTests
         Assert.True(File.Exists(attributionPath));
         Assert.True(firstCount >= 1);
         Assert.Equal(firstCount + 1, secondCount);
+        Assert.Contains("https://commons.wikimedia.org/wiki/Special:Redirect/file/London_Skyline_%28199638369%29.jpeg", _ = await service.GetAvailableBackgroundsAsync(settings, httpClient, networkAvailable: true));
     }
 
     private static byte[] CreateMinimalJpegBytes()
