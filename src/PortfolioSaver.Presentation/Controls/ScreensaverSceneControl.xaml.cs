@@ -837,11 +837,12 @@ public partial class ScreensaverSceneControl : UserControl
 
         EnsureMacroMetersInitialized();
         UpdateQuoteMeter(_statusViewModel.MacroMeters[0], "VIX", "^VIX", 60m, invertRiskColors: true);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[1], "VIX3M", "^VIX3M", 60m, invertRiskColors: true);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[1], "GOLD", "GC=F", 4000m);
         UpdateQuoteMeter(_statusViewModel.MacroMeters[2], "UST2M", "US2M", 6m);
         UpdateQuoteMeter(_statusViewModel.MacroMeters[3], "UST10Y", "US10Y", 6m);
         UpdateYieldSpreadMeter(_statusViewModel.MacroMeters[4]);
         UpdateQuoteMeter(_statusViewModel.MacroMeters[5], "DXY", "DX-Y.NYB", 120m, invertRiskColors: true);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[6], "CRUDE", "CL=F", 160m);
 
         _lastMacroMeterRefreshUtc = nowUtc;
         TraceMacroSnapshot(force);
@@ -852,7 +853,7 @@ public partial class ScreensaverSceneControl : UserControl
         if (_statusViewModel is null)
             return;
 
-        string[] labels = ["VIX", "VIX3M", "UST2M", "UST10Y", "YLD SPRD", "DXY"];
+        string[] labels = ["VIX", "GOLD", "UST2M", "UST10Y", "YLD SPRD", "DXY", "CRUDE"];
         while (_statusViewModel.MacroMeters.Count > labels.Length)
             _statusViewModel.MacroMeters.RemoveAt(_statusViewModel.MacroMeters.Count - 1);
 

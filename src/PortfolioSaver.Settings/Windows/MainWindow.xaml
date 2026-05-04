@@ -440,6 +440,25 @@
                                         <ColumnDefinition Width="Auto" MinWidth="156" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
+                                    <TextBlock Text="DeepSeek style:" Style="{StaticResource FieldLabelStyle}" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" IsEnabled="{Binding IsSummarizedFinancialNewsSelected}">
+                                        <RadioButton Content="Douglas Adams"
+                                                     Foreground="#EAF3FA"
+                                                     GroupName="DeepSeekWritingStyle"
+                                                     IsChecked="{Binding IsDouglasAdamsStyleSelected, Mode=TwoWay}"
+                                                     Margin="0,0,24,0" />
+                                        <RadioButton Content="William Shakespeare"
+                                                     Foreground="#EAF3FA"
+                                                     GroupName="DeepSeekWritingStyle"
+                                                     IsChecked="{Binding IsWilliamShakespeareStyleSelected, Mode=TwoWay}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,4,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" MinWidth="156" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
                                     <TextBlock Text="RSS feed URL:" Style="{StaticResource FieldLabelStyle}" />
                                     <TextBox Grid.Column="1"
                                              MinWidth="128"
@@ -465,7 +484,7 @@
                                             Value="{Binding Settings.NewsRefreshMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <TextBlock Grid.Column="2" Margin="12,0,0,0" Foreground="#F3D57F" VerticalAlignment="Center" Text="{Binding ElementName=NewsRefreshSlider, Path=Value, StringFormat={}{0:0}m}" />
                                 </Grid>
-                                <TextBlock Text="Summarized mode sends the prompt &quot;Enable Web Search and Summarize the latest global financial news in one paragraph&quot; to DeepSeek and keeps the most recent full paragraph scrolling across the band. The DeepSeek key follows the same protected storage and environment override rules as the market-data provider keys." Style="{StaticResource SectionNoteStyle}" />
+                                <TextBlock Text="Summarized mode sends live global market headlines plus a live crude snapshot to DeepSeek, then keeps the most recent full paragraph scrolling across the band. The DeepSeek key follows the same protected storage and environment override rules as the market-data provider keys, and the writing style can be switched between Douglas Adams and William Shakespeare." Style="{StaticResource SectionNoteStyle}" />
                                 <TextBlock Text="RSS mode validates the feed during Apply and falls back to the Yahoo Finance default when needed." Style="{StaticResource SectionNoteStyle}" />
                             </StackPanel>
                         </Border>

@@ -173,10 +173,7 @@ public sealed class StartupCoordinator
             cancellationToken);
         Task<IReadOnlyList<string>> headlinesTask = _financeNewsService.GetHeadlinesAsync(
             httpClient,
-            settings.NewsScrollerMode,
-            settings.DeepSeekApiKey,
-            settings.NewsFeedUrl,
-            settings.NewsRefreshMinutes,
+            settings,
             networkAvailable,
             cancellationToken);
 
@@ -1031,7 +1028,7 @@ public sealed class StartupCoordinator
     }
 
     public static IReadOnlyList<string> GetMacroIndicatorSymbols()
-        => ["^VIX", "^VIX3M", "US2M", "US10Y", "DX-Y.NYB"];
+        => ["^VIX", "GC=F", "US2M", "US10Y", "DX-Y.NYB", "CL=F"];
 
     private List<TapeViewModel> BuildTapeViewModels(AppSettings settings, IReadOnlyDictionary<string, QuoteSnapshot> quotes)
     {
@@ -1813,10 +1810,10 @@ public sealed class StartupCoordinator
         => new(GetTreasuryMacroSymbols().Select(SymbolProfileHeuristics.Normalize), StringComparer.OrdinalIgnoreCase);
 
     private static IReadOnlyList<string> GetYahooDedicatedMacroSymbols()
-        => ["DX-Y.NYB"];
+        => ["DX-Y.NYB", "CL=F", "GC=F"];
 
     private static IReadOnlyList<string> GetOfficialMacroSymbols()
-        => ["^VIX", "^VIX3M"];
+        => ["^VIX"];
 
     private static IReadOnlyList<string> GetTreasuryMacroSymbols()
         => ["US2M", "US10Y"];

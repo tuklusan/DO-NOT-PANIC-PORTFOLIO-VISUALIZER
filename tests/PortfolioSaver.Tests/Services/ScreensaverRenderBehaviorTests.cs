@@ -181,7 +181,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("<ColumnDefinition Width=\"Auto\" />", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("ClipToBounds=\"True\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("Width=\"56\"", floatingClockXaml, StringComparison.Ordinal);
-        Assert.Contains("MinWidth=\"128\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("MinWidth=\"122\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"30\"", floatingClockXaml, StringComparison.Ordinal);
     }
 
@@ -750,6 +750,10 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("EnsureMacroMetersInitialized();", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("_statusViewModel.MacroMeters.Clear();", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"US2M\"", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"CL=F\"", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"GC=F\"", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"GOLD\"", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"CRUDE\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Brushes.Goldenrod", sceneCodeBehind, StringComparison.Ordinal);
     }
 
@@ -770,7 +774,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("Text=\"{Binding ClockText}\"", statusBarXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding ProviderText}\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("<ColumnDefinition Width=\"Auto\" />", statusBarXaml, StringComparison.Ordinal);
-        Assert.Contains("MinWidth=\"128\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("MinWidth=\"122\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("MinWidth=\"88\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("MaxWidth=\"244\"", statusBarXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("MaxWidth=\"700\"", statusBarXaml, StringComparison.Ordinal);
     }
 

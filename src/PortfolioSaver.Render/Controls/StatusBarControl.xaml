@@ -28,8 +28,8 @@
                 <TextBlock Grid.Column="0"
                            Text="{Binding MarketStatusText}"
                            Foreground="White"
-                           Margin="0,0,10,0"
-                           MaxWidth="280"
+                           Margin="0,0,8,0"
+                           MaxWidth="244"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Left"
                            TextWrapping="NoWrap"
@@ -51,19 +51,19 @@
                                     BorderBrush="#5F6C7A8A"
                                     BorderThickness="1"
                                     CornerRadius="8"
-                                    Padding="6,4"
-                                    Margin="0,0,8,0"
-                                    MinWidth="102">
+                                    Padding="5,3"
+                                    Margin="0,0,6,0"
+                                    MinWidth="88">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Grid Width="24" Height="24" Margin="0,0,6,0">
+                                    <Grid Width="22" Height="22" Margin="0,0,5,0">
                                         <Path Data="{Binding TrackPath}"
                                               Stroke="#44596C82"
-                                              StrokeThickness="2.1"
+                                              StrokeThickness="1.9"
                                               StrokeStartLineCap="Round"
                                               StrokeEndLineCap="Round" />
                                         <Path Data="{Binding ArcPath}"
                                               Stroke="{Binding AccentBrush}"
-                                              StrokeThickness="2.8"
+                                              StrokeThickness="2.5"
                                               StrokeStartLineCap="Round"
                                               StrokeEndLineCap="Round" />
                                         <Path Data="{Binding NeedlePath}"
@@ -74,10 +74,10 @@
                                         <Ellipse Width="3.2" Height="3.2" Fill="#E6F2FF" Stroke="#5F6C7A8A" StrokeThickness="0.5" />
                                     </Grid>
                                     <StackPanel>
-                                        <TextBlock Text="{Binding Label}" Foreground="#C8D6E5" FontSize="10" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Label}" Foreground="#C8D6E5" FontSize="9.5" FontWeight="SemiBold" />
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding ValueText}" Foreground="White" FontFamily="{StaticResource StableClockFont}" FontSize="11" MinWidth="34" TextAlignment="Right" />
-                                            <TextBlock Text="{Binding ChangeText}" Foreground="{Binding AccentBrush}" FontFamily="{StaticResource StableClockFont}" FontSize="11" Margin="5,0,0,0" MinWidth="26" TextAlignment="Right" />
+                                            <TextBlock Text="{Binding ValueText}" Foreground="White" FontFamily="{StaticResource StableClockFont}" FontSize="10.5" MinWidth="31" TextAlignment="Right" />
+                                            <TextBlock Text="{Binding ChangeText}" Foreground="{Binding AccentBrush}" FontFamily="{StaticResource StableClockFont}" FontSize="10.5" Margin="4,0,0,0" MinWidth="24" TextAlignment="Right" />
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
@@ -87,13 +87,13 @@
                 </ItemsControl>
 
                 <Border Grid.Column="2"
-                        MinWidth="128"
+                        MinWidth="122"
                         Padding="7,4"
                         Background="#CC05090D"
                         BorderBrush="#334F7489"
                         BorderThickness="1"
                         CornerRadius="8"
-                        Margin="8,0,0,0"
+                        Margin="6,0,0,0"
                         ClipToBounds="True"
                         VerticalAlignment="Center"
                         HorizontalAlignment="Right">

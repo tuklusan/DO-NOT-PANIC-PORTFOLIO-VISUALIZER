@@ -203,6 +203,17 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
+    public void Normalize_DefaultsDeepSeekWritingStyleToDouglasAdams()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.DeepSeekWritingStyle = (DeepSeekWritingStyle)999;
+
+        AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+        Assert.Equal(DeepSeekWritingStyle.DouglasAdams, normalized.DeepSeekWritingStyle);
+    }
+
+    [Fact]
     public void Normalize_DeepSeekApiKey_PrefersEnvironmentVariable_OverPersistedValue()
     {
         const string environmentName = "DEEPSEEK_API_KEY";

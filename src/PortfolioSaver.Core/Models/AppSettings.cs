@@ -8,6 +8,7 @@ public sealed class AppSettings
     public int RefreshSecondsOffHours { get; set; } = 300;
     public int HttpTimeoutSeconds { get; set; } = 10;
     public NewsScrollerMode NewsScrollerMode { get; set; } = NewsScrollerMode.SummarizedFinancialNews;
+    public DeepSeekWritingStyle DeepSeekWritingStyle { get; set; } = DeepSeekWritingStyle.DouglasAdams;
     public string NewsFeedUrl { get; set; } = "https://finance.yahoo.com/news/rss";
     public int NewsRefreshMinutes { get; set; } = 15;
 

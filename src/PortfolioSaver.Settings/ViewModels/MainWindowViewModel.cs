@@ -90,6 +90,8 @@ public sealed class MainWindowViewModel : BindableBase
 
             RaisePropertyChanged(nameof(IsSummarizedFinancialNewsSelected));
             RaisePropertyChanged(nameof(IsRssFeedSelected));
+            RaisePropertyChanged(nameof(IsDouglasAdamsStyleSelected));
+            RaisePropertyChanged(nameof(IsWilliamShakespeareStyleSelected));
         }
     }
 
@@ -156,6 +158,36 @@ public sealed class MainWindowViewModel : BindableBase
             Settings.NewsScrollerMode = NewsScrollerMode.RssFeed;
             RaisePropertyChanged(nameof(IsSummarizedFinancialNewsSelected));
             RaisePropertyChanged(nameof(IsRssFeedSelected));
+            InvalidateValidationState("Configuration changed. Click Validate.");
+        }
+    }
+
+    public bool IsDouglasAdamsStyleSelected
+    {
+        get => Settings.DeepSeekWritingStyle == DeepSeekWritingStyle.DouglasAdams;
+        set
+        {
+            if (!value || Settings.DeepSeekWritingStyle == DeepSeekWritingStyle.DouglasAdams)
+                return;
+
+            Settings.DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams;
+            RaisePropertyChanged(nameof(IsDouglasAdamsStyleSelected));
+            RaisePropertyChanged(nameof(IsWilliamShakespeareStyleSelected));
+            InvalidateValidationState("Configuration changed. Click Validate.");
+        }
+    }
+
+    public bool IsWilliamShakespeareStyleSelected
+    {
+        get => Settings.DeepSeekWritingStyle == DeepSeekWritingStyle.WilliamShakespeare;
+        set
+        {
+            if (!value || Settings.DeepSeekWritingStyle == DeepSeekWritingStyle.WilliamShakespeare)
+                return;
+
+            Settings.DeepSeekWritingStyle = DeepSeekWritingStyle.WilliamShakespeare;
+            RaisePropertyChanged(nameof(IsDouglasAdamsStyleSelected));
+            RaisePropertyChanged(nameof(IsWilliamShakespeareStyleSelected));
             InvalidateValidationState("Configuration changed. Click Validate.");
         }
     }

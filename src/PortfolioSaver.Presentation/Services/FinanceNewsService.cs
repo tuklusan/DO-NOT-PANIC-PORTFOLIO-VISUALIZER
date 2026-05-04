@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
+using PortfolioSaver.Core.Models;
 using PortfolioSaver.Shared.Helpers;
 
 namespace PortfolioSaver.Screensaver.Services;
@@ -17,8 +18,17 @@ public sealed class FinanceNewsService
     private const string DefaultFeedUrl = "https://finance.yahoo.com/news/rss";
     private const string DeepSeekApiUrl = "https://api.deepseek.com/chat/completions";
     private const string DeepSeekModel = "deepseek-v4-flash";
-    private const string SummarizedNewsPrompt = "Enable Web Search and Summarize the latest global financial news in one paragraph";
+    private const string CnbcWorldFeedUrl = "https://www.cnbc.com/id/19832390/device/rss/rss.html";
+    private const string BbcBusinessFeedUrl = "https://feeds.bbci.co.uk/news/business/rss.xml";
+    private const string NytEconomyFeedUrl = "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml";
+    private const string BrentRealtimeUrl = "https://eodhd.com/api/real-time/BRNT.PA?api_token={0}&fmt=json";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
+    private static readonly string[] SummarizedNewsFeedUrls =
+    [
+        CnbcWorldFeedUrl,
+        BbcBusinessFeedUrl,
+        NytEconomyFeedUrl
+    ];
     private readonly string _cachePath;
     private readonly Func<string> _deepSeekApiKeyResolver;
 
@@ -32,15 +42,13 @@ public sealed class FinanceNewsService
 
     public async Task<IReadOnlyList<string>> GetHeadlinesAsync(
         HttpClient httpClient,
-        NewsScrollerMode mode,
-        string? deepSeekApiKey,
-        string? feedUrl,
-        int refreshMinutes,
+        AppSettings settings,
         bool networkAvailable,
         CancellationToken cancellationToken = default)
     {
-        string requestUrl = NormalizeFeedUrl(feedUrl);
-        TimeSpan refreshInterval = GetRefreshInterval(mode, refreshMinutes);
+        NewsScrollerMode mode = settings.NewsScrollerMode;
+        string requestUrl = NormalizeFeedUrl(settings.NewsFeedUrl);
+        TimeSpan refreshInterval = GetRefreshInterval(mode, settings.NewsRefreshMinutes);
         NewsHeadlineCache cache = await LoadCacheAsync(cancellationToken);
         IReadOnlyList<string> matchingCachedHeadlines =
             string.Equals(cache.ModeKey, GetModeKey(mode), StringComparison.OrdinalIgnoreCase)
@@ -63,7 +71,7 @@ public sealed class FinanceNewsService
             List<string> headlines = mode switch
             {
                 NewsScrollerMode.RssFeed => await FetchRssHeadlinesAsync(httpClient, requestUrl, cancellationToken),
-                _ => await FetchSummarizedFinancialNewsAsync(httpClient, ResolveDeepSeekApiKey(deepSeekApiKey), cancellationToken)
+                _ => await FetchSummarizedFinancialNewsAsync(httpClient, settings, cancellationToken)
             };
 
             if (headlines.Count == 0)
@@ -119,12 +127,17 @@ public sealed class FinanceNewsService
         return ParseHeadlines(xml);
     }
 
-    private static async Task<List<string>> FetchSummarizedFinancialNewsAsync(
+    private async Task<List<string>> FetchSummarizedFinancialNewsAsync(
         HttpClient httpClient,
-        string apiKey,
+        AppSettings settings,
         CancellationToken cancellationToken)
     {
+        string apiKey = ResolveDeepSeekApiKey(settings.DeepSeekApiKey);
         if (string.IsNullOrWhiteSpace(apiKey))
+            return [];
+
+        SummarizedNewsContext context = await FetchSummarizedNewsContextAsync(httpClient, settings, cancellationToken);
+        if (context.Headlines.Count == 0 && context.BrentPriceUsd is null)
             return [];
 
         var payload = new
@@ -137,12 +150,12 @@ public sealed class FinanceNewsService
                 new
                 {
                     role = "system",
-                    content = "Respond with a single compact paragraph suitable for a financial news ticker. Do not use bullets or numbered lists."
+                    content = "You are given freshly fetched internet headlines and market data. Write a single compact paragraph suitable for a financial news ticker, using only the supplied live context. Do not use bullets or numbered lists. Do not claim to have browsed the web yourself. Never include investment recommendations, stock-picking language, or advice about whether an asset is a buy, sell, or hold. If a Brent crude snapshot is provided, explicitly mention Brent crude using that exact approximate USD per barrel value."
                 },
                 new
                 {
                     role = "user",
-                    content = SummarizedNewsPrompt
+                    content = BuildSummarizedNewsPrompt(settings.DeepSeekWritingStyle, context)
                 }
             }
         };
@@ -174,7 +187,69 @@ public sealed class FinanceNewsService
         }
 
         string normalized = NormalizeSummaryText(contentElement.GetString());
+        normalized = EnsureBrentSnapshotIncluded(normalized, context.BrentPriceUsd);
         return string.IsNullOrWhiteSpace(normalized) ? [] : [normalized];
+    }
+
+    private static async Task<SummarizedNewsContext> FetchSummarizedNewsContextAsync(
+        HttpClient httpClient,
+        AppSettings settings,
+        CancellationToken cancellationToken)
+    {
+        List<string> mergedHeadlines = [];
+        foreach (string feedUrl in SummarizedNewsFeedUrls)
+        {
+            try
+            {
+                List<string> feedHeadlines = await FetchRssHeadlinesAsync(httpClient, feedUrl, cancellationToken);
+                foreach (string headline in feedHeadlines)
+                {
+                    if (mergedHeadlines.Contains(headline, StringComparer.OrdinalIgnoreCase))
+                        continue;
+
+                    mergedHeadlines.Add(headline);
+                    if (mergedHeadlines.Count >= 10)
+                        break;
+                }
+            }
+            catch
+            {
+                // Ignore feed-specific failures and continue building a partial live context.
+            }
+
+            if (mergedHeadlines.Count >= 10)
+                break;
+        }
+
+        decimal? brentPriceUsd = await FetchBrentPriceUsdAsync(httpClient, settings.EodhdApiKey, cancellationToken);
+        return new SummarizedNewsContext(DateTimeOffset.UtcNow, mergedHeadlines, brentPriceUsd);
+    }
+
+    private static async Task<decimal?> FetchBrentPriceUsdAsync(
+        HttpClient httpClient,
+        string? eodhdApiKey,
+        CancellationToken cancellationToken)
+    {
+        string apiKey = (eodhdApiKey ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(apiKey))
+            return null;
+
+        using HttpResponseMessage response = await httpClient.GetAsync(
+            string.Format(BrentRealtimeUrl, Uri.EscapeDataString(apiKey)),
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        if (!document.RootElement.TryGetProperty("close", out JsonElement closeElement))
+            return null;
+
+        return closeElement.ValueKind switch
+        {
+            JsonValueKind.Number when closeElement.TryGetDecimal(out decimal value) => decimal.Round(value, 2),
+            JsonValueKind.String when decimal.TryParse(closeElement.GetString(), out decimal value) => decimal.Round(value, 2),
+            _ => null
+        };
     }
 
     private static List<string> ParseHeadlines(string xml)
@@ -197,6 +272,56 @@ public sealed class FinanceNewsService
         candidate = Regex.Replace(candidate, @"\s+", " ");
         return candidate.Trim();
     }
+
+    private static string BuildSummarizedNewsPrompt(DeepSeekWritingStyle writingStyle, SummarizedNewsContext context)
+    {
+        StringBuilder builder = new();
+        builder.AppendLine("You are a dependable fiduciary and are presenting current financial news highlights to your customers.");
+        builder.AppendLine(GetWritingStyleInstruction(writingStyle));
+        builder.Append("Summarize this live financial snapshot captured at ");
+        builder.Append(context.CapturedAtUtc.ToString("yyyy-MM-dd HH:mm 'UTC'"));
+        builder.AppendLine(" in one paragraph.");
+        builder.AppendLine("Never include investment recommendations, stock-picking language, or advice about whether an asset is a buy, sell, or hold.");
+        builder.AppendLine("Ignore soft feature stories, local consumer pieces, and duplicate headlines unless they clearly move global markets.");
+
+        if (context.Headlines.Count > 0)
+        {
+            builder.AppendLine("Latest headlines:");
+            foreach (string headline in context.Headlines.Take(8))
+            {
+                builder.Append("- ");
+                builder.AppendLine(headline);
+            }
+        }
+
+        if (context.BrentPriceUsd is not null)
+        {
+            builder.Append("Market snapshot: Brent crude is around $");
+            builder.Append(context.BrentPriceUsd.Value.ToString("0.00"));
+            builder.AppendLine(" per barrel.");
+        }
+
+        builder.Append("Write one compact paragraph and explicitly mention Brent crude using the supplied price if present.");
+        return builder.ToString();
+    }
+
+    private static string EnsureBrentSnapshotIncluded(string summary, decimal? brentPriceUsd)
+    {
+        if (string.IsNullOrWhiteSpace(summary) || brentPriceUsd is null)
+            return summary;
+
+        if (summary.Contains("brent", StringComparison.OrdinalIgnoreCase))
+            return summary;
+
+        return summary.TrimEnd('.', ' ') + $" Brent crude is around ${brentPriceUsd.Value:0.00}/barrel.";
+    }
+
+    private static string GetWritingStyleInstruction(DeepSeekWritingStyle writingStyle)
+        => writingStyle switch
+        {
+            DeepSeekWritingStyle.WilliamShakespeare => "You write in the style of William Shakespeare.",
+            _ => "You write in the style of Douglas Adams."
+        };
 
     private string ResolveDeepSeekApiKey(string? explicitApiKey)
     {
@@ -258,6 +383,11 @@ public sealed class FinanceNewsService
             NewsScrollerMode.RssFeed => "rss",
             _ => "summarized-financial-news"
         };
+
+    private sealed record SummarizedNewsContext(
+        DateTimeOffset CapturedAtUtc,
+        IReadOnlyList<string> Headlines,
+        decimal? BrentPriceUsd);
 }
 
 public sealed class NewsHeadlineCache

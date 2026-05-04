@@ -98,6 +98,7 @@ public static class AppSettingsNormalizer
             15);
 
         normalized.NewsScrollerMode = NormalizeNewsScrollerMode(normalized.NewsScrollerMode);
+        normalized.DeepSeekWritingStyle = NormalizeDeepSeekWritingStyle(normalized.DeepSeekWritingStyle);
         normalized.NewsFeedUrl = NormalizeNewsFeedUrl(normalized.NewsFeedUrl);
 
         return normalized;
@@ -280,6 +281,11 @@ public static class AppSettingsNormalizer
         => Enum.IsDefined(typeof(NewsScrollerMode), currentValue)
             ? currentValue
             : NewsScrollerMode.SummarizedFinancialNews;
+
+    private static DeepSeekWritingStyle NormalizeDeepSeekWritingStyle(DeepSeekWritingStyle currentValue)
+        => Enum.IsDefined(typeof(DeepSeekWritingStyle), currentValue)
+            ? currentValue
+            : DeepSeekWritingStyle.DouglasAdams;
 
     private static string NormalizeTapeName(string? currentValue, int index)
     {

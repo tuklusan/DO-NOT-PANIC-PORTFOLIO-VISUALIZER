@@ -182,8 +182,13 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("Text=\"News Scroller\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"Summarized Financial News\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"RSS Feed\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"Douglas Adams\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"William Shakespeare\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"DeepSeek style:\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("IsEnabled=\"{Binding IsSummarizedFinancialNewsSelected}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("IsEnabled=\"{Binding IsRssFeedSelected}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("DeepSeek API key:", xaml, StringComparison.Ordinal);
+        Assert.Contains("writing style can be switched between Douglas Adams and William Shakespeare", xaml, StringComparison.Ordinal);
     }
 
     private static string GetRepoRoot()

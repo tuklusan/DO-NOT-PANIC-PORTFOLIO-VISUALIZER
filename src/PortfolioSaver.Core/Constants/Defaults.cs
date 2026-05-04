@@ -50,6 +50,7 @@ public static class Defaults
         MinFinnhubRequestSpacingSeconds = 2,
         MinTwelveDataRequestSpacingSeconds = 15,
         NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+        DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
         NewsFeedUrl = DefaultNewsFeedUrl,
         NewsRefreshMinutes = 15,
         EnableFloatingGraphs = true,
