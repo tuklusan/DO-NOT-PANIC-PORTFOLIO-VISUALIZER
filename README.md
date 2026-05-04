@@ -128,6 +128,21 @@ The active documentation set has been intentionally reduced to a small core:
 - `build/vm/VM_OPERATIONS_RUNBOOK.md` - repeatable SSH-first remote Windows UX validation workflow using PortfolioSaver.VmAgent and WinAppDriver in the interactive session
 - `build/vm/test-secrets.json` - ignored local-only remote-test secret overlay for API keys, including DeepSeek, when you need live remote validation
 
+## Remote Harness Policy
+
+The current remote Windows validation harness is now the pinned supported approach:
+
+- local green tests first
+- `build/publish-safe-temp.ps1`
+- `build/vm/Push-VmWorkspace.ps1`
+- agent-based interactive UX validation through `PortfolioSaver.VmAgent`
+
+This harness is considered **locked in** for current development work.
+Do not spend time re-optimizing or re-architecting the working harness glue unless:
+
+- it is broken, or
+- a new product requirement cannot be met with the current flow
+
 ## License
 
 This project is licensed under the **MIT LICENSE**.

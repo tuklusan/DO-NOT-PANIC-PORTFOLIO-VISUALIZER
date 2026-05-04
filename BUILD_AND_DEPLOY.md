@@ -123,6 +123,21 @@ The remote harness uploads this ignored file when present, applies the values to
 - Only copy the `.scr` to the Windows screensaver location if legacy support is explicitly required.
 - If legacy support is installed, verify Screen Saver Settings still lists `PortfolioSaver.Screensaver`.
 
+## Remote validation policy
+
+The current remote Windows UX harness is the supported baseline and should be treated as frozen working infrastructure:
+
+1. run local tests
+2. publish with `build\publish-safe-temp.ps1`
+3. push with `build\vm\Push-VmWorkspace.ps1`
+4. run remote interactive UX validation through `PortfolioSaver.VmAgent`
+
+Do not try to optimize the current harness glue just because another path looks cleaner on paper.
+Only change the harness when:
+
+- the current path is broken, or
+- a concrete new validation requirement cannot be satisfied by the existing agent-based flow
+
 ## Installer sandbox smoke test
 
 1. Double-click `build\sandbox\PortfolioSaverInstallerTest.wsb`.

@@ -14,6 +14,24 @@ This flow is intentionally designed to work for either:
 
 It does **not** depend on hypervisor features, shared folders, `VBoxManage`, or guest-control APIs.
 
+## Harness lock
+
+This agent-based SSH/SFTP harness is now the canonical supported workflow.
+
+Use it as-is:
+
+- local test/build validation
+- safe-temp publish
+- SSH/SFTP workspace push
+- `PortfolioSaver.VmAgent` interactive desktop execution
+- result pullback over SFTP
+
+Do **not** treat the harness glue itself as an optimization target during normal feature work.
+Only revisit the harness when:
+
+- the current flow is broken, or
+- a specific new requirement cannot be met with the current mechanism
+
 ## Product posture
 
 - Primary product host: `PortfolioSaver.Desktop`

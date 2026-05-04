@@ -189,7 +189,13 @@
                                                      ],
                                  "latest_remote_build_summary":  "C:\\vmharness\\portfolio-saver\\results\\buildtest-20260503-152105.json",
                                  "interactive_launch_method":  "Invoke-VmBuildTest.ps1 starts PortfolioSaver.VmAgent.exe in session 1 with PsExec, waits for agent-status.json, then queues a UX command JSON under commands\\ that the agent executes inside the interactive desktop session while supervising WinAppDriver.",
-                                 "latest_full_ux_result":  "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526"
+                                 "latest_full_ux_result":  "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526",
+                                 "harness_policy":  "locked",
+                                 "harness_policy_notes":  [
+                                                              "The current SSH/SFTP plus PortfolioSaver.VmAgent desktop-session harness is the canonical supported workflow.",
+                                                              "Do not re-optimize or re-architect the working harness glue during normal feature work.",
+                                                              "Change the harness only when the current path is broken or a concrete new validation requirement cannot be met with the existing flow."
+                                                          ]
                              },
     "pending_next_build_issues":  [
                                       {
@@ -300,6 +306,7 @@
                                                 "Use the safe-temp build/publish scripts for repeatable validation rather than ad-hoc repo-path publish commands.",
                                                 "Treat the remote target as a generic Windows machine so the same harness can move from a VM to a physical PC without orchestration changes.",
                                                 "Let PortfolioSaver.VmAgent own interactive-session automation instead of attempting to launch UX runs directly through SSH-driven PowerShell.",
-                                                "Use build/vm/test-secrets.json for remote live validation secrets instead of persisting any API keys into plaintext settings.json."
+                                                "Use build/vm/test-secrets.json for remote live validation secrets instead of persisting any API keys into plaintext settings.json.",
+                                                "Treat the current agent-based remote harness glue as locked unless it breaks or a new validation requirement forces a targeted change."
                                             ]
 }
