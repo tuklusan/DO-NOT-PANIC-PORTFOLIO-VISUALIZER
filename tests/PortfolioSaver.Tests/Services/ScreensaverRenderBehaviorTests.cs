@@ -1,6 +1,7 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Text.RegularExpressions;
+using System.Windows;
 using System.Windows.Media;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Models;
@@ -267,6 +268,130 @@ public sealed class ScreensaverRenderBehaviorTests
             applyQuoteMethod.Invoke(control, [graph]);
 
             Assert.Equal(1, graph.FlashSequence);
+        });
+    }
+
+    [Fact]
+    public void ApplyQuoteToGraph_PositiveRefreshMovesGraphToTopEdge()
+    {
+        RunOnSta(() =>
+        {
+            ScreensaverSceneControl control = new()
+            {
+                Width = 800,
+                Height = 600
+            };
+            control.Measure(new Size(800, 600));
+            control.Arrange(new Rect(0, 0, 800, 600));
+            control.UpdateLayout();
+
+            FloatingGraphViewModel graph = new()
+            {
+                Symbol = "AAPL",
+                LastText = "190.00",
+                ChangeText = "+0.50%",
+                Width = 140,
+                Height = 84,
+                X = 240,
+                Y = 260,
+                VelocityY = -7,
+                IsVisible = true
+            };
+
+            Dictionary<string, QuoteSnapshot> quotes = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["AAPL"] = new QuoteSnapshot
+                {
+                    Symbol = "AAPL",
+                    Last = 191m,
+                    ChangePercent = 1.25m,
+                    FetchTimestampUtc = DateTimeOffset.UtcNow,
+                    IsStale = false
+                }
+            };
+
+            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+                "_latestQuotes",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_latestQuotes field not found.");
+            latestQuotesField.SetValue(control, quotes);
+
+            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+                "ApplyQuoteToGraph",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
+            applyQuoteMethod.Invoke(control, [graph]);
+
+            MethodInfo boundsMethod = typeof(ScreensaverSceneControl).GetMethod(
+                "GetGraphMotionBounds",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("GetGraphMotionBounds method not found.");
+            Rect bounds = Assert.IsType<Rect>(boundsMethod.Invoke(control, []));
+
+            Assert.Equal(bounds.Top, graph.Y);
+            Assert.True(graph.VelocityY > 0d);
+        });
+    }
+
+    [Fact]
+    public void ApplyQuoteToGraph_NegativeRefreshMovesGraphToBottomEdge()
+    {
+        RunOnSta(() =>
+        {
+            ScreensaverSceneControl control = new()
+            {
+                Width = 800,
+                Height = 600
+            };
+            control.Measure(new Size(800, 600));
+            control.Arrange(new Rect(0, 0, 800, 600));
+            control.UpdateLayout();
+
+            FloatingGraphViewModel graph = new()
+            {
+                Symbol = "AAPL",
+                LastText = "190.00",
+                ChangeText = "+0.50%",
+                Width = 140,
+                Height = 84,
+                X = 240,
+                Y = 120,
+                VelocityY = 9,
+                IsVisible = true
+            };
+
+            Dictionary<string, QuoteSnapshot> quotes = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["AAPL"] = new QuoteSnapshot
+                {
+                    Symbol = "AAPL",
+                    Last = 188m,
+                    ChangePercent = -1.25m,
+                    FetchTimestampUtc = DateTimeOffset.UtcNow,
+                    IsStale = false
+                }
+            };
+
+            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+                "_latestQuotes",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_latestQuotes field not found.");
+            latestQuotesField.SetValue(control, quotes);
+
+            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+                "ApplyQuoteToGraph",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
+            applyQuoteMethod.Invoke(control, [graph]);
+
+            MethodInfo boundsMethod = typeof(ScreensaverSceneControl).GetMethod(
+                "GetGraphMotionBounds",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("GetGraphMotionBounds method not found.");
+            Rect bounds = Assert.IsType<Rect>(boundsMethod.Invoke(control, []));
+
+            Assert.Equal(bounds.Bottom - graph.Height, graph.Y);
+            Assert.True(graph.VelocityY < 0d);
         });
     }
 
@@ -1083,6 +1208,9 @@ public sealed class ScreensaverRenderBehaviorTests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 }
+
+
+
 
 
 

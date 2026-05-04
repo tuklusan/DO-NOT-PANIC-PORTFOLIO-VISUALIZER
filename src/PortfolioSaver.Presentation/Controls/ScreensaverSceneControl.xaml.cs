@@ -1506,6 +1506,25 @@ public partial class ScreensaverSceneControl : UserControl
         ApplySpriteRect(sprite, clamped);
     }
 
+    private void ApplyRefreshMotionCue(FloatingGraphViewModel graph, decimal? percent)
+    {
+        if (percent is null || percent == 0m)
+            return;
+
+        Rect bounds = GetGraphMotionBounds();
+        if (bounds == Rect.Empty)
+            return;
+
+        double inwardVelocity = Math.Max(18d, Math.Abs(graph.VelocityY));
+        double targetY = percent > 0m
+            ? bounds.Top
+            : Math.Max(bounds.Top, bounds.Bottom - Math.Max(1d, graph.Height));
+
+        graph.Y = targetY;
+        graph.VelocityY = percent > 0m ? inwardVelocity : -inwardVelocity;
+        ClampSpriteToBounds(graph, bounds);
+    }
+
     private void ClampSpritesToSafeBounds()
     {
         Rect graphBounds = GetGraphMotionBounds();
@@ -2005,7 +2024,10 @@ public partial class ScreensaverSceneControl : UserControl
         graph.QuoteUpdateToken = quoteUpdateToken;
 
         if (hadPriorSymbol && (valueChanged || updateTokenChanged) && !string.IsNullOrWhiteSpace(lastText))
+        {
+            ApplyRefreshMotionCue(graph, percent);
             graph.TriggerCardFlash(changeBrush);
+        }
     }
 
     private bool IsQuoteBeyondStaleThreshold(QuoteSnapshot quote)
