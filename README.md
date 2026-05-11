@@ -137,6 +137,15 @@ The current remote Windows validation harness is now the pinned supported approa
 - `build/vm/Push-VmWorkspace.ps1`
 - agent-based interactive UX validation through `PortfolioSaver.VmAgent`
 
+The current known-good clean proof path is:
+
+- session-1 `PortfolioSaver.VmAgent`
+- `Guest-UxDeepExercise.ps1` launched by the agent inside the interactive desktop
+- config window discovery by process-bound UI Automation
+- desktop fullscreen entry triggered through the `ViewFullScreenMenuItem` automation hook
+- fullscreen validation by comparing live window bounds against the virtual screen
+- result bundle pullback from `build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-154444`
+
 This harness is considered **locked in** for current development work.
 Do not spend time re-optimizing or re-architecting the working harness glue unless:
 

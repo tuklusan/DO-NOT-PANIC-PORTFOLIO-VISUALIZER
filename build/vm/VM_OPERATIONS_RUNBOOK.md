@@ -192,6 +192,27 @@ This is the key behavior that finally worked reliably.
 9. The host polls the summary file until `FinishedAt` appears.
 10. The host pulls the complete result bundle back over SFTP.
 
+## Current known-good proof markers
+
+The first fully re-proven clean agent run after the fullscreen and config-discovery fixes is:
+
+- `build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-154444`
+
+That run completed with:
+
+- `ConfigPhaseStatus = Completed`
+- `DesktopPhaseStatus = Completed`
+- `ConfigVersionCheck = Passed`
+- `DesktopVersionCheck = Passed`
+- `FullScreenToggleStatus = Completed`
+
+The harness details that made this pass reliable are now considered part of the locked workflow:
+
+- config window lookup is process-bound and may use the process main window handle directly
+- the desktop shell exposes `DesktopMainWindow` automation metadata with semantic-version help text
+- the desktop fullscreen action exposes `ViewFullScreenMenuItem` for direct UI Automation invocation
+- `F11` remains only a fallback if the automation invoke path is unavailable
+
 ## Important operational notes
 
 ### Why we moved away from direct interactive PowerShell launch
@@ -239,6 +260,11 @@ Before and after each run, the harness should ensure no stale instances remain f
 - `PortfolioSaver.Screensaver`
 - `PortfolioSaver.VmAgent`
 - `WinAppDriver`
+
+Do **not** kill the remote shell owner during cleanup. In practice that means:
+
+- do not include remote `pwsh` or `powershell` in the standard stale-process kill list
+- killing the remote shell host can surface blank SSH failures that look like harness instability even when the actual app cleanup succeeded
 
 ## Expected successful summary signals
 

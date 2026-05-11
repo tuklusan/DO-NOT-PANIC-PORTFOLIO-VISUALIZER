@@ -118,17 +118,33 @@ function Focus-ProcessWindow {
     return $true
 }
 
-function Find-ConfigWindow {
-    param([int]$TimeoutSeconds = 20)
+function Get-ProcessWindowElement {
+    param(
+        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process,
+        [int]$TimeoutSeconds = 20
+    )
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     do {
+        $Process.Refresh()
+        if ($Process.MainWindowHandle -ne [IntPtr]::Zero) {
+            try {
+                $window = [System.Windows.Automation.AutomationElement]::FromHandle($Process.MainWindowHandle)
+                if ($null -ne $window) {
+                    return $window
+                }
+            }
+            catch {}
+        }
+
         $children = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
             [System.Windows.Automation.TreeScope]::Children,
             [System.Windows.Automation.Condition]::TrueCondition)
         foreach ($child in $children) {
+            if ($child.Current.ProcessId -ne $Process.Id) { continue }
             $name = [string]$child.Current.Name
-            if ($name -like '*PORTFOLIO VISUALIZER Config*') {
+            if ($name -like '*PORTFOLIO VISUALIZER Config*' -or
+                $name -like '*DO NOT PANIC PORTFOLIO VISUALIZER*') {
                 return $child
             }
         }
@@ -566,6 +582,41 @@ function Try-ParseInvariantDecimal {
     return $null
 }
 
+function Find-ConfigWindow {
+    param(
+        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process,
+        [int]$TimeoutSeconds = 20
+    )
+
+    return Get-ProcessWindowElement -Process $Process -TimeoutSeconds $TimeoutSeconds
+}
+
+function Find-DescendantByAutomationId {
+    param(
+        [Parameter(Mandatory = $true)]$Root,
+        [Parameter(Mandatory = $true)][string]$AutomationId
+    )
+
+    $condition = New-Object System.Windows.Automation.PropertyCondition(
+        [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+        $AutomationId)
+
+    return $Root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+}
+
+function Invoke-AutomationElement {
+    param([Parameter(Mandatory = $true)]$Element)
+
+    try {
+        $invokePattern = $Element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+        $invokePattern.Invoke()
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
 function Write-ReferenceSpotCheckComparison {
     param(
         [Parameter(Mandatory = $true)][string]$OutputPath,
@@ -649,9 +700,10 @@ try {
     try {
         $config = Start-Process -FilePath $configExe -PassThru
         Start-Sleep -Seconds 3
-        $window = Find-ConfigWindow -TimeoutSeconds 20
+        $window = Find-ConfigWindow -Process $config -TimeoutSeconds 20
         if ($null -eq $window) { throw 'Could not locate config window via UI Automation.' }
-        if ([string]$window.Current.Name -like '*BETA-5.5*') {
+        if ([string]$window.Current.Name -like '*BETA-5.5*' -or
+            [string]$window.Current.HelpText -like '*0.9.0-beta5.5*') {
             $summary.ConfigVersionCheck = "Passed"
         }
         else {
@@ -718,10 +770,14 @@ try {
     try {
         $desktop = Start-Process -FilePath $desktopExe -PassThru
         Start-Sleep -Seconds 5
+        $desktopWindow = Get-ProcessWindowElement -Process $desktop -TimeoutSeconds 15
+        if ($null -eq $desktopWindow) {
+            throw 'Could not locate desktop shell window via UI Automation.'
+        }
         [void](Focus-ProcessWindow -Process $desktop)
         $versionMatch = Find-ElementMetadataByProcessId `
             -ProcessId $desktop.Id `
-            -AutomationIds @('ScreensaverVersionWatermark', 'ScreensaverHostWindow', 'MainWindowTitle') `
+            -AutomationIds @('ScreensaverVersionWatermark', 'ScreensaverHostWindow', 'DesktopMainWindow', 'MainWindowTitle') `
             -NameFragments @('beta5', 'Version 0.9.0-beta', '0.9.0-beta', 'Portfolio Visualizer') `
             -TimeoutSeconds 10
         if ($null -eq $versionMatch) {
@@ -750,14 +806,24 @@ try {
 
         Start-Sleep -Seconds 1
         [void](Focus-ProcessWindow -Process $desktop)
-        try { [System.Windows.Forms.SendKeys]::SendWait('{F11}') } catch {}
-        Start-Sleep -Seconds 2
+        $fullScreenMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'ViewFullScreenMenuItem'
+        $fullScreenInvoked = $false
+        if ($null -ne $fullScreenMenuItem) {
+            $fullScreenInvoked = Invoke-AutomationElement -Element $fullScreenMenuItem
+        }
+        if (-not $fullScreenInvoked) {
+            try { [System.Windows.Forms.SendKeys]::SendWait('{F11}') } catch {}
+        }
+        $fullScreenDeadline = (Get-Date).AddSeconds(8)
+        do {
+            Start-Sleep -Milliseconds 350
+            $enteredFullScreen = Test-IsTrueFullscreen -Process $desktop
+        } while (-not $enteredFullScreen -and (Get-Date) -lt $fullScreenDeadline)
         $desktopFull = Join-Path $results 'desktop-fullscreen-entry.png'
         Capture-Screen -Path $desktopFull
         $summary.DesktopShots++
         $summary.ScreensaverShots++
         $summary.DesktopPhaseStatus = "Running"
-        $enteredFullScreen = Test-IsTrueFullscreen -Process $desktop
         if (-not $enteredFullScreen) {
             throw "Desktop shell did not enter true fullscreen; taskbar/work-area chrome appears to remain visible."
         }
@@ -765,12 +831,16 @@ try {
 
         [void](Focus-ProcessWindow -Process $desktop)
         try { [System.Windows.Forms.SendKeys]::SendWait('{ESC}') } catch {}
-        Start-Sleep -Seconds 2
+        $windowedDeadline = (Get-Date).AddSeconds(8)
+        do {
+            Start-Sleep -Milliseconds 350
+            $stillFullScreen = Test-IsTrueFullscreen -Process $desktop
+        } while ($stillFullScreen -and (Get-Date) -lt $windowedDeadline)
         $desktopWindowed = Join-Path $results 'desktop-windowed-after-esc.png'
         Capture-Screen -Path $desktopWindowed
         $summary.DesktopShots++
         $summary.ScreensaverShots++
-        if (Test-IsTrueFullscreen -Process $desktop) {
+        if ($stillFullScreen) {
             throw "Desktop shell remained in fullscreen after ESC."
         }
         $summary.FullScreenToggleStatus = "Completed"

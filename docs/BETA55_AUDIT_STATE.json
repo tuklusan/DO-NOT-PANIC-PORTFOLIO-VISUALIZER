@@ -55,8 +55,9 @@
                                                                 "powershell7_in_guest":  "installed-machine-wide",
                                                                 "guest_workspace_root":  "C:\\vmharness\\portfolio-saver",
                                                                 "proof_artifacts":  [
-                                                                                        "build/vm/artifacts/host-runs/ssh-push-20260503-152101.json",
-                                                                                        "build/vm/artifacts/host-runs/ssh-push-20260503-152516.json"
+                                                                                        "build/vm/artifacts/host-runs/ssh-push-20260511-152009.json",
+                                                                                        "build/vm/artifacts/host-runs/ssh-push-20260511-154357.json",
+                                                                                        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-154444"
                                                                                     ],
                                                                 "notes":  [
                                                                               "The guest now resolves bare dotnet to 10.0.203 from C:\\Program Files\\dotnet.",
@@ -68,7 +69,8 @@
                                                                               "The guest secret-overlay flow now supports DeepSeek alongside the existing market-data providers.",
                                                                               "Latest clean direct-agent UX validation completed on the refreshed publish in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526.",
                                                                               "Guest-UxDeepExercise.ps1 now explicitly focuses the desktop window before F11/ESC and verifies true fullscreen by comparing the window bounds against the virtual screen, rather than trusting the toggle blindly.",
-                                                                              "A fresh 2026-05-11 post-fix remote rerun was attempted, but the guest validation flow is currently blocked by an intermittent config-screen GDI+ capture failure and a separate SSH push hang before a new clean bundle could be recorded."
+                                                                              "A fresh clean direct-agent UX validation completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-154444.",
+                                                                              "The clean 2026-05-11 proof used process-bound config window discovery plus DesktopMainWindow and ViewFullScreenMenuItem automation anchors to avoid prior UI Automation ambiguity."
                                                                           ]
                                                             }
                                          },
@@ -191,8 +193,8 @@
                                                          "queued remote desktop UX cycle with command acknowledgement and live summary updates"
                                                      ],
                                  "latest_remote_build_summary":  "C:\\vmharness\\portfolio-saver\\results\\buildtest-20260503-152105.json",
-                                 "interactive_launch_method":  "Invoke-VmBuildTest.ps1 starts PortfolioSaver.VmAgent.exe in session 1 with PsExec, waits for agent-status.json, then queues a UX command JSON under commands\\ that the agent executes inside the interactive desktop session while supervising WinAppDriver.",
-                                 "latest_full_ux_result":  "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526",
+                                 "interactive_launch_method":  "Push-VmWorkspace.ps1 stages the repo and publish bundle, Guest-ConfigureDesktopAutomation.ps1 prepares the desktop account, the host starts PortfolioSaver.VmAgent.exe in session 1 with PsExec, waits for agent-status.json, then queues a UX command JSON under commands\\ that the agent executes inside the interactive desktop session while supervising WinAppDriver and invoking fullscreen through the ViewFullScreenMenuItem automation hook.",
+                                 "latest_full_ux_result":  "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-154444",
                                  "harness_policy":  "locked",
                                  "harness_policy_notes":  [
                                                               "The current SSH/SFTP plus PortfolioSaver.VmAgent desktop-session harness is the canonical supported workflow.",

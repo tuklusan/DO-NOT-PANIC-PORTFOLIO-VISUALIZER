@@ -1,6 +1,8 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Threading;
 using PortfolioSaver.Config.ViewModels;
+using PortfolioSaver.Shared;
 
 namespace PortfolioSaver.Config.Windows;
 
@@ -11,6 +13,9 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        AutomationProperties.SetAutomationId(this, "ConfigMainWindow");
+        AutomationProperties.SetName(this, Title);
+        AutomationProperties.SetHelpText(this, PortfolioVersion.SemanticVersion);
 
         if (DataContext is MainWindowViewModel viewModel)
             viewModel.CloseRequested += OnCloseRequested;

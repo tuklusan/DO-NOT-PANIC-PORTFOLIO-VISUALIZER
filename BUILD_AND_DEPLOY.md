@@ -132,6 +132,14 @@ The current remote Windows UX harness is the supported baseline and should be tr
 3. push with `build\vm\Push-VmWorkspace.ps1`
 4. run remote interactive UX validation through `PortfolioSaver.VmAgent`
 
+Current known-good clean proof details:
+
+1. `PortfolioSaver.VmAgent` must be started in session `1`
+2. the config app is discovered through process-bound UI Automation, not by title-only desktop scans
+3. fullscreen is entered through the `ViewFullScreenMenuItem` automation hook, with `F11` only as fallback
+4. fullscreen is considered valid only when the live desktop window bounds match the virtual screen
+5. a fully green 20-minute proof was recorded in `build\vm\artifacts\ssh-runs\ux-deep-ssh-20260511-154444`
+
 Do not try to optimize the current harness glue just because another path looks cleaner on paper.
 Only change the harness when:
 

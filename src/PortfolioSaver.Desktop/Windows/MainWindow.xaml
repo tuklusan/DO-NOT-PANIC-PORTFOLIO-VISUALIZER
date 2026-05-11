@@ -22,7 +22,11 @@
                 <MenuItem Header="E_xit" Click="OnExitClick" />
             </MenuItem>
             <MenuItem Header="_View">
-                <MenuItem Header="_Full Screen" InputGestureText="F11" Click="OnFullScreenClick" />
+                <MenuItem x:Name="FullScreenMenuItem"
+                          Header="_Full Screen"
+                          InputGestureText="F11"
+                          AutomationProperties.AutomationId="ViewFullScreenMenuItem"
+                          Click="OnFullScreenClick" />
             </MenuItem>
             <MenuItem Header="_Options">
                 <MenuItem Header="_Settings" Click="OnSettingsClick" />

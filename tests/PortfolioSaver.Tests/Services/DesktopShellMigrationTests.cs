@@ -35,6 +35,7 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("Header=\"_Settings\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"_Help\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"_About\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.AutomationId=\"ViewFullScreenMenuItem\"", xaml, StringComparison.Ordinal);
         Assert.Contains("PortfolioSaver.Presentation", xaml, StringComparison.Ordinal);
         Assert.Contains("Width=\"1180\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Height=\"720\"", xaml, StringComparison.Ordinal);
@@ -52,6 +53,8 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("if (e.Key == Key.Escape && _isFullScreen)", code, StringComparison.Ordinal);
         Assert.Contains("SystemParameters.VirtualScreenWidth", code, StringComparison.Ordinal);
         Assert.Contains("SystemParameters.VirtualScreenHeight", code, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetAutomationId(this, \"DesktopMainWindow\")", code, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetHelpText(this, PortfolioVersion.SemanticVersion)", code, StringComparison.Ordinal);
     }
 
     [Fact]

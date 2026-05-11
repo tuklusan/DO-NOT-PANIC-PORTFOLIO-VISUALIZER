@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Automation;
 using PortfolioSaver.Shared;
 using SettingsWindow = PortfolioSaver.Config.Windows.MainWindow;
 
@@ -20,6 +21,14 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        AutomationProperties.SetAutomationId(this, "DesktopMainWindow");
+        AutomationProperties.SetName(this, PortfolioVersion.DisplayName);
+        AutomationProperties.SetHelpText(this, PortfolioVersion.SemanticVersion);
+        if (FullScreenMenuItem is not null)
+        {
+            AutomationProperties.SetName(FullScreenMenuItem, "Full Screen");
+            AutomationProperties.SetHelpText(FullScreenMenuItem, "Enter or exit fullscreen mode");
+        }
     }
 
     public void ToggleFullScreen()

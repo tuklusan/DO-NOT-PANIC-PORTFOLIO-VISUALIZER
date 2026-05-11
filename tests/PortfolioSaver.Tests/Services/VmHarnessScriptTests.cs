@@ -114,7 +114,11 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("ConfigVersionCheck", script, StringComparison.Ordinal);
         Assert.Contains("ScreensaverVersionCheck", script, StringComparison.Ordinal);
         Assert.Contains("ScreensaverHostWindow", script, StringComparison.Ordinal);
+        Assert.Contains("DesktopMainWindow", script, StringComparison.Ordinal);
         Assert.Contains("MainWindowTitleFallback", script, StringComparison.Ordinal);
+        Assert.Contains("ViewFullScreenMenuItem", script, StringComparison.Ordinal);
+        Assert.Contains("Get-ProcessWindowElement", script, StringComparison.Ordinal);
+        Assert.Contains("Invoke-AutomationElement", script, StringComparison.Ordinal);
     }
 
     [Fact]
