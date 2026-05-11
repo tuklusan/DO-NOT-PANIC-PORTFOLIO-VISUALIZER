@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Reflection;
+using System.Threading.Tasks;
 using System.Windows.Threading;
 using PortfolioSaver.Config.ViewModels;
 using PortfolioSaver.Core.Models;
@@ -62,6 +63,27 @@ public sealed class MainWindowViewModelValidationTests
         Assert.Equal("Validate", vm.PrimaryButtonText);
         Assert.Equal("fingerprint", GetPrivateField<string>(vm, "_validatedFingerprint"));
         Assert.True(GetPrivateField<bool>(vm, "_allowClose"));
+    }
+
+    [Fact]
+    public async Task OnStateTimerTickAsync_DoesNotTriggerBackgroundSymbolValidation()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+
+        TickerItemEditorViewModel ticker = new(new TickerItem { Symbol = "AAPL", Enabled = true });
+        ticker.ValidationState = SymbolValidationState.Unknown;
+        ticker.ValidationMessage = "Pending validation";
+        TickerGroupEditorViewModel group = new();
+        group.Tickers.Clear();
+        group.Tickers.Add(ticker);
+        vm.Groups.Clear();
+        vm.Groups.Add(group);
+
+        Task task = InvokePrivate<Task>(vm, "OnStateTimerTickAsync", []);
+        await task;
+
+        Assert.Equal(SymbolValidationState.Unknown, ticker.ValidationState);
+        Assert.Equal("Pending validation", ticker.ValidationMessage);
     }
 
     private static MainWindowViewModel CreateIsolatedViewModel()

@@ -35,11 +35,9 @@ public sealed class MainWindowViewModel : BindableBase
     private bool _isApplying;
     private bool _isValidated;
     private bool _isValidationClosePending;
-    private bool _isRealtimeValidationRunning;
     private bool _allowClose;
     private bool _isNetworkAvailable;
     private string _validatedFingerprint = string.Empty;
-    private string _lastRealtimeSymbolsFingerprint = string.Empty;
     private int _validationCloseCountdownSeconds;
     private AppSettings? _pendingValidatedSettings;
 
@@ -422,7 +420,7 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OnStateTimerTickAsync()
     {
         UpdateConnectivityState();
-        if (!IsConfigActive || _isRealtimeValidationRunning)
+        if (!IsConfigActive)
             return;
 
         AppSettings candidateSettings = BuildCandidateSettings();
@@ -432,26 +430,6 @@ public sealed class MainWindowViewModel : BindableBase
             string currentFingerprint = BuildFingerprint(candidateSettings);
             if (!string.Equals(currentFingerprint, _validatedFingerprint, StringComparison.Ordinal))
                 InvalidateValidationState("Configuration changed. Click Validate.");
-        }
-
-        List<string> symbols = GetEnabledSymbols(candidateSettings).ToList();
-        string fingerprint = string.Join("|", symbols.Select(SymbolProfileHeuristics.Normalize).OrderBy(symbol => symbol, StringComparer.OrdinalIgnoreCase));
-        if (string.Equals(fingerprint, _lastRealtimeSymbolsFingerprint, StringComparison.Ordinal))
-            return;
-
-        _lastRealtimeSymbolsFingerprint = fingerprint;
-        _isRealtimeValidationRunning = true;
-        try
-        {
-            await ValidateSymbolsAgainstYahooAsync(BuildCandidateSettings(), symbols);
-        }
-        catch
-        {
-            MarkSymbolStates(symbols, SymbolValidationState.Unknown, "Validation unavailable");
-        }
-        finally
-        {
-            _isRealtimeValidationRunning = false;
         }
     }
 
