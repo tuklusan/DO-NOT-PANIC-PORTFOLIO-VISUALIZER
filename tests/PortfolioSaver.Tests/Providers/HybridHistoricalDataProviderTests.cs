@@ -34,6 +34,26 @@ public sealed class HybridHistoricalDataProviderTests
         Assert.DoesNotContain("AAPL", handler.ChartRequestSymbols, StringComparer.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task GetHistoryAsync_UsesIntradayYahooIntervalForOneDayGraphs()
+    {
+        HistoricalFlowHandler handler = new();
+        using HttpClient httpClient = new(handler);
+        FakeHistoricalCache cache = new();
+        HybridHistoricalDataProvider provider = new(
+            cache,
+            httpClient: httpClient,
+            finnhubApiKey: string.Empty,
+            twelveDataApiKey: string.Empty,
+            cacheFreshness: TimeSpan.FromHours(12));
+
+        IReadOnlyList<TickerHistorySnapshot> snapshots = await provider.GetHistoryAsync(["AAPL"], lookbackDays: 1);
+
+        TickerHistorySnapshot snapshot = Assert.Single(snapshots);
+        Assert.True(snapshot.Points.Count >= 2);
+        Assert.Contains(handler.SparkUrls, url => url.Contains("interval=1h", StringComparison.OrdinalIgnoreCase));
+    }
+
     private sealed class FakeHistoricalCache : IHistoricalCacheService
     {
         private readonly Dictionary<string, TickerHistorySnapshot> _store = new(StringComparer.OrdinalIgnoreCase);
@@ -56,6 +76,7 @@ public sealed class HybridHistoricalDataProviderTests
         public int SparkRequestCount { get; private set; }
         public int ChartRequestCount { get; private set; }
         public List<string> ChartRequestSymbols { get; } = [];
+        public List<string> SparkUrls { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -84,8 +105,10 @@ public sealed class HybridHistoricalDataProviderTests
             if (url.Contains("/v8/finance/spark", StringComparison.OrdinalIgnoreCase))
             {
                 SparkRequestCount++;
-                long ts1 = DateTimeOffset.UtcNow.AddDays(-2).ToUnixTimeSeconds();
-                long ts2 = DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds();
+                SparkUrls.Add(url);
+                long ts1 = DateTimeOffset.UtcNow.AddHours(-20).ToUnixTimeSeconds();
+                long ts2 = DateTimeOffset.UtcNow.AddHours(-10).ToUnixTimeSeconds();
+                long ts3 = DateTimeOffset.UtcNow.AddHours(-6).ToUnixTimeSeconds();
                 string payload =
                     $$"""
                     {
@@ -95,8 +118,8 @@ public sealed class HybridHistoricalDataProviderTests
                             "symbol": "AAPL",
                             "response": [
                               {
-                                "timestamp": [{{ts1}},{{ts2}}],
-                                "indicators": { "quote": [ { "close": [190.00,191.25] } ] }
+                                "timestamp": [{{ts1}},{{ts2}},{{ts3}}],
+                                "indicators": { "quote": [ { "close": [190.00,191.25,192.10] } ] }
                               }
                             ]
                           }

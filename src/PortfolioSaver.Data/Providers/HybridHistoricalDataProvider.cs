@@ -223,8 +223,11 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
             try
             {
                 string symbolsCsv = string.Join(",", batch.Select(Uri.EscapeDataString));
-                int rangeDays = Math.Max(7, lookbackDays);
-                string url = $"https://query1.finance.yahoo.com/v8/finance/spark?symbols={symbolsCsv}&range={rangeDays}d&interval=1d&includePrePost=false";
+                (string interval, int rangeDays) = GetYahooRequestShape(lookbackDays);
+                string range = interval == "1h"
+                    ? $"{Math.Max(2, rangeDays)}d"
+                    : $"{Math.Max(7, rangeDays)}d";
+                string url = $"https://query1.finance.yahoo.com/v8/finance/spark?symbols={symbolsCsv}&range={range}&interval={interval}&includePrePost=false";
                 using HttpResponseMessage response = await _yahooSessionService.GetAsync(url, cancellationToken);
                 response.EnsureSuccessStatusCode();
 
@@ -344,8 +347,9 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
     private async Task<TickerHistorySnapshot> FetchFromYahooFinanceAsync(string symbol, int lookbackDays, CancellationToken cancellationToken)
     {
         DateTimeOffset end = DateTimeOffset.UtcNow;
-        DateTimeOffset start = end.AddDays(-lookbackDays - 5);
-        string url = $"https://query1.finance.yahoo.com/v8/finance/chart/{Uri.EscapeDataString(symbol)}?interval=1d&includePrePost=false&period1={start.ToUnixTimeSeconds()}&period2={end.ToUnixTimeSeconds()}";
+        (string interval, int rangeDays) = GetYahooRequestShape(lookbackDays);
+        DateTimeOffset start = end.AddDays(-Math.Max(rangeDays, lookbackDays + 1));
+        string url = $"https://query1.finance.yahoo.com/v8/finance/chart/{Uri.EscapeDataString(symbol)}?interval={interval}&includePrePost=false&period1={start.ToUnixTimeSeconds()}&period2={end.ToUnixTimeSeconds()}";
 
         using HttpResponseMessage response = await _yahooSessionService.GetAsync(url, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -421,6 +425,11 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
         snapshot = BuildSnapshot(symbol, lookbackDays, points);
         return snapshot.Points.Count > 0;
     }
+
+    private static (string Interval, int RangeDays) GetYahooRequestShape(int lookbackDays)
+        => lookbackDays <= 1
+            ? ("1h", 2)
+            : ("1d", Math.Max(7, lookbackDays));
 
     private static List<HistoricalPricePoint> ExtractSparkPoints(JsonElement responseElement)
     {

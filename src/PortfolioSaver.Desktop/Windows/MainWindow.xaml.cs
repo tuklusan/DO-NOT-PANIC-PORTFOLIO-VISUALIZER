@@ -12,6 +12,10 @@ public partial class MainWindow : Window
     private WindowStyle _previousWindowStyle;
     private ResizeMode _previousResizeMode;
     private bool _previousTopmost;
+    private double _previousLeft;
+    private double _previousTop;
+    private double _previousWidth;
+    private double _previousHeight;
 
     public MainWindow()
     {
@@ -41,10 +45,18 @@ public partial class MainWindow : Window
         _previousWindowStyle = WindowStyle;
         _previousResizeMode = ResizeMode;
         _previousTopmost = Topmost;
+        _previousLeft = Left;
+        _previousTop = Top;
+        _previousWidth = Width;
+        _previousHeight = Height;
 
+        WindowState = WindowState.Normal;
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
-        WindowState = WindowState.Maximized;
+        Left = SystemParameters.VirtualScreenLeft;
+        Top = SystemParameters.VirtualScreenTop;
+        Width = SystemParameters.VirtualScreenWidth;
+        Height = SystemParameters.VirtualScreenHeight;
         Topmost = true;
         _isFullScreen = true;
     }
@@ -59,6 +71,10 @@ public partial class MainWindow : Window
         Topmost = _previousTopmost;
         ResizeMode = _previousResizeMode;
         WindowStyle = _previousWindowStyle;
+        Left = _previousLeft;
+        Top = _previousTop;
+        Width = _previousWidth;
+        Height = _previousHeight;
         WindowState = _previousWindowState;
         _isFullScreen = false;
     }

@@ -8,6 +8,7 @@ internal static class QuoteRefreshPolicy
 {
     internal const int RecoveryRefreshSeconds = 60;
     internal const int MinimumSteadyStateRefreshSeconds = 300;
+    internal const int MaximumPollingSeconds = 60;
     private static readonly TimeSpan MinimumHardStaleThreshold = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan HardStaleGrace = TimeSpan.FromMinutes(2);
 
@@ -27,6 +28,14 @@ internal static class QuoteRefreshPolicy
         return configured < TimeSpan.FromSeconds(MinimumSteadyStateRefreshSeconds)
             ? TimeSpan.FromSeconds(MinimumSteadyStateRefreshSeconds)
             : configured;
+    }
+
+    public static TimeSpan GetRefreshPollingInterval(AppSettings settings, DateTimeOffset nowUtc)
+    {
+        TimeSpan effective = GetEffectiveRefreshWindow(settings, nowUtc);
+        return effective <= TimeSpan.FromSeconds(MaximumPollingSeconds)
+            ? effective
+            : TimeSpan.FromSeconds(MaximumPollingSeconds);
     }
 
     public static TimeSpan GetHardStaleThreshold(AppSettings settings, DateTimeOffset nowUtc)

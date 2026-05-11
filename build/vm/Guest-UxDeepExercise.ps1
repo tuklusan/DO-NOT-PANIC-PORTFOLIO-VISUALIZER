@@ -15,6 +15,23 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
+Add-Type -AssemblyName Microsoft.VisualBasic
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class NativeWindowBounds {
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [DllImport("user32.dll")]
+    public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+}
+"@
 
 $root = $RootPath
 $configExe = Join-Path $root 'publish\config\PortfolioSaver.Config.exe'
@@ -37,6 +54,68 @@ function Capture-Screen {
     $bitmap.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
     $graphics.Dispose()
     $bitmap.Dispose()
+}
+
+function Get-WindowRectangle {
+    param([Parameter(Mandatory=$true)][System.Diagnostics.Process]$Process)
+
+    $Process.Refresh()
+    if ($Process.MainWindowHandle -eq [IntPtr]::Zero) {
+        return $null
+    }
+
+    $rect = New-Object NativeWindowBounds+RECT
+    if (-not [NativeWindowBounds]::GetWindowRect($Process.MainWindowHandle, [ref]$rect)) {
+        return $null
+    }
+
+    return [pscustomobject]@{
+        Left = $rect.Left
+        Top = $rect.Top
+        Width = ($rect.Right - $rect.Left)
+        Height = ($rect.Bottom - $rect.Top)
+    }
+}
+
+function Test-IsTrueFullscreen {
+    param([Parameter(Mandatory=$true)][System.Diagnostics.Process]$Process)
+
+    $rect = Get-WindowRectangle -Process $Process
+    if ($null -eq $rect) {
+        return $false
+    }
+
+    $screen = [System.Windows.Forms.SystemInformation]::VirtualScreen
+    return [Math]::Abs($rect.Left - $screen.Left) -le 1 -and
+           [Math]::Abs($rect.Top - $screen.Top) -le 1 -and
+           [Math]::Abs($rect.Width - $screen.Width) -le 2 -and
+           [Math]::Abs($rect.Height - $screen.Height) -le 2
+}
+
+function Focus-ProcessWindow {
+    param([Parameter(Mandatory=$true)][System.Diagnostics.Process]$Process)
+
+    $Process.Refresh()
+    if ($Process.MainWindowHandle -eq [IntPtr]::Zero) {
+        return $false
+    }
+
+    try {
+        [Microsoft.VisualBasic.Interaction]::AppActivate($Process.Id) | Out-Null
+        Start-Sleep -Milliseconds 300
+    }
+    catch {}
+
+    try {
+        $window = [System.Windows.Automation.AutomationElement]::FromHandle($Process.MainWindowHandle)
+        if ($null -ne $window) {
+            $window.SetFocus()
+            Start-Sleep -Milliseconds 300
+        }
+    }
+    catch {}
+
+    return $true
 }
 
 function Find-ConfigWindow {
@@ -639,6 +718,7 @@ try {
     try {
         $desktop = Start-Process -FilePath $desktopExe -PassThru
         Start-Sleep -Seconds 5
+        [void](Focus-ProcessWindow -Process $desktop)
         $versionMatch = Find-ElementMetadataByProcessId `
             -ProcessId $desktop.Id `
             -AutomationIds @('ScreensaverVersionWatermark', 'ScreensaverHostWindow', 'MainWindowTitle') `
@@ -669,6 +749,7 @@ try {
         }
 
         Start-Sleep -Seconds 1
+        [void](Focus-ProcessWindow -Process $desktop)
         try { [System.Windows.Forms.SendKeys]::SendWait('{F11}') } catch {}
         Start-Sleep -Seconds 2
         $desktopFull = Join-Path $results 'desktop-fullscreen-entry.png'
@@ -676,14 +757,22 @@ try {
         $summary.DesktopShots++
         $summary.ScreensaverShots++
         $summary.DesktopPhaseStatus = "Running"
+        $enteredFullScreen = Test-IsTrueFullscreen -Process $desktop
+        if (-not $enteredFullScreen) {
+            throw "Desktop shell did not enter true fullscreen; taskbar/work-area chrome appears to remain visible."
+        }
         Write-SummaryFiles
 
+        [void](Focus-ProcessWindow -Process $desktop)
         try { [System.Windows.Forms.SendKeys]::SendWait('{ESC}') } catch {}
         Start-Sleep -Seconds 2
         $desktopWindowed = Join-Path $results 'desktop-windowed-after-esc.png'
         Capture-Screen -Path $desktopWindowed
         $summary.DesktopShots++
         $summary.ScreensaverShots++
+        if (Test-IsTrueFullscreen -Process $desktop) {
+            throw "Desktop shell remained in fullscreen after ESC."
+        }
         $summary.FullScreenToggleStatus = "Completed"
         Write-SummaryFiles
 

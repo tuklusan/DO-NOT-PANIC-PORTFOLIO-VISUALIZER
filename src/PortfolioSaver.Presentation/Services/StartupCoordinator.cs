@@ -457,17 +457,28 @@ public sealed class StartupCoordinator
         string? latestUpdatedSymbol = null;
         DateTimeOffset latestUpdatedFetchUtc = DateTimeOffset.MinValue;
         Dictionary<string, TimeSpan> refreshWindows = BuildRefreshWindows(settings, portfolioSymbols, benchmarkSymbols);
+        TimeSpan refreshPollingInterval = QuoteRefreshPolicy.GetRefreshPollingInterval(settings, nowUtc);
         HashSet<string> dueSymbols = orderedSymbols
             .Where(symbol => refreshWindows.TryGetValue(symbol, out TimeSpan refreshWindow) && IsRefreshDue(symbol, refreshWindow, cachedQuotes, nowUtc))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        List<string> scheduledDueSymbols = SelectDueSymbolsForPass(
+            orderedSymbols,
+            dueSymbols,
+            refreshWindows,
+            cachedQuotes,
+            nowUtc,
+            refreshPollingInterval);
 
         TraceRuntimeState(
             "QuoteRefreshPlan",
             new KeyValuePair<string, object?>("ordered_symbol_count", orderedSymbols.Count),
             new KeyValuePair<string, object?>("due_symbol_count", dueSymbols.Count),
+            new KeyValuePair<string, object?>("scheduled_due_symbol_count", scheduledDueSymbols.Count),
             new KeyValuePair<string, object?>("cached_quote_count", cachedQuotes.Count),
             new KeyValuePair<string, object?>("network_available", networkAvailable),
-            new KeyValuePair<string, object?>("due_symbols", PreviewSymbols(dueSymbols)));
+            new KeyValuePair<string, object?>("polling_interval_seconds", refreshPollingInterval.TotalSeconds),
+            new KeyValuePair<string, object?>("due_symbols", PreviewSymbols(dueSymbols)),
+            new KeyValuePair<string, object?>("scheduled_due_symbols", PreviewSymbols(scheduledDueSymbols)));
 
         if (dueSymbols.Count == 0)
         {
@@ -511,7 +522,7 @@ public sealed class StartupCoordinator
             .Select(provider => provider.Kind)
             .ToHashSet();
 
-        List<string> remainingSymbols = RotateSymbols(dueSymbols, refreshSeed)
+        List<string> remainingSymbols = RotateSymbols(scheduledDueSymbols, refreshSeed)
             .OrderBy(symbol => cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? cached) && HasUsableQuote(cached) ? 1 : 0)
             .ToList();
 
@@ -1030,7 +1041,7 @@ public sealed class StartupCoordinator
     }
 
     public static IReadOnlyList<string> GetMacroIndicatorSymbols()
-        => ["^VIX", "GC=F", "US2M", "US10Y", "DX-Y.NYB", "CL=F"];
+        => ["^VIX", "GC=F", "US2M", "US10Y", "DX-Y.NYB", "BZ=F"];
 
     private List<TapeViewModel> BuildTapeViewModels(AppSettings settings, IReadOnlyDictionary<string, QuoteSnapshot> quotes)
     {
@@ -1330,6 +1341,91 @@ public sealed class StartupCoordinator
         int bucketCount = Math.Max(1, (int)Math.Round(maxOffsetSeconds));
         int bucket = hash % bucketCount;
         return TimeSpan.FromSeconds(bucket);
+    }
+
+    private static List<string> SelectDueSymbolsForPass(
+        IReadOnlyList<string> orderedSymbols,
+        HashSet<string> dueSymbols,
+        IReadOnlyDictionary<string, TimeSpan> refreshWindows,
+        IReadOnlyDictionary<string, QuoteSnapshot> cachedQuotes,
+        DateTimeOffset nowUtc,
+        TimeSpan pollingInterval)
+    {
+        if (dueSymbols.Count == 0)
+            return [];
+
+        if (dueSymbols.Count <= MaxBatchSymbolsPerPass)
+            return orderedSymbols.Where(dueSymbols.Contains).ToList();
+
+        List<string> alwaysInclude = orderedSymbols
+            .Where(symbol => dueSymbols.Contains(symbol) && ShouldAlwaysIncludeDueSymbol(symbol))
+            .ToList();
+        HashSet<string> alwaysIncludeSet = alwaysInclude.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        HashSet<string> budgetedDueSymbols = dueSymbols
+            .Where(symbol => !alwaysIncludeSet.Contains(symbol))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (budgetedDueSymbols.Count == 0)
+            return alwaysInclude;
+
+        int targetCount = CalculateDueSymbolsPerPass(budgetedDueSymbols, refreshWindows, pollingInterval);
+        List<string> selected = orderedSymbols
+            .Where(symbol => budgetedDueSymbols.Contains(symbol))
+            .Select((symbol, index) =>
+            {
+                bool missingQuote = !cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? cached);
+                bool missingValue = missingQuote || !HasUsableQuote(cached);
+                bool stale = !missingQuote && cached!.IsStale;
+                TimeSpan refreshWindow = refreshWindows.TryGetValue(symbol, out TimeSpan configuredWindow)
+                    ? configuredWindow
+                    : pollingInterval;
+                double overdueSeconds = missingQuote
+                    ? double.MaxValue
+                    : Math.Max(0d, (nowUtc - (cached!.FetchTimestampUtc + refreshWindow)).TotalSeconds);
+                int urgencyRank = missingValue ? 0 : (stale ? 1 : 2);
+                return new
+                {
+                    Symbol = symbol,
+                    Index = index,
+                    UrgencyRank = urgencyRank,
+                    OverdueSeconds = overdueSeconds
+                };
+            })
+            .OrderBy(item => item.UrgencyRank)
+            .ThenByDescending(item => item.OverdueSeconds)
+            .ThenBy(item => item.Index)
+            .Take(targetCount)
+            .Select(item => item.Symbol)
+            .ToList();
+        selected.InsertRange(0, alwaysInclude);
+        return selected;
+    }
+
+    private static bool ShouldAlwaysIncludeDueSymbol(string symbol)
+        => IsOfficialMacroSymbol(symbol) ||
+           IsTreasuryMacroSymbol(symbol) ||
+           IsDedicatedYahooSymbol(symbol) ||
+           StooqGlobalMarketQuoteProvider.CanResolve(symbol);
+
+    private static int CalculateDueSymbolsPerPass(
+        HashSet<string> dueSymbols,
+        IReadOnlyDictionary<string, TimeSpan> refreshWindows,
+        TimeSpan pollingInterval)
+    {
+        if (dueSymbols.Count == 0)
+            return 0;
+
+        double pollingSeconds = Math.Max(1d, pollingInterval.TotalSeconds);
+        double dueShare = dueSymbols.Sum(symbol =>
+        {
+            TimeSpan refreshWindow = refreshWindows.TryGetValue(symbol, out TimeSpan configuredWindow)
+                ? configuredWindow
+                : pollingInterval;
+            return pollingSeconds / Math.Max(1d, refreshWindow.TotalSeconds);
+        });
+
+        int targetCount = Math.Max(1, (int)Math.Ceiling(dueShare));
+        return Math.Min(dueSymbols.Count, targetCount);
     }
 
     private static bool HasUsableQuote(QuoteSnapshot? quote)
@@ -1817,7 +1913,7 @@ public sealed class StartupCoordinator
         => new(GetTreasuryMacroSymbols().Select(SymbolProfileHeuristics.Normalize), StringComparer.OrdinalIgnoreCase);
 
     private static IReadOnlyList<string> GetYahooDedicatedMacroSymbols()
-        => ["DX-Y.NYB"];
+        => ["DX-Y.NYB", "BZ=F"];
 
     private static IReadOnlyList<string> GetOfficialMacroSymbols()
         => ["^VIX"];

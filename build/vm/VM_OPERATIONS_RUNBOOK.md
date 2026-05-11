@@ -186,7 +186,7 @@ This is the key behavior that finally worked reliably.
 5. The host waits for the agent heartbeat file.
 6. The host writes a UX command JSON into the remote command queue.
 7. The agent launches and supervises the config app and desktop app visibly on the desktop.
-8. `Guest-UxDeepExercise.ps1` captures screenshots, validates fullscreen/ESC behavior, copies trace files into the result bundle, and writes:
+8. Guest-UxDeepExercise.ps1 captures screenshots, explicitly focuses the desktop window, validates true fullscreen by comparing the live window bounds to the virtual screen, validates ESC return-to-windowed behavior, copies trace files into the result bundle, and writes:
    - `ux-deep-summary.json`
    - `vm-ux-summary.json`
 9. The host polls the summary file until `FinishedAt` appears.
@@ -283,3 +283,4 @@ This is a debugging convenience only. The canonical harness path is still the ho
    - verify actual capture dimensions before claiming multi-resolution pass behavior
 6. Keep all long-running host commands bounded by explicit timeouts.
 7. The current harness allows up to `10080` minutes per desktop phase, so multi-day soak runs remain within the supported validation range.
+

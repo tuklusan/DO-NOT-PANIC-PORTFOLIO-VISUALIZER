@@ -330,6 +330,7 @@ public sealed class ScreensaverRenderBehaviorTests
             Rect bounds = Assert.IsType<Rect>(boundsMethod.Invoke(control, []));
 
             Assert.Equal(bounds.Top, graph.RefreshTravelTargetY);
+            Assert.True(graph.IsRefreshTravelFlashActive);
             Assert.Equal(260, graph.Y);
             Assert.Equal(-7d, graph.VelocityY);
         });
@@ -394,8 +395,37 @@ public sealed class ScreensaverRenderBehaviorTests
             Rect bounds = Assert.IsType<Rect>(boundsMethod.Invoke(control, []));
 
             Assert.Equal(bounds.Bottom - graph.Height, graph.RefreshTravelTargetY);
+            Assert.True(graph.IsRefreshTravelFlashActive);
             Assert.Equal(120, graph.Y);
             Assert.Equal(9d, graph.VelocityY);
+        });
+    }
+
+    [Fact]
+    public void ResetGraphRefreshImpulseIfNeeded_ClearsTravelFlashAfterBoundaryHit()
+    {
+        RunOnSta(() =>
+        {
+            FloatingGraphViewModel graph = new()
+            {
+                Height = 84,
+                Y = 0,
+                VelocityY = -14,
+                NominalVelocityY = -7,
+                RefreshTravelTargetY = 0,
+                IsRefreshTravelFlashActive = true
+            };
+
+            MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+                "ResetGraphRefreshImpulseIfNeeded",
+                BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("ResetGraphRefreshImpulseIfNeeded method not found.");
+
+            method.Invoke(null, [graph, new Rect(0, 0, 800, 500)]);
+
+            Assert.Null(graph.RefreshTravelTargetY);
+            Assert.False(graph.IsRefreshTravelFlashActive);
+            Assert.Equal(7d, graph.VelocityY);
         });
     }
 
@@ -559,7 +589,7 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void GetRefreshSeconds_WhenAllTrackedSymbolsAreFresh_UsesFiveMinuteSteadyStateMinimum()
+    public void GetRefreshSeconds_WhenAllTrackedSymbolsAreFresh_PollsOncePerMinute()
     {
         RunOnSta(() =>
         {
@@ -614,7 +644,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 ?? throw new InvalidOperationException("GetRefreshSeconds method not found.");
 
             double refreshSeconds = Assert.IsType<double>(method.Invoke(control, []));
-            Assert.Equal(300d, refreshSeconds);
+            Assert.Equal(60d, refreshSeconds);
         });
     }
 
@@ -887,11 +917,13 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("EnsureMacroMetersInitialized();", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("_statusViewModel.MacroMeters.Clear();", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"US2M\"", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("\"CL=F\"", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"BZ=F\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"GC=F\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"GOLD\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"CRUDE\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Brushes.Goldenrod", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("graph.IsRefreshTravelFlashActive = true;", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("graph.IsRefreshTravelFlashActive = false;", sceneCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]

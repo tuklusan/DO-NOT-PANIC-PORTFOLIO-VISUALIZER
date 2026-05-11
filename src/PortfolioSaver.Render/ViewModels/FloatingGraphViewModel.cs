@@ -28,6 +28,7 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
     private double _nominalVelocityX;
     private double _nominalVelocityY;
     private double? _refreshTravelTargetY;
+    private bool _isRefreshTravelFlashActive;
     private PointCollection _greenPoints = [];
     private PointCollection _redPoints = [];
 
@@ -167,6 +168,12 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
     {
         get => _refreshTravelTargetY;
         set => SetProperty(ref _refreshTravelTargetY, value);
+    }
+
+    public bool IsRefreshTravelFlashActive
+    {
+        get => _isRefreshTravelFlashActive;
+        set => SetProperty(ref _isRefreshTravelFlashActive, value);
     }
 
     public List<GraphPointViewModel> Points { get; set; } = [];

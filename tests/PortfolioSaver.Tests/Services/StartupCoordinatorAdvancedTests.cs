@@ -22,7 +22,7 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class StartupCoordinatorAdvancedTests
 {
     [Fact]
-    public async Task WarmStartupYahooQuotesAsync_SkipsCommodityMacrosNowThatTheyResolveOutsideDedicatedYahooLane()
+    public async Task WarmStartupYahooQuotesAsync_WarmsDedicatedBrentMacroThroughYahooLane()
     {
         RecordingQuoteProvider provider = new();
         List<TimeSpan> delays = [];
@@ -56,13 +56,16 @@ public sealed class StartupCoordinatorAdvancedTests
         await foreach (StartupWarmupBatch batch in coordinator.WarmStartupYahooQuotesAsync(settings))
             batches.Add(batch);
 
-        Assert.Empty(batches);
-        Assert.Empty(provider.BatchRequests);
+        StartupWarmupBatch warmupBatch = Assert.Single(batches);
+        IReadOnlyList<string> requested = Assert.Single(provider.BatchRequests);
+        Assert.Single(requested);
+        Assert.Equal("BZ=F", requested[0]);
+        Assert.Equal(1, warmupBatch.CompletedBatches);
         Assert.Empty(delays);
     }
 
     [Fact]
-    public async Task WarmStartupYahooQuotesAsync_WhenProbeUnavailable_DoesNotForceCommodityWarmupThroughYahoo()
+    public async Task WarmStartupYahooQuotesAsync_WhenProbeUnavailable_StillAttemptsDedicatedBrentWarmupOpportunistically()
     {
         RecordingQuoteProvider provider = new();
         StartupCoordinator coordinator = CreateCoordinatorWithIsolatedLedger(
@@ -90,12 +93,14 @@ public sealed class StartupCoordinatorAdvancedTests
         await foreach (StartupWarmupBatch batch in coordinator.WarmStartupYahooQuotesAsync(settings))
             batches.Add(batch);
 
-        Assert.Empty(batches);
-        Assert.Empty(provider.BatchRequests);
+        Assert.Single(batches);
+        IReadOnlyList<string> requested = Assert.Single(provider.BatchRequests);
+        Assert.Single(requested);
+        Assert.Equal("BZ=F", requested[0]);
     }
 
     [Fact]
-    public async Task WarmStartupYahooQuotesAsync_WhenNoDedicatedYahooWarmupSymbolsExist_DoesNotAttemptRateLimitedCommodityWarmup()
+    public async Task WarmStartupYahooQuotesAsync_WhenDedicatedBrentWarmupIsRateLimited_HaltsWithoutYieldingBatch()
     {
         ThrowingQuoteProvider provider = new(new HttpRequestException("429 rate limited", null, System.Net.HttpStatusCode.TooManyRequests));
         List<TimeSpan> delays = [];
@@ -128,7 +133,7 @@ public sealed class StartupCoordinatorAdvancedTests
         await foreach (StartupWarmupBatch batch in coordinator.WarmStartupYahooQuotesAsync(settings))
             batches.Add(batch);
 
-        Assert.Equal(0, provider.CallCount);
+        Assert.Equal(1, provider.CallCount);
         Assert.Empty(batches);
         Assert.Empty(delays);
     }
@@ -587,7 +592,7 @@ public sealed class StartupCoordinatorAdvancedTests
             coordinator,
             [
                 (IReadOnlyList<string>)[],
-                (IReadOnlyList<string>)["^SPX", "^FTSE", "DX-Y.NYB", "CL=F", "GC=F"],
+                (IReadOnlyList<string>)["^SPX", "^FTSE", "DX-Y.NYB", "BZ=F", "GC=F"],
                 settings,
                 true,
                 emptyProvider,
@@ -606,7 +611,7 @@ public sealed class StartupCoordinatorAdvancedTests
 
         IReadOnlyList<string> requested = Assert.Single(yahooProvider.BatchRequests);
         Assert.Single(requested);
-        Assert.Equal("DX-Y.NYB", requested[0]);
+        Assert.Contains(requested[0], new[] { "DX-Y.NYB", "BZ=F" }, StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -634,7 +639,7 @@ public sealed class StartupCoordinatorAdvancedTests
                 coordinator,
                 [
                     (IReadOnlyList<string>)[],
-                (IReadOnlyList<string>)["^SPX", "^FTSE", "DX-Y.NYB", "CL=F", "GC=F"],
+                (IReadOnlyList<string>)["^SPX", "^FTSE", "DX-Y.NYB", "BZ=F", "GC=F"],
                     settings,
                     true,
                     emptyProvider,
@@ -657,7 +662,7 @@ public sealed class StartupCoordinatorAdvancedTests
         Assert.Contains("DX-Y.NYB", requestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("^SPX", requestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("^FTSE", requestedSymbols, StringComparer.OrdinalIgnoreCase);
-        Assert.DoesNotContain("CL=F", requestedSymbols, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("BZ=F", requestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.DoesNotContain("GC=F", requestedSymbols, StringComparer.OrdinalIgnoreCase);
     }
 
@@ -694,7 +699,7 @@ public sealed class StartupCoordinatorAdvancedTests
         DateTimeOffset nowUtc = new(2026, 4, 19, 4, 17, 0, TimeSpan.Zero);
         applyRateLimitMethod.Invoke(coordinator, [(IEnumerable<string>)["DX-Y.NYB"], nowUtc]);
 
-        List<string> remainingSymbols = ["DX-Y.NYB", "CL=F", "GC=F", "^SPX", "^FTSE"];
+        List<string> remainingSymbols = ["DX-Y.NYB", "BZ=F", "GC=F", "^SPX", "^FTSE"];
         IReadOnlyDictionary<string, SymbolProfile> symbolProfiles = new Dictionary<string, SymbolProfile>(StringComparer.OrdinalIgnoreCase);
 
         List<string> requested = Assert.IsType<List<string>>(takeRequestMethod.Invoke(
@@ -730,6 +735,62 @@ public sealed class StartupCoordinatorAdvancedTests
         TimeSpan cooldown = Assert.IsType<TimeSpan>(method.Invoke(null, [DataSourceKind.YahooFinance, (IReadOnlyList<string>)["^SPX"]])!);
 
         Assert.Equal(TimeSpan.FromMinutes(12), cooldown);
+    }
+
+    [Fact]
+    public void CalculateDueSymbolsPerPass_SpreadsDueWorkAcrossPollingIntervals()
+    {
+        MethodInfo method = typeof(StartupCoordinator).GetMethod(
+            "CalculateDueSymbolsPerPass",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("StartupCoordinator.CalculateDueSymbolsPerPass not found.");
+
+        HashSet<string> dueSymbols = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+        IReadOnlyDictionary<string, TimeSpan> refreshWindows = dueSymbols.ToDictionary(
+            symbol => symbol,
+            _ => TimeSpan.FromMinutes(5),
+            StringComparer.OrdinalIgnoreCase);
+
+        int count = Assert.IsType<int>(method.Invoke(null, [dueSymbols, refreshWindows, TimeSpan.FromMinutes(1)])!);
+
+        Assert.Equal(2, count);
+    }
+
+    [Fact]
+    public void SelectDueSymbolsForPass_PrioritizesMissingAndStaleQuotesBeforeHealthyCachedOnes()
+    {
+        MethodInfo method = typeof(StartupCoordinator).GetMethod(
+            "SelectDueSymbolsForPass",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("StartupCoordinator.SelectDueSymbolsForPass not found.");
+
+        DateTimeOffset nowUtc = new(2026, 5, 11, 8, 0, 0, TimeSpan.Zero);
+        List<string> orderedSymbols = ["HEALTHY1", "MISSING", "STALE", "HEALTHY2", "HEALTHY3", "HEALTHY4", "HEALTHY5", "HEALTHY6", "HEALTHY7", "HEALTHY8"];
+        HashSet<string> dueSymbols = orderedSymbols.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        IReadOnlyDictionary<string, TimeSpan> refreshWindows = orderedSymbols.ToDictionary(
+            symbol => symbol,
+            _ => TimeSpan.FromMinutes(5),
+            StringComparer.OrdinalIgnoreCase);
+        IReadOnlyDictionary<string, QuoteSnapshot> cachedQuotes = new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["HEALTHY1"] = new() { Symbol = "HEALTHY1", Last = 100m, FetchTimestampUtc = nowUtc.AddMinutes(-6), IsStale = false },
+            ["STALE"] = new() { Symbol = "STALE", Last = 100m, FetchTimestampUtc = nowUtc.AddMinutes(-6), IsStale = true },
+            ["HEALTHY2"] = new() { Symbol = "HEALTHY2", Last = 100m, FetchTimestampUtc = nowUtc.AddMinutes(-6), IsStale = false },
+            ["HEALTHY3"] = new() { Symbol = "HEALTHY3", Last = 100m, FetchTimestampUtc = nowUtc.AddMinutes(-6), IsStale = false },
+            ["HEALTHY4"] = new() { Symbol = "HEALTHY4", Last = 100m, FetchTimestampUtc = nowUtc.AddMinutes(-6), IsStale = false },
+            ["HEALTHY5"] = new() { Symbol = "HEALTHY5", Last = 100m, FetchTimestampUtc = nowUtc.AddMinutes(-6), IsStale = false },
+            ["HEALTHY6"] = new() { Symbol = "HEALTHY6", Last = 100m, FetchTimestampUtc = nowUtc.AddMinutes(-6), IsStale = false },
+            ["HEALTHY7"] = new() { Symbol = "HEALTHY7", Last = 100m, FetchTimestampUtc = nowUtc.AddMinutes(-6), IsStale = false },
+            ["HEALTHY8"] = new() { Symbol = "HEALTHY8", Last = 100m, FetchTimestampUtc = nowUtc.AddMinutes(-6), IsStale = false }
+        };
+
+        List<string> selected = Assert.IsType<List<string>>(method.Invoke(
+            null,
+            [orderedSymbols, dueSymbols, refreshWindows, cachedQuotes, nowUtc, TimeSpan.FromMinutes(2)])!);
+
+        Assert.Equal(4, selected.Count);
+        Assert.Contains("MISSING", selected, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("STALE", selected, StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]

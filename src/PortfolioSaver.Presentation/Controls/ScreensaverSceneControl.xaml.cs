@@ -592,7 +592,7 @@ public partial class ScreensaverSceneControl : UserControl
         if (noResolvedQuotes || providerUnavailable || waitingForNetwork || HasPendingQuoteRecovery())
             return QuoteRefreshPolicy.RecoveryRefreshSeconds;
 
-        return QuoteRefreshPolicy.GetEffectiveRefreshWindow(_settings, GetReferenceUtcNow()).TotalSeconds;
+        return QuoteRefreshPolicy.GetRefreshPollingInterval(_settings, GetReferenceUtcNow()).TotalSeconds;
     }
 
     private bool HasPendingQuoteRecovery()
@@ -851,7 +851,7 @@ public partial class ScreensaverSceneControl : UserControl
         UpdateQuoteMeter(_statusViewModel.MacroMeters[3], "UST10Y", "US10Y", treasuryYieldMeterMax);
         UpdateYieldSpreadMeter(_statusViewModel.MacroMeters[4]);
         UpdateQuoteMeter(_statusViewModel.MacroMeters[5], "DXY", "DX-Y.NYB", 120m, invertRiskColors: true);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[6], "CRUDE", "CL=F", 160m);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[6], "CRUDE", "BZ=F", 160m);
 
         _lastMacroMeterRefreshUtc = nowUtc;
         TraceMacroSnapshot(force);
@@ -1537,6 +1537,8 @@ public partial class ScreensaverSceneControl : UserControl
         if (bounds == Rect.Empty)
             return;
 
+        graph.FlashBrush = percent > 0m ? Brushes.LimeGreen : Brushes.OrangeRed;
+        graph.IsRefreshTravelFlashActive = true;
         graph.RefreshTravelTargetY = percent > 0m
             ? bounds.Top
             : Math.Max(bounds.Top, bounds.Bottom - Math.Max(1d, graph.Height));
@@ -1714,6 +1716,7 @@ public partial class ScreensaverSceneControl : UserControl
             return;
 
         graph.RefreshTravelTargetY = null;
+        graph.IsRefreshTravelFlashActive = false;
         graph.VelocityX = graph.NominalVelocityX == 0d ? graph.VelocityX : graph.NominalVelocityX;
         graph.VelocityY = graph.NominalVelocityY == 0d
             ? graph.VelocityY

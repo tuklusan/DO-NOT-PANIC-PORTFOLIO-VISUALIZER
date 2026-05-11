@@ -1,7 +1,7 @@
 ﻿{
     "document_type":  "audit_state",
     "title":  "BETA-5.5 Audit State",
-    "date":  "2026-05-04",
+    "date":  "2026-05-11",
     "current_lane":  "BETA-5.5",
     "current_snapshot":  {
                              "product":  "DO NOT PANIC PORTFOLIO VISUALIZER",
@@ -17,7 +17,7 @@
     "latest_recorded_validation_state":  {
                                              "automated_tests":  {
                                                                      "command":  "dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo",
-                                                                     "result":  "224 / 224 passing",
+                                                                     "result":  "229 / 229 passing",
                                                                      "notes":  [
                                                                                    "Host regression coverage now includes the SSH-first VM harness scripts, the desktop-session agent workflow, and the remote WinAppDriver startup path.",
                                                                                    "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don\u0027t-Panic-Portfolio-Visualizer.",
@@ -27,7 +27,8 @@
                                                                                    "DeepSeek summarized-news mode now uses the same protected local secret store and environment-override flow as the market-data providers.",
                                                                                    "Remote live validation can now apply DeepSeek and provider API keys from ignored local build/vm/test-secrets.json via Guest-ApplyTestSecrets.ps1.",
                                                                                    "The SSH-first remote harness now supports desktop soak durations up to 10080 minutes.",
-                                                                                   "The NB-001 through NB-010 fixes were revalidated with a final local green run plus a clean 20-minute remote desktop-session run in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526."
+                                                                                   "The NB-001 through NB-010 fixes were revalidated with a final local green run plus a clean 20-minute remote desktop-session run in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526.",
+                                                                                   "The current local batch also revalidated Brent crude macro routing through the dedicated Yahoo lane, intraday 1-day graph history, persistent graph-card travel flashes, and the scheduler smoothing pass."
                                                                                ]
                                                                  },
                                              "build":  {
@@ -65,7 +66,9 @@
                                                                               "PortfolioSaver.VmAgent now owns the interactive desktop session, starts WinAppDriver when needed, and executes queued UX runs from inside session 1.",
                                                                               "Latest short remote desktop UX validation completed cleanly through the agent-based harness in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260503-152112.",
                                                                               "The guest secret-overlay flow now supports DeepSeek alongside the existing market-data providers.",
-                                                                              "Latest clean direct-agent UX validation completed on the refreshed publish in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526."
+                                                                              "Latest clean direct-agent UX validation completed on the refreshed publish in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526.",
+                                                                              "Guest-UxDeepExercise.ps1 now explicitly focuses the desktop window before F11/ESC and verifies true fullscreen by comparing the window bounds against the virtual screen, rather than trusting the toggle blindly.",
+                                                                              "A fresh 2026-05-11 post-fix remote rerun was attempted, but the guest validation flow is currently blocked by an intermittent config-screen GDI+ capture failure and a separate SSH push hang before a new clean bundle could be recorded."
                                                                           ]
                                                             }
                                          },

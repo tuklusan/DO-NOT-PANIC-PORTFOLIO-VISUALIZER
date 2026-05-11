@@ -78,9 +78,9 @@ public sealed class HistoricalGraphBuilder
         vm.MaxScaleText = FormatScaleValue(max);
         vm.MidScaleText = FormatScaleValue((min + max) / 2m);
         vm.MinScaleText = FormatScaleValue(min);
-        vm.LeftTimeScaleText = FormatTimeScale(snapshot.Points.First().TimestampUtc);
-        vm.MiddleTimeScaleText = FormatTimeScale(snapshot.Points[snapshot.Points.Count / 2].TimestampUtc);
-        vm.RightTimeScaleText = FormatTimeScale(snapshot.Points.Last().TimestampUtc);
+        vm.LeftTimeScaleText = FormatTimeScale(snapshot.Points.First().TimestampUtc, snapshot.LookbackDays);
+        vm.MiddleTimeScaleText = FormatTimeScale(snapshot.Points[snapshot.Points.Count / 2].TimestampUtc, snapshot.LookbackDays);
+        vm.RightTimeScaleText = FormatTimeScale(snapshot.Points.Last().TimestampUtc, snapshot.LookbackDays);
         decimal latestClose = snapshot.Points.Last().Close;
         vm.LastText = latestClose.ToString("0.00");
         if (snapshot.Points.Count >= 2)
@@ -110,6 +110,8 @@ public sealed class HistoricalGraphBuilder
         return value.ToString("0.00");
     }
 
-    private static string FormatTimeScale(DateTimeOffset pointInTime)
-        => pointInTime.ToLocalTime().ToString("M/d");
+    private static string FormatTimeScale(DateTimeOffset pointInTime, int lookbackDays)
+        => lookbackDays <= 1
+            ? pointInTime.ToLocalTime().ToString("HH:mm")
+            : pointInTime.ToLocalTime().ToString("M/d");
 }

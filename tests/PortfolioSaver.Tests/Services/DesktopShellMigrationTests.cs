@@ -50,6 +50,8 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("ExitFullScreen()", code, StringComparison.Ordinal);
         Assert.Contains("if (e.Key == Key.F11)", code, StringComparison.Ordinal);
         Assert.Contains("if (e.Key == Key.Escape && _isFullScreen)", code, StringComparison.Ordinal);
+        Assert.Contains("SystemParameters.VirtualScreenWidth", code, StringComparison.Ordinal);
+        Assert.Contains("SystemParameters.VirtualScreenHeight", code, StringComparison.Ordinal);
     }
 
     [Fact]
