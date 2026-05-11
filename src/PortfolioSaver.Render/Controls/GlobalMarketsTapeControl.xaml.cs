@@ -259,19 +259,7 @@ public partial class GlobalMarketsTapeControl : UserControl
         for (int index = 0; index < cities.Count; index++)
         {
             panel.Children.Add(BuildMarketCard(cities[index], isPinned: false));
-            if (index < cities.Count - 1)
-            {
-                panel.Children.Add(new TextBlock
-                {
-                    Text = "|",
-                    Foreground = new SolidColorBrush(Color.FromRgb(92, 122, 142)),
-                    FontFamily = new FontFamily("Bahnschrift SemiCondensed"),
-                    FontSize = 16,
-                    FontWeight = FontWeights.Bold,
-                    Margin = new Thickness(10, 0, 14, 0),
-                    VerticalAlignment = VerticalAlignment.Center
-                });
-            }
+            panel.Children.Add(BuildDelimiter());
         }
 
         panel.Children.Add(new Border
@@ -282,6 +270,18 @@ public partial class GlobalMarketsTapeControl : UserControl
 
         return panel;
     }
+
+    private static TextBlock BuildDelimiter()
+        => new()
+        {
+            Text = "|",
+            Foreground = new SolidColorBrush(Color.FromRgb(92, 122, 142)),
+            FontFamily = new FontFamily("Bahnschrift SemiCondensed"),
+            FontSize = 16,
+            FontWeight = FontWeights.Bold,
+            Margin = new Thickness(10, 0, 14, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
 
     private static FrameworkElement BuildMarketCard(ClockCityViewModel city, bool isPinned)
     {

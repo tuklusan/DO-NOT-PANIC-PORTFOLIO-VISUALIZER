@@ -27,9 +27,7 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
     private long _quoteUpdateToken;
     private double _nominalVelocityX;
     private double _nominalVelocityY;
-    private double _motionPhaseOffset;
     private double? _refreshTravelTargetY;
-    private double _refreshTravelSpeed;
     private PointCollection _greenPoints = [];
     private PointCollection _redPoints = [];
 
@@ -165,22 +163,10 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
         set => SetProperty(ref _nominalVelocityY, value);
     }
 
-    public double MotionPhaseOffset
-    {
-        get => _motionPhaseOffset;
-        set => SetProperty(ref _motionPhaseOffset, value);
-    }
-
     public double? RefreshTravelTargetY
     {
         get => _refreshTravelTargetY;
         set => SetProperty(ref _refreshTravelTargetY, value);
-    }
-
-    public double RefreshTravelSpeed
-    {
-        get => _refreshTravelSpeed;
-        set => SetProperty(ref _refreshTravelSpeed, value);
     }
 
     public List<GraphPointViewModel> Points { get; set; } = [];

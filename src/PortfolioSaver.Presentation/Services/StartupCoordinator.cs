@@ -331,6 +331,8 @@ public sealed class StartupCoordinator
         int graphRotationSeed,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        const int graphLookbackDays = 1;
+
         if (!settings.EnableFloatingGraphs)
             yield break;
 
@@ -359,7 +361,7 @@ public sealed class StartupCoordinator
             TraceGraph($"Graph warmup checking {ticker.Symbol} on {group.Name}.");
 
             TickerHistorySnapshot? cached = await cacheService.LoadAsync(ticker.Symbol, cancellationToken);
-            if (cached is not null && cached.Points.Count >= 2)
+            if (cached is not null && cached.LookbackDays == graphLookbackDays && cached.Points.Count >= 2)
             {
                 cachedBySymbol[ticker.Symbol] = cached;
                 TraceGraph($"Graph warmup using cache for {ticker.Symbol} with {cached.Points.Count} points.");
@@ -387,7 +389,7 @@ public sealed class StartupCoordinator
 
         IReadOnlyList<TickerHistorySnapshot> refreshedSnapshots = await historicalProvider.GetHistoryAsync(
             liveFetchSymbols,
-            settings.HistoricalLookbackDays,
+            graphLookbackDays,
             cancellationToken);
         Dictionary<string, TickerHistorySnapshot> refreshedBySymbol = refreshedSnapshots
             .Where(snapshot => snapshot.Points.Count >= 2)
@@ -944,7 +946,7 @@ public sealed class StartupCoordinator
 
     private static IReadOnlyList<(TickerGroup Group, TickerItem Ticker)> SelectGraphTickerPairs(AppSettings settings, int graphRotationSeed)
     {
-        const int maxSceneGraphCards = 10;
+        const int maxSceneGraphCards = 12;
         List<(TickerGroup Group, List<TickerItem> Tickers)> groupSelections = [];
         int groupIndex = 0;
         foreach (TickerGroup group in settings.Groups.Where(group => group.Enabled))

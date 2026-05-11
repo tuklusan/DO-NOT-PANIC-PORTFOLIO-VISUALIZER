@@ -25,7 +25,7 @@ namespace PortfolioSaver.Screensaver.Controls;
 
 public partial class ScreensaverSceneControl : UserControl
 {
-    private const int MaxVisibleGraphCards = 10;
+    private const int MaxVisibleGraphCards = 12;
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly ObservableCollection<TapeViewModel> _tapes = [];
     private readonly StartupCoordinator _startupCoordinator = new();
@@ -725,9 +725,7 @@ public partial class ScreensaverSceneControl : UserControl
                 graph.VelocityY = NextVelocity();
                 graph.NominalVelocityX = graph.VelocityX;
                 graph.NominalVelocityY = graph.VelocityY;
-                graph.MotionPhaseOffset = _random.NextDouble() * Math.PI * 2d;
                 graph.RefreshTravelTargetY = null;
-                graph.RefreshTravelSpeed = 0d;
                 graph.BounceWithinViewport = _settings.EnableBouncingGraphCards;
                 graphIndex++;
             }
@@ -757,15 +755,15 @@ public partial class ScreensaverSceneControl : UserControl
         if (bounds.Width <= 0 || bounds.Height <= 0)
             return;
 
-        DateTime now = DateTime.UtcNow;
-        double elapsedSeconds = Math.Max(0.001, (now - _lastMotionTick).TotalSeconds);
-        _lastMotionTick = now;
+        DateTime currentTick = DateTime.UtcNow;
+        double elapsedSeconds = Math.Max(0.001, (currentTick - _lastMotionTick).TotalSeconds);
+        _lastMotionTick = currentTick;
 
         foreach (FloatingGraphViewModel graph in EnumerateVisibleGraphCards())
         {
-            ApplyGraphMotionVariance(graph, now);
-            ApplyGraphRefreshTravel(graph, bounds, elapsedSeconds);
+            ApplyGraphRefreshImpulse(graph, bounds);
             _motionController.Step(graph, bounds, elapsedSeconds);
+            ResetGraphRefreshImpulseIfNeeded(graph, bounds);
         }
 
         if (_networkWaitingViewModel is not null)
@@ -1382,9 +1380,7 @@ public partial class ScreensaverSceneControl : UserControl
         {
             targetGraph.NominalVelocityX = sourceGraph.NominalVelocityX;
             targetGraph.NominalVelocityY = sourceGraph.NominalVelocityY;
-            targetGraph.MotionPhaseOffset = sourceGraph.MotionPhaseOffset;
             targetGraph.RefreshTravelTargetY = sourceGraph.RefreshTravelTargetY;
-            targetGraph.RefreshTravelSpeed = sourceGraph.RefreshTravelSpeed;
         }
     }
 
@@ -1539,14 +1535,9 @@ public partial class ScreensaverSceneControl : UserControl
         if (bounds == Rect.Empty)
             return;
 
-        double inwardVelocity = Math.Max(22d, Math.Abs(graph.NominalVelocityY > 0d ? graph.NominalVelocityY : graph.VelocityY));
-        double targetY = percent > 0m
+        graph.RefreshTravelTargetY = percent > 0m
             ? bounds.Top
             : Math.Max(bounds.Top, bounds.Bottom - Math.Max(1d, graph.Height));
-        graph.RefreshTravelTargetY = targetY;
-        graph.RefreshTravelSpeed = Math.Max(180d, inwardVelocity * 4.5d);
-        graph.NominalVelocityY = percent > 0m ? Math.Abs(inwardVelocity) : -Math.Abs(inwardVelocity);
-        graph.VelocityY = graph.NominalVelocityY;
     }
 
     private void ClampSpritesToSafeBounds()
@@ -1694,43 +1685,39 @@ public partial class ScreensaverSceneControl : UserControl
                (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp);
     }
 
-    private void ApplyGraphMotionVariance(FloatingGraphViewModel graph, DateTime nowUtc)
-    {
-        double seconds = nowUtc.TimeOfDay.TotalSeconds;
-        double factor = 1d + 0.2d * Math.Sin(seconds * 0.35d + graph.MotionPhaseOffset);
-        double nominalX = graph.NominalVelocityX == 0d ? graph.VelocityX : graph.NominalVelocityX;
-        double nominalY = graph.NominalVelocityY == 0d ? graph.VelocityY : graph.NominalVelocityY;
-
-        graph.VelocityX = Math.Sign(graph.VelocityX == 0d ? nominalX : graph.VelocityX) * Math.Max(6d, Math.Abs(nominalX) * factor);
-        if (graph.RefreshTravelTargetY is null)
-            graph.VelocityY = Math.Sign(graph.VelocityY == 0d ? nominalY : graph.VelocityY) * Math.Max(6d, Math.Abs(nominalY) * factor);
-    }
-
-    private void ApplyGraphRefreshTravel(FloatingGraphViewModel graph, Rect bounds, double elapsedSeconds)
+    private void ApplyGraphRefreshImpulse(FloatingGraphViewModel graph, Rect bounds)
     {
         if (graph.RefreshTravelTargetY is not double targetY)
             return;
 
-        double delta = targetY - graph.Y;
-        if (Math.Abs(delta) <= 4d)
-        {
-            graph.Y = targetY;
-            graph.RefreshTravelTargetY = null;
-            graph.RefreshTravelSpeed = 0d;
-            graph.VelocityY = targetY <= bounds.Top + 1d
-                ? Math.Abs(graph.NominalVelocityY == 0d ? 24d : graph.NominalVelocityY)
-                : -Math.Abs(graph.NominalVelocityY == 0d ? 24d : graph.NominalVelocityY);
+        double nominalX = graph.NominalVelocityX == 0d ? NextVelocity() : graph.NominalVelocityX;
+        double nominalY = graph.NominalVelocityY == 0d ? NextVelocity() : graph.NominalVelocityY;
+        graph.NominalVelocityX = nominalX;
+        graph.NominalVelocityY = nominalY;
+        graph.VelocityX = 0d;
+        graph.VelocityY = targetY <= bounds.Top + 1d
+            ? -Math.Max(12d, Math.Abs(nominalY) * 2d)
+            : Math.Max(12d, Math.Abs(nominalY) * 2d);
+    }
+
+    private static void ResetGraphRefreshImpulseIfNeeded(FloatingGraphViewModel graph, Rect bounds)
+    {
+        if (graph.RefreshTravelTargetY is not double targetY)
             return;
-        }
 
-        double direction = Math.Sign(delta);
-        double travelSpeed = Math.Max(180d, graph.RefreshTravelSpeed);
-        double step = direction * travelSpeed * elapsedSeconds;
-        if (Math.Abs(step) > Math.Abs(delta))
-            step = delta;
+        bool hitBoundary = targetY <= bounds.Top + 1d
+            ? graph.Y <= bounds.Top + 1d
+            : graph.Y >= Math.Max(bounds.Top, bounds.Bottom - Math.Max(1d, graph.Height)) - 1d;
+        if (!hitBoundary)
+            return;
 
-        graph.Y += step;
-        graph.VelocityY = direction * travelSpeed;
+        graph.RefreshTravelTargetY = null;
+        graph.VelocityX = graph.NominalVelocityX == 0d ? graph.VelocityX : graph.NominalVelocityX;
+        graph.VelocityY = graph.NominalVelocityY == 0d
+            ? graph.VelocityY
+            : (targetY <= bounds.Top + 1d
+                ? Math.Abs(graph.NominalVelocityY)
+                : -Math.Abs(graph.NominalVelocityY));
     }
 
     private static void StopBackgroundAnimations(Image image)

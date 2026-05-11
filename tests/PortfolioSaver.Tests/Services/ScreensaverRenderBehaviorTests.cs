@@ -272,7 +272,7 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void ApplyQuoteToGraph_PositiveRefreshQueuesFastTravelToTopEdge()
+    public void ApplyQuoteToGraph_PositiveRefreshQueuesTopEdgeImpulse()
     {
         RunOnSta(() =>
         {
@@ -331,12 +331,12 @@ public sealed class ScreensaverRenderBehaviorTests
 
             Assert.Equal(bounds.Top, graph.RefreshTravelTargetY);
             Assert.Equal(260, graph.Y);
-            Assert.True(graph.VelocityY > 0d);
+            Assert.Equal(-7d, graph.VelocityY);
         });
     }
 
     [Fact]
-    public void ApplyQuoteToGraph_NegativeRefreshQueuesFastTravelToBottomEdge()
+    public void ApplyQuoteToGraph_NegativeRefreshQueuesBottomEdgeImpulse()
     {
         RunOnSta(() =>
         {
@@ -395,7 +395,7 @@ public sealed class ScreensaverRenderBehaviorTests
 
             Assert.Equal(bounds.Bottom - graph.Height, graph.RefreshTravelTargetY);
             Assert.Equal(120, graph.Y);
-            Assert.True(graph.VelocityY < 0d);
+            Assert.Equal(9d, graph.VelocityY);
         });
     }
 
@@ -822,6 +822,8 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("Offset=\"1.00\"", globalTapeXaml, StringComparison.Ordinal);
         Assert.Contains("Width = SequenceLeadInSpacing", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("Width = SequenceTailSpacing", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("panel.Children.Add(BuildDelimiter());", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("private static TextBlock BuildDelimiter()", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("private const double FlagBadgeWidth = 20d;", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("private const double FlagBadgeHeight = 14d;", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("FlagImageCache", globalTapeCode, StringComparison.Ordinal);
@@ -856,17 +858,20 @@ public sealed class ScreensaverRenderBehaviorTests
             "Services",
             "StartupCoordinator.cs"));
 
-        Assert.Contains("private const int MaxVisibleGraphCards = 10;", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private const int MaxVisibleGraphCards = 12;", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("SeparateVisibleGraphCards(bounds);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("GraphCardSeparationGap", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("foreach (FloatingGraphViewModel graph in EnumerateVisibleGraphCards())", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("ApplyGraphMotionVariance(graph, now);", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("ApplyGraphRefreshTravel(graph, bounds, elapsedSeconds);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ApplyGraphRefreshImpulse(graph, bounds);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ResetGraphRefreshImpulseIfNeeded(graph, bounds);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("ApplyGraphMotionVariance(", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("ApplyGraphRefreshTravel(", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("graph.PlotWidth = Math.Max(106d, graphWidth - 62d);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Margin=\"2,3,12,0\"", floatingGraphXaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"24\"", floatingGraphXaml, StringComparison.Ordinal);
-        Assert.Contains("const int maxSceneGraphCards = 10;", startupCoordinator, StringComparison.Ordinal);
+        Assert.Contains("const int maxSceneGraphCards = 12;", startupCoordinator, StringComparison.Ordinal);
         Assert.Contains("return pairs.Take(maxSceneGraphCards).ToList();", startupCoordinator, StringComparison.Ordinal);
+        Assert.Contains("const int graphLookbackDays = 1;", startupCoordinator, StringComparison.Ordinal);
     }
 
     [Fact]
