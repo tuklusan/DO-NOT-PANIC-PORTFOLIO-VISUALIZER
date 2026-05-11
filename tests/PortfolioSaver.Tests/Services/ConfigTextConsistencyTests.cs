@@ -189,6 +189,7 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("IsEnabled=\"{Binding IsRssFeedSelected}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("DeepSeek API key:", xaml, StringComparison.Ordinal);
         Assert.Contains("writing style can be switched between Douglas Adams and William Shakespeare", xaml, StringComparison.Ordinal);
+        Assert.Contains("app appends a fixed verifiable closing quotation for the selected writer", xaml, StringComparison.Ordinal);
     }
 
     private static string GetRepoRoot()

@@ -794,6 +794,35 @@ public sealed class StartupCoordinatorAdvancedTests
     }
 
     [Fact]
+    public void SelectPreemptiveRefreshSymbolsForPass_WhenNothingIsDue_SelectsOneNearDueSymbol()
+    {
+        MethodInfo method = typeof(StartupCoordinator).GetMethod(
+            "SelectPreemptiveRefreshSymbolsForPass",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("StartupCoordinator.SelectPreemptiveRefreshSymbolsForPass not found.");
+
+        DateTimeOffset nowUtc = new(2026, 5, 11, 8, 4, 20, TimeSpan.Zero);
+        List<string> orderedSymbols = ["A", "^VIX", "B"];
+        IReadOnlyDictionary<string, TimeSpan> refreshWindows = orderedSymbols.ToDictionary(
+            symbol => symbol,
+            _ => TimeSpan.FromMinutes(5),
+            StringComparer.OrdinalIgnoreCase);
+        IReadOnlyDictionary<string, QuoteSnapshot> cachedQuotes = new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["A"] = new() { Symbol = "A", Last = 100m, FetchTimestampUtc = nowUtc.AddMinutes(-4), IsStale = false },
+            ["^VIX"] = new() { Symbol = "^VIX", Last = 17m, FetchTimestampUtc = nowUtc.AddMinutes(-4).AddSeconds(-10), IsStale = false },
+            ["B"] = new() { Symbol = "B", Last = 100m, FetchTimestampUtc = nowUtc.AddMinutes(-2), IsStale = false }
+        };
+
+        List<string> selected = Assert.IsType<List<string>>(method.Invoke(
+            null,
+            [orderedSymbols, refreshWindows, cachedQuotes, nowUtc, TimeSpan.FromMinutes(1)])!);
+
+        Assert.Single(selected);
+        Assert.Equal("^VIX", selected[0]);
+    }
+
+    [Fact]
     public async Task LoadQuotesAsync_CapsTwelveDataBatchToStayWithinMinuteBudget()
     {
         AppSettings settings = Defaults.CreateSettings();

@@ -17,7 +17,7 @@
     "latest_recorded_validation_state":  {
                                              "automated_tests":  {
                                                                      "command":  "dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo",
-                                                                     "result":  "229 / 229 passing",
+                                                                     "result":  "232 / 232 passing",
                                                                      "notes":  [
                                                                                    "Host regression coverage now includes the SSH-first VM harness scripts, the desktop-session agent workflow, and the remote WinAppDriver startup path.",
                                                                                    "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don\u0027t-Panic-Portfolio-Visualizer.",
@@ -55,9 +55,9 @@
                                                                 "powershell7_in_guest":  "installed-machine-wide",
                                                                 "guest_workspace_root":  "C:\\vmharness\\portfolio-saver",
                                                                 "proof_artifacts":  [
-                                                                                        "build/vm/artifacts/host-runs/ssh-push-20260511-152009.json",
-                                                                                        "build/vm/artifacts/host-runs/ssh-push-20260511-154357.json",
-                                                                                        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-154444"
+                                                                                        "build/vm/artifacts/host-runs/ssh-push-20260511-182115.json",
+                                                                                        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-182218",
+                                                                                        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619"
                                                                                     ],
                                                                 "notes":  [
                                                                               "The guest now resolves bare dotnet to 10.0.203 from C:\\Program Files\\dotnet.",
@@ -70,7 +70,10 @@
                                                                               "Latest clean direct-agent UX validation completed on the refreshed publish in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526.",
                                                                               "Guest-UxDeepExercise.ps1 now explicitly focuses the desktop window before F11/ESC and verifies true fullscreen by comparing the window bounds against the virtual screen, rather than trusting the toggle blindly.",
                                                                               "A fresh clean direct-agent UX validation completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-154444.",
-                                                                              "The clean 2026-05-11 proof used process-bound config window discovery plus DesktopMainWindow and ViewFullScreenMenuItem automation anchors to avoid prior UI Automation ambiguity."
+                                                                              "The clean 2026-05-11 proof used process-bound config window discovery plus DesktopMainWindow and ViewFullScreenMenuItem automation anchors to avoid prior UI Automation ambiguity.",
+                                                                              "Focused regression updates now cover curated DeepSeek closing quotations, preemptive near-due refresh smoothing, and the animated market critter overlay.",
+                                                                              "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-182218.",
+                                                                              "A fresh 60-minute direct-agent soak completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619."
                                                                           ]
                                                             }
                                          },
@@ -194,13 +197,14 @@
                                                      ],
                                  "latest_remote_build_summary":  "C:\\vmharness\\portfolio-saver\\results\\buildtest-20260503-152105.json",
                                  "interactive_launch_method":  "Push-VmWorkspace.ps1 stages the repo and publish bundle, Guest-ConfigureDesktopAutomation.ps1 prepares the desktop account, the host starts PortfolioSaver.VmAgent.exe in session 1 with PsExec, waits for agent-status.json, then queues a UX command JSON under commands\\ that the agent executes inside the interactive desktop session while supervising WinAppDriver and invoking fullscreen through the ViewFullScreenMenuItem automation hook.",
-                                 "latest_full_ux_result":  "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-154444",
+                                 "latest_full_ux_result":  "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619",
                                  "harness_policy":  "locked",
                                  "harness_policy_notes":  [
                                                               "The current SSH/SFTP plus PortfolioSaver.VmAgent desktop-session harness is the canonical supported workflow.",
                                                               "Do not re-optimize or re-architect the working harness glue during normal feature work.",
                                                               "Change the harness only when the current path is broken or a concrete new validation requirement cannot be met with the existing flow."
-                                                          ]
+                                                          ],
+                                 "latest_short_ux_result":  "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-182218"
                              },
     "pending_next_build_issues":  [
                                       {
@@ -313,5 +317,52 @@
                                                 "Let PortfolioSaver.VmAgent own interactive-session automation instead of attempting to launch UX runs directly through SSH-driven PowerShell.",
                                                 "Use build/vm/test-secrets.json for remote live validation secrets instead of persisting any API keys into plaintext settings.json.",
                                                 "Treat the current agent-based remote harness glue as locked unless it breaks or a new validation requirement forces a targeted change."
-                                            ]
+                                            ],
+    "current_priority_backlog":  [
+                                     {
+                                         "id":  "BL-001",
+                                         "priority":  1,
+                                         "title":  "DeepSeek news integrity and quote append",
+                                         "status":  "resolved",
+                                         "notes":  [
+                                                       "Prompt remains style-only, forbids factual invention, and appends a fixed verified closing quotation for the selected writer."
+                                                   ]
+                                     },
+                                     {
+                                         "id":  "BL-002",
+                                         "priority":  2,
+                                         "title":  "Brent crude consistency across runtime and support assets",
+                                         "status":  "resolved",
+                                         "notes":  [
+                                                       "Runtime macro path stays on BZ=F and sample VM/sandbox settings were updated from CL=F to Brent references."
+                                                   ]
+                                     },
+                                     {
+                                         "id":  "BL-003",
+                                         "priority":  3,
+                                         "title":  "Refresh smoothing and first-population quality",
+                                         "status":  "resolved",
+                                         "notes":  [
+                                                       "Scheduler now allows a conservative single preemptive near-due refresh pass when the normal due set is empty, reducing visible quiet stretches."
+                                                   ]
+                                     },
+                                     {
+                                         "id":  "BL-004",
+                                         "priority":  4,
+                                         "title":  "Animated bulls and bears overlay",
+                                         "status":  "resolved",
+                                         "notes":  [
+                                                       "Small market critter overlay added with two chasing critters and dollar/euro bags in a constrained lower lane."
+                                                   ]
+                                     },
+                                     {
+                                         "id":  "BL-005",
+                                         "priority":  5,
+                                         "title":  "Longer confidence validation on latest baseline",
+                                         "status":  "resolved",
+                                         "notes":  [
+                                                       "Completed a fresh 60-minute direct-agent soak on 2026-05-11 with completed config, desktop, version, and fullscreen checks."
+                                                   ]
+                                     }
+                                 ]
 }

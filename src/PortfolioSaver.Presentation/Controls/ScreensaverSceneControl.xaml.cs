@@ -27,6 +27,7 @@ public partial class ScreensaverSceneControl : UserControl
 {
     private const int MaxVisibleGraphCards = 12;
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
+    private readonly ObservableCollection<MarketSpriteViewModel> _marketSprites = [];
     private readonly ObservableCollection<TapeViewModel> _tapes = [];
     private readonly StartupCoordinator _startupCoordinator = new();
     private readonly FloatingSpriteMotionController _motionController = new();
@@ -72,6 +73,8 @@ public partial class ScreensaverSceneControl : UserControl
     private double _backgroundZoomScale = 1.01d;
     private double _backgroundZoomDirection = 1d;
     private int _demoFlashTicks;
+    private DateTimeOffset _lastCritterTargetSwapUtc = DateTimeOffset.MinValue;
+    private bool _crittersChasingDollar = true;
     private DateTimeOffset _lastMacroMeterRefreshUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastMacroTraceUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastClockMarketTraceUtc = DateTimeOffset.MinValue;
@@ -92,6 +95,7 @@ public partial class ScreensaverSceneControl : UserControl
         _marketStatusService.UpdateCalendarSnapshot(_exchangeMarketCalendarService.LoadNyseSnapshotFromCacheOrOffline());
         TapeItemsControl.ItemsSource = _tapes;
         NewsFlasherHost.Content = _newsViewModel;
+        MarketSpriteItemsControl.ItemsSource = _marketSprites;
 
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -766,6 +770,8 @@ public partial class ScreensaverSceneControl : UserControl
             ResetGraphRefreshImpulseIfNeeded(graph, bounds);
         }
 
+        StepMarketSpriteMotion(elapsedSeconds);
+
         if (_networkWaitingViewModel is not null)
             _motionController.Step(_networkWaitingViewModel, GetWaitingBounds(), elapsedSeconds);
 
@@ -802,6 +808,172 @@ public partial class ScreensaverSceneControl : UserControl
         double width = FloatingOverlayCanvas.ActualWidth;
         double height = FloatingOverlayCanvas.ActualHeight;
         return width <= 0 || height <= 0 ? Rect.Empty : new Rect(0, 0, width, height);
+    }
+
+    private Rect GetMarketSpriteBounds()
+    {
+        Rect full = GetFullCanvasBounds();
+        if (full == Rect.Empty)
+            return Rect.Empty;
+
+        double top = full.Top + (full.Height * 0.55d);
+        double bottom = full.Bottom - 92d;
+        double height = Math.Max(70d, bottom - top);
+        return new Rect(full.Left + 18d, top, Math.Max(80d, full.Width - 36d), height);
+    }
+
+    private void EnsureMarketSpritesInitialized()
+    {
+        if (_marketSprites.Count > 0)
+            return;
+
+        _marketSprites.Add(new MarketSpriteViewModel
+        {
+            Key = "bull",
+            SpriteText = "🐂",
+            Foreground = Brushes.Goldenrod,
+            Width = 34,
+            Height = 34,
+            IsBag = false
+        });
+        _marketSprites.Add(new MarketSpriteViewModel
+        {
+            Key = "bear",
+            SpriteText = "🐻",
+            Foreground = Brushes.Peru,
+            Width = 34,
+            Height = 34,
+            IsBag = false
+        });
+        _marketSprites.Add(new MarketSpriteViewModel
+        {
+            Key = "dollar-bag",
+            SpriteText = "💵",
+            Foreground = Brushes.Honeydew,
+            Width = 26,
+            Height = 26,
+            IsBag = true
+        });
+        _marketSprites.Add(new MarketSpriteViewModel
+        {
+            Key = "euro-bag",
+            SpriteText = "💶",
+            Foreground = Brushes.LemonChiffon,
+            Width = 26,
+            Height = 26,
+            IsBag = true
+        });
+
+        SeedMarketSprites();
+    }
+
+    private void SeedMarketSprites()
+    {
+        Rect bounds = GetMarketSpriteBounds();
+        if (bounds == Rect.Empty || _marketSprites.Count < 4)
+            return;
+
+        double laneTop = bounds.Top + Math.Max(10d, bounds.Height * 0.15d);
+        double laneBottom = bounds.Bottom - 40d;
+        double[] xPositions =
+        [
+            bounds.Left + bounds.Width * 0.12d,
+            bounds.Left + bounds.Width * 0.22d,
+            bounds.Left + bounds.Width * 0.70d,
+            bounds.Left + bounds.Width * 0.80d
+        ];
+
+        for (int index = 0; index < _marketSprites.Count; index++)
+        {
+            MarketSpriteViewModel sprite = _marketSprites[index];
+            sprite.X = xPositions[index];
+            sprite.BaseY = index < 2 ? laneTop : laneBottom;
+            sprite.Y = sprite.BaseY;
+            sprite.Phase = index * 1.7d;
+            sprite.VelocityX = index switch
+            {
+                0 => 24d,
+                1 => 20d,
+                2 => -18d,
+                _ => -22d
+            };
+            sprite.VelocityY = 0d;
+            sprite.ScaleX = sprite.VelocityX >= 0 ? 1d : -1d;
+        }
+    }
+
+    private void StepMarketSpriteMotion(double elapsedSeconds)
+    {
+        EnsureMarketSpritesInitialized();
+        Rect bounds = GetMarketSpriteBounds();
+        if (bounds == Rect.Empty)
+            return;
+
+        if (_lastCritterTargetSwapUtc == DateTimeOffset.MinValue)
+            _lastCritterTargetSwapUtc = DateTimeOffset.UtcNow;
+
+        if (DateTimeOffset.UtcNow - _lastCritterTargetSwapUtc >= TimeSpan.FromSeconds(9))
+        {
+            _crittersChasingDollar = !_crittersChasingDollar;
+            _lastCritterTargetSwapUtc = DateTimeOffset.UtcNow;
+        }
+
+        MarketSpriteViewModel? bull = _marketSprites.FirstOrDefault(sprite => sprite.Key == "bull");
+        MarketSpriteViewModel? bear = _marketSprites.FirstOrDefault(sprite => sprite.Key == "bear");
+        MarketSpriteViewModel? dollarBag = _marketSprites.FirstOrDefault(sprite => sprite.Key == "dollar-bag");
+        MarketSpriteViewModel? euroBag = _marketSprites.FirstOrDefault(sprite => sprite.Key == "euro-bag");
+        if (bull is null || bear is null || dollarBag is null || euroBag is null)
+            return;
+
+        StepMarketBagSprite(dollarBag, bounds, elapsedSeconds, 1d);
+        StepMarketBagSprite(euroBag, bounds, elapsedSeconds, -1d);
+
+        StepCritterChase(bull, _crittersChasingDollar ? dollarBag : euroBag, bounds, elapsedSeconds, 72d);
+        StepCritterChase(bear, _crittersChasingDollar ? euroBag : dollarBag, bounds, elapsedSeconds, 68d);
+    }
+
+    private static void StepMarketBagSprite(MarketSpriteViewModel bag, Rect bounds, double elapsedSeconds, double driftDirection)
+    {
+        bag.X += bag.VelocityX * elapsedSeconds;
+        double minX = bounds.Left;
+        double maxX = Math.Max(bounds.Left, bounds.Right - bag.Width);
+        if (bag.X <= minX)
+        {
+            bag.X = minX;
+            bag.VelocityX = Math.Abs(bag.VelocityX == 0d ? 18d : bag.VelocityX);
+        }
+        else if (bag.X >= maxX)
+        {
+            bag.X = maxX;
+            bag.VelocityX = -Math.Abs(bag.VelocityX == 0d ? 18d : bag.VelocityX);
+        }
+        else if (bag.VelocityX == 0d)
+        {
+            bag.VelocityX = 18d * driftDirection;
+        }
+
+        double bob = Math.Sin((DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000d) * 2.2d + bag.Phase) * 6d;
+        bag.Y = Math.Clamp(bag.BaseY + bob, bounds.Top, Math.Max(bounds.Top, bounds.Bottom - bag.Height));
+        bag.ScaleX = bag.VelocityX >= 0 ? 1d : -1d;
+    }
+
+    private static void StepCritterChase(MarketSpriteViewModel critter, MarketSpriteViewModel target, Rect bounds, double elapsedSeconds, double speed)
+    {
+        double targetX = target.X + ((target.Width - critter.Width) / 2d);
+        double targetY = target.Y + ((target.Height - critter.Height) / 2d);
+        Vector vector = new(targetX - critter.X, targetY - critter.Y);
+        if (vector.Length > 0.001d)
+        {
+            vector.Normalize();
+            critter.VelocityX = vector.X * speed;
+            critter.VelocityY = vector.Y * speed;
+        }
+
+        critter.X += critter.VelocityX * elapsedSeconds;
+        critter.Y += critter.VelocityY * elapsedSeconds;
+        critter.X = Math.Clamp(critter.X, bounds.Left, Math.Max(bounds.Left, bounds.Right - critter.Width));
+        critter.Y = Math.Clamp(critter.Y, bounds.Top, Math.Max(bounds.Top, bounds.Bottom - critter.Height));
+        critter.ScaleX = critter.VelocityX >= 0 ? 1d : -1d;
     }
 
     private void UpdateClocks(bool forceAncillaryRefresh = false)

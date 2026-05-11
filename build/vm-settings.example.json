@@ -374,8 +374,8 @@
                                            "Enabled":  true
                                        },
                                        {
-                                           "Symbol":  "CL=F",
-                                           "DisplayName":  "Crude Oil Futures",
+                                           "Symbol":  "BZ=F",
+                                           "DisplayName":  "Brent Crude",
                                            "Quantity":  null,
                                            "CostBasis":  null,
                                            "Currency":  "USD",

@@ -111,9 +111,12 @@ public sealed class FinanceNewsServiceTests
         Assert.Contains("Only restyle the supplied facts into a cohesive paragraph.", capturedBody, StringComparison.Ordinal);
         Assert.Contains("Never include investment recommendations", capturedBody, StringComparison.Ordinal);
         Assert.Contains("Do not include any specific numerical values, prices, percentages, dates, or times", capturedBody, StringComparison.Ordinal);
+        Assert.Contains("Use the exact closing quotation provided below and do not modify, paraphrase, or replace it.", capturedBody, StringComparison.Ordinal);
+        Assert.Contains("Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.", capturedBody, StringComparison.Ordinal);
         Assert.DoesNotContain("79.61", capturedBody, StringComparison.Ordinal);
         Assert.DoesNotContain("79.61", first[0], StringComparison.Ordinal);
         Assert.DoesNotContain(Environment.NewLine, first[0], StringComparison.Ordinal);
+        Assert.EndsWith("\"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", first[0], StringComparison.Ordinal);
     }
 
     [Fact]
@@ -172,6 +175,61 @@ public sealed class FinanceNewsServiceTests
 
         Assert.Single(headlines);
         Assert.Equal("resolver-deepseek-key", capturedAuthorization);
+    }
+
+    [Fact]
+    public async Task GetHeadlinesAsync_SummarizedMode_ShakespeareAppendsExactClosingQuotation()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        string? capturedBody = null;
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    <rss><channel><item><title>Bond yields steady as growth worries linger</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            capturedBody = request.Content is null ? string.Empty : request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "content": "Markets grew cautious as policymakers weighed growth against stubborn price pressures"
+                      }
+                    }
+                  ]
+                }
+                """, Encoding.UTF8, "application/json")
+            };
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle = DeepSeekWritingStyle.WilliamShakespeare,
+            NewsRefreshMinutes = 15,
+            DeepSeekApiKey = "test-deepseek-key"
+        };
+
+        IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+        Assert.Single(headlines);
+        Assert.Contains("You write in the style of William Shakespeare.", capturedBody, StringComparison.Ordinal);
+        Assert.Contains("All that glisters is not gold.", capturedBody, StringComparison.Ordinal);
+        Assert.EndsWith("\"All that glisters is not gold.\"", headlines[0], StringComparison.Ordinal);
     }
 
     [Fact]

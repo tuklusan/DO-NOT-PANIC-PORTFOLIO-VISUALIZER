@@ -187,7 +187,7 @@ function Write-TestSettings {
                     @{ Symbol = "ES=F"; DisplayName = "E-mini S&P 500 Futures"; Enabled = $true },
                     @{ Symbol = "NQ=F"; DisplayName = "E-mini Nasdaq-100 Futures"; Enabled = $true },
                     @{ Symbol = "ZN=F"; DisplayName = "10-Year T-Note Futures"; Enabled = $true },
-                    @{ Symbol = "CL=F"; DisplayName = "Crude Oil Futures"; Enabled = $true },
+                    @{ Symbol = "BZ=F"; DisplayName = "Brent Crude"; Enabled = $true },
                     @{ Symbol = "GC=F"; DisplayName = "Gold Futures"; Enabled = $true }
                 )
             }

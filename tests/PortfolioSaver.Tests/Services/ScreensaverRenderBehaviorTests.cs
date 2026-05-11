@@ -1228,6 +1228,40 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("TriggerCardFlash(Brushes.DeepSkyBlue)", sceneCodeBehind, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ScreensaverScene_IncludesAnimatedMarketCritterOverlay()
+    {
+        string sceneXaml = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "ScreensaverSceneControl.xaml"));
+        string sceneCodeBehind = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "ScreensaverSceneControl.xaml.cs"));
+        string critterViewModel = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Render",
+            "ViewModels",
+            "MarketSpriteViewModel.cs"));
+
+        Assert.Contains("MarketSpriteItemsControl", sceneXaml, StringComparison.Ordinal);
+        Assert.Contains("DataType=\"{x:Type vm:MarketSpriteViewModel}\"", sceneXaml, StringComparison.Ordinal);
+        Assert.Contains("MarketSpriteItemsControl.ItemsSource = _marketSprites;", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("EnsureMarketSpritesInitialized()", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("StepMarketSpriteMotion(elapsedSeconds);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SpriteText = \"🐂\"", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SpriteText = \"🐻\"", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SpriteText = \"💵\"", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SpriteText = \"💶\"", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class MarketSpriteViewModel", critterViewModel, StringComparison.Ordinal);
+    }
+
     private static void RunOnSta(Action action)
     {
         Exception? error = null;

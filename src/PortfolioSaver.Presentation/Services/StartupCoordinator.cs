@@ -468,19 +468,33 @@ public sealed class StartupCoordinator
             cachedQuotes,
             nowUtc,
             refreshPollingInterval);
+        List<string> preemptiveRefreshSymbols = [];
+        if (dueSymbols.Count == 0 && networkAvailable)
+        {
+            preemptiveRefreshSymbols = SelectPreemptiveRefreshSymbolsForPass(
+                orderedSymbols,
+                refreshWindows,
+                cachedQuotes,
+                nowUtc,
+                refreshPollingInterval);
+            if (preemptiveRefreshSymbols.Count > 0)
+                scheduledDueSymbols = preemptiveRefreshSymbols;
+        }
 
         TraceRuntimeState(
             "QuoteRefreshPlan",
             new KeyValuePair<string, object?>("ordered_symbol_count", orderedSymbols.Count),
             new KeyValuePair<string, object?>("due_symbol_count", dueSymbols.Count),
             new KeyValuePair<string, object?>("scheduled_due_symbol_count", scheduledDueSymbols.Count),
+            new KeyValuePair<string, object?>("preemptive_refresh_symbol_count", preemptiveRefreshSymbols.Count),
             new KeyValuePair<string, object?>("cached_quote_count", cachedQuotes.Count),
             new KeyValuePair<string, object?>("network_available", networkAvailable),
             new KeyValuePair<string, object?>("polling_interval_seconds", refreshPollingInterval.TotalSeconds),
             new KeyValuePair<string, object?>("due_symbols", PreviewSymbols(dueSymbols)),
-            new KeyValuePair<string, object?>("scheduled_due_symbols", PreviewSymbols(scheduledDueSymbols)));
+            new KeyValuePair<string, object?>("scheduled_due_symbols", PreviewSymbols(scheduledDueSymbols)),
+            new KeyValuePair<string, object?>("preemptive_refresh_symbols", PreviewSymbols(preemptiveRefreshSymbols)));
 
-        if (dueSymbols.Count == 0)
+        if (dueSymbols.Count == 0 && scheduledDueSymbols.Count == 0)
         {
             foreach (string symbol in orderedSymbols)
             {
@@ -1426,6 +1440,53 @@ public sealed class StartupCoordinator
 
         int targetCount = Math.Max(1, (int)Math.Ceiling(dueShare));
         return Math.Min(dueSymbols.Count, targetCount);
+    }
+
+    private static List<string> SelectPreemptiveRefreshSymbolsForPass(
+        IReadOnlyList<string> orderedSymbols,
+        IReadOnlyDictionary<string, TimeSpan> refreshWindows,
+        IReadOnlyDictionary<string, QuoteSnapshot> cachedQuotes,
+        DateTimeOffset nowUtc,
+        TimeSpan pollingInterval)
+    {
+        return orderedSymbols
+            .Where(symbol => refreshWindows.ContainsKey(symbol) && cachedQuotes.ContainsKey(symbol))
+            .Select((symbol, index) =>
+            {
+                QuoteSnapshot cached = cachedQuotes[symbol];
+                TimeSpan refreshWindow = refreshWindows[symbol];
+                TimeSpan leadTime = GetSoftRefreshLeadTime(refreshWindow, pollingInterval);
+                DateTimeOffset dueAt = cached.FetchTimestampUtc + refreshWindow + GetRefreshStaggerOffset(symbol, refreshWindow);
+                DateTimeOffset preemptiveAt = dueAt - leadTime;
+                if (nowUtc < preemptiveAt)
+                    return null;
+
+                double windowSeconds = Math.Max(1d, refreshWindow.TotalSeconds);
+                double ageRatio = Math.Clamp((nowUtc - cached.FetchTimestampUtc).TotalSeconds / windowSeconds, 0d, 2d);
+                return new
+                {
+                    Symbol = symbol,
+                    Index = index,
+                    Priority = ShouldAlwaysIncludeDueSymbol(symbol) ? 0 : 1,
+                    AgeRatio = ageRatio
+                };
+            })
+            .Where(item => item is not null)
+            .OrderBy(item => item!.Priority)
+            .ThenByDescending(item => item!.AgeRatio)
+            .ThenBy(item => item!.Index)
+            .Take(1)
+            .Select(item => item!.Symbol)
+            .ToList();
+    }
+
+    private static TimeSpan GetSoftRefreshLeadTime(TimeSpan refreshWindow, TimeSpan pollingInterval)
+    {
+        double leadSeconds = Math.Min(
+            pollingInterval.TotalSeconds * 1.5d,
+            Math.Max(15d, refreshWindow.TotalSeconds * 0.2d));
+        leadSeconds = Math.Min(leadSeconds, Math.Max(15d, refreshWindow.TotalSeconds - 1d));
+        return TimeSpan.FromSeconds(Math.Max(15d, leadSeconds));
     }
 
     private static bool HasUsableQuote(QuoteSnapshot? quote)

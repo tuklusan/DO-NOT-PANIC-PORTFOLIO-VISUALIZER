@@ -90,6 +90,46 @@
                         Canvas.Left="0"
                         Canvas.Top="0"
                         IsHitTestVisible="False" />
+                <ItemsControl x:Name="MarketSpriteItemsControl"
+                              Width="{Binding ElementName=FloatingOverlayCanvas, Path=ActualWidth}"
+                              Height="{Binding ElementName=FloatingOverlayCanvas, Path=ActualHeight}"
+                              Canvas.Left="0"
+                              Canvas.Top="0"
+                              IsHitTestVisible="False">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Canvas.Left" Value="{Binding X}" />
+                            <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:MarketSpriteViewModel}">
+                            <TextBlock Text="{Binding SpriteText}"
+                                       Foreground="{Binding Foreground}"
+                                       TextOptions.TextFormattingMode="Display"
+                                       RenderTransformOrigin="0.5,0.5">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontSize" Value="24" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsBag}" Value="False">
+                                                <Setter Property="FontSize" Value="30" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                                <TextBlock.RenderTransform>
+                                    <ScaleTransform ScaleX="{Binding ScaleX}" ScaleY="1" />
+                                </TextBlock.RenderTransform>
+                            </TextBlock>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
                 <ContentControl x:Name="NetworkWaitingHost"
                                 Width="340"

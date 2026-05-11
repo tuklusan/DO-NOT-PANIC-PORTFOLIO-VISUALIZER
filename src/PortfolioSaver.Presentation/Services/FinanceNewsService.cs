@@ -28,6 +28,8 @@ public sealed class FinanceNewsService
         BbcBusinessFeedUrl,
         NytEconomyFeedUrl
     ];
+    private const string DouglasAdamsClosingQuote = "\"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"";
+    private const string WilliamShakespeareClosingQuote = "\"All that glisters is not gold.\"";
     private readonly string _cachePath;
     private readonly Func<string> _deepSeekApiKeyResolver;
 
@@ -186,6 +188,7 @@ public sealed class FinanceNewsService
         }
 
         string normalized = NormalizeSummaryText(contentElement.GetString());
+        normalized = EnsureClosingQuotation(normalized, settings.DeepSeekWritingStyle);
         return string.IsNullOrWhiteSpace(normalized) ? [] : [normalized];
     }
 
@@ -255,6 +258,9 @@ public sealed class FinanceNewsService
         builder.AppendLine("Never include investment recommendations, stock-picking language, or advice about whether an asset is a buy, sell, or hold.");
         builder.AppendLine("Do not include any specific numerical values, prices, percentages, dates, or times in the rewritten paragraph.");
         builder.AppendLine("Ignore soft feature stories, local consumer pieces, and duplicate headlines unless they clearly move global markets.");
+        builder.AppendLine("Use the exact closing quotation provided below and do not modify, paraphrase, or replace it.");
+        builder.Append("Closing quotation: ");
+        builder.AppendLine(GetClosingQuotation(writingStyle));
 
         if (context.Headlines.Count > 0)
         {
@@ -276,6 +282,29 @@ public sealed class FinanceNewsService
             DeepSeekWritingStyle.WilliamShakespeare => "You write in the style of William Shakespeare.",
             _ => "You write in the style of Douglas Adams."
         };
+
+    private static string GetClosingQuotation(DeepSeekWritingStyle writingStyle)
+        => writingStyle switch
+        {
+            DeepSeekWritingStyle.WilliamShakespeare => WilliamShakespeareClosingQuote,
+            _ => DouglasAdamsClosingQuote
+        };
+
+    private static string EnsureClosingQuotation(string summary, DeepSeekWritingStyle writingStyle)
+    {
+        string normalized = NormalizeSummaryText(summary);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return string.Empty;
+
+        string quote = GetClosingQuotation(writingStyle);
+        if (normalized.Contains(quote, StringComparison.Ordinal))
+            return normalized;
+
+        if (!normalized.EndsWith(".") && !normalized.EndsWith("!") && !normalized.EndsWith("?"))
+            normalized += ".";
+
+        return $"{normalized} {quote}";
+    }
 
     private string ResolveDeepSeekApiKey(string? explicitApiKey)
     {
