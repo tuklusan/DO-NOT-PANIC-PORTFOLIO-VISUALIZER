@@ -903,6 +903,12 @@ public sealed class ScreensaverRenderBehaviorTests
             "PortfolioSaver.Render",
             "Controls",
             "StatusBarControl.xaml"));
+        string sceneCodeBehind = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "ScreensaverSceneControl.xaml.cs"));
 
         Assert.Contains("ItemsSource=\"{Binding MacroMeters}\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("HorizontalAlignment=\"Center\"", statusBarXaml, StringComparison.Ordinal);
@@ -913,10 +919,15 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("<ColumnDefinition Width=\"Auto\" />", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding UpdatedText}\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"102\"", statusBarXaml, StringComparison.Ordinal);
-        Assert.Contains("MinWidth=\"80\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"88\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("<ColumnDefinition Width=\"24\" />", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("<ColumnDefinition Width=\"52\" />", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("<ColumnDefinition Width=\"30\" />", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("<ColumnDefinition Width=\"22\" />", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("MaxWidth=\"208\"", statusBarXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("MaxWidth=\"700\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("LineHeight=\"15\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("treasuryYieldMeterMax = 6m", sceneCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]

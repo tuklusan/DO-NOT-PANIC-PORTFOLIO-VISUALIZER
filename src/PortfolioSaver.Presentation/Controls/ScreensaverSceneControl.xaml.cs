@@ -835,6 +835,8 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void UpdateStatusMacroMeters(bool force)
     {
+        const decimal treasuryYieldMeterMax = 6m;
+
         if (_statusViewModel is null)
             return;
 
@@ -845,8 +847,8 @@ public partial class ScreensaverSceneControl : UserControl
         EnsureMacroMetersInitialized();
         UpdateQuoteMeter(_statusViewModel.MacroMeters[0], "VIX", "^VIX", 60m, invertRiskColors: true);
         UpdateQuoteMeter(_statusViewModel.MacroMeters[1], "GOLD", "GC=F", 4000m);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[2], "UST2M", "US2M", 6m);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[3], "UST10Y", "US10Y", 6m);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[2], "UST2M", "US2M", treasuryYieldMeterMax);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[3], "UST10Y", "US10Y", treasuryYieldMeterMax);
         UpdateYieldSpreadMeter(_statusViewModel.MacroMeters[4]);
         UpdateQuoteMeter(_statusViewModel.MacroMeters[5], "DXY", "DX-Y.NYB", 120m, invertRiskColors: true);
         UpdateQuoteMeter(_statusViewModel.MacroMeters[6], "CRUDE", "CL=F", 160m);
