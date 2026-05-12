@@ -14,6 +14,7 @@ namespace PortfolioSaver.Screensaver.Services;
 
 public sealed class FinanceNewsService
 {
+    internal const string ClosingQuoteHeadlinePrefix = "[[CLOSING_QUOTE]] ";
     private const string CacheFileName = "finance-news-cache.json";
     private const string DefaultFeedUrl = "https://finance.yahoo.com/news/rss";
     private const string DeepSeekApiUrl = "https://api.deepseek.com/chat/completions";
@@ -188,8 +189,14 @@ public sealed class FinanceNewsService
         }
 
         string normalized = NormalizeSummaryText(contentElement.GetString());
-        normalized = EnsureClosingQuotation(normalized, settings.DeepSeekWritingStyle);
-        return string.IsNullOrWhiteSpace(normalized) ? [] : [normalized];
+        if (string.IsNullOrWhiteSpace(normalized))
+            return [];
+
+        return
+        [
+            normalized,
+            BuildClosingQuoteHeadline(settings.DeepSeekWritingStyle)
+        ];
     }
 
     private static async Task<SummarizedNewsContext> FetchSummarizedNewsContextAsync(
@@ -258,10 +265,6 @@ public sealed class FinanceNewsService
         builder.AppendLine("Never include investment recommendations, stock-picking language, or advice about whether an asset is a buy, sell, or hold.");
         builder.AppendLine("Do not include any specific numerical values, prices, percentages, dates, or times in the rewritten paragraph.");
         builder.AppendLine("Ignore soft feature stories, local consumer pieces, and duplicate headlines unless they clearly move global markets.");
-        builder.AppendLine("Use the exact closing quotation provided below and do not modify, paraphrase, or replace it.");
-        builder.Append("Closing quotation: ");
-        builder.AppendLine(GetClosingQuotation(writingStyle));
-
         if (context.Headlines.Count > 0)
         {
             builder.AppendLine("Latest headlines:");
@@ -290,20 +293,21 @@ public sealed class FinanceNewsService
             _ => DouglasAdamsClosingQuote
         };
 
-    private static string EnsureClosingQuotation(string summary, DeepSeekWritingStyle writingStyle)
+    internal static string BuildClosingQuoteHeadline(DeepSeekWritingStyle writingStyle)
+        => $"{ClosingQuoteHeadlinePrefix}{GetClosingQuotation(writingStyle)}";
+
+    internal static bool TryParseSpecialHeadline(string headline, out string text, out bool isSupplemental)
     {
-        string normalized = NormalizeSummaryText(summary);
-        if (string.IsNullOrWhiteSpace(normalized))
-            return string.Empty;
+        text = (headline ?? string.Empty).Trim();
+        isSupplemental = false;
 
-        string quote = GetClosingQuotation(writingStyle);
-        if (normalized.Contains(quote, StringComparison.Ordinal))
-            return normalized;
+        if (text.StartsWith(ClosingQuoteHeadlinePrefix, StringComparison.Ordinal))
+        {
+            text = text[ClosingQuoteHeadlinePrefix.Length..].Trim();
+            isSupplemental = true;
+        }
 
-        if (!normalized.EndsWith(".") && !normalized.EndsWith("!") && !normalized.EndsWith("?"))
-            normalized += ".";
-
-        return $"{normalized} {quote}";
+        return !string.IsNullOrWhiteSpace(text);
     }
 
     private string ResolveDeepSeekApiKey(string? explicitApiKey)

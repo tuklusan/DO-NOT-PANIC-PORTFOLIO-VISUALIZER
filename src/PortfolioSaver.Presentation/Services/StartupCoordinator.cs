@@ -1099,7 +1099,15 @@ public sealed class StartupCoordinator
 
         foreach (string headline in headlines.Where(headline => !string.IsNullOrWhiteSpace(headline)))
         {
-            news.Headlines.Add(new NewsHeadlineViewModel { Text = headline.Trim() });
+            if (!FinanceNewsService.TryParseSpecialHeadline(headline, out string parsedText, out bool isSupplemental))
+                continue;
+
+            news.Headlines.Add(new NewsHeadlineViewModel
+            {
+                Text = parsedText,
+                Foreground = isSupplemental ? Brushes.LightSteelBlue : Brushes.WhiteSmoke,
+                IsSupplemental = isSupplemental
+            });
         }
 
         if (news.Headlines.Count == 0)
@@ -1717,12 +1725,17 @@ public sealed class StartupCoordinator
             return;
 
         List<NewsHeadlineViewModel> source = items
+            .Where(item => !item.IsSupplemental)
             .Select(item => new NewsHeadlineViewModel
             {
                 Text = item.Text,
-                Foreground = item.Foreground
+                Foreground = item.Foreground,
+                IsSupplemental = item.IsSupplemental
             })
             .ToList();
+
+        if (source.Count == 0)
+            return;
 
         while (items.Count < minimumCount)
         {
@@ -1731,7 +1744,8 @@ public sealed class StartupCoordinator
                 items.Add(new NewsHeadlineViewModel
                 {
                     Text = item.Text,
-                    Foreground = item.Foreground
+                    Foreground = item.Foreground,
+                    IsSupplemental = item.IsSupplemental
                 });
                 if (items.Count >= minimumCount)
                     break;

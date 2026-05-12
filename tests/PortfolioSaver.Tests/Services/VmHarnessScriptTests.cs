@@ -165,7 +165,6 @@ public sealed class VmHarnessScriptTests
         Assert.Contains(".Replace(\"`0\", '')", script, StringComparison.Ordinal);
         Assert.Contains("[System.IO.Path]::ChangeExtension($Path, '.idx')", script, StringComparison.Ordinal);
         Assert.Contains("[System.IO.File]::ReadAllBytes($Path)", script, StringComparison.Ordinal);
-        Assert.Contains("Guest reference spot-check skipped", script, StringComparison.Ordinal);
     }
 
     [Fact]

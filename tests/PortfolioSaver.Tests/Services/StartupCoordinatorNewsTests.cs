@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Linq;
 using PortfolioSaver.Render.ViewModels;
 using PortfolioSaver.Screensaver.Services;
 using Xunit;
@@ -27,6 +28,19 @@ public sealed class StartupCoordinatorNewsTests
         Assert.True(news.Headlines.Count >= 1);
         Assert.Contains(news.Headlines, headline =>
             headline.Text.Contains("Waiting for summarized financial news", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void BuildNews_OnlyIncludesClosingQuoteOncePerExpandedSequence()
+    {
+        NewsFlasherViewModel news = InvokeBuildNews([
+            "Macro headlines stay active across regions.",
+            "[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\""
+        ]);
+
+        Assert.True(news.Headlines.Count >= 20);
+        Assert.Single(news.Headlines.Where(headline => headline.IsSupplemental));
+        Assert.Contains(news.Headlines, headline => headline.Text.Contains("Nothing travels faster", StringComparison.Ordinal));
     }
 
     private static NewsFlasherViewModel InvokeBuildNews(IReadOnlyList<string> headlines)

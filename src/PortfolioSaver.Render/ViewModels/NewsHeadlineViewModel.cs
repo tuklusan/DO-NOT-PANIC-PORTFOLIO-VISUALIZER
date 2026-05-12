@@ -7,6 +7,7 @@ public sealed class NewsHeadlineViewModel : BindableBase
 {
     private string _text = string.Empty;
     private Brush _foreground = Brushes.WhiteSmoke;
+    private bool _isSupplemental;
 
     public string Text
     {
@@ -18,5 +19,11 @@ public sealed class NewsHeadlineViewModel : BindableBase
     {
         get => _foreground;
         set => SetProperty(ref _foreground, value);
+    }
+
+    public bool IsSupplemental
+    {
+        get => _isSupplemental;
+        set => SetProperty(ref _isSupplemental, value);
     }
 }

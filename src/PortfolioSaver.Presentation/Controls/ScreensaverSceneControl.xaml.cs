@@ -2217,13 +2217,15 @@ public partial class ScreensaverSceneControl : UserControl
     private static NewsHeadlineViewModel CloneHeadline(NewsHeadlineViewModel item) => new()
     {
         Text = item.Text,
-        Foreground = item.Foreground
+        Foreground = item.Foreground,
+        IsSupplemental = item.IsSupplemental
     };
 
     private static void UpdateHeadline(NewsHeadlineViewModel target, NewsHeadlineViewModel source)
     {
         target.Text = source.Text;
         target.Foreground = source.Foreground;
+        target.IsSupplemental = source.IsSupplemental;
     }
 
     private void ApplyQuotesToGraphs()

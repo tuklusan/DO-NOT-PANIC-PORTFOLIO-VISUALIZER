@@ -101,8 +101,8 @@ public sealed class FinanceNewsServiceTests
             settings,
             networkAvailable: true);
 
-        Assert.Single(first);
-        Assert.Equal(first[0], second[0]);
+        Assert.Equal(2, first.Count);
+        Assert.Equal(first, second);
         Assert.Equal(1, requestCount);
         Assert.Contains("You are a dependable fiduciary and are presenting current financial news highlights to your customers.", capturedBody, StringComparison.Ordinal);
         Assert.Contains("You write in the style of Douglas Adams.", capturedBody, StringComparison.Ordinal);
@@ -111,12 +111,12 @@ public sealed class FinanceNewsServiceTests
         Assert.Contains("Only restyle the supplied facts into a cohesive paragraph.", capturedBody, StringComparison.Ordinal);
         Assert.Contains("Never include investment recommendations", capturedBody, StringComparison.Ordinal);
         Assert.Contains("Do not include any specific numerical values, prices, percentages, dates, or times", capturedBody, StringComparison.Ordinal);
-        Assert.Contains("Use the exact closing quotation provided below and do not modify, paraphrase, or replace it.", capturedBody, StringComparison.Ordinal);
-        Assert.Contains("Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.", capturedBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("Closing quotation:", capturedBody, StringComparison.Ordinal);
         Assert.DoesNotContain("79.61", capturedBody, StringComparison.Ordinal);
         Assert.DoesNotContain("79.61", first[0], StringComparison.Ordinal);
         Assert.DoesNotContain(Environment.NewLine, first[0], StringComparison.Ordinal);
-        Assert.EndsWith("\"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", first[0], StringComparison.Ordinal);
+        Assert.Equal("Global stocks were mixed as traders weighed labor data, central-bank caution, and softer energy sentiment across regions.", first[0]);
+        Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", first[1]);
     }
 
     [Fact]
@@ -173,7 +173,7 @@ public sealed class FinanceNewsServiceTests
             settings,
             networkAvailable: true);
 
-        Assert.Single(headlines);
+        Assert.Equal(2, headlines.Count);
         Assert.Equal("resolver-deepseek-key", capturedAuthorization);
     }
 
@@ -226,10 +226,10 @@ public sealed class FinanceNewsServiceTests
 
         IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
 
-        Assert.Single(headlines);
+        Assert.Equal(2, headlines.Count);
         Assert.Contains("You write in the style of William Shakespeare.", capturedBody, StringComparison.Ordinal);
-        Assert.Contains("All that glisters is not gold.", capturedBody, StringComparison.Ordinal);
-        Assert.EndsWith("\"All that glisters is not gold.\"", headlines[0], StringComparison.Ordinal);
+        Assert.DoesNotContain("Closing quotation:", capturedBody, StringComparison.Ordinal);
+        Assert.Equal("[[CLOSING_QUOTE]] \"All that glisters is not gold.\"", headlines[1]);
     }
 
     [Fact]

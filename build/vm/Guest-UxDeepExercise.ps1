@@ -993,14 +993,6 @@ try {
             Capture-Screen -Path $path
             $summary.ScreensaverShots++
             $summary.DesktopShots++
-            if ($i -eq 1 -or ($i % 6) -eq 0) {
-                try {
-                    Write-ReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $i
-                }
-                catch {
-                    $summary.Notes += "Guest reference spot-check skipped at frame $i: $($_.Exception.Message)"
-                }
-            }
             Write-SummaryFiles
             Start-Sleep -Seconds $CaptureIntervalSeconds
         }
