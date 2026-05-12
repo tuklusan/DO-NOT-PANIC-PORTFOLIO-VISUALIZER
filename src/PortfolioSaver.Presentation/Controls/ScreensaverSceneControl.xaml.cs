@@ -506,14 +506,18 @@ public partial class ScreensaverSceneControl : UserControl
             .Select(meter => $"{meter.Label}:{meter.ValueText}:{meter.ChangeText}")
             .ToList();
         List<string> missingSymbols = StartupCoordinator.GetMacroIndicatorSymbols()
-            .Where(symbol => !_latestQuotes.TryGetValue(symbol, out QuoteSnapshot? quote) || IsQuoteBeyondStaleThreshold(quote))
+            .Where(symbol => !_latestQuotes.TryGetValue(symbol, out QuoteSnapshot? quote) || (quote.Last is null && quote.PreviousClose is null))
+            .ToList();
+        List<string> staleSymbols = StartupCoordinator.GetMacroIndicatorSymbols()
+            .Where(symbol => _latestQuotes.TryGetValue(symbol, out QuoteSnapshot? quote) && IsQuoteBeyondStaleThreshold(quote))
             .ToList();
 
         TraceSceneState(
             "MacroSnapshot",
             new KeyValuePair<string, object?>("force", force),
             new KeyValuePair<string, object?>("meters", macroTexts),
-            new KeyValuePair<string, object?>("missing_symbols", missingSymbols));
+            new KeyValuePair<string, object?>("missing_symbols", missingSymbols),
+            new KeyValuePair<string, object?>("stale_symbols", staleSymbols));
     }
 
     private async Task WarmGraphsAsync(int rotationSeed, bool preserveLayout, CancellationToken cancellationToken)

@@ -560,13 +560,17 @@
             "priority": 5,
             "area": "macro_bootstrap",
             "title": "Initial macro state is briefly inconsistent before settling",
-            "status": "open",
+            "status": "resolved",
             "source": "latest_soak_audit",
             "evidence": [
-                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log"
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log",
+                "build/vm/artifacts/ssh-runs/macro-proof-20260512-203949/ux-deep-summary.json",
+                "build/vm/artifacts/ssh-runs/macro-proof-20260512-203949/trace/trace.circular.log"
             ],
             "notes": [
-                "Early MacroSnapshot events report missing symbols even while cached macro values are already visible, producing a brief bootstrap inconsistency."
+                "Early MacroSnapshot events report missing symbols even while cached macro values are already visible, producing a brief bootstrap inconsistency.",
+                "Resolved on 2026-05-12 by separating truly missing macro symbols from stale-but-renderable ones inside TraceMacroSnapshot, so cached macro values are no longer misreported as missing.",
+                "Fresh guest macro proof macro-proof-20260512-203949 now records missing_symbols=[] while the cached startup macro values are visible, and uses stale_symbols=[...] until the live macro refresh arrives and clears them."
             ]
         }
     ]

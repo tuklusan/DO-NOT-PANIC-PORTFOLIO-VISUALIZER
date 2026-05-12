@@ -922,6 +922,8 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("\"GOLD\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"CRUDE\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Brushes.Goldenrod", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new KeyValuePair<string, object?>(\"stale_symbols\", staleSymbols)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("quote.Last is null && quote.PreviousClose is null", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("graph.IsRefreshTravelFlashActive = true;", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("graph.IsRefreshTravelFlashActive = false;", sceneCodeBehind, StringComparison.Ordinal);
     }
