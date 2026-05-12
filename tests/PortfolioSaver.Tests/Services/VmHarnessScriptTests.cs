@@ -138,6 +138,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$root = $RootPath", script, StringComparison.Ordinal);
         Assert.Contains("$summary.ExportMode = 'LocalWorkspace'", script, StringComparison.Ordinal);
         Assert.Contains("$localTraceTarget = Join-Path $results 'trace'", script, StringComparison.Ordinal);
+        Assert.Contains("function Reset-PortfolioTraceRoot", script, StringComparison.Ordinal);
+        Assert.Contains("Reset-PortfolioTraceRoot", script, StringComparison.Ordinal);
         Assert.Contains("$summary.DesktopPhaseStatus = \"Running\"", script, StringComparison.Ordinal);
         Assert.Contains("Write-SummaryFiles", script, StringComparison.Ordinal);
         Assert.DoesNotContain("VBOXSVR", script, StringComparison.Ordinal);

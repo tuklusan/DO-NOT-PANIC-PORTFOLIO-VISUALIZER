@@ -541,13 +541,17 @@
             "priority": 4,
             "area": "trace_hygiene",
             "title": "Pulled circular trace still includes non-run testhost noise at the front",
-            "status": "open",
+            "status": "resolved",
             "source": "latest_soak_audit",
             "evidence": [
-                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log"
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log",
+                "build/vm/artifacts/ssh-runs/trace-proof-20260512-201311/ux-deep-summary.json",
+                "build/vm/artifacts/ssh-runs/trace-proof-20260512-201311/trace/trace.circular.log"
             ],
             "notes": [
-                "The beginning of the pulled trace still contains unrelated testhost noise before the actual desktop soak session."
+                "The beginning of the pulled trace still contains unrelated testhost noise before the actual desktop soak session.",
+                "Resolved on 2026-05-12 by resetting %APPDATA%\\PortfolioSaver\\Trace at the start of Guest-UxDeepExercise.ps1 before launching the config or desktop hosts.",
+                "Fresh guest trace proof trace-proof-20260512-201311 now starts directly with the current PortfolioSaver.Config and PortfolioSaver.Desktop startup lines, with no inherited testhost noise at the front of the pulled circular trace."
             ]
         },
         {

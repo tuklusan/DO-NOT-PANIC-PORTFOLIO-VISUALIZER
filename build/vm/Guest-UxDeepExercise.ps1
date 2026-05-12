@@ -445,6 +445,15 @@ function Write-TextFileWithRetry {
     }
 }
 
+function Reset-PortfolioTraceRoot {
+    $traceRoot = Join-Path $env:APPDATA "PortfolioSaver\Trace"
+    if (Test-Path $traceRoot) {
+        Remove-Item -LiteralPath $traceRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    New-Item -ItemType Directory -Force -Path $traceRoot | Out-Null
+}
+
 function Write-ReferenceSpotCheck {
     param(
         [Parameter(Mandatory = $true)][string]$OutputPath,
@@ -832,6 +841,7 @@ Write-SummaryFiles
 Start-Transcript -Path $logPath -Force | Out-Null
 
 try {
+    Reset-PortfolioTraceRoot
     Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
     try {
