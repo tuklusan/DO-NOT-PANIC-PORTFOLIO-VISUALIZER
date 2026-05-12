@@ -90,6 +90,8 @@ public sealed class StartupCoordinator
             .Select(group => group.Last())
             .ToDictionary(quote => quote.Symbol, StringComparer.OrdinalIgnoreCase);
         IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode);
+        DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
+        bool showRecoveryOverlay = ShouldShowLiveRecoveryOverlay(cachedQuotes, settings, nowUtc);
 
         TraceRuntimeState(
             "BootstrapSceneBuilt",
@@ -97,7 +99,8 @@ public sealed class StartupCoordinator
             new KeyValuePair<string, object?>("background_count", backgroundPaths.Count),
             new KeyValuePair<string, object?>("cached_quote_count", cachedQuotes.Count),
             new KeyValuePair<string, object?>("headline_count", headlines.Count),
-            new KeyValuePair<string, object?>("group_count", settings.Groups.Count(group => group.Enabled)));
+            new KeyValuePair<string, object?>("group_count", settings.Groups.Count(group => group.Enabled)),
+            new KeyValuePair<string, object?>("show_recovery_overlay", showRecoveryOverlay));
 
         return new ScreensaverSceneState
         {
@@ -109,19 +112,25 @@ public sealed class StartupCoordinator
             {
                 MarketStatusText = FormatStatusBandText(_marketStatusService.FormatStatusLine(DateTimeOffset.UtcNow)),
                 ProviderText = networkAvailable
-                    ? (cachedQuotes.Count > 0 ? "Provider: Cache + live warmup" : "Provider: Loading live data")
+                    ? (showRecoveryOverlay ? "Provider: Refreshing stale cache" : (cachedQuotes.Count > 0 ? "Provider: Cache + live warmup" : "Provider: Loading live data"))
                     : (cachedQuotes.Count > 0 ? "Provider: Local Cache" : "Provider: Waiting for network"),
-                UpdatedText = cachedQuotes.Count > 0 ? "Updated: Cache warm start" : "Updated: Starting...",
+                UpdatedText = showRecoveryOverlay
+                    ? "Updated: Refreshing live data..."
+                    : (cachedQuotes.Count > 0 ? "Updated: Cache warm start" : "Updated: Starting..."),
                 ClockDateText = DateTimeOffset.UtcNow.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
                 ClockText = $"{DateTimeOffset.UtcNow:HH:mm} UTC"
             },
             Graphs = [],
             Clock = settings.EnableFloatingClock ? _floatingClockBuilder.BuildDefault() : null,
             BackgroundPaths = backgroundPaths,
-            ShowNetworkWaitingOverlay = !networkAvailable,
-            NetworkWaitingTitle = networkAvailable ? "Loading market data" : "Waiting for network",
+            ShowNetworkWaitingOverlay = !networkAvailable || showRecoveryOverlay,
+            NetworkWaitingTitle = networkAvailable
+                ? (showRecoveryOverlay ? "Refreshing live market data" : "Loading market data")
+                : "Waiting for network",
             NetworkWaitingDetail = networkAvailable
-                ? "Fetching live quotes, history, and exchange photos..."
+                ? (showRecoveryOverlay
+                    ? "Refreshing stale cached quotes before showing the live scene..."
+                    : "Fetching live quotes, history, and exchange photos...")
                 : $"Retrying live quotes and exchange photos every {Math.Max(5, (int)GetRefreshSeconds(settings))} seconds."
         };
     }
@@ -192,17 +201,22 @@ public sealed class StartupCoordinator
             .Select(quote => quote.FetchTimestampUtc)
             .DefaultIfEmpty(nowUtc)
             .Max();
+        bool showRecoveryOverlay = ShouldShowLiveRecoveryOverlay(quotes, settings, nowUtc);
 
         StatusBarViewModel status = new()
         {
             MarketStatusText = FormatStatusBandText(_marketStatusService.FormatStatusLine(nowUtc)),
-            ProviderText = $"Provider: {providerLabel}",
-            UpdatedText = $"Updated: {TimeFormatHelper.ToAgeString(lastUpdate)}",
+            ProviderText = showRecoveryOverlay
+                ? "Provider: Refreshing stale cache"
+                : $"Provider: {providerLabel}",
+            UpdatedText = showRecoveryOverlay
+                ? "Updated: Refreshing live data..."
+                : $"Updated: {TimeFormatHelper.ToAgeString(lastUpdate)}",
             ClockDateText = nowUtc.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
             ClockText = $"{nowUtc:HH:mm} UTC"
         };
 
-        bool showNetworkWaitingOverlay = ShouldShowNetworkWaitingOverlay(networkAvailable, providerLabel);
+        bool showNetworkWaitingOverlay = ShouldShowNetworkWaitingOverlay(networkAvailable, providerLabel) || showRecoveryOverlay;
 
         return new ScreensaverSceneState
         {
@@ -215,8 +229,10 @@ public sealed class StartupCoordinator
             Clock = clock,
             BackgroundPaths = backgroundPaths,
             ShowNetworkWaitingOverlay = showNetworkWaitingOverlay,
-            NetworkWaitingTitle = "Waiting for network",
-            NetworkWaitingDetail = $"Retrying live quotes and exchange photos every {Math.Max(5, (int)GetRefreshSeconds(settings))} seconds."
+            NetworkWaitingTitle = showRecoveryOverlay ? "Refreshing live market data" : "Waiting for network",
+            NetworkWaitingDetail = showRecoveryOverlay
+                ? "Holding the scene until enough fresh quotes arrive..."
+                : $"Retrying live quotes and exchange photos every {Math.Max(5, (int)GetRefreshSeconds(settings))} seconds."
         };
     }
 
@@ -1184,6 +1200,24 @@ public sealed class StartupCoordinator
         return providerLabel.StartsWith("Local Cache", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool ShouldShowLiveRecoveryOverlay(
+        IReadOnlyDictionary<string, QuoteSnapshot> quotes,
+        AppSettings settings,
+        DateTimeOffset nowUtc)
+    {
+        if (quotes.Count == 0)
+            return true;
+
+        int degradedCount = quotes.Values.Count(quote => IsQuoteBeyondStaleThreshold(quote, settings, nowUtc));
+        if (degradedCount == 0)
+            return false;
+
+        if (degradedCount == quotes.Count)
+            return true;
+
+        return degradedCount >= 12 && degradedCount * 2 >= quotes.Count;
+    }
+
     private FloatingGraphViewModel BuildGraph(string tapeName, TickerHistorySnapshot snapshot, AppSettings settings)
     {
         FloatingGraphViewModel graph = _historicalGraphBuilder.Build(tapeName, snapshot, new Size(132, 40));
@@ -1391,6 +1425,17 @@ public sealed class StartupCoordinator
             return alwaysInclude;
 
         int targetCount = CalculateDueSymbolsPerPass(budgetedDueSymbols, refreshWindows, pollingInterval);
+        int degradedCount = orderedSymbols.Count(symbol =>
+        {
+            if (!budgetedDueSymbols.Contains(symbol))
+                return false;
+
+            bool missingQuote = !cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? cached);
+            return missingQuote || !HasUsableQuote(cached) || cached!.IsStale;
+        });
+        if (degradedCount >= 6 && degradedCount * 3 >= budgetedDueSymbols.Count)
+            targetCount = Math.Max(targetCount, Math.Min(MaxBatchSymbolsPerPass, degradedCount));
+
         List<string> selected = orderedSymbols
             .Where(symbol => budgetedDueSymbols.Contains(symbol))
             .Select((symbol, index) =>

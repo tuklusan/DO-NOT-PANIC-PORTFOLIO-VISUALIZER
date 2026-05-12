@@ -502,13 +502,17 @@
             "priority": 3,
             "area": "startup_quality",
             "title": "Startup still presents a rough stale-data warmup window before recovering",
-            "status": "open",
+            "status": "resolved",
             "source": "latest_soak_audit",
             "evidence": [
-                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log"
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log",
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-185818/ux-deep-summary.json",
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-185818/trace/trace.circular.log"
             ],
             "notes": [
-                "Early ApplySceneStateComplete and DisplayedTapeSample trace entries still show a heavily stale first impression before the quote set recovers."
+                "Early ApplySceneStateComplete and DisplayedTapeSample trace entries still show a heavily stale first impression before the quote set recovers.",
+                "Resolved on 2026-05-12 by boosting the initial due-symbol work set during broad stale recovery and holding the scene behind a recovery overlay while the cache is still broadly stale.",
+                "Fresh 20-minute VM proof ux-deep-ssh-20260512-185818 shows BootstrapSceneBuilt with show_recovery_overlay=true, waiting_overlay_visible=true while stale_quote_count stays broadly degraded, and then drops the overlay once stale_quote_count recovers into the teens and continues to zero."
             ]
         },
         {

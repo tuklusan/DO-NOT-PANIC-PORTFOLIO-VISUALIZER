@@ -134,7 +134,7 @@ public sealed class StartupCoordinatorAdvancedTests
     }
 
     [Fact]
-    public void BuildBootstrapScene_WhenNetworkAvailable_DoesNotShowFloatingWaitingOverlay()
+    public void BuildBootstrapScene_WhenNetworkAvailableAndNoCache_ShowsLoadingOverlay()
     {
         string localDataRoot = CreateIsolatedLocalDataRoot();
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", localDataRoot);
@@ -144,7 +144,53 @@ public sealed class StartupCoordinatorAdvancedTests
 
             ScreensaverSceneState scene = coordinator.BuildBootstrapScene();
 
-            Assert.False(scene.ShowNetworkWaitingOverlay);
+            Assert.True(scene.ShowNetworkWaitingOverlay);
+            Assert.Equal("Refreshing live market data", scene.NetworkWaitingTitle);
+            Assert.Equal("Provider: Refreshing stale cache", scene.Status.ProviderText);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", null);
+        }
+    }
+
+    [Fact]
+    public async Task BuildBootstrapScene_WhenCacheIsBroadlyStale_ShowsRecoveryOverlay()
+    {
+        string localDataRoot = CreateIsolatedLocalDataRoot();
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", localDataRoot);
+        try
+        {
+            DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
+            QuoteCacheService cache = new(Path.Combine(localDataRoot, "quotes-cache.json"));
+            await cache.SaveAsync(
+            [
+                new QuoteSnapshot
+                {
+                    Symbol = "AAPL",
+                    Last = 188.12m,
+                    PreviousClose = 187.10m,
+                    FetchTimestampUtc = nowUtc - TimeSpan.FromHours(2),
+                    IsStale = true
+                },
+                new QuoteSnapshot
+                {
+                    Symbol = "MSFT",
+                    Last = 412.50m,
+                    PreviousClose = 410.00m,
+                    FetchTimestampUtc = nowUtc - TimeSpan.FromHours(2),
+                    IsStale = true
+                }
+            ], CancellationToken.None);
+
+            StartupCoordinator coordinator = CreateCoordinatorWithIsolatedLedger(networkAvailability: () => true);
+
+            ScreensaverSceneState scene = coordinator.BuildBootstrapScene();
+
+            Assert.True(scene.ShowNetworkWaitingOverlay);
+            Assert.Equal("Refreshing live market data", scene.NetworkWaitingTitle);
+            Assert.Equal("Provider: Refreshing stale cache", scene.Status.ProviderText);
+            Assert.Equal("Updated: Refreshing live data...", scene.Status.UpdatedText);
         }
         finally
         {
@@ -815,6 +861,40 @@ public sealed class StartupCoordinatorAdvancedTests
 
         Assert.Single(selected);
         Assert.Equal("^VIX", selected[0]);
+    }
+
+    [Fact]
+    public void SelectDueSymbolsForPass_WhenStartupRecoveryIsBroadlyDegraded_BoostsInitialWorkSet()
+    {
+        MethodInfo method = typeof(StartupCoordinator).GetMethod(
+            "SelectDueSymbolsForPass",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("StartupCoordinator.SelectDueSymbolsForPass not found.");
+
+        DateTimeOffset nowUtc = new(2026, 5, 11, 8, 0, 0, TimeSpan.Zero);
+        List<string> orderedSymbols = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+        HashSet<string> dueSymbols = orderedSymbols.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        IReadOnlyDictionary<string, TimeSpan> refreshWindows = orderedSymbols.ToDictionary(
+            symbol => symbol,
+            _ => TimeSpan.FromMinutes(5),
+            StringComparer.OrdinalIgnoreCase);
+        IReadOnlyDictionary<string, QuoteSnapshot> cachedQuotes = orderedSymbols.ToDictionary(
+            symbol => symbol,
+            symbol => new QuoteSnapshot
+            {
+                Symbol = symbol,
+                Last = 100m,
+                FetchTimestampUtc = nowUtc.AddHours(-2),
+                IsStale = true
+            },
+            StringComparer.OrdinalIgnoreCase);
+
+        List<string> selected = Assert.IsType<List<string>>(method.Invoke(
+            null,
+            [orderedSymbols, dueSymbols, refreshWindows, cachedQuotes, nowUtc, TimeSpan.FromMinutes(1)])!);
+
+        Assert.Equal(8, selected.Count);
+        Assert.Equal(orderedSymbols.Take(8), selected);
     }
 
     [Fact]
