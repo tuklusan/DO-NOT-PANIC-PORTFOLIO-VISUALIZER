@@ -54,6 +54,27 @@ public sealed class HybridHistoricalDataProviderTests
         Assert.Contains(handler.SparkUrls, url => url.Contains("interval=1h", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task GetHistoryAsync_UsesRelaxedRecentFallbackForOneDayGraphsWhenCutoffLeavesOnePoint()
+    {
+        SparseIntradayHandler handler = new();
+        using HttpClient httpClient = new(handler);
+        FakeHistoricalCache cache = new();
+        HybridHistoricalDataProvider provider = new(
+            cache,
+            httpClient: httpClient,
+            finnhubApiKey: string.Empty,
+            twelveDataApiKey: string.Empty,
+            cacheFreshness: TimeSpan.FromHours(12));
+
+        IReadOnlyList<TickerHistorySnapshot> snapshots = await provider.GetHistoryAsync(["AAPL"], lookbackDays: 1);
+
+        TickerHistorySnapshot snapshot = Assert.Single(snapshots);
+        Assert.True(snapshot.Points.Count >= 2);
+        Assert.Equal(snapshot.Points.OrderBy(point => point.TimestampUtc).Select(point => point.TimestampUtc), snapshot.Points.Select(point => point.TimestampUtc));
+        Assert.Equal(102.50m, snapshot.Points[^1].Close);
+    }
+
     private sealed class FakeHistoricalCache : IHistoricalCacheService
     {
         private readonly Dictionary<string, TickerHistorySnapshot> _store = new(StringComparer.OrdinalIgnoreCase);
@@ -179,6 +200,66 @@ public sealed class HybridHistoricalDataProviderTests
             int end = url.IndexOf('?', start);
             string encoded = end >= 0 ? url[start..end] : url[start..];
             return Uri.UnescapeDataString(encoded);
+        }
+    }
+
+    private sealed class SparseIntradayHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            string url = request.RequestUri?.ToString() ?? string.Empty;
+
+            if (url.StartsWith("https://finance.yahoo.com/", StringComparison.OrdinalIgnoreCase))
+            {
+                HttpResponseMessage bootstrap = new(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("home")
+                };
+                bootstrap.Headers.TryAddWithoutValidation("Set-Cookie", "A=1; Path=/");
+                return Task.FromResult(bootstrap);
+            }
+
+            if (url.StartsWith("https://query1.finance.yahoo.com/v1/test/getcrumb", StringComparison.OrdinalIgnoreCase))
+            {
+                HttpResponseMessage crumb = new(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("crumb1")
+                };
+                crumb.Headers.TryAddWithoutValidation("Set-Cookie", "B=2; Path=/");
+                return Task.FromResult(crumb);
+            }
+
+            if (url.Contains("/v8/finance/spark", StringComparison.OrdinalIgnoreCase))
+            {
+                long ts1 = DateTimeOffset.UtcNow.AddHours(-40).ToUnixTimeSeconds();
+                long ts2 = DateTimeOffset.UtcNow.AddHours(-28).ToUnixTimeSeconds();
+                long ts3 = DateTimeOffset.UtcNow.AddHours(-26).ToUnixTimeSeconds();
+                string payload =
+                    $$"""
+                    {
+                      "spark": {
+                        "result": [
+                          {
+                            "symbol": "AAPL",
+                            "response": [
+                              {
+                                "timestamp": [{{ts1}},{{ts2}},{{ts3}}],
+                                "indicators": { "quote": [ { "close": [100.00,101.25,102.50] } ] }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                    """;
+
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(payload)
+                });
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         }
     }
 }

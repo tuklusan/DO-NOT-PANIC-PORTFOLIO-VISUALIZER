@@ -25,6 +25,7 @@ namespace PortfolioSaver.Screensaver.Controls;
 
 public partial class ScreensaverSceneControl : UserControl
 {
+    private static readonly bool EnableMarketCritters = false;
     private const int MaxVisibleGraphCards = 12;
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly ObservableCollection<MarketSpriteViewModel> _marketSprites = [];
@@ -97,6 +98,7 @@ public partial class ScreensaverSceneControl : UserControl
         TapeItemsControl.ItemsSource = _tapes;
         NewsFlasherHost.Content = _newsViewModel;
         MarketSpriteItemsControl.ItemsSource = _marketSprites;
+        MarketSpriteItemsControl.Visibility = EnableMarketCritters ? Visibility.Visible : Visibility.Collapsed;
 
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -783,7 +785,8 @@ public partial class ScreensaverSceneControl : UserControl
             ResetGraphRefreshImpulseIfNeeded(graph, bounds);
         }
 
-        StepMarketSpriteMotion(elapsedSeconds);
+        if (EnableMarketCritters)
+            StepMarketSpriteMotion(elapsedSeconds);
 
         if (_networkWaitingViewModel is not null)
             _motionController.Step(_networkWaitingViewModel, GetWaitingBounds(), elapsedSeconds);
@@ -837,6 +840,9 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void EnsureMarketSpritesInitialized()
     {
+        if (!EnableMarketCritters)
+            return;
+
         if (_marketSprites.Count > 0)
             return;
 

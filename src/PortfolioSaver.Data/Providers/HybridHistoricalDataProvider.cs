@@ -499,11 +499,25 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
 
     private static TickerHistorySnapshot BuildSnapshot(string symbol, int lookbackDays, List<HistoricalPricePoint> points)
     {
-        DateTimeOffset cutoff = DateTimeOffset.UtcNow.AddDays(-lookbackDays);
-        List<HistoricalPricePoint> filtered = points
-            .Where(point => point.TimestampUtc >= cutoff)
+        List<HistoricalPricePoint> ordered = points
             .OrderBy(point => point.TimestampUtc)
             .ToList();
+
+        DateTimeOffset cutoff = DateTimeOffset.UtcNow.AddDays(-lookbackDays);
+        List<HistoricalPricePoint> filtered = ordered
+            .Where(point => point.TimestampUtc >= cutoff)
+            .ToList();
+
+        if (lookbackDays <= 1 && filtered.Count < 2 && ordered.Count >= 2)
+        {
+            DateTimeOffset relaxedCutoff = ordered[^1].TimestampUtc.AddDays(-2);
+            filtered = ordered
+                .Where(point => point.TimestampUtc >= relaxedCutoff)
+                .ToList();
+
+            if (filtered.Count < 2)
+                filtered = ordered.TakeLast(Math.Min(8, ordered.Count)).ToList();
+        }
 
         return new TickerHistorySnapshot
         {

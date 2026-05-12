@@ -476,6 +476,87 @@
                 "FinanceNewsService now returns the quote as a separate prefixed item, BuildNews styles and preserves that supplemental item, and ExpandHeadlineItems duplicates only normal headline items.",
                 "Validated by focused unit coverage plus a fresh green VM proof in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159."
             ]
+        },
+        {
+            "id": "SOAK-001",
+            "tracking_number": "SOAK-001",
+            "priority": 2,
+            "area": "diagnostics",
+            "title": "Reference spot-checking remains functionally broken in the latest soak bundle",
+            "status": "open",
+            "source": "latest_soak_audit",
+            "evidence": [
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/reference-spot-checks.jsonl",
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/reference-spot-check-comparisons.jsonl"
+            ],
+            "notes": [
+                "The latest reference spot-check bundle records empty Results arrays and repeated errors that \"0m\" is not recognized, leaving all comparisons effectively unusable."
+            ]
+        },
+        {
+            "id": "SOAK-002",
+            "tracking_number": "SOAK-002",
+            "priority": 3,
+            "area": "startup_quality",
+            "title": "Startup still presents a rough stale-data warmup window before recovering",
+            "status": "open",
+            "source": "latest_soak_audit",
+            "evidence": [
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log"
+            ],
+            "notes": [
+                "Early ApplySceneStateComplete and DisplayedTapeSample trace entries still show a heavily stale first impression before the quote set recovers."
+            ]
+        },
+        {
+            "id": "SOAK-003",
+            "tracking_number": "SOAK-003",
+            "priority": 1,
+            "area": "graph_cards",
+            "title": "Graph carts are present again but the latest soak only shows a single card",
+            "status": "resolved",
+            "source": "latest_soak_audit",
+            "evidence": [
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log",
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/desktop-010.png",
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-160820/trace/trace.circular.log",
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-160820/desktop-010.png"
+            ],
+            "notes": [
+                "The one-hour soak recovers from graph_count=0, but only one graph survives the 1-day history path, leaving the scene underpopulated.",
+                "Resolved on 2026-05-12 by relaxing the 1-day history fallback so sparse recent intraday data still yields a usable short-horizon snapshot instead of being discarded for most symbols.",
+                "Fresh 20-minute VM proof ux-deep-ssh-20260512-160820 now grows the graph layer from graph_count=0 to graph_count=32, with multiple tape groups populating instead of a single surviving card."
+            ]
+        },
+        {
+            "id": "SOAK-004",
+            "tracking_number": "SOAK-004",
+            "priority": 4,
+            "area": "trace_hygiene",
+            "title": "Pulled circular trace still includes non-run testhost noise at the front",
+            "status": "open",
+            "source": "latest_soak_audit",
+            "evidence": [
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log"
+            ],
+            "notes": [
+                "The beginning of the pulled trace still contains unrelated testhost noise before the actual desktop soak session."
+            ]
+        },
+        {
+            "id": "SOAK-005",
+            "tracking_number": "SOAK-005",
+            "priority": 5,
+            "area": "macro_bootstrap",
+            "title": "Initial macro state is briefly inconsistent before settling",
+            "status": "open",
+            "source": "latest_soak_audit",
+            "evidence": [
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log"
+            ],
+            "notes": [
+                "Early MacroSnapshot events report missing symbols even while cached macro values are already visible, producing a brief bootstrap inconsistency."
+            ]
         }
     ]
 }
