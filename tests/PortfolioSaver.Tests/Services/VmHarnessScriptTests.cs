@@ -181,6 +181,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Get-ReferenceResults", script, StringComparison.Ordinal);
         Assert.Contains("DisplayedVsReferenceFeed", script, StringComparison.Ordinal);
         Assert.Contains("reference-spot-check-comparisons.jsonl", script, StringComparison.Ordinal);
+        Assert.Contains("[decimal]::Zero", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("0m", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("Select-Object -First 6", script, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -606,7 +606,7 @@ function Read-TextFileTailShared {
 function Try-ParseInvariantDecimal {
     param([string]$Text)
 
-    $value = 0m
+    $value = [decimal]::Zero
     if ([decimal]::TryParse($Text, [System.Globalization.NumberStyles]::Any, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$value)) {
         return $value
     }

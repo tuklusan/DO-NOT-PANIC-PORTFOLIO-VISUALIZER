@@ -483,14 +483,17 @@
             "priority": 2,
             "area": "diagnostics",
             "title": "Reference spot-checking remains functionally broken in the latest soak bundle",
-            "status": "open",
+            "status": "resolved",
             "source": "latest_soak_audit",
             "evidence": [
                 "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/reference-spot-checks.jsonl",
-                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/reference-spot-check-comparisons.jsonl"
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/reference-spot-check-comparisons.jsonl",
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-165028/reference-spot-check-comparisons.jsonl"
             ],
             "notes": [
-                "The latest reference spot-check bundle records empty Results arrays and repeated errors that \"0m\" is not recognized, leaving all comparisons effectively unusable."
+                "The latest reference spot-check bundle records empty Results arrays and repeated errors that \"0m\" is not recognized, leaving all comparisons effectively unusable.",
+                "Resolved on 2026-05-12 by replacing invalid PowerShell decimal seed literals in both the guest and host comparison scripts and by comparing against the full displayed symbol sample instead of truncating the symbol list.",
+                "Fresh 20-minute VM proof ux-deep-ssh-20260512-165028 now writes non-empty TwelveDataQuote results and DisplayedVsReferenceFeed comparisons with concrete close matches for every sampled symbol."
             ]
         },
         {

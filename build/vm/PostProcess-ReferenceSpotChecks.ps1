@@ -61,7 +61,7 @@ function Read-CircularTraceText {
 function Try-ParseInvariantDecimal {
     param([string]$Text)
 
-    $value = 0m
+    $value = [decimal]::Zero
     if ([decimal]::TryParse($Text, [System.Globalization.NumberStyles]::Any, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$value)) {
         return $value
     }
@@ -266,7 +266,7 @@ $samples = Parse-DisplayedTapeSamples -TraceText $traceText
 $sampleRecords = @()
 $comparisonRecords = @()
 foreach ($sample in @($samples | Select-Object -Last 1)) {
-    $symbols = @($sample.DisplayedSample | Select-Object -ExpandProperty Symbol -Unique | Select-Object -First 6)
+    $symbols = @($sample.DisplayedSample | Select-Object -ExpandProperty Symbol -Unique)
     $reference = Get-ReferenceResults -Symbols $symbols
     $sampleRecords += [pscustomobject]@{
         CapturedAt = $sample.CapturedAt
