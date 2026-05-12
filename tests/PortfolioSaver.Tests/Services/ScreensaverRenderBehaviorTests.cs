@@ -1212,6 +1212,22 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void GraphWarmup_PreservesInFlightWarmupAcrossRefreshTicks()
+    {
+        string sceneCodeBehind = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "ScreensaverSceneControl.xaml.cs"));
+
+        Assert.Contains("private Task? _graphWarmupTask;", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("if (preserveLayout && _graphWarmupTask is not null && !_graphWarmupTask.IsCompleted)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TraceScene(\"RestartGraphWarmup skipped because a graph warmup is already running.\");", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("_graphWarmupTask = WarmGraphsAsync(rotationSeed, preserveLayout, cancellation.Token);", sceneCodeBehind, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ScreensaverScene_ProvidesDeterministicDemoFlashPulses_ForVisualValidation()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(

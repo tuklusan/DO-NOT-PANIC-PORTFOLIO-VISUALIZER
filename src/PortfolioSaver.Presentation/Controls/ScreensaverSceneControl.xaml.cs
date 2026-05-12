@@ -61,6 +61,7 @@ public partial class ScreensaverSceneControl : UserControl
     private bool _hasSeededLayout;
     private int _graphRotationSeed;
     private CancellationTokenSource? _graphWarmupCancellation;
+    private Task? _graphWarmupTask;
     private CancellationTokenSource? _captureSequenceCancellation;
     private CancellationTokenSource? _startupWarmupCancellation;
     private TimeSpan? _ntpOffset;
@@ -259,18 +260,25 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void RestartGraphWarmup(int rotationSeed, bool preserveLayout)
     {
-        CancelGraphWarmup();
-
         if (!_settings.EnableFloatingGraphs)
         {
+            CancelGraphWarmup();
             _graphs.Clear();
             SyncGraphVisuals();
             return;
         }
 
+        if (preserveLayout && _graphWarmupTask is not null && !_graphWarmupTask.IsCompleted)
+        {
+            TraceScene("RestartGraphWarmup skipped because a graph warmup is already running.");
+            return;
+        }
+
+        CancelGraphWarmup();
+
         CancellationTokenSource cancellation = new();
         _graphWarmupCancellation = cancellation;
-        _ = WarmGraphsAsync(rotationSeed, preserveLayout, cancellation.Token);
+        _graphWarmupTask = WarmGraphsAsync(rotationSeed, preserveLayout, cancellation.Token);
     }
 
     private void CancelGraphWarmup()
@@ -527,6 +535,11 @@ public partial class ScreensaverSceneControl : UserControl
         catch (Exception ex)
         {
             TraceScene($"WarmGraphsAsync failed: {ex}");
+        }
+        finally
+        {
+            if (!cancellationToken.IsCancellationRequested)
+                _graphWarmupTask = null;
         }
     }
 
