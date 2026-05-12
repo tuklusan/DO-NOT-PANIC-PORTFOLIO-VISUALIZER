@@ -14,12 +14,13 @@ public sealed class StooqGlobalMarketQuoteProviderTests
         using HttpClient httpClient = new(handler);
         StooqGlobalMarketQuoteProvider provider = new(httpClient);
 
-        var quotes = await provider.GetQuotesAsync(["^FTSE", "DX-Y.NYB", "CL=F", "GC=F", "^SPX", "INDY.US", "EWA.US", "^NYA"]);
+        var quotes = await provider.GetQuotesAsync(["^FTSE", "DX-Y.NYB", "CL=F", "BZ=F", "GC=F", "^SPX", "INDY.US", "EWA.US", "^NYA"]);
 
-        Assert.Equal(7, quotes.Count);
+        Assert.Equal(8, quotes.Count);
         Assert.Contains("^ukx", handler.RequestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("dx.f", handler.RequestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("cl.f", handler.RequestedSymbols, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("cb.f", handler.RequestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("gc.f", handler.RequestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("^spx", handler.RequestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("indy.us", handler.RequestedSymbols, StringComparer.OrdinalIgnoreCase);
@@ -28,6 +29,7 @@ public sealed class StooqGlobalMarketQuoteProviderTests
         Assert.Contains(quotes, quote => quote.Symbol == "^FTSE" && quote.Last == 8123.45m);
         Assert.Contains(quotes, quote => quote.Symbol == "DX-Y.NYB" && quote.Last == 104.10m);
         Assert.Contains(quotes, quote => quote.Symbol == "CL=F" && quote.Last == 102.60m);
+        Assert.Contains(quotes, quote => quote.Symbol == "BZ=F" && quote.Last == 105.15m);
         Assert.Contains(quotes, quote => quote.Symbol == "GC=F" && quote.Last == 4603.46m);
         Assert.Contains(quotes, quote => quote.Symbol == "^SPX" && quote.Last == 7109.14m);
         Assert.Contains(quotes, quote => quote.Symbol == "INDY.US" && quote.Last == 44.82m);
@@ -40,6 +42,7 @@ public sealed class StooqGlobalMarketQuoteProviderTests
         Assert.True(StooqGlobalMarketQuoteProvider.CanResolve("^FTSE"));
         Assert.True(StooqGlobalMarketQuoteProvider.CanResolve("DX-Y.NYB"));
         Assert.True(StooqGlobalMarketQuoteProvider.CanResolve("CL=F"));
+        Assert.True(StooqGlobalMarketQuoteProvider.CanResolve("BZ=F"));
         Assert.True(StooqGlobalMarketQuoteProvider.CanResolve("GC=F"));
         Assert.True(StooqGlobalMarketQuoteProvider.CanResolve("^SPX"));
         Assert.True(StooqGlobalMarketQuoteProvider.CanResolve("INDY.US"));
@@ -62,6 +65,7 @@ public sealed class StooqGlobalMarketQuoteProviderTests
                 "^UKX" => "Symbol,Date,Time,Open,High,Low,Close,Volume,Name\n^UKX,2026-04-21,09:58:57,8100.00,8130.00,8090.00,8123.45,,UKX100\n",
                 "DX.F" => "Symbol,Date,Time,Open,High,Low,Close,Volume,Name\nDX.F,2026-04-21,09:59:33,103.85,104.20,103.80,104.10,,US DOLLAR INDEX\n",
                 "CL.F" => "Symbol,Date,Time,Open,High,Low,Close,Volume,Name\nCL.F,2026-05-04,09:14:04,100.15,102.83,99.74,102.60,,CRUDE OIL WTI\n",
+                "CB.F" => "Symbol,Date,Time,Open,High,Low,Close,Volume,Name\nCB.F,2026-05-12,05:27:12,104.31,105.34,104.31,105.15,,CRUDE OIL BRENT\n",
                 "GC.F" => "Symbol,Date,Time,Open,High,Low,Close,Volume,Name\nGC.F,2026-05-04,09:14:09,4637.25,4640.76,4594.81,4603.46,,GOLD\n",
                 "^SPX" => "Symbol,Date,Time,Open,High,Low,Close,Volume,Name\n^SPX,2026-04-20,23:00:00,7117.05,7122.65,7084.41,7109.14,2628827402,SPX500\n",
                 "INDY.US" => "Symbol,Date,Time,Open,High,Low,Close,Volume,Name\nINDY.US,2026-04-20,22:00:18,44.83,44.898,44.72,44.82,132819,ISHARES INDIA 50 ETF\n",

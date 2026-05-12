@@ -61,6 +61,7 @@ public sealed class SettingsFileServiceTests
         string? previousFmp = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY");
         string? previousEodhd = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY");
         string? previousDeepSeek = Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY");
+        string? previousPortfolioSaverDeepSeek = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY");
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FINNHUB_API_KEY", null);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TWELVEDATA_API_KEY", null);
@@ -68,6 +69,7 @@ public sealed class SettingsFileServiceTests
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY", null);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY", null);
         Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", null);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY", null);
 
         try
         {
@@ -91,6 +93,7 @@ public sealed class SettingsFileServiceTests
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY", previousFmp);
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY", previousEodhd);
             Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", previousDeepSeek);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY", previousPortfolioSaverDeepSeek);
             if (Directory.Exists(tempRoot))
                 Directory.Delete(tempRoot, recursive: true);
         }
@@ -107,6 +110,7 @@ public sealed class SettingsFileServiceTests
         string? previousFmp = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY");
         string? previousEodhd = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY");
         string? previousDeepSeek = Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY");
+        string? previousPortfolioSaverDeepSeek = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY");
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FINNHUB_API_KEY", null);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_TWELVEDATA_API_KEY", null);
@@ -114,6 +118,7 @@ public sealed class SettingsFileServiceTests
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY", null);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY", null);
         Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", null);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY", null);
 
         try
         {
@@ -166,6 +171,7 @@ public sealed class SettingsFileServiceTests
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY", previousFmp);
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY", previousEodhd);
             Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", previousDeepSeek);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY", previousPortfolioSaverDeepSeek);
             if (Directory.Exists(tempRoot))
                 Directory.Delete(tempRoot, recursive: true);
         }

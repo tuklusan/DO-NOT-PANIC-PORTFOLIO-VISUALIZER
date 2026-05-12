@@ -368,7 +368,7 @@
             "priority": 1,
             "area": "macro_data",
             "title": "Brent crude macro symbol BZ=F remains unresolved during soak runs",
-            "status": "open",
+            "status": "resolved",
             "source": "latest_circular_trace",
             "evidence": [
                 "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:89",
@@ -377,7 +377,9 @@
             ],
             "notes": [
                 "MacroSnapshot repeatedly reports missing_symbols=[BZ=F] while CRUDE shows a fallback-looking static value.",
-                "QuoteResolutionSummary repeatedly reports stale_symbols=[BZ=F] and macro_missing_symbols=[BZ=F]."
+                "QuoteResolutionSummary repeatedly reports stale_symbols=[BZ=F] and macro_missing_symbols=[BZ=F].",
+                "Resolved on 2026-05-12 by routing Brent to the Stooq global-market provider using cb.f instead of treating BZ=F as a dedicated Yahoo-only warmup symbol.",
+                "Fresh VM proof ux-deep-ssh-20260512-074109 shows MacroSnapshot with CRUDE:105.20:+0.9% and missing_symbols=[]."
             ]
         },
         {
@@ -386,7 +388,7 @@
             "priority": 2,
             "area": "provider_limits",
             "title": "Yahoo warmup for Brent crude is rate-limited with HTTP 429 at startup",
-            "status": "open",
+            "status": "resolved",
             "source": "latest_circular_trace",
             "evidence": [
                 "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:28",
@@ -395,7 +397,9 @@
             ],
             "notes": [
                 "The startup Yahoo spark warmup for [BZ=F] fails with Too Many Requests and is deferred to later scheduled refreshes.",
-                "This appears to be the leading cause of TRC-001."
+                "This appears to be the leading cause of TRC-001.",
+                "Resolved on 2026-05-12 by removing Brent from the dedicated Yahoo warmup lane, eliminating the startup 429 dependency for BZ=F.",
+                "Fresh VM proof ux-deep-ssh-20260512-074109 no longer shows startup Yahoo rate-limit failures for Brent."
             ]
         },
         {
@@ -422,7 +426,7 @@
             "priority": 4,
             "area": "provider_label_quality",
             "title": "Scene stays in Live+Cache (Partial) because Brent never resolves",
-            "status": "open",
+            "status": "resolved",
             "source": "latest_circular_trace",
             "evidence": [
                 "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:85",
@@ -431,7 +435,9 @@
             ],
             "notes": [
                 "The runtime continues to operate, but the provider label remains partial because the Brent macro symbol never leaves the stale/missing set.",
-                "This is a downstream product-quality symptom of TRC-001 and TRC-002."
+                "This is a downstream product-quality symptom of TRC-001 and TRC-002.",
+                "Resolved on 2026-05-12 as a downstream effect of the Brent reroute; QuoteResolutionSummary in ux-deep-ssh-20260512-074109 reaches remaining_symbol_count=0 and macro_missing_symbols=[].",
+                "The scene no longer remains stuck in a Brent-driven partial state during the validated 20-minute proof."
             ]
         },
         {
@@ -448,6 +454,19 @@
             "notes": [
                 "The soak writes DisplayedVsYahooFinance records, but every sampled line has Comparisons=[] so the diagnostic is not yet actionable.",
                 "This weakens automated verification of displayed values versus the external reference source."
+            ]
+        },
+        {
+            "id": "NWS-001",
+            "tracking_number": "NWS-001",
+            "priority": 6,
+            "area": "ai_news",
+            "title": "Douglas Adams / William Shakespeare closing quote repeats distractingly in the news ticker",
+            "status": "open",
+            "source": "live_ui_observation",
+            "notes": [
+                "The fixed closing quote is currently appended to summarized DeepSeek news output, and ticker repetition makes the quote recur too frequently.",
+                "Desired behavior is to keep the stylistic close without making the quotation itself feel spammy in the marquee."
             ]
         }
     ]

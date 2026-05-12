@@ -22,7 +22,7 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class StartupCoordinatorAdvancedTests
 {
     [Fact]
-    public async Task WarmStartupYahooQuotesAsync_WarmsDedicatedBrentMacroThroughYahooLane()
+    public async Task WarmStartupYahooQuotesAsync_SkipsWarmupForDedicatedSymbolsWhenStooqCanResolveThem()
     {
         RecordingQuoteProvider provider = new();
         List<TimeSpan> delays = [];
@@ -56,16 +56,13 @@ public sealed class StartupCoordinatorAdvancedTests
         await foreach (StartupWarmupBatch batch in coordinator.WarmStartupYahooQuotesAsync(settings))
             batches.Add(batch);
 
-        StartupWarmupBatch warmupBatch = Assert.Single(batches);
-        IReadOnlyList<string> requested = Assert.Single(provider.BatchRequests);
-        Assert.Single(requested);
-        Assert.Equal("BZ=F", requested[0]);
-        Assert.Equal(1, warmupBatch.CompletedBatches);
+        Assert.Empty(batches);
+        Assert.Empty(provider.BatchRequests);
         Assert.Empty(delays);
     }
 
     [Fact]
-    public async Task WarmStartupYahooQuotesAsync_WhenProbeUnavailable_StillAttemptsDedicatedBrentWarmupOpportunistically()
+    public async Task WarmStartupYahooQuotesAsync_WhenProbeUnavailable_DoesNotForceYahooWarmupForStooqResolvedDedicatedSymbols()
     {
         RecordingQuoteProvider provider = new();
         StartupCoordinator coordinator = CreateCoordinatorWithIsolatedLedger(
@@ -93,14 +90,12 @@ public sealed class StartupCoordinatorAdvancedTests
         await foreach (StartupWarmupBatch batch in coordinator.WarmStartupYahooQuotesAsync(settings))
             batches.Add(batch);
 
-        Assert.Single(batches);
-        IReadOnlyList<string> requested = Assert.Single(provider.BatchRequests);
-        Assert.Single(requested);
-        Assert.Equal("BZ=F", requested[0]);
+        Assert.Empty(batches);
+        Assert.Empty(provider.BatchRequests);
     }
 
     [Fact]
-    public async Task WarmStartupYahooQuotesAsync_WhenDedicatedBrentWarmupIsRateLimited_HaltsWithoutYieldingBatch()
+    public async Task WarmStartupYahooQuotesAsync_WhenNoDedicatedWarmupIsNeeded_DoesNotCallYahoo()
     {
         ThrowingQuoteProvider provider = new(new HttpRequestException("429 rate limited", null, System.Net.HttpStatusCode.TooManyRequests));
         List<TimeSpan> delays = [];
@@ -133,7 +128,7 @@ public sealed class StartupCoordinatorAdvancedTests
         await foreach (StartupWarmupBatch batch in coordinator.WarmStartupYahooQuotesAsync(settings))
             batches.Add(batch);
 
-        Assert.Equal(1, provider.CallCount);
+        Assert.Equal(0, provider.CallCount);
         Assert.Empty(batches);
         Assert.Empty(delays);
     }
@@ -611,7 +606,7 @@ public sealed class StartupCoordinatorAdvancedTests
 
         IReadOnlyList<string> requested = Assert.Single(yahooProvider.BatchRequests);
         Assert.Single(requested);
-        Assert.Contains(requested[0], new[] { "DX-Y.NYB", "BZ=F" }, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal("DX-Y.NYB", requested[0]);
     }
 
     [Fact]
@@ -662,7 +657,7 @@ public sealed class StartupCoordinatorAdvancedTests
         Assert.Contains("DX-Y.NYB", requestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("^SPX", requestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("^FTSE", requestedSymbols, StringComparer.OrdinalIgnoreCase);
-        Assert.Contains("BZ=F", requestedSymbols, StringComparer.OrdinalIgnoreCase);
+        Assert.DoesNotContain("BZ=F", requestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.DoesNotContain("GC=F", requestedSymbols, StringComparer.OrdinalIgnoreCase);
     }
 
@@ -801,7 +796,7 @@ public sealed class StartupCoordinatorAdvancedTests
             BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new InvalidOperationException("StartupCoordinator.SelectPreemptiveRefreshSymbolsForPass not found.");
 
-        DateTimeOffset nowUtc = new(2026, 5, 11, 8, 4, 20, TimeSpan.Zero);
+        DateTimeOffset nowUtc = new(2026, 5, 11, 8, 4, 59, TimeSpan.Zero);
         List<string> orderedSymbols = ["A", "^VIX", "B"];
         IReadOnlyDictionary<string, TimeSpan> refreshWindows = orderedSymbols.ToDictionary(
             symbol => symbol,
@@ -809,8 +804,8 @@ public sealed class StartupCoordinatorAdvancedTests
             StringComparer.OrdinalIgnoreCase);
         IReadOnlyDictionary<string, QuoteSnapshot> cachedQuotes = new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase)
         {
-            ["A"] = new() { Symbol = "A", Last = 100m, FetchTimestampUtc = nowUtc.AddMinutes(-4), IsStale = false },
-            ["^VIX"] = new() { Symbol = "^VIX", Last = 17m, FetchTimestampUtc = nowUtc.AddMinutes(-4).AddSeconds(-10), IsStale = false },
+            ["A"] = new() { Symbol = "A", Last = 100m, FetchTimestampUtc = nowUtc.AddMinutes(-3), IsStale = false },
+            ["^VIX"] = new() { Symbol = "^VIX", Last = 17m, FetchTimestampUtc = nowUtc.AddMinutes(-4).AddSeconds(-59), IsStale = false },
             ["B"] = new() { Symbol = "B", Last = 100m, FetchTimestampUtc = nowUtc.AddMinutes(-2), IsStale = false }
         };
 

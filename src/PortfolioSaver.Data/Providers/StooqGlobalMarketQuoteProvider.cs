@@ -11,6 +11,7 @@ public sealed class StooqGlobalMarketQuoteProvider : IQuoteProvider
         {
             ["DX-Y.NYB"] = "dx.f",
             ["CL=F"] = "cl.f",
+            ["BZ=F"] = "cb.f",
             ["GC=F"] = "gc.f",
             ["^SPX"] = "^spx",
             ["^FTSE"] = "^ukx",

@@ -1974,7 +1974,7 @@ public sealed class StartupCoordinator
         => new(GetTreasuryMacroSymbols().Select(SymbolProfileHeuristics.Normalize), StringComparer.OrdinalIgnoreCase);
 
     private static IReadOnlyList<string> GetYahooDedicatedMacroSymbols()
-        => ["DX-Y.NYB", "BZ=F"];
+        => ["DX-Y.NYB"];
 
     private static IReadOnlyList<string> GetOfficialMacroSymbols()
         => ["^VIX"];
