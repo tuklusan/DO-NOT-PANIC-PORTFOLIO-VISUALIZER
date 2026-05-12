@@ -17,7 +17,7 @@
     "latest_recorded_validation_state": {
         "automated_tests": {
             "command": "dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo",
-            "result": "232 / 232 passing",
+            "result": "234 / 234 passing",
             "notes": [
                 "Host regression coverage now includes the SSH-first VM harness scripts, the desktop-session agent workflow, and the remote WinAppDriver startup path.",
                 "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer.",
@@ -408,7 +408,7 @@
             "priority": 3,
             "area": "graph_cards",
             "title": "Graph cards never materialize during the latest one-hour soak",
-            "status": "open",
+            "status": "resolved",
             "source": "latest_circular_trace",
             "evidence": [
                 "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:130",
@@ -417,7 +417,9 @@
             ],
             "notes": [
                 "ApplySceneStateComplete continues to report graph_count=0 throughout the soak.",
-                "WarmGraphsAsync repeatedly starts and is then cancelled without producing visible graph cards."
+                "WarmGraphsAsync repeatedly starts and is then cancelled without producing visible graph cards.",
+                "Resolved on 2026-05-12 by preserving an in-flight graph warmup across refresh ticks instead of cancelling it on each preserveLayout refresh.",
+                "Fresh VM proof ux-deep-ssh-20260512-081832 shows WarmGraphsAsync yielded SIZE, ApplyOrUpdateGraph count=1, and sustained ApplySceneStateComplete graph_count=1 for the remainder of the run."
             ]
         },
         {
@@ -446,14 +448,18 @@
             "priority": 5,
             "area": "diagnostics",
             "title": "Displayed-vs-reference comparison capture yields empty comparison arrays",
-            "status": "open",
+            "status": "resolved",
             "source": "latest_reference_artifact",
             "evidence": [
-                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/reference-spot-check-comparisons.jsonl"
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/reference-spot-check-comparisons.jsonl",
+                "build/vm/PostProcess-ReferenceSpotChecks.ps1",
+                "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-093105/reference-spot-check-comparisons.jsonl"
             ],
             "notes": [
-                "The soak writes DisplayedVsYahooFinance records, but every sampled line has Comparisons=[] so the diagnostic is not yet actionable.",
-                "This weakens automated verification of displayed values versus the external reference source."
+                "The original guest-side extractor produced empty comparison arrays because it tried to read the live circular trace as a normal append-only tail during the run.",
+                "Resolved on 2026-05-12 by adding host-side PostProcess-ReferenceSpotChecks.ps1, which reconstructs the pulled circular trace using trace.circular.log plus trace.circular.idx and writes non-empty DisplayedVsReferenceFeed comparisons after Pull-VmResults completes.",
+                "Guest-UxDeepExercise now treats guest-side reference spot checks as best-effort so a failed live trace read no longer fails the desktop phase.",
+                "The diagnostic is now actionable because comparison arrays are populated from real pulled VM traces rather than left empty."
             ]
         },
         {

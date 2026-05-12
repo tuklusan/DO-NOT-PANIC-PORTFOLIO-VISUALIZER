@@ -458,30 +458,36 @@ function Write-ReferenceSpotCheck {
     else {
         @('SPY', 'AAPL', 'MSFT', '^VIX', '^FTSE', 'DX-Y.NYB')
     }
-    $payload = [ordered]@{
-        CapturedAt = (Get-Date).ToString('o')
-        CaptureIndex = $CaptureIndex
-        Source = 'YahooFinanceQuote'
-        Symbols = $symbols
-        DisplayedSample = $displayedSample
-        Results = @()
-    }
+    $referenceSource = 'ReferenceQuote'
+    $referenceResults = @()
+    $referenceError = $null
 
     try {
-        $encodedSymbols = [Uri]::EscapeDataString(($symbols -join ','))
-        $response = Invoke-RestMethod -Uri ("https://query1.finance.yahoo.com/v7/finance/quote?symbols=$encodedSymbols") -TimeoutSec 20 -Headers @{ 'User-Agent' = 'PortfolioSaverVmHarness/1.0' }
-        foreach ($quote in ($response.quoteResponse.result | Where-Object { $_ -ne $null })) {
-            $payload.Results += [ordered]@{
-                Symbol = [string]$quote.symbol
-                Last = $quote.regularMarketPrice
-                ChangePercent = $quote.regularMarketChangePercent
-                MarketTime = if ($quote.regularMarketTime) { [DateTimeOffset]::FromUnixTimeSeconds([long]$quote.regularMarketTime).ToString('o') } else { $null }
-                Currency = [string]$quote.currency
-            }
+        $reference = Get-ReferenceSpotCheckResults -Symbols $symbols
+        if ($null -ne $reference -and -not [string]::IsNullOrWhiteSpace([string]$reference.Source)) {
+            $referenceSource = [string]$reference.Source
+        }
+
+        if ($null -ne $reference -and $null -ne $reference.Results) {
+            $referenceResults = @($reference.Results)
+        }
+
+        if ($null -ne $reference -and -not [string]::IsNullOrWhiteSpace([string]$reference.Error)) {
+            $referenceError = [string]$reference.Error
         }
     }
     catch {
-        $payload.Error = $_.Exception.Message
+        $referenceError = $_.Exception.Message
+    }
+
+    $payload = [pscustomobject]@{
+        CapturedAt = (Get-Date).ToString('o')
+        CaptureIndex = $CaptureIndex
+        Source = $referenceSource
+        Symbols = $symbols
+        DisplayedSample = @($displayedSample)
+        Results = @($referenceResults)
+        Error = $referenceError
     }
 
     Add-Content -LiteralPath $OutputPath -Value ($payload | ConvertTo-Json -Compress) -Encoding UTF8
@@ -494,7 +500,7 @@ function Get-LatestDisplayedTapeSample {
         return @()
     }
 
-    $tailText = Read-TextFileTailShared -Path $tracePath -MaxBytes 262144
+    $tailText = Read-TextFileTailShared -Path $tracePath -MaxBytes 524288
     if ([string]::IsNullOrWhiteSpace($tailText)) {
         return @()
     }
@@ -524,7 +530,7 @@ function Get-LatestDisplayedTapeSample {
             continue
         }
 
-        $items.Add([ordered]@{
+        $items.Add([pscustomobject]@{
             Symbol = $parts[0]
             LastText = $parts[1]
             ChangeText = $parts[2]
@@ -542,6 +548,32 @@ function Read-TextFileTailShared {
     )
 
     try {
+        $idxPath = [System.IO.Path]::ChangeExtension($Path, '.idx')
+        if (Test-Path $idxPath) {
+            $positionText = Get-Content -LiteralPath $idxPath -Raw -ErrorAction Stop
+            $writePosition = 0
+            if ([int]::TryParse($positionText.Trim(), [ref]$writePosition)) {
+                $bytes = [System.IO.File]::ReadAllBytes($Path)
+                if ($bytes.Length -gt 0) {
+                    $position = [Math]::Max(0, [Math]::Min($writePosition, $bytes.Length))
+                    $orderedBytes = if ($position -eq 0) {
+                        $bytes
+                    }
+                    else {
+                        $suffixLength = $bytes.Length - $position
+                        $ordered = New-Object byte[] $bytes.Length
+                        [Array]::Copy($bytes, $position, $ordered, 0, $suffixLength)
+                        [Array]::Copy($bytes, 0, $ordered, $suffixLength, $position)
+                        $ordered
+                    }
+
+                    $tailLength = [Math]::Min($MaxBytes, $orderedBytes.Length)
+                    $start = [Math]::Max(0, $orderedBytes.Length - $tailLength)
+                    return ([System.Text.Encoding]::UTF8.GetString($orderedBytes, $start, $tailLength)).Replace("`0", '')
+                }
+            }
+        }
+
         $fileStream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
         try {
             $length = $fileStream.Length
@@ -560,7 +592,7 @@ function Read-TextFileTailShared {
                 $offset += $read
             }
 
-            return [System.Text.Encoding]::UTF8.GetString($buffer, 0, $offset)
+            return ([System.Text.Encoding]::UTF8.GetString($buffer, 0, $offset)).Replace("`0", '')
         }
         finally {
             $fileStream.Dispose()
@@ -626,7 +658,8 @@ function Write-ReferenceSpotCheckComparison {
     $comparison = [ordered]@{
         CapturedAt = $Payload.CapturedAt
         CaptureIndex = $Payload.CaptureIndex
-        Source = 'DisplayedVsYahooFinance'
+        Source = 'DisplayedVsReferenceFeed'
+        ReferenceSource = $Payload.Source
         Comparisons = @()
     }
 
@@ -686,6 +719,110 @@ function Write-ReferenceSpotCheckComparison {
     }
 
     Add-Content -LiteralPath $OutputPath -Value ($comparison | ConvertTo-Json -Compress) -Encoding UTF8
+}
+
+function Get-ReferenceSpotCheckResults {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Symbols
+    )
+
+    $twelveDataEnv = Get-Item env:PORTFOLIOSAVER_TWELVEDATA_API_KEY -ErrorAction SilentlyContinue
+    $twelveDataApiKey = ''
+    if ($null -ne $twelveDataEnv -and $null -ne $twelveDataEnv.Value) {
+        $twelveDataApiKey = [string]$twelveDataEnv.Value
+    }
+    $twelveDataApiKey = $twelveDataApiKey.Trim()
+    if (-not [string]::IsNullOrWhiteSpace($twelveDataApiKey)) {
+        return Get-TwelveDataReferenceResults -Symbols $Symbols -ApiKey $twelveDataApiKey
+    }
+
+    return Get-YahooReferenceResults -Symbols $Symbols
+}
+
+function Get-TwelveDataReferenceResults {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Symbols,
+        [Parameter(Mandatory = $true)][string]$ApiKey
+    )
+
+    $results = @()
+    $errors = @()
+
+    foreach ($symbol in $Symbols) {
+        try {
+            $encodedSymbol = [Uri]::EscapeDataString($symbol)
+            $url = "https://api.twelvedata.com/quote?symbol=$encodedSymbol&apikey=$ApiKey"
+            $quote = Invoke-RestMethod -Uri $url -TimeoutSec 20 -Headers @{ 'User-Agent' = 'PortfolioSaverVmHarness/1.0' }
+            if ($null -ne $quote.code) {
+                $message = $quote.code
+                if ($null -ne $quote.message -and -not [string]::IsNullOrWhiteSpace([string]$quote.message)) {
+                    $message = $quote.message
+                }
+                $errors += ([string]$message)
+                continue
+            }
+
+            $lastText = $quote.price
+            if ($null -ne $quote.close -and -not [string]::IsNullOrWhiteSpace([string]$quote.close)) {
+                $lastText = $quote.close
+            }
+            $last = Try-ParseInvariantDecimal -Text ([string]$lastText)
+            if ($null -eq $last) {
+                $errors += "No parseable last value for $symbol from Twelve Data."
+                continue
+            }
+
+            $changePercent = Try-ParseInvariantDecimal -Text ([string]$quote.percent_change)
+            $results += [pscustomobject]@{
+                Symbol = [string]$symbol
+                Last = $last
+                ChangePercent = $changePercent
+                MarketTime = [string]$quote.datetime
+                Currency = [string]$quote.currency
+            }
+        }
+        catch {
+            $errors += ([string]$_.Exception.Message)
+        }
+    }
+
+    return [pscustomobject]@{
+        Source = 'TwelveDataQuote'
+        Results = @($results)
+        Error = if ($errors.Count -gt 0 -and $results.Count -eq 0) { ($errors -join ' | ') } else { $null }
+    }
+}
+
+function Get-YahooReferenceResults {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Symbols
+    )
+
+    $results = @()
+    $error = $null
+
+    try {
+        $encodedSymbols = [Uri]::EscapeDataString(($Symbols -join ','))
+        $response = Invoke-RestMethod -Uri ("https://query1.finance.yahoo.com/v7/finance/quote?symbols=$encodedSymbols") -TimeoutSec 20 -Headers @{ 'User-Agent' = 'PortfolioSaverVmHarness/1.0' }
+        foreach ($quote in ($response.quoteResponse.result | Where-Object { $_ -ne $null })) {
+            $results += [pscustomobject]@{
+                Symbol = [string]$quote.symbol
+                Last = $quote.regularMarketPrice
+                ChangePercent = $quote.regularMarketChangePercent
+                MarketTime = if ($quote.regularMarketTime) { [DateTimeOffset]::FromUnixTimeSeconds([long]$quote.regularMarketTime).ToString('o') } else { $null }
+                Currency = [string]$quote.currency
+            }
+        }
+    }
+    catch {
+        $error = $_.Exception.Message
+    }
+
+    return [pscustomobject]@{
+        Source = 'YahooFinanceQuote'
+        Results = @($results)
+        Error = $error
+    }
 }
 
 $summary.ExportMode = 'LocalWorkspace'
@@ -857,7 +994,12 @@ try {
             $summary.ScreensaverShots++
             $summary.DesktopShots++
             if ($i -eq 1 -or ($i % 6) -eq 0) {
-                Write-ReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $i
+                try {
+                    Write-ReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $i
+                }
+                catch {
+                    $summary.Notes += "Guest reference spot-check skipped at frame $i: $($_.Exception.Message)"
+                }
             }
             Write-SummaryFiles
             Start-Sleep -Seconds $CaptureIntervalSeconds

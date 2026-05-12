@@ -9,6 +9,29 @@ namespace PortfolioSaver.Tests.Services;
 
 public sealed class SettingsFileServiceTests
 {
+    private static void DeleteDirectoryWithRetry(string path)
+    {
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
+            if (!Directory.Exists(path))
+                return;
+
+            try
+            {
+                Directory.Delete(path, recursive: true);
+                return;
+            }
+            catch (IOException) when (attempt < 9)
+            {
+                Thread.Sleep(100);
+            }
+            catch (UnauthorizedAccessException) when (attempt < 9)
+            {
+                Thread.Sleep(100);
+            }
+        }
+    }
+
     [Fact]
     public void Save_StripsApiKeysFromPersistedSettingsFile()
     {
@@ -46,7 +69,7 @@ public sealed class SettingsFileServiceTests
         {
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
             if (Directory.Exists(tempRoot))
-                Directory.Delete(tempRoot, recursive: true);
+                DeleteDirectoryWithRetry(tempRoot);
         }
     }
 
@@ -95,7 +118,7 @@ public sealed class SettingsFileServiceTests
             Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", previousDeepSeek);
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY", previousPortfolioSaverDeepSeek);
             if (Directory.Exists(tempRoot))
-                Directory.Delete(tempRoot, recursive: true);
+                DeleteDirectoryWithRetry(tempRoot);
         }
     }
 
@@ -173,7 +196,7 @@ public sealed class SettingsFileServiceTests
             Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", previousDeepSeek);
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY", previousPortfolioSaverDeepSeek);
             if (Directory.Exists(tempRoot))
-                Directory.Delete(tempRoot, recursive: true);
+                DeleteDirectoryWithRetry(tempRoot);
         }
     }
 }

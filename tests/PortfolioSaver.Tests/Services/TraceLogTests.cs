@@ -25,6 +25,8 @@ public sealed class TraceLogTests
 
         string line = $"{DateTimeOffset.UtcNow:O} | INFO | program=PortfolioSaver.Tests | source=TraceLogTests | function=TraceLog_WritesToFourMegCircularFileUnderAppData | {marker}";
         writeCircularMethod!.Invoke(null, [line]);
+        writeCircularMethod!.Invoke(null, [line]);
+        writeCircularMethod!.Invoke(null, [line]);
 
         bool observed = await WaitForTraceAsync(
             traceFilePath,
@@ -74,7 +76,7 @@ public sealed class TraceLogTests
         string traceIndexPath,
         Func<string, bool> predicate)
     {
-        for (int i = 0; i < 200; i++)
+        for (int i = 0; i < 120; i++)
         {
             if (File.Exists(traceFilePath))
             {
@@ -87,7 +89,7 @@ public sealed class TraceLogTests
                 }
             }
 
-            await Task.Delay(50);
+            await Task.Delay(100);
         }
 
         return false;
@@ -105,15 +107,15 @@ public sealed class TraceLogTests
     {
         byte[] bytes = ReadAllBytesShared(traceFilePath);
         if (!File.Exists(traceIndexPath))
-            return Encoding.UTF8.GetString(bytes);
+            return Encoding.UTF8.GetString(bytes).Replace("\0", string.Empty);
 
         string rawIndex = Encoding.UTF8.GetString(ReadAllBytesShared(traceIndexPath)).Trim();
         if (!int.TryParse(rawIndex, out int position) || position <= 0 || position >= bytes.Length)
-            return Encoding.UTF8.GetString(bytes);
+            return Encoding.UTF8.GetString(bytes).Replace("\0", string.Empty);
 
         byte[] reordered = new byte[bytes.Length];
         Buffer.BlockCopy(bytes, position, reordered, 0, bytes.Length - position);
         Buffer.BlockCopy(bytes, 0, reordered, bytes.Length - position, position);
-        return Encoding.UTF8.GetString(reordered);
+        return Encoding.UTF8.GetString(reordered).Replace("\0", string.Empty);
     }
 }

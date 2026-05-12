@@ -79,6 +79,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Queuing UX run through desktop-session agent", script, StringComparison.Ordinal);
         Assert.Contains("Set-Content -LiteralPath $localAgentCommandPath -Encoding UTF8", script, StringComparison.Ordinal);
         Assert.Contains("Send-VmItem -Bundle $bundle -LocalPath $localAgentCommandPath", script, StringComparison.Ordinal);
+        Assert.Contains("PostProcess-ReferenceSpotChecks.ps1", script, StringComparison.Ordinal);
+        Assert.Contains("LOCAL_RESULT_DIR=", script, StringComparison.Ordinal);
         Assert.Contains("Timed out waiting for remote desktop-session agent heartbeat", script, StringComparison.Ordinal);
         Assert.Contains("$summary.PSObject.Properties.Name -contains 'FinishedAt'", script, StringComparison.Ordinal);
     }
@@ -153,10 +155,33 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("reference-spot-checks.jsonl", script, StringComparison.Ordinal);
         Assert.Contains("reference-spot-check-comparisons.jsonl", script, StringComparison.Ordinal);
         Assert.Contains("function Write-ReferenceSpotCheck", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-ReferenceSpotCheckResults", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-TwelveDataReferenceResults", script, StringComparison.Ordinal);
+        Assert.Contains("PORTFOLIOSAVER_TWELVEDATA_API_KEY", script, StringComparison.Ordinal);
         Assert.Contains("function Get-LatestDisplayedTapeSample", script, StringComparison.Ordinal);
         Assert.Contains("function Write-ReferenceSpotCheckComparison", script, StringComparison.Ordinal);
         Assert.Contains("query1.finance.yahoo.com/v7/finance/quote", script, StringComparison.Ordinal);
-        Assert.Contains("DisplayedVsYahooFinance", script, StringComparison.Ordinal);
+        Assert.Contains("DisplayedVsReferenceFeed", script, StringComparison.Ordinal);
+        Assert.Contains(".Replace(\"`0\", '')", script, StringComparison.Ordinal);
+        Assert.Contains("[System.IO.Path]::ChangeExtension($Path, '.idx')", script, StringComparison.Ordinal);
+        Assert.Contains("[System.IO.File]::ReadAllBytes($Path)", script, StringComparison.Ordinal);
+        Assert.Contains("Guest reference spot-check skipped", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PostProcessReferenceSpotChecks_BuildsComparisonsFromPulledCircularTrace()
+    {
+        string script = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "PostProcess-ReferenceSpotChecks.ps1"));
+
+        Assert.Contains("function Read-CircularTraceText", script, StringComparison.Ordinal);
+        Assert.Contains("function Parse-DisplayedTapeSamples", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-ReferenceResults", script, StringComparison.Ordinal);
+        Assert.Contains("DisplayedVsReferenceFeed", script, StringComparison.Ordinal);
+        Assert.Contains("reference-spot-check-comparisons.jsonl", script, StringComparison.Ordinal);
     }
 
     [Fact]
