@@ -572,6 +572,95 @@
                 "Resolved on 2026-05-12 by separating truly missing macro symbols from stale-but-renderable ones inside TraceMacroSnapshot, so cached macro values are no longer misreported as missing.",
                 "Fresh guest macro proof macro-proof-20260512-203949 now records missing_symbols=[] while the cached startup macro values are visible, and uses stale_symbols=[...] until the live macro refresh arrives and clears them."
             ]
+        },
+        {
+            "id": "NB-011",
+            "tracking_number": "NB-011",
+            "priority": 3,
+            "area": "startup_status_band",
+            "title": "Use the Updated line for initial-value loading feedback instead of the large waiting overlay",
+            "status": "open",
+            "source": "user_followup",
+            "evidence": [
+                "User requested replacing the startup announcement-style hold overlay with a flashing top-left Updated-line message."
+            ],
+            "notes": [
+                "At startup, the third status-band line should flash 'Loading initial values' until enough fresh quotes are available.",
+                "Once the initial recovery threshold is reached, the normal Updated age text should replace the loading message.",
+                "The goal is to preserve the scene presentation while making startup recovery feedback smaller and less intrusive than the current announcement-style hold state."
+            ]
+        },
+        {
+            "id": "NB-012",
+            "tracking_number": "NB-012",
+            "priority": 3,
+            "area": "news_ticker",
+            "title": "Replace scrolling news ticker with telegraph-style item playback",
+            "status": "open",
+            "source": "user_followup",
+            "evidence": [
+                "User requested a telegraph/teleprinter-like news presentation instead of continuous scrolling."
+            ],
+            "notes": [
+                "Render news in uppercase Courier-style typography.",
+                "Type characters in one by one for each item.",
+                "If an item is too long, advance it across the band item-by-item instead of using the current marquee behavior.",
+                "Terminate items in teleprinter style with STOP where appropriate.",
+                "After each item, pause briefly, clear the band, then begin the next item."
+            ]
+        },
+        {
+            "id": "NB-013",
+            "tracking_number": "NB-013",
+            "priority": 2,
+            "area": "status_freshness",
+            "title": "Drive the Updated time from the last S&P 500 refresh in Global Markets",
+            "status": "open",
+            "source": "user_followup",
+            "evidence": [
+                "User requested that the top-left Updated field reflect the last update time of the S&P 500 value shown in Global Markets."
+            ],
+            "notes": [
+                "Use the S&P 500 item in Global Markets as the freshness anchor for the top-left Updated line.",
+                "The displayed Updated age should track the last refresh timestamp for that S&P 500 payload rather than a broader scene-level or provider-level fallback timestamp.",
+                "If the S&P 500 value is unavailable, define a clear fallback behavior during implementation."
+            ]
+        },
+        {
+            "id": "NB-014",
+            "tracking_number": "NB-014",
+            "priority": 1,
+            "area": "global_markets_accuracy",
+            "title": "Investigate stale or inaccurate S&P 500 values in Global Markets",
+            "status": "open",
+            "source": "user_followup",
+            "evidence": [
+                "User observed the app showing S&P 500 at -0.60% while the actual market value was approximately -0.89%."
+            ],
+            "notes": [
+                "Investigate whether the S&P 500 feed, scheduler, cache, symbol mapping, market-hours handling, or display-layer freshness rules are causing stale or lagging values.",
+                "The specific concern is that even after an apparent refresh, the S&P 500 value in Global Markets may still not reflect the latest market reading.",
+                "This ticket is about data correctness, not just timestamp labeling."
+            ]
+        },
+        {
+            "id": "NB-015",
+            "tracking_number": "NB-015",
+            "priority": 2,
+            "area": "desktop_window_shell",
+            "title": "Constrain window sizing and formalize restored, maximized, and fullscreen behaviors",
+            "status": "open",
+            "source": "user_followup",
+            "evidence": [
+                "User requested a fixed minimum usable window size, a controlled restored size, standard maximized windowed behavior, and reliable true fullscreen behavior."
+            ],
+            "notes": [
+                "Compute the minimum usable application window size that avoids distortion or cutoff.",
+                "Use that computed size as the fixed restored window size rather than allowing arbitrary user resizing.",
+                "Maximized windowed mode should use the normal work area outside the Windows taskbar, keeping the menu bar and full window chrome visible.",
+                "View -> Full Screen should occupy the entire screen, with F11 toggling fullscreen and Esc exiting back to windowed mode.",
+                "In restored and maximized windowed modes, the menu bar and window frame must remain completely visible."
+            ]
         }
     ]
 }
