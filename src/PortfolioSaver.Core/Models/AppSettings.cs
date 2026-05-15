@@ -20,8 +20,8 @@ public sealed class AppSettings
     public double DimOpacity { get; set; } = 0.55;
     public LayoutPreset LayoutPreset { get; set; } = LayoutPreset.UltrawideDefault;
 
-    // Handoff-only plaintext fields requested by the user for Codex transfer.
-    // Production code should move these into DPAPI or Windows Credential Manager.
+    // Runtime settings can still be overlaid from protected local storage or environment variables.
+    // These properties remain on the model so the UI and runtime can share one settings shape.
     public string FinnhubApiKey { get; set; } = string.Empty;
     public string TwelveDataApiKey { get; set; } = string.Empty;
     public string TiingoApiKey { get; set; } = string.Empty;
