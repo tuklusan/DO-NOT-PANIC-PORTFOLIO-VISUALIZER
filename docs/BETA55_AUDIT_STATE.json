@@ -31,7 +31,8 @@
                 "The current local batch also revalidated Brent crude macro routing through the dedicated Yahoo lane, intraday 1-day graph history, persistent graph-card travel flashes, the scheduler smoothing pass, and separate non-repeating DeepSeek closing-quote headlines.",
                 "The canonical VM harness now auto-purges stale remote build and test artifacts whenever free space drops below 8 GB, stages repo snapshots as TAR archives, strips staged bin/obj and artifact folders before upload, and makes the startup VmAgent launcher a silent no-op if the publish\\agent executable is not present yet.",
                 "The S&P 500 freshness investigation concluded that ^SPX needed to bypass the Yahoo quote endpoint and resolve through the Yahoo spark/chart path; the fix was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454.",
-                "The status-band Updated line now anchors to the ^SPX refresh timestamp with a fallback to the latest available quote, and that behavior was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439."
+                "The status-band Updated line now anchors to the ^SPX refresh timestamp with a fallback to the latest available quote, and that behavior was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439.",
+                "Startup recovery no longer uses the large announcement overlay when network is available; instead the Updated line flashes Loading initial values until enough quotes are fresh, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453."
             ]
         },
         "build": {
@@ -79,7 +80,8 @@
                 "A fresh 60-minute direct-agent soak completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619.",
                 "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-12 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159 after moving DeepSeek closing quotations into separate supplemental ticker items.",
                 "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454 after TAR-based repo staging, low-space auto-cleanup, and the ^SPX Yahoo spark/chart routing fix.",
-                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439 after anchoring the top-left Updated line to the S&P 500 freshness timestamp."
+                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439 after anchoring the top-left Updated line to the S&P 500 freshness timestamp.",
+                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453 after replacing the startup recovery card with the status-band Loading initial values message."
             ]
         }
     },
@@ -584,7 +586,7 @@
             "priority": 3,
             "area": "startup_status_band",
             "title": "Use the Updated line for initial-value loading feedback instead of the large waiting overlay",
-            "status": "open",
+            "status": "resolved",
             "source": "user_followup",
             "evidence": [
                 "User requested replacing the startup announcement-style hold overlay with a flashing top-left Updated-line message."
@@ -592,7 +594,10 @@
             "notes": [
                 "At startup, the third status-band line should flash 'Loading initial values' until enough fresh quotes are available.",
                 "Once the initial recovery threshold is reached, the normal Updated age text should replace the loading message.",
-                "The goal is to preserve the scene presentation while making startup recovery feedback smaller and less intrusive than the current announcement-style hold state."
+                "The goal is to preserve the scene presentation while making startup recovery feedback smaller and less intrusive than the current announcement-style hold state.",
+                "Resolved by removing the recovery-path waiting overlay while network is available and using the status-band Updated line as the loading indicator instead.",
+                "ScreensaverSceneControl now flashes Loading initial values on the third status-band line while StartupCoordinator.ShouldShowInitialValueLoadingStatus remains true, then automatically falls back to the normal Updated age once enough fresh quotes are present.",
+                "Validated with focused regression coverage plus the canonical 20-minute VM proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453, where the trace records updated_text=Loading initial values and waiting_overlay_visible=false at startup."
             ]
         },
         {

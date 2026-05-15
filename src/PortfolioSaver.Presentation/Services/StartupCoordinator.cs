@@ -93,7 +93,7 @@ public sealed class StartupCoordinator
             .ToDictionary(quote => quote.Symbol, StringComparer.OrdinalIgnoreCase);
         IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode);
         DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
-        bool showRecoveryOverlay = ShouldShowLiveRecoveryOverlay(cachedQuotes, settings, nowUtc);
+        bool showRecoveryOverlay = ShouldShowInitialValueLoadingStatus(cachedQuotes, settings, nowUtc);
 
         TraceRuntimeState(
             "BootstrapSceneBuilt",
@@ -114,10 +114,12 @@ public sealed class StartupCoordinator
             {
                 MarketStatusText = FormatStatusBandText(_marketStatusService.FormatStatusLine(DateTimeOffset.UtcNow)),
                 ProviderText = networkAvailable
-                    ? (showRecoveryOverlay ? "Provider: Refreshing stale cache" : (cachedQuotes.Count > 0 ? "Provider: Cache + live warmup" : "Provider: Loading live data"))
+                    ? (showRecoveryOverlay
+                        ? (cachedQuotes.Count > 0 ? "Provider: Refreshing stale cache" : "Provider: Loading live data")
+                        : (cachedQuotes.Count > 0 ? "Provider: Cache + live warmup" : "Provider: Loading live data"))
                     : (cachedQuotes.Count > 0 ? "Provider: Local Cache" : "Provider: Waiting for network"),
                 UpdatedText = showRecoveryOverlay
-                    ? "Updated: Refreshing live data..."
+                    ? "Loading initial values"
                     : TryGetStatusFreshnessAnchorFetchUtc(cachedQuotes, out DateTimeOffset bootstrapAnchorUtc)
                         ? $"Updated: {TimeFormatHelper.ToAgeString(bootstrapAnchorUtc)}"
                         : (cachedQuotes.Count > 0 ? "Updated: Cache warm start" : "Updated: Starting..."),
@@ -127,7 +129,7 @@ public sealed class StartupCoordinator
             Graphs = [],
             Clock = settings.EnableFloatingClock ? _floatingClockBuilder.BuildDefault() : null,
             BackgroundPaths = backgroundPaths,
-            ShowNetworkWaitingOverlay = !networkAvailable || showRecoveryOverlay,
+            ShowNetworkWaitingOverlay = !networkAvailable,
             NetworkWaitingTitle = networkAvailable
                 ? (showRecoveryOverlay ? "Refreshing live market data" : "Loading market data")
                 : "Waiting for network",
@@ -204,22 +206,22 @@ public sealed class StartupCoordinator
         DateTimeOffset lastUpdate = TryGetStatusFreshnessAnchorFetchUtc(quotes, out DateTimeOffset anchorQuoteFetchUtc)
             ? anchorQuoteFetchUtc
             : nowUtc;
-        bool showRecoveryOverlay = ShouldShowLiveRecoveryOverlay(quotes, settings, nowUtc);
+        bool showRecoveryOverlay = ShouldShowInitialValueLoadingStatus(quotes, settings, nowUtc);
 
         StatusBarViewModel status = new()
         {
             MarketStatusText = FormatStatusBandText(_marketStatusService.FormatStatusLine(nowUtc)),
             ProviderText = showRecoveryOverlay
-                ? "Provider: Refreshing stale cache"
+                ? (quotes.Count > 0 ? "Provider: Refreshing stale cache" : "Provider: Loading live data")
                 : $"Provider: {providerLabel}",
             UpdatedText = showRecoveryOverlay
-                ? "Updated: Refreshing live data..."
+                ? "Loading initial values"
                 : $"Updated: {TimeFormatHelper.ToAgeString(lastUpdate)}",
             ClockDateText = nowUtc.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
             ClockText = $"{nowUtc:HH:mm} UTC"
         };
 
-        bool showNetworkWaitingOverlay = ShouldShowNetworkWaitingOverlay(networkAvailable, providerLabel) || showRecoveryOverlay;
+        bool showNetworkWaitingOverlay = ShouldShowNetworkWaitingOverlay(networkAvailable, providerLabel);
 
         return new ScreensaverSceneState
         {
@@ -232,10 +234,8 @@ public sealed class StartupCoordinator
             Clock = clock,
             BackgroundPaths = backgroundPaths,
             ShowNetworkWaitingOverlay = showNetworkWaitingOverlay,
-            NetworkWaitingTitle = showRecoveryOverlay ? "Refreshing live market data" : "Waiting for network",
-            NetworkWaitingDetail = showRecoveryOverlay
-                ? "Holding the scene until enough fresh quotes arrive..."
-                : $"Retrying live quotes and exchange photos every {Math.Max(5, (int)GetRefreshSeconds(settings))} seconds."
+            NetworkWaitingTitle = "Waiting for network",
+            NetworkWaitingDetail = $"Retrying live quotes and exchange photos every {Math.Max(5, (int)GetRefreshSeconds(settings))} seconds."
         };
     }
 
@@ -1203,7 +1203,7 @@ public sealed class StartupCoordinator
         return providerLabel.StartsWith("Local Cache", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool ShouldShowLiveRecoveryOverlay(
+    public static bool ShouldShowInitialValueLoadingStatus(
         IReadOnlyDictionary<string, QuoteSnapshot> quotes,
         AppSettings settings,
         DateTimeOffset nowUtc)

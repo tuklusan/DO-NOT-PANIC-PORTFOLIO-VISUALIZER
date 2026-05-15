@@ -134,7 +134,7 @@ public sealed class StartupCoordinatorAdvancedTests
     }
 
     [Fact]
-    public void BuildBootstrapScene_WhenNetworkAvailableAndNoCache_ShowsLoadingOverlay()
+    public void BuildBootstrapScene_WhenNetworkAvailableAndNoCache_UsesStatusBandLoadingMessage()
     {
         string localDataRoot = CreateIsolatedLocalDataRoot();
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", localDataRoot);
@@ -144,9 +144,9 @@ public sealed class StartupCoordinatorAdvancedTests
 
             ScreensaverSceneState scene = coordinator.BuildBootstrapScene();
 
-            Assert.True(scene.ShowNetworkWaitingOverlay);
-            Assert.Equal("Refreshing live market data", scene.NetworkWaitingTitle);
-            Assert.Equal("Provider: Refreshing stale cache", scene.Status.ProviderText);
+            Assert.False(scene.ShowNetworkWaitingOverlay);
+            Assert.Equal("Provider: Loading live data", scene.Status.ProviderText);
+            Assert.Equal("Loading initial values", scene.Status.UpdatedText);
         }
         finally
         {
@@ -187,10 +187,9 @@ public sealed class StartupCoordinatorAdvancedTests
 
             ScreensaverSceneState scene = coordinator.BuildBootstrapScene();
 
-            Assert.True(scene.ShowNetworkWaitingOverlay);
-            Assert.Equal("Refreshing live market data", scene.NetworkWaitingTitle);
+            Assert.False(scene.ShowNetworkWaitingOverlay);
             Assert.Equal("Provider: Refreshing stale cache", scene.Status.ProviderText);
-            Assert.Equal("Updated: Refreshing live data...", scene.Status.UpdatedText);
+            Assert.Equal("Loading initial values", scene.Status.UpdatedText);
         }
         finally
         {

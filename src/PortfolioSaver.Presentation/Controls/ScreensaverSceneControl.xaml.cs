@@ -2308,6 +2308,13 @@ public partial class ScreensaverSceneControl : UserControl
         if (_statusViewModel is null)
             return;
 
+        if (StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow()))
+        {
+            bool showMessage = GetReferenceUtcNow().Second % 2 == 0;
+            _statusViewModel.UpdatedText = showMessage ? "Loading initial values" : string.Empty;
+            return;
+        }
+
         if (StartupCoordinator.TryGetStatusFreshnessAnchorFetchUtc(_latestQuotes, out DateTimeOffset anchorQuoteFetchUtc))
         {
             _statusViewModel.UpdatedText = $"Updated: {TimeFormatHelper.ToAgeString(anchorQuoteFetchUtc)}";
