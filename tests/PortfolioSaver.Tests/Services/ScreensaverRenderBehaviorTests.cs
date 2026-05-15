@@ -895,6 +895,24 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void GlobalMarkets_HoldWaitingGlyphUntilInitialValuesAreReady()
+    {
+        string sceneCodeBehind = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "ScreensaverSceneControl.xaml.cs"));
+
+        Assert.Contains("private const string GlobalMarketsWaitingGlyph = \"🕒\";", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("bool loadingInitialValues = StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow());", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("city.IndexValueText = GlobalMarketsWaitingGlyph;", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("city.IndexChangeText = \"--\";", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("city.IndexChangeForeground = Brushes.Goldenrod;", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("city.MiniGraphPoints = [];", sceneCodeBehind, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void FloatingGraphCards_UseIndependentMotionAcrossFullCanvas_AndRightLabelGutter()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(

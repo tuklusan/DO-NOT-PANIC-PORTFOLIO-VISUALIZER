@@ -26,6 +26,7 @@ namespace PortfolioSaver.Screensaver.Controls;
 public partial class ScreensaverSceneControl : UserControl
 {
     private static readonly bool EnableMarketCritters = false;
+    private const string GlobalMarketsWaitingGlyph = "🕒";
     private const int MaxVisibleGraphCards = 12;
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly ObservableCollection<MarketSpriteViewModel> _marketSprites = [];
@@ -1253,6 +1254,7 @@ public partial class ScreensaverSceneControl : UserControl
 
         List<string> missingSymbols = [];
         int populatedCount = 0;
+        bool loadingInitialValues = StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow());
         foreach (ClockCityViewModel city in _clockViewModel.Cities.Where(city => city.ShowExchangeDetails))
         {
             if (string.IsNullOrWhiteSpace(city.ExchangeSymbol))
@@ -1261,6 +1263,16 @@ public partial class ScreensaverSceneControl : UserControl
             if (!_latestQuotes.TryGetValue(city.ExchangeSymbol, out QuoteSnapshot? quote))
             {
                 missingSymbols.Add(city.ExchangeSymbol);
+                continue;
+            }
+
+            if (loadingInitialValues)
+            {
+                city.IndexValueText = GlobalMarketsWaitingGlyph;
+                city.IndexChangeText = "--";
+                city.IndexChangeForeground = Brushes.Goldenrod;
+                city.MiniGraphStroke = Brushes.Goldenrod;
+                city.MiniGraphPoints = [];
                 continue;
             }
 

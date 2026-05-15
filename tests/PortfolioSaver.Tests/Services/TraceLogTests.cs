@@ -11,37 +11,46 @@ public sealed class TraceLogTests
     [Fact]
     public async Task TraceLog_WritesToFourMegCircularFileUnderAppData()
     {
-        string traceDirectory = Path.Combine(PathHelper.GetAppDataDirectory(), "Trace");
-        string traceFilePath = Path.Combine(traceDirectory, "trace.circular.log");
-        string traceIndexPath = Path.Combine(traceDirectory, "trace.circular.idx");
-        Directory.CreateDirectory(traceDirectory);
-        File.Delete(traceFilePath);
-        File.Delete(traceIndexPath);
-        string marker = "trace-test-" + Guid.NewGuid().ToString("N");
-        MethodInfo? writeCircularMethod = typeof(TraceLog).GetMethod(
-            "WriteCircular",
-            BindingFlags.NonPublic | BindingFlags.Static);
-        Assert.NotNull(writeCircularMethod);
+        string appDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTraceTest", Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", appDataRoot);
+        try
+        {
+            string traceDirectory = Path.Combine(PathHelper.GetAppDataDirectory(), "Trace");
+            string traceFilePath = Path.Combine(traceDirectory, "trace.circular.log");
+            string traceIndexPath = Path.Combine(traceDirectory, "trace.circular.idx");
+            Directory.CreateDirectory(traceDirectory);
+            File.Delete(traceFilePath);
+            File.Delete(traceIndexPath);
+            string marker = "trace-test-" + Guid.NewGuid().ToString("N");
+            MethodInfo? writeCircularMethod = typeof(TraceLog).GetMethod(
+                "WriteCircular",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.NotNull(writeCircularMethod);
 
-        string line = $"{DateTimeOffset.UtcNow:O} | INFO | program=PortfolioSaver.Tests | source=TraceLogTests | function=TraceLog_WritesToFourMegCircularFileUnderAppData | {marker}";
-        writeCircularMethod!.Invoke(null, [line]);
-        writeCircularMethod!.Invoke(null, [line]);
-        writeCircularMethod!.Invoke(null, [line]);
+            string line = $"{DateTimeOffset.UtcNow:O} | INFO | program=PortfolioSaver.Tests | source=TraceLogTests | function=TraceLog_WritesToFourMegCircularFileUnderAppData | {marker}";
+            writeCircularMethod!.Invoke(null, [line]);
+            writeCircularMethod!.Invoke(null, [line]);
+            writeCircularMethod!.Invoke(null, [line]);
 
-        bool observed = await WaitForTraceAsync(
-            traceFilePath,
-            traceIndexPath,
-            text =>
-            {
-                if (!text.Contains(marker, StringComparison.Ordinal))
-                    return false;
+            bool observed = await WaitForTraceAsync(
+                traceFilePath,
+                traceIndexPath,
+                text =>
+                {
+                    if (!text.Contains(marker, StringComparison.Ordinal))
+                        return false;
 
-                Assert.Contains("program=", text, StringComparison.Ordinal);
-                Assert.Contains("function=", text, StringComparison.Ordinal);
-                return true;
-            });
+                    Assert.Contains("program=", text, StringComparison.Ordinal);
+                    Assert.Contains("function=", text, StringComparison.Ordinal);
+                    return true;
+                });
 
-        Assert.True(observed, "Trace marker was not observed in the 4MB circular trace file.");
+            Assert.True(observed, "Trace marker was not observed in the 4MB circular trace file.");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", null);
+        }
     }
 
     [Fact]

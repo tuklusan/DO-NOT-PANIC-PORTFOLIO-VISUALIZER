@@ -20,15 +20,21 @@ public static class TraceLog
     private static readonly object FileSync = new();
     private static readonly object EndpointSync = new();
     private static readonly ConcurrentQueue<string> Queue = new();
-    private static readonly string TraceDirectory = Path.Combine(PathHelper.GetAppDataDirectory(), "Trace");
-    private static readonly string CircularTracePath = Path.Combine(TraceDirectory, "trace.circular.log");
-    private static readonly string CircularIndexPath = Path.Combine(TraceDirectory, "trace.circular.idx");
     private static readonly string ProgramName = Process.GetCurrentProcess().ProcessName;
     private static readonly string HostName = GetHostNameSafe();
     private static readonly string LocalIp = GetPrimaryIpSafe();
     private static IPEndPoint? _udpEndpoint;
     private static DateTimeOffset _nextUdpResolveUtc = DateTimeOffset.MinValue;
     private static int _workerStarted;
+
+    private static string TraceDirectory
+        => Path.Combine(PathHelper.GetAppDataDirectory(), "Trace");
+
+    private static string CircularTracePath
+        => Path.Combine(TraceDirectory, "trace.circular.log");
+
+    private static string CircularIndexPath
+        => Path.Combine(TraceDirectory, "trace.circular.idx");
 
     public static void Info(string source, string message, [CallerMemberName] string functionName = "")
         => Enqueue("INFO", source, message, null, functionName);
