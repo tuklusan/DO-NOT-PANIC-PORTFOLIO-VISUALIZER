@@ -128,6 +128,24 @@ public sealed class YahooFinanceQuoteProviderTests
         Assert.Equal(17.40m, quote.Last);
     }
 
+    [Fact]
+    public async Task GetQuotesAsync_UsesSparkForSpxInsteadOfDedicatedQuoteEndpoint()
+    {
+        SpxSparkHandler handler = new();
+        using HttpClient httpClient = new(handler);
+        YahooFinanceSessionService sessionService = new(httpClient);
+        sessionService.Invalidate();
+        YahooFinanceQuoteProvider provider = new(httpClient, sessionService);
+
+        IReadOnlyList<QuoteSnapshot> quotes = await provider.GetQuotesAsync(["^SPX"]);
+
+        QuoteSnapshot quote = Assert.Single(quotes);
+        Assert.Equal("^SPX", quote.Symbol);
+        Assert.Equal(7501.24m, quote.Last);
+        Assert.Equal(1, handler.SparkRequestCount);
+        Assert.Equal(0, handler.ChartRequestCount);
+    }
+
     private sealed class QuoteFlowHandler : HttpMessageHandler
     {
         public int SparkRequestCount { get; private set; }
@@ -652,6 +670,89 @@ public sealed class YahooFinanceQuoteProviderTests
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(payload)
+                });
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        }
+    }
+
+    private sealed class SpxSparkHandler : HttpMessageHandler
+    {
+        public int SparkRequestCount { get; private set; }
+        public int ChartRequestCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            string url = request.RequestUri?.ToString() ?? string.Empty;
+
+            if (url.StartsWith("https://finance.yahoo.com/", StringComparison.OrdinalIgnoreCase))
+            {
+                HttpResponseMessage bootstrap = new(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("home")
+                };
+                bootstrap.Headers.TryAddWithoutValidation("Set-Cookie", "A=1; Path=/");
+                return Task.FromResult(bootstrap);
+            }
+
+            if (url.StartsWith("https://query1.finance.yahoo.com/v1/test/getcrumb", StringComparison.OrdinalIgnoreCase))
+            {
+                HttpResponseMessage crumb = new(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("crumb1")
+                };
+                crumb.Headers.TryAddWithoutValidation("Set-Cookie", "B=2; Path=/");
+                return Task.FromResult(crumb);
+            }
+
+            if (url.Contains("/v8/finance/spark", StringComparison.OrdinalIgnoreCase))
+            {
+                SparkRequestCount++;
+                string payload =
+                    """
+                    {
+                      "spark": {
+                        "result": [
+                          {
+                            "symbol": "^SPX",
+                            "response": [
+                              {
+                                "meta": {
+                                  "regularMarketPrice": 7501.24,
+                                  "chartPreviousClose": 7444.25,
+                                  "regularMarketTime": 1710000000
+                                },
+                                "timestamp": [1710000000],
+                                "indicators": { "quote": [ { "close": [7501.24] } ] }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                    """;
+
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(payload)
+                });
+            }
+
+            if (url.Contains("/v8/finance/chart/", StringComparison.OrdinalIgnoreCase))
+            {
+                ChartRequestCount++;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)
+                {
+                    Content = new StringContent("chart should not be used")
+                });
+            }
+
+            if (url.Contains("/v7/finance/quote", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)
+                {
+                    Content = new StringContent("quote endpoint should not be used")
                 });
             }
 

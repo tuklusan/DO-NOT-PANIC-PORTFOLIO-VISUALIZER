@@ -17,7 +17,7 @@
     "latest_recorded_validation_state": {
         "automated_tests": {
             "command": "dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo",
-            "result": "235 / 235 passing",
+            "result": "239 / 239 passing",
             "notes": [
                 "Host regression coverage now includes the SSH-first VM harness scripts, the desktop-session agent workflow, and the remote WinAppDriver startup path.",
                 "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer.",
@@ -28,7 +28,9 @@
                 "Remote live validation can now apply DeepSeek and provider API keys from ignored local build/vm/test-secrets.json via Guest-ApplyTestSecrets.ps1.",
                 "The SSH-first remote harness now supports desktop soak durations up to 10080 minutes.",
                 "The NB-001 through NB-010 fixes were revalidated with a final local green run plus a clean 20-minute remote desktop-session run in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526.",
-                "The current local batch also revalidated Brent crude macro routing through the dedicated Yahoo lane, intraday 1-day graph history, persistent graph-card travel flashes, the scheduler smoothing pass, and separate non-repeating DeepSeek closing-quote headlines."
+                "The current local batch also revalidated Brent crude macro routing through the dedicated Yahoo lane, intraday 1-day graph history, persistent graph-card travel flashes, the scheduler smoothing pass, and separate non-repeating DeepSeek closing-quote headlines.",
+                "The canonical VM harness now auto-purges stale remote build and test artifacts whenever free space drops below 8 GB, stages repo snapshots as TAR archives, strips staged bin/obj and artifact folders before upload, and makes the startup VmAgent launcher a silent no-op if the publish\\agent executable is not present yet.",
+                "The S&P 500 freshness investigation concluded that ^SPX needed to bypass the Yahoo quote endpoint and resolve through the Yahoo spark/chart path; the fix was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454."
             ]
         },
         "build": {
@@ -74,7 +76,8 @@
                 "Focused regression updates now cover curated DeepSeek closing quotations, preemptive near-due refresh smoothing, and the animated market critter overlay.",
                 "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-182218.",
                 "A fresh 60-minute direct-agent soak completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619.",
-                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-12 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159 after moving DeepSeek closing quotations into separate supplemental ticker items."
+                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-12 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159 after moving DeepSeek closing quotations into separate supplemental ticker items.",
+                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454 after TAR-based repo staging, low-space auto-cleanup, and the ^SPX Yahoo spark/chart routing fix."
             ]
         }
     },
@@ -632,7 +635,7 @@
             "priority": 1,
             "area": "global_markets_accuracy",
             "title": "Investigate stale or inaccurate S&P 500 values in Global Markets",
-            "status": "open",
+            "status": "resolved",
             "source": "user_followup",
             "evidence": [
                 "User observed the app showing S&P 500 at -0.60% while the actual market value was approximately -0.89%."
@@ -640,7 +643,10 @@
             "notes": [
                 "Investigate whether the S&P 500 feed, scheduler, cache, symbol mapping, market-hours handling, or display-layer freshness rules are causing stale or lagging values.",
                 "The specific concern is that even after an apparent refresh, the S&P 500 value in Global Markets may still not reflect the latest market reading.",
-                "This ticket is about data correctness, not just timestamp labeling."
+                "This ticket is about data correctness, not just timestamp labeling.",
+                "Resolved by routing ^SPX through the Yahoo Finance v8 spark/chart path instead of the dedicated quote endpoint path that was lagging or failing for this symbol.",
+                "StartupCoordinator now keeps ^SPX out of the Stooq world-index lane and reserves it for the dedicated Yahoo pass, while YahooFinanceQuoteProvider explicitly avoids the quote endpoint for ^SPX.",
+                "Verified in the canonical VM harness proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454 where trace lines show ProviderReturnedQuotes / provider=Yahoo Finance v8 / requested_symbols=[^SPX] / fetched_symbols=[^SPX] and world_index_missing_symbols=[]."
             ]
         },
         {

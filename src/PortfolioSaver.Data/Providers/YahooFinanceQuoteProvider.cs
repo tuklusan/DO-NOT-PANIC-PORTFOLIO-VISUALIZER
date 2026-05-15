@@ -12,10 +12,12 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
 {
     private const int MaxSparkBatchSymbols = 24;
     private const int MaxQuoteEndpointBatchSymbols = 8;
+    private readonly HttpClient _httpClient;
     private readonly YahooFinanceSessionService _sessionService;
 
     public YahooFinanceQuoteProvider(HttpClient httpClient, YahooFinanceSessionService? sessionService = null)
     {
+        _httpClient = httpClient;
         _sessionService = sessionService ?? new YahooFinanceSessionService(httpClient);
     }
 
@@ -267,7 +269,7 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
         string symbolsCsv = string.Join(",", symbols.Select(Uri.EscapeDataString));
         string url = $"https://query1.finance.yahoo.com/v8/finance/spark?symbols={symbolsCsv}&range=7d&interval=1d&includePrePost=false";
 
-        using HttpResponseMessage response = await _sessionService.GetAsync(url, cancellationToken);
+        using HttpResponseMessage response = await _httpClient.GetAsync(url, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -299,7 +301,7 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
     private async Task<QuoteSnapshot?> FetchChartQuoteAsync(string symbol, CancellationToken cancellationToken)
     {
         string url = $"https://query1.finance.yahoo.com/v8/finance/chart/{Uri.EscapeDataString(symbol)}?interval=1d&range=7d&includePrePost=false";
-        using HttpResponseMessage response = await _sessionService.GetAsync(url, cancellationToken);
+        using HttpResponseMessage response = await _httpClient.GetAsync(url, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -527,8 +529,13 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
            ex.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase);
 
     private static bool ShouldPreferQuoteEndpointLookup(string symbol)
-        => symbol.StartsWith("^", StringComparison.OrdinalIgnoreCase) ||
-           string.Equals(symbol, "DX-Y.NYB", StringComparison.OrdinalIgnoreCase);
+    {
+        if (string.Equals(symbol, "^SPX", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return symbol.StartsWith("^", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(symbol, "DX-Y.NYB", StringComparison.OrdinalIgnoreCase);
+    }
 
     private static IReadOnlyList<QuoteSnapshot> BuildOrderedResults(
         IReadOnlyList<string> requestedSymbols,

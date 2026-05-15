@@ -96,6 +96,7 @@ public sealed class VmHarnessScriptTests
 
         Assert.Contains("PortfolioSaver VmAgent.lnk", script, StringComparison.Ordinal);
         Assert.Contains("Start-PortfolioSaverVmAgent.cmd", script, StringComparison.Ordinal);
+        Assert.Contains("if not exist \"$agentPath\" exit /b 0", script, StringComparison.Ordinal);
         Assert.Contains("ScreenSaveActive", script, StringComparison.Ordinal);
         Assert.Contains("AutoAdminLogon", script, StringComparison.Ordinal);
         Assert.Contains("DefaultPassword", script, StringComparison.Ordinal);
@@ -204,6 +205,15 @@ public sealed class VmHarnessScriptTests
         Assert.Contains(@"C:\vmharness\portfolio-saver", bootstrap, StringComparison.Ordinal);
         Assert.Contains(@"C:\vmharness\portfolio-saver", applySecrets, StringComparison.Ordinal);
         Assert.Contains("Posh-SSH", helper, StringComparison.Ordinal);
+        Assert.Contains("repo-snapshot.tar", push, StringComparison.Ordinal);
+        Assert.Contains("& tar -xf `$archivePath -C `$repoPath", push, StringComparison.Ordinal);
+        Assert.Contains("& tar @arguments", helper, StringComparison.Ordinal);
+        Assert.Contains("Ensure-VmFreeSpace -Bundle $bundle -RootPath $RootPath -MinimumFreeGb 8", push, StringComparison.Ordinal);
+        Assert.Contains("Ensure-VmFreeSpace -Bundle $bundle -RootPath $RootPath -MinimumFreeGb 8", invoke, StringComparison.Ordinal);
+        Assert.Contains("function Ensure-VmFreeSpace", helper, StringComparison.Ordinal);
+        Assert.Contains("function Invoke-VmWorkspaceCleanup", helper, StringComparison.Ordinal);
+        Assert.Contains("build\\vm\\artifacts", helper, StringComparison.Ordinal);
+        Assert.Contains("Remove-Item -LiteralPath $target -Recurse -Force", helper, StringComparison.Ordinal);
         Assert.Contains("build\\vm\\test-secrets.json", push, StringComparison.Ordinal);
         Assert.Contains("DEEPSEEK_API_KEY", applySecrets, StringComparison.Ordinal);
         Assert.DoesNotContain("VBoxManage", push, StringComparison.Ordinal);

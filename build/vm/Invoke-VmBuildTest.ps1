@@ -32,6 +32,7 @@ if ($PushWorkspace) {
 try {
     New-Item -ItemType Directory -Force -Path $hostArtifactsRoot | Out-Null
     $bundle = New-VmSshSessionBundle -HostName $VmHost -Port $VmPort
+    Ensure-VmFreeSpace -Bundle $bundle -RootPath $RootPath -MinimumFreeGb 8 | Out-Null
 
     if ($Bootstrap -and -not $PushWorkspace) {
         $bootstrapCommand = @"

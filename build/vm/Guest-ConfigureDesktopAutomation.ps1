@@ -41,6 +41,7 @@ New-Item -ItemType Directory -Force -Path $scriptsPath,$startupPath | Out-Null
 $agentLauncher = @"
 @echo off
 taskkill /IM PortfolioSaver.VmAgent.exe /F >nul 2>&1
+if not exist "$agentPath" exit /b 0
 cd /d "$RootPath"
 start "" /min "$agentPath" --root-path "$RootPath"
 "@

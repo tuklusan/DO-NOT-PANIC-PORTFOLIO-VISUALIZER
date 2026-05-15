@@ -42,6 +42,7 @@ public sealed class StartupCoordinator
     private const int MinimumTapeItemCount = 18;
     private const int MinimumHeadlineCount = 20;
     private static readonly HashSet<string> DedicatedYahooSymbols = BuildDedicatedYahooSymbolSet();
+    private static readonly HashSet<string> PreferredYahooWorldIndexSymbols = BuildPreferredYahooWorldIndexSet();
     private static readonly HashSet<string> OfficialMacroSymbols = BuildOfficialMacroSymbolSet();
     private static readonly HashSet<string> TreasuryMacroSymbols = BuildTreasuryMacroSymbolSet();
 
@@ -629,7 +630,7 @@ public sealed class StartupCoordinator
         }
 
         List<string> stooqGlobalMarketSymbols = remainingSymbols
-            .Where(StooqGlobalMarketQuoteProvider.CanResolve)
+            .Where(symbol => StooqGlobalMarketQuoteProvider.CanResolve(symbol) && !ShouldPreferYahooWorldIndex(symbol))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (stooqGlobalMarketSymbols.Count > 0)
@@ -1594,9 +1595,22 @@ public sealed class StartupCoordinator
                     .ToList();
                 if (availableDedicatedSymbols.Count > 0)
                 {
-                    return availableDedicatedSymbols
-                    .Take(Math.Min(YahooDedicatedRuntimeBatchSymbols, dedicatedSymbols.Count))
-                    .ToList();
+                    List<string> selected = availableDedicatedSymbols
+                        .Take(Math.Min(YahooDedicatedRuntimeBatchSymbols, dedicatedSymbols.Count))
+                        .ToList();
+                    string? preferredSymbol = availableDedicatedSymbols.FirstOrDefault(ShouldPreferYahooWorldIndex);
+                    int maxCount = Math.Min(
+                        YahooDedicatedRuntimeBatchSymbols + (!string.IsNullOrWhiteSpace(preferredSymbol) ? 1 : 0),
+                        dedicatedSymbols.Count);
+
+                    if (!string.IsNullOrWhiteSpace(preferredSymbol) &&
+                        !selected.Contains(preferredSymbol, StringComparer.OrdinalIgnoreCase) &&
+                        selected.Count < maxCount)
+                    {
+                        selected.Add(preferredSymbol);
+                    }
+
+                    return selected;
                 }
             }
 
@@ -1939,8 +1953,14 @@ public sealed class StartupCoordinator
         if (IsOfficialMacroSymbol(normalized) || IsTreasuryMacroSymbol(normalized))
             return false;
 
+        if (ShouldPreferYahooWorldIndex(normalized))
+            return true;
+
         return !StooqGlobalMarketQuoteProvider.CanResolve(normalized);
     }
+
+    private static bool ShouldPreferYahooWorldIndex(string symbol)
+        => PreferredYahooWorldIndexSymbols.Contains(SymbolProfileHeuristics.Normalize(symbol));
 
     private bool IsDedicatedYahooSymbolCoolingDown(string symbol, DateTimeOffset nowUtc)
     {
@@ -2025,6 +2045,9 @@ public sealed class StartupCoordinator
 
         return symbols;
     }
+
+    private static HashSet<string> BuildPreferredYahooWorldIndexSet()
+        => new(["^SPX"], StringComparer.OrdinalIgnoreCase);
 
     private static HashSet<string> BuildOfficialMacroSymbolSet()
         => new(GetOfficialMacroSymbols().Select(SymbolProfileHeuristics.Normalize), StringComparer.OrdinalIgnoreCase);

@@ -651,8 +651,9 @@ public sealed class StartupCoordinatorAdvancedTests
         await task;
 
         IReadOnlyList<string> requested = Assert.Single(yahooProvider.BatchRequests);
-        Assert.Single(requested);
+        Assert.Equal(2, requested.Count);
         Assert.Equal("DX-Y.NYB", requested[0]);
+        Assert.Contains("^SPX", requested, StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -696,13 +697,14 @@ public sealed class StartupCoordinatorAdvancedTests
                 ]) ?? throw new InvalidOperationException("LoadQuotesAsync invocation failed."));
 
             await task;
-            requestedSymbols.Add(Assert.Single(Assert.Single(yahooProvider.BatchRequests)));
+            IReadOnlyList<string> request = Assert.Single(yahooProvider.BatchRequests);
+            Assert.InRange(request.Count, 1, 2);
+            Assert.Contains("^SPX", request, StringComparer.OrdinalIgnoreCase);
+            requestedSymbols.AddRange(request);
         }
 
-        Assert.Equal(5, requestedSymbols.Count);
-        Assert.Contains("DX-Y.NYB", requestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.Contains("^SPX", requestedSymbols, StringComparer.OrdinalIgnoreCase);
-        Assert.Contains("^FTSE", requestedSymbols, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("DX-Y.NYB", requestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.DoesNotContain("BZ=F", requestedSymbols, StringComparer.OrdinalIgnoreCase);
         Assert.DoesNotContain("GC=F", requestedSymbols, StringComparer.OrdinalIgnoreCase);
     }
@@ -749,7 +751,7 @@ public sealed class StartupCoordinatorAdvancedTests
 
         Assert.Single(requested);
         Assert.DoesNotContain("DX-Y.NYB", requested, StringComparer.OrdinalIgnoreCase);
-        Assert.Contains(requested[0], new[] { "^SPX", "^FTSE" }, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal("^SPX", requested[0]);
     }
 
     [Fact]

@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $tempRoot = Join-Path $env:TEMP ('PortfolioSaverVmPush-' + [guid]::NewGuid().ToString('N'))
-$archivePath = Join-Path $tempRoot 'repo-snapshot.zip'
+$archivePath = Join-Path $tempRoot 'repo-snapshot.tar'
 $publishRoot = Join-Path $repoRoot 'build\artifacts\publish-safe-temp'
 $localManifest = Join-Path $repoRoot 'build\vm\artifacts\host-runs'
 $localTestSecretsPath = Join-Path $repoRoot 'build\vm\test-secrets.json'
@@ -28,6 +28,7 @@ try {
     Ensure-VmDirectory -Bundle $bundle -RemotePath (Join-Path $RootPath 'scripts')
     Ensure-VmDirectory -Bundle $bundle -RemotePath (Join-Path $RootPath 'artifacts')
     Ensure-VmDirectory -Bundle $bundle -RemotePath (Join-Path $RootPath 'logs')
+    Ensure-VmFreeSpace -Bundle $bundle -RootPath $RootPath -MinimumFreeGb 8 | Out-Null
 
     $bootstrapRemoteDirectory = Join-Path $RootPath 'scripts'
     $bootstrapRemotePath = Join-Path $bootstrapRemoteDirectory 'Guest-BootstrapVmRemoteTools.ps1'
@@ -44,7 +45,7 @@ try {
     Write-VmSshStep "Building a clean workspace archive"
     New-VmWorkspaceArchive -RepoRoot $repoRoot -ArchivePath $archivePath
 
-    $remoteArchive = Join-Path $RootPath 'artifacts\repo-snapshot.zip'
+    $remoteArchive = Join-Path $RootPath 'artifacts\repo-snapshot.tar'
     $remoteArtifactsDirectory = Join-Path $RootPath 'artifacts'
     $remoteTestSecretsPath = Join-Path $RootPath 'artifacts\test-secrets.json'
     Write-VmSshStep "Uploading repository snapshot"
@@ -65,12 +66,15 @@ Remove-Item -LiteralPath '$remoteTestSecretsPath' -Force -ErrorAction SilentlyCo
     $remoteRepo = Join-Path $RootPath 'repo'
     $expandCommand = @"
 `$repoPath = '$remoteRepo'
-`$zipPath = '$remoteArchive'
+`$archivePath = '$remoteArchive'
 if (Test-Path `$repoPath) {
     Remove-Item -LiteralPath `$repoPath -Recurse -Force -ErrorAction SilentlyContinue
 }
 New-Item -ItemType Directory -Force -Path `$repoPath | Out-Null
-Expand-Archive -LiteralPath `$zipPath -DestinationPath `$repoPath -Force
+& tar -xf `$archivePath -C `$repoPath
+if (`$LASTEXITCODE -ne 0) {
+    throw 'tar extraction of repo snapshot failed.'
+}
 "@
     Write-VmSshStep "Expanding repository snapshot inside guest workspace"
     Invoke-VmPwshCommand -Bundle $bundle -Command $expandCommand -TimeOutSeconds 1800 | Out-Null
@@ -105,7 +109,7 @@ Expand-Archive -LiteralPath `$zipPath -DestinationPath `$publishPath -Force
         RootPath = $RootPath
         Bootstrap = [bool]$Bootstrap
         IncludePublishArtifacts = [bool]$IncludePublishArtifacts
-        ArchiveName = 'repo-snapshot.zip'
+        ArchiveName = 'repo-snapshot.tar'
         PublishArtifactPresent = [bool](Test-Path $publishRoot)
         TestSecretsPresent = [bool](Test-Path $localTestSecretsPath)
     }

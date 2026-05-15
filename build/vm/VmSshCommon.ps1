@@ -220,6 +220,100 @@ function Receive-VmItem {
     Get-SFTPItem -SFTPSession $Bundle.SftpSession -Path $path -Destination $LocalDestination -Force -ErrorAction Stop
 }
 
+function Get-VmSystemDriveSpaceSnapshot {
+    param([Parameter(Mandatory = $true)]$Bundle)
+
+    $command = @"
+`$drive = Get-CimInstance -ClassName Win32_LogicalDisk -Filter "DeviceID='C:'"
+[pscustomobject]@{
+    Drive = `$drive.DeviceID
+    SizeBytes = [int64]`$drive.Size
+    FreeBytes = [int64]`$drive.FreeSpace
+    UsedBytes = [int64](`$drive.Size - `$drive.FreeSpace)
+    FreeGB = [math]::Round(([double]`$drive.FreeSpace / 1GB), 2)
+    UsedGB = [math]::Round(([double](`$drive.Size - `$drive.FreeSpace) / 1GB), 2)
+} | ConvertTo-Json -Compress
+"@
+
+    $result = Invoke-VmPwshCommand -Bundle $Bundle -Command $command -TimeOutSeconds 120
+    $json = ($result.Output -join [Environment]::NewLine).Trim()
+    if ([string]::IsNullOrWhiteSpace($json)) {
+        throw 'Unable to read guest drive-space snapshot.'
+    }
+
+    return $json | ConvertFrom-Json
+}
+
+function Invoke-VmWorkspaceCleanup {
+    param(
+        [Parameter(Mandatory = $true)]$Bundle,
+        [Parameter(Mandatory = $true)][string]$RootPath
+    )
+
+    $command = @"
+Get-Process PortfolioSaver.VmAgent,PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver,WinAppDriver -ErrorAction SilentlyContinue |
+    Stop-Process -Force -ErrorAction SilentlyContinue
+
+`$targets = @(
+    (Join-Path '$RootPath' 'artifacts'),
+    (Join-Path '$RootPath' 'logs'),
+    (Join-Path '$RootPath' 'results'),
+    (Join-Path '$RootPath' 'publish'),
+    (Join-Path '$RootPath' 'repo\build\artifacts'),
+    (Join-Path '$RootPath' 'repo\build\vm\artifacts'),
+    (Join-Path '$RootPath' 'repo\TestResults')
+)
+
+foreach (`$target in `$targets) {
+    if (Test-Path `$target) {
+        Get-ChildItem -LiteralPath `$target -Force -ErrorAction SilentlyContinue |
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+`$repoRoot = Join-Path '$RootPath' 'repo'
+if (Test-Path `$repoRoot) {
+    Get-ChildItem -LiteralPath `$repoRoot -Directory -Recurse -Force -ErrorAction SilentlyContinue |
+        Where-Object { `$_.Name -in @('bin', 'obj') } |
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+`$traceRoot = Join-Path `$env:APPDATA 'PortfolioSaver\Trace'
+if (Test-Path `$traceRoot) {
+    Remove-Item -LiteralPath `$traceRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+Get-ChildItem -LiteralPath `$env:TEMP -Directory -Force -ErrorAction SilentlyContinue |
+    Where-Object { `$_.Name -like 'PortfolioSaverVm*' -or `$_.Name -like 'PortfolioSaver*' } |
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+"@
+
+    Invoke-VmPwshCommand -Bundle $Bundle -Command $command -TimeOutSeconds 1800 | Out-Null
+}
+
+function Ensure-VmFreeSpace {
+    param(
+        [Parameter(Mandatory = $true)]$Bundle,
+        [Parameter(Mandatory = $true)][string]$RootPath,
+        [double]$MinimumFreeGb = 8
+    )
+
+    $before = Get-VmSystemDriveSpaceSnapshot -Bundle $Bundle
+    if ([double]$before.FreeGB -ge $MinimumFreeGb) {
+        return $before
+    }
+
+    Write-VmSshStep ("Guest free space is low ({0} GB free). Purging stale workspace/test artifacts." -f $before.FreeGB)
+    Invoke-VmWorkspaceCleanup -Bundle $Bundle -RootPath $RootPath
+    $after = Get-VmSystemDriveSpaceSnapshot -Bundle $Bundle
+    if ([double]$after.FreeGB -lt $MinimumFreeGb) {
+        throw ("Guest free space remains below {0} GB after cleanup (free {1} GB)." -f $MinimumFreeGb, $after.FreeGB)
+    }
+
+    Write-VmSshStep ("Guest free space recovered to {0} GB free." -f $after.FreeGB)
+    return $after
+}
+
 function New-VmWorkspaceArchive {
     param(
         [Parameter(Mandatory = $true)][string]$RepoRoot,
@@ -235,11 +329,53 @@ function New-VmWorkspaceArchive {
             throw "robocopy failed while staging the VM archive (exit code $exitCode)."
         }
 
+        $staleStageTargets = @(
+            (Join-Path $stageRoot 'build\artifacts'),
+            (Join-Path $stageRoot 'build\vm\artifacts'),
+            (Join-Path $stageRoot 'TestResults')
+        )
+        foreach ($target in $staleStageTargets) {
+            if (Test-Path $target) {
+                Remove-Item -LiteralPath $target -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        Get-ChildItem -LiteralPath $stageRoot -Directory -Recurse -Force -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -in @('bin', 'obj') } |
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
         if (Test-Path $ArchivePath) {
             Remove-Item -LiteralPath $ArchivePath -Force -ErrorAction SilentlyContinue
         }
 
-        Compress-Archive -Path (Join-Path $stageRoot '*') -DestinationPath $ArchivePath -CompressionLevel Optimal -Force
+        $archiveDirectory = Split-Path -Path $ArchivePath -Parent
+        $archiveName = Split-Path -Path $ArchivePath -Leaf
+        if (-not [string]::IsNullOrWhiteSpace($archiveDirectory)) {
+            New-Item -ItemType Directory -Force -Path $archiveDirectory | Out-Null
+        }
+
+        $arguments = @(
+            '-cf',
+            $archiveName,
+            '-C',
+            $stageRoot,
+            '.'
+        )
+
+        Push-Location $archiveDirectory
+        try {
+            & tar @arguments | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                throw "tar failed while building the VM archive (exit code $LASTEXITCODE)."
+            }
+        }
+        finally {
+            Pop-Location
+        }
+
+        if (-not (Test-Path $ArchivePath)) {
+            throw "tar did not produce the expected VM archive: $ArchivePath"
+        }
     }
     finally {
         if (Test-Path $stageRoot) {
