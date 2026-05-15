@@ -17,7 +17,7 @@
     "latest_recorded_validation_state": {
         "automated_tests": {
             "command": "dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo",
-            "result": "239 / 239 passing",
+            "result": "241 / 241 passing",
             "notes": [
                 "Host regression coverage now includes the SSH-first VM harness scripts, the desktop-session agent workflow, and the remote WinAppDriver startup path.",
                 "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer.",
@@ -30,7 +30,8 @@
                 "The NB-001 through NB-010 fixes were revalidated with a final local green run plus a clean 20-minute remote desktop-session run in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526.",
                 "The current local batch also revalidated Brent crude macro routing through the dedicated Yahoo lane, intraday 1-day graph history, persistent graph-card travel flashes, the scheduler smoothing pass, and separate non-repeating DeepSeek closing-quote headlines.",
                 "The canonical VM harness now auto-purges stale remote build and test artifacts whenever free space drops below 8 GB, stages repo snapshots as TAR archives, strips staged bin/obj and artifact folders before upload, and makes the startup VmAgent launcher a silent no-op if the publish\\agent executable is not present yet.",
-                "The S&P 500 freshness investigation concluded that ^SPX needed to bypass the Yahoo quote endpoint and resolve through the Yahoo spark/chart path; the fix was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454."
+                "The S&P 500 freshness investigation concluded that ^SPX needed to bypass the Yahoo quote endpoint and resolve through the Yahoo spark/chart path; the fix was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454.",
+                "The status-band Updated line now anchors to the ^SPX refresh timestamp with a fallback to the latest available quote, and that behavior was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439."
             ]
         },
         "build": {
@@ -77,7 +78,8 @@
                 "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-182218.",
                 "A fresh 60-minute direct-agent soak completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619.",
                 "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-12 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159 after moving DeepSeek closing quotations into separate supplemental ticker items.",
-                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454 after TAR-based repo staging, low-space auto-cleanup, and the ^SPX Yahoo spark/chart routing fix."
+                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454 after TAR-based repo staging, low-space auto-cleanup, and the ^SPX Yahoo spark/chart routing fix.",
+                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439 after anchoring the top-left Updated line to the S&P 500 freshness timestamp."
             ]
         }
     },
@@ -618,7 +620,7 @@
             "priority": 2,
             "area": "status_freshness",
             "title": "Drive the Updated time from the last S&P 500 refresh in Global Markets",
-            "status": "open",
+            "status": "resolved",
             "source": "user_followup",
             "evidence": [
                 "User requested that the top-left Updated field reflect the last update time of the S&P 500 value shown in Global Markets."
@@ -626,7 +628,10 @@
             "notes": [
                 "Use the S&P 500 item in Global Markets as the freshness anchor for the top-left Updated line.",
                 "The displayed Updated age should track the last refresh timestamp for that S&P 500 payload rather than a broader scene-level or provider-level fallback timestamp.",
-                "If the S&P 500 value is unavailable, define a clear fallback behavior during implementation."
+                "If the S&P 500 value is unavailable, define a clear fallback behavior during implementation.",
+                "Resolved by teaching both StartupCoordinator and ScreensaverSceneControl to prefer the ^SPX FetchTimestampUtc when computing the top-left Updated age.",
+                "Fallback behavior is the newest available quote timestamp when ^SPX is unavailable.",
+                "Validated with focused regression coverage plus the canonical 20-minute VM proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439."
             ]
         },
         {

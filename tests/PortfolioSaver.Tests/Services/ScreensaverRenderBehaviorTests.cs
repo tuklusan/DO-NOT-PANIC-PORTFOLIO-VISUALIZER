@@ -676,7 +676,8 @@ public sealed class ScreensaverRenderBehaviorTests
 
         Assert.Contains("UpdateStatusFreshnessText(_statusViewModel.UpdatedText);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void UpdateStatusFreshnessText(string? fallbackText = null)", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("_statusViewModel.UpdatedText = $\"Updated: {TimeFormatHelper.ToAgeString(latestQuoteFetchUtc)}\";", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("StartupCoordinator.TryGetStatusFreshnessAnchorFetchUtc(_latestQuotes, out DateTimeOffset anchorQuoteFetchUtc)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("_statusViewModel.UpdatedText = $\"Updated: {TimeFormatHelper.ToAgeString(anchorQuoteFetchUtc)}\";", sceneCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]

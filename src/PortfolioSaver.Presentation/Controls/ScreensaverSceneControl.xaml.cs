@@ -2308,28 +2308,14 @@ public partial class ScreensaverSceneControl : UserControl
         if (_statusViewModel is null)
             return;
 
-        if (TryGetLatestQuoteFetchUtc(out DateTimeOffset latestQuoteFetchUtc))
+        if (StartupCoordinator.TryGetStatusFreshnessAnchorFetchUtc(_latestQuotes, out DateTimeOffset anchorQuoteFetchUtc))
         {
-            _statusViewModel.UpdatedText = $"Updated: {TimeFormatHelper.ToAgeString(latestQuoteFetchUtc)}";
+            _statusViewModel.UpdatedText = $"Updated: {TimeFormatHelper.ToAgeString(anchorQuoteFetchUtc)}";
             return;
         }
 
         if (!string.IsNullOrWhiteSpace(fallbackText))
             _statusViewModel.UpdatedText = fallbackText;
-    }
-
-    private bool TryGetLatestQuoteFetchUtc(out DateTimeOffset latestQuoteFetchUtc)
-    {
-        latestQuoteFetchUtc = DateTimeOffset.MinValue;
-        if (_latestQuotes.Count == 0)
-            return false;
-
-        latestQuoteFetchUtc = _latestQuotes.Values
-            .Select(quote => quote.FetchTimestampUtc)
-            .DefaultIfEmpty(DateTimeOffset.MinValue)
-            .Max();
-
-        return latestQuoteFetchUtc > DateTimeOffset.MinValue;
     }
 
     private static IReadOnlyDictionary<string, QuoteSnapshot> MergeQuotes(

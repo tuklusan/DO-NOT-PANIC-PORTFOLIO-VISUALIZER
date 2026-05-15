@@ -45,6 +45,7 @@ public sealed class StartupCoordinator
     private static readonly HashSet<string> PreferredYahooWorldIndexSymbols = BuildPreferredYahooWorldIndexSet();
     private static readonly HashSet<string> OfficialMacroSymbols = BuildOfficialMacroSymbolSet();
     private static readonly HashSet<string> TreasuryMacroSymbols = BuildTreasuryMacroSymbolSet();
+    private const string StatusFreshnessAnchorSymbol = "^SPX";
 
     private readonly ScreensaverSettingsService _settingsService = new();
     private readonly ExchangePhotoCacheService _exchangePhotoCacheService = new();
@@ -117,7 +118,9 @@ public sealed class StartupCoordinator
                     : (cachedQuotes.Count > 0 ? "Provider: Local Cache" : "Provider: Waiting for network"),
                 UpdatedText = showRecoveryOverlay
                     ? "Updated: Refreshing live data..."
-                    : (cachedQuotes.Count > 0 ? "Updated: Cache warm start" : "Updated: Starting..."),
+                    : TryGetStatusFreshnessAnchorFetchUtc(cachedQuotes, out DateTimeOffset bootstrapAnchorUtc)
+                        ? $"Updated: {TimeFormatHelper.ToAgeString(bootstrapAnchorUtc)}"
+                        : (cachedQuotes.Count > 0 ? "Updated: Cache warm start" : "Updated: Starting..."),
                 ClockDateText = DateTimeOffset.UtcNow.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
                 ClockText = $"{DateTimeOffset.UtcNow:HH:mm} UTC"
             },
@@ -198,10 +201,9 @@ public sealed class StartupCoordinator
         FloatingClockViewModel? clock = settings.EnableFloatingClock ? _floatingClockBuilder.BuildDefault() : null;
 
         DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
-        DateTimeOffset lastUpdate = quotes.Values
-            .Select(quote => quote.FetchTimestampUtc)
-            .DefaultIfEmpty(nowUtc)
-            .Max();
+        DateTimeOffset lastUpdate = TryGetStatusFreshnessAnchorFetchUtc(quotes, out DateTimeOffset anchorQuoteFetchUtc)
+            ? anchorQuoteFetchUtc
+            : nowUtc;
         bool showRecoveryOverlay = ShouldShowLiveRecoveryOverlay(quotes, settings, nowUtc);
 
         StatusBarViewModel status = new()
@@ -1961,6 +1963,29 @@ public sealed class StartupCoordinator
 
     private static bool ShouldPreferYahooWorldIndex(string symbol)
         => PreferredYahooWorldIndexSymbols.Contains(SymbolProfileHeuristics.Normalize(symbol));
+
+    public static bool TryGetStatusFreshnessAnchorFetchUtc(
+        IReadOnlyDictionary<string, QuoteSnapshot> quotes,
+        out DateTimeOffset fetchUtc)
+    {
+        fetchUtc = DateTimeOffset.MinValue;
+        if (quotes.Count == 0)
+            return false;
+
+        if (quotes.TryGetValue(StatusFreshnessAnchorSymbol, out QuoteSnapshot? spxQuote) &&
+            spxQuote.FetchTimestampUtc > DateTimeOffset.MinValue)
+        {
+            fetchUtc = spxQuote.FetchTimestampUtc;
+            return true;
+        }
+
+        fetchUtc = quotes.Values
+            .Select(quote => quote.FetchTimestampUtc)
+            .DefaultIfEmpty(DateTimeOffset.MinValue)
+            .Max();
+
+        return fetchUtc > DateTimeOffset.MinValue;
+    }
 
     private bool IsDedicatedYahooSymbolCoolingDown(string symbol, DateTimeOffset nowUtc)
     {

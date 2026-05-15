@@ -274,6 +274,40 @@ public sealed class StartupCoordinatorAdvancedTests
     }
 
     [Fact]
+    public void TryGetStatusFreshnessAnchorFetchUtc_PrefersSpxTimestamp()
+    {
+        DateTimeOffset older = DateTimeOffset.UtcNow.AddMinutes(-5);
+        DateTimeOffset newer = DateTimeOffset.UtcNow.AddSeconds(-20);
+        IReadOnlyDictionary<string, QuoteSnapshot> quotes = new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["QUAL"] = new() { Symbol = "QUAL", FetchTimestampUtc = newer },
+            ["^SPX"] = new() { Symbol = "^SPX", FetchTimestampUtc = older }
+        };
+
+        bool found = StartupCoordinator.TryGetStatusFreshnessAnchorFetchUtc(quotes, out DateTimeOffset fetchUtc);
+
+        Assert.True(found);
+        Assert.Equal(older, fetchUtc);
+    }
+
+    [Fact]
+    public void TryGetStatusFreshnessAnchorFetchUtc_FallsBackToLatestAvailableQuote()
+    {
+        DateTimeOffset older = DateTimeOffset.UtcNow.AddMinutes(-4);
+        DateTimeOffset newer = DateTimeOffset.UtcNow.AddSeconds(-15);
+        IReadOnlyDictionary<string, QuoteSnapshot> quotes = new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["QUAL"] = new() { Symbol = "QUAL", FetchTimestampUtc = older },
+            ["XLK"] = new() { Symbol = "XLK", FetchTimestampUtc = newer }
+        };
+
+        bool found = StartupCoordinator.TryGetStatusFreshnessAnchorFetchUtc(quotes, out DateTimeOffset fetchUtc);
+
+        Assert.True(found);
+        Assert.Equal(newer, fetchUtc);
+    }
+
+    [Fact]
     public async Task LoadQuotesAsync_WhenYahooFails_FallsBackToBackupProvider()
     {
         AppSettings settings = Defaults.CreateSettings();
