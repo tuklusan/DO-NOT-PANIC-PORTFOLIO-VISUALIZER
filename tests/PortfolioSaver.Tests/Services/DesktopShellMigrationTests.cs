@@ -39,6 +39,11 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("PortfolioSaver.Presentation", xaml, StringComparison.Ordinal);
         Assert.Contains("Width=\"1180\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Height=\"720\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("MinWidth=\"1180\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("MinHeight=\"720\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("WindowState=\"Maximized\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("SizeChanged=\"OnWindowSizeChanged\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("StateChanged=\"OnWindowStateChanged\"", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -53,6 +58,14 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("if (e.Key == Key.Escape && _isFullScreen)", code, StringComparison.Ordinal);
         Assert.Contains("SystemParameters.VirtualScreenWidth", code, StringComparison.Ordinal);
         Assert.Contains("SystemParameters.VirtualScreenHeight", code, StringComparison.Ordinal);
+        Assert.Contains("private const double RestoredWindowWidth = 1180d;", code, StringComparison.Ordinal);
+        Assert.Contains("private const double RestoredWindowHeight = 720d;", code, StringComparison.Ordinal);
+        Assert.Contains("ApplyWindowStateConstraints()", code, StringComparison.Ordinal);
+        Assert.Contains("EnforceRestoredWindowSize()", code, StringComparison.Ordinal);
+        Assert.Contains("MaxWidth = double.PositiveInfinity;", code, StringComparison.Ordinal);
+        Assert.Contains("MaxHeight = double.PositiveInfinity;", code, StringComparison.Ordinal);
+        Assert.Contains("MaxWidth = SystemParameters.WorkArea.Width;", code, StringComparison.Ordinal);
+        Assert.Contains("MaxHeight = SystemParameters.WorkArea.Height;", code, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetAutomationId(this, \"DesktopMainWindow\")", code, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetHelpText(this, PortfolioVersion.SemanticVersion)", code, StringComparison.Ordinal);
     }

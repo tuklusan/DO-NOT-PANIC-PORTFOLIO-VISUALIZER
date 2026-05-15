@@ -33,7 +33,8 @@
                 "The S&P 500 freshness investigation concluded that ^SPX needed to bypass the Yahoo quote endpoint and resolve through the Yahoo spark/chart path; the fix was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454.",
                 "The status-band Updated line now anchors to the ^SPX refresh timestamp with a fallback to the latest available quote, and that behavior was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439.",
                 "Startup recovery no longer uses the large announcement overlay when network is available; instead the Updated line flashes Loading initial values until enough quotes are fresh, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453.",
-                "The news band now uses teleprinter-style playback with uppercase Courier text, per-item typing, STOP endings, pause-and-clear transitions, and no artificial headline duplication, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853."
+                "The news band now uses teleprinter-style playback with uppercase Courier text, per-item typing, STOP endings, pause-and-clear transitions, and no artificial headline duplication, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853.",
+                "The desktop shell now enforces a fixed restored size, maximizes only to the Windows work area, and still enters true fullscreen cleanly, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-194351."
             ]
         },
         "build": {
@@ -83,7 +84,8 @@
                 "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454 after TAR-based repo staging, low-space auto-cleanup, and the ^SPX Yahoo spark/chart routing fix.",
                 "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439 after anchoring the top-left Updated line to the S&P 500 freshness timestamp.",
                 "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453 after replacing the startup recovery card with the status-band Loading initial values message.",
-                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853 after replacing the marquee news scroller with teleprinter-style playback."
+                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853 after replacing the marquee news scroller with teleprinter-style playback.",
+                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-194351 after fixing restored/maximized window constraints without regressing true fullscreen."
             ]
         }
     },
@@ -670,7 +672,7 @@
             "priority": 2,
             "area": "desktop_window_shell",
             "title": "Constrain window sizing and formalize restored, maximized, and fullscreen behaviors",
-            "status": "open",
+            "status": "resolved",
             "source": "user_followup",
             "evidence": [
                 "User requested a fixed minimum usable window size, a controlled restored size, standard maximized windowed behavior, and reliable true fullscreen behavior."
@@ -680,7 +682,9 @@
                 "Use that computed size as the fixed restored window size rather than allowing arbitrary user resizing.",
                 "Maximized windowed mode should use the normal work area outside the Windows taskbar, keeping the menu bar and full window chrome visible.",
                 "View -> Full Screen should occupy the entire screen, with F11 toggling fullscreen and Esc exiting back to windowed mode.",
-                "In restored and maximized windowed modes, the menu bar and window frame must remain completely visible."
+                "In restored and maximized windowed modes, the menu bar and window frame must remain completely visible.",
+                "Resolved by enforcing a fixed 1180x720 restored size, constraining maximized windowed mode to SystemParameters.WorkArea, and suppressing resize/state constraint callbacks while fullscreen transitions clear work-area caps and reapply virtual-screen bounds after the style switch settles.",
+                "Validated with focused DesktopShellMigrationTests and VmHarnessScriptTests, a full 242 / 242 local test pass, and the canonical 20-minute VM proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-194351 where ConfigPhaseStatus=Completed, DesktopPhaseStatus=Completed, DesktopVersionCheck=Passed, and FullScreenToggleStatus=Completed."
             ]
         }
     ]

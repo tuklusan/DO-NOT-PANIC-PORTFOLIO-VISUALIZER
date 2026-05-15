@@ -9,10 +9,13 @@
         Title="DO NOT PANIC PORTFOLIO VISUALIZER"
         Width="1180"
         Height="720"
-        MinWidth="960"
-        MinHeight="600"
+        MinWidth="1180"
+        MinHeight="720"
+        WindowState="Maximized"
         WindowStartupLocation="CenterScreen"
-        KeyDown="OnWindowKeyDown">
+        KeyDown="OnWindowKeyDown"
+        SizeChanged="OnWindowSizeChanged"
+        StateChanged="OnWindowStateChanged">
     <Window.DataContext>
         <vm:DesktopShellViewModel />
     </Window.DataContext>
