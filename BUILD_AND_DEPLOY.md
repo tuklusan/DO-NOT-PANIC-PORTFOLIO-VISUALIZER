@@ -132,6 +132,11 @@ The current remote Windows UX harness is the supported baseline and should be tr
 3. push with `build\vm\Push-VmWorkspace.ps1`
 4. run remote interactive UX validation through `PortfolioSaver.VmAgent`
 
+Two current canonical harness behaviors are easy to miss but are now intentional:
+
+1. the harness auto-purges stale VM build/test artifacts whenever free space under `C:\vmharness\portfolio-saver` falls below `8 GB`
+2. the configured startup launcher for `PortfolioSaver.VmAgent` exits quietly if the staged agent executable is not present yet, so bootstrap does not throw noisy Windows popup errors
+
 Current known-good clean proof details:
 
 1. `PortfolioSaver.VmAgent` must be started in session `1`

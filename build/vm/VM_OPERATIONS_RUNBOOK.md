@@ -93,6 +93,7 @@ Only revisit the harness when:
 This does all of the following over SSH/SFTP:
 
 - ensures the remote workspace root exists
+- auto-purges stale VM build/test artifacts when free space under the harness root drops below `8 GB`
 - ensures machine-wide `pwsh` and `.NET 10` are present
 - uploads a clean repository snapshot
 - uploads `build\vm\test-secrets.json` when present and removes any stale remote copy when absent
@@ -144,6 +145,7 @@ Before the UX cycle starts, the harness now:
 
 - runs `Guest-ConfigureDesktopAutomation.ps1`
 - runs `Guest-ApplyTestSecrets.ps1`
+- re-checks free space and auto-purges stale harness artifacts again if free space is below `8 GB`
 - configures autologon-style Winlogon registry values for the dedicated test account
 - disables the screen saver for that user profile
 - prepares a startup launcher for `PortfolioSaver.VmAgent`
@@ -232,6 +234,29 @@ The harness must not assume the desktop automation layer is live until:
 - the queued UX command produces its acknowledgement JSON
 
 If either is missing, treat the launch as failed rather than assuming the app became visible.
+
+### Low-disk auto-purge is part of the canonical harness
+
+The canonical scripts now call `Ensure-VmFreeSpace` before both:
+
+- workspace push
+- remote build/test/UX execution
+
+The current minimum supported free-space floor is:
+
+- `8 GB`
+
+If the VM drops below that threshold, the harness is expected to purge obsolete content under the harness root before continuing. This is not an optional cleanup trick; it is now part of the locked workflow because low disk space became a recurring cause of false harness failures.
+
+### Startup launcher behavior when the agent is not yet staged
+
+`Guest-ConfigureDesktopAutomation.ps1` installs a startup launcher for `PortfolioSaver.VmAgent`, but that launcher now intentionally exits without error if:
+
+- `C:\vmharness\portfolio-saver\publish\agent\PortfolioSaver.VmAgent.exe`
+
+does not exist yet.
+
+That behavior is intentional. It prevents noisy Windows popup failures during bootstrap or partial staging runs. Do not treat the absence of an immediate startup-launched agent as a harness defect unless the host has already staged the publish artifacts and the explicit session-1 agent start still fails.
 
 ### WinAppDriver ownership
 

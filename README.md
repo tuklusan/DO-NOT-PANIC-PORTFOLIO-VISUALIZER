@@ -137,6 +137,11 @@ The current remote Windows validation harness is now the pinned supported approa
 - `build/vm/Push-VmWorkspace.ps1`
 - agent-based interactive UX validation through `PortfolioSaver.VmAgent`
 
+Current canonical harness guardrails also include:
+
+- automatic purge of obsolete VM build/test artifacts whenever free space under `C:\vmharness\portfolio-saver` falls below `8 GB`
+- a quiet no-op startup launcher for `PortfolioSaver.VmAgent` when the staged agent executable is not present yet
+
 The current known-good clean proof path is:
 
 - session-1 `PortfolioSaver.VmAgent`
