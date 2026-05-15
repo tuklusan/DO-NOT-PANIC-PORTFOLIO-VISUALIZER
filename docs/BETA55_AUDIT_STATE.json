@@ -967,6 +967,26 @@
                                                        "The first ApplySceneStateComplete snapshot shows updated_text blank while stale_quote_count=49 and startup recovery is still in progress.",
                                                        "This weakens the startup-status story and may contradict the intended Loading initial values behavior on the status band."
                                                    ]
+                                     },
+                                     {
+                                         "id":  "NB-026",
+                                         "tracking_number":  "NB-026",
+                                         "priority":  1,
+                                         "area":  "release_readiness",
+                                         "title":  "Run a full code-review, cleanup, dry-run, smoke-test, documentation, and final check-in pass",
+                                         "status":  "open",
+                                         "source":  "user_followup",
+                                         "evidence":  [
+                                                          "User requested a highest-priority next run covering code review, code-comment cleanup, dry run, smoke test, documentation review/update, and final commit/push."
+                                                      ],
+                                         "notes":  [
+                                                       "Perform a full line-by-line code review of the active codebase and clean up issues found during the pass.",
+                                                       "Perform a full line-by-line cleanup of code comments, removing stale, noisy, misleading, or redundant comments and improving any comments that remain necessary.",
+                                                       "Run a full dry run through the canonical workflow to catch integration issues before smoke validation.",
+                                                       "Run a full smoke test using the locked canonical VM harness and verify the core launch, config, desktop, fullscreen, startup-freshness, and data-update behaviors still hold.",
+                                                       "Review and update the project documentation/workbooks so they accurately match the final working code and harness state after the cleanup pass.",
+                                                       "Commit everything and push everything once the pass is complete and validated."
+                                                   ]
                                      }
                                  ]
 }
