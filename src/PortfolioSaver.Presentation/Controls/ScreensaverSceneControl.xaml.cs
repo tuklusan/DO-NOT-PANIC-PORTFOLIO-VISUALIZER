@@ -1041,13 +1041,14 @@ public partial class ScreensaverSceneControl : UserControl
             return;
 
         EnsureMacroMetersInitialized();
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[0], "VIX", "^VIX", 60m, invertRiskColors: true);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[1], "GOLD", "GC=F", 4000m);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[2], "UST2M", "US2M", treasuryYieldMeterMax);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[3], "UST10Y", "US10Y", treasuryYieldMeterMax);
-        UpdateYieldSpreadMeter(_statusViewModel.MacroMeters[4]);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[5], "DXY", "DX-Y.NYB", 120m, invertRiskColors: true);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[6], "CRUDE", "BZ=F", 160m);
+        bool loadingInitialValues = StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow());
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[0], "VIX", "^VIX", 60m, loadingInitialValues, invertRiskColors: true);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[1], "GOLD", "GC=F", 4000m, loadingInitialValues);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[2], "UST2M", "US2M", treasuryYieldMeterMax, loadingInitialValues);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[3], "UST10Y", "US10Y", treasuryYieldMeterMax, loadingInitialValues);
+        UpdateYieldSpreadMeter(_statusViewModel.MacroMeters[4], loadingInitialValues);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[5], "DXY", "DX-Y.NYB", 120m, loadingInitialValues, invertRiskColors: true);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[6], "CRUDE", "BZ=F", 160m, loadingInitialValues);
 
         _lastMacroMeterRefreshUtc = nowUtc;
         TraceMacroSnapshot(force);
@@ -1080,9 +1081,15 @@ public partial class ScreensaverSceneControl : UserControl
         }
     }
 
-    private void UpdateYieldSpreadMeter(MacroMeterViewModel meter)
+    private void UpdateYieldSpreadMeter(MacroMeterViewModel meter, bool loadingInitialValues)
     {
         meter.Label = "YLD SPRD";
+        if (loadingInitialValues)
+        {
+            ApplyWaitingMacroMeter(meter, keepPointsSuffix: true);
+            return;
+        }
+
         meter.AccentBrush = Brushes.SlateGray;
         meter.ValueText = "--";
         meter.ChangeText = "pts";
@@ -1119,9 +1126,16 @@ public partial class ScreensaverSceneControl : UserControl
         string label,
         string symbol,
         decimal maxValue,
+        bool loadingInitialValues,
         bool invertRiskColors = false)
     {
         meter.Label = label;
+        if (loadingInitialValues)
+        {
+            ApplyWaitingMacroMeter(meter);
+            return;
+        }
+
         meter.AccentBrush = Brushes.SlateGray;
         meter.ValueText = "--";
         meter.ChangeText = string.Empty;
@@ -1156,6 +1170,14 @@ public partial class ScreensaverSceneControl : UserControl
             _ => Brushes.Gainsboro
         };
         meter.SetFill((double)Math.Clamp(last.Value / Math.Max(1m, maxValue), 0m, 1m));
+    }
+
+    private static void ApplyWaitingMacroMeter(MacroMeterViewModel meter, bool keepPointsSuffix = false)
+    {
+        meter.AccentBrush = Brushes.Goldenrod;
+        meter.ValueText = GlobalMarketsWaitingGlyph;
+        meter.ChangeText = keepPointsSuffix ? "pts" : string.Empty;
+        meter.SetFill(0d);
     }
 
     private async Task RefreshClockDataAsync(bool force)

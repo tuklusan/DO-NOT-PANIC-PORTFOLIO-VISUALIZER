@@ -968,6 +968,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("\"GOLD\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"CRUDE\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Brushes.Goldenrod", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("bool loadingInitialValues = StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow());", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ApplyWaitingMacroMeter(meter);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("meter.ValueText = GlobalMarketsWaitingGlyph;", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new KeyValuePair<string, object?>(\"stale_symbols\", staleSymbols)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("quote.Last is null && quote.PreviousClose is null", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("graph.IsRefreshTravelFlashActive = true;", sceneCodeBehind, StringComparison.Ordinal);
@@ -1093,7 +1096,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("UpdateQuoteMeter method not found.");
 
-            method.Invoke(control, [meter, "VIX", "^VIX", 60m, true]);
+            method.Invoke(control, [meter, "VIX", "^VIX", 60m, false, true]);
 
             Assert.Same(Brushes.OrangeRed, meter.AccentBrush);
             Assert.Equal("+2.0%", meter.ChangeText);
@@ -1131,7 +1134,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("UpdateQuoteMeter method not found.");
 
-            method.Invoke(control, [meter, "DXY", "DX-Y.NYB", 120m, true]);
+            method.Invoke(control, [meter, "DXY", "DX-Y.NYB", 120m, false, true]);
 
             Assert.Same(Brushes.OrangeRed, meter.AccentBrush);
             Assert.Equal("+0.8%", meter.ChangeText);
@@ -1169,7 +1172,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("UpdateQuoteMeter method not found.");
 
-            method.Invoke(control, [meter, "DXY", "DX-Y.NYB", 120m, true]);
+            method.Invoke(control, [meter, "DXY", "DX-Y.NYB", 120m, false, true]);
 
             Assert.Same(Brushes.LimeGreen, meter.AccentBrush);
             Assert.Equal("-0.3%", meter.ChangeText);
@@ -1212,7 +1215,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("UpdateYieldSpreadMeter method not found.");
 
-            method.Invoke(control, [meter]);
+            method.Invoke(control, [meter, false]);
 
             Assert.Same(Brushes.LimeGreen, meter.AccentBrush);
             Assert.Equal("+0.60", meter.ValueText);
