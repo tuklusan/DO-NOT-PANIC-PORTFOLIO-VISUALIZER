@@ -9,15 +9,15 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class StartupCoordinatorNewsTests
 {
     [Fact]
-    public void BuildNews_RepeatsHeadlinesToMinimumCount()
+    public void BuildNews_PreservesOriginalHeadlineCountWithoutArtificialDuplication()
     {
         NewsFlasherViewModel news = InvokeBuildNews(["Headline A", "Headline B"]);
 
-        Assert.True(news.Headlines.Count >= 20);
+        Assert.Equal(2, news.Headlines.Count);
         Assert.All(news.Headlines, headline => Assert.False(string.IsNullOrWhiteSpace(headline.Text)));
         Assert.Contains("Headline A", news.MarqueeText, StringComparison.Ordinal);
         Assert.Contains("Headline B", news.MarqueeText, StringComparison.Ordinal);
-        Assert.Contains(" | ", news.MarqueeText, StringComparison.Ordinal);
+        Assert.Contains(" STOP ", news.MarqueeText, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -31,14 +31,14 @@ public sealed class StartupCoordinatorNewsTests
     }
 
     [Fact]
-    public void BuildNews_OnlyIncludesClosingQuoteOncePerExpandedSequence()
+    public void BuildNews_OnlyIncludesClosingQuoteOncePerPlaybackSequence()
     {
         NewsFlasherViewModel news = InvokeBuildNews([
             "Macro headlines stay active across regions.",
             "[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\""
         ]);
 
-        Assert.True(news.Headlines.Count >= 20);
+        Assert.Equal(2, news.Headlines.Count);
         Assert.Single(news.Headlines.Where(headline => headline.IsSupplemental));
         Assert.Contains(news.Headlines, headline => headline.Text.Contains("Nothing travels faster", StringComparison.Ordinal));
     }

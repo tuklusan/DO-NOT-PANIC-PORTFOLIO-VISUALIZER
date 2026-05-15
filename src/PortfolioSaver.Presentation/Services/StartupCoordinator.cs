@@ -40,7 +40,6 @@ public sealed class StartupCoordinator
     private const int MaxBatchSymbolsPerPass = 8;
     private const int MaxSequentialSymbolsPerPass = 4;
     private const int MinimumTapeItemCount = 18;
-    private const int MinimumHeadlineCount = 20;
     private static readonly HashSet<string> DedicatedYahooSymbols = BuildDedicatedYahooSymbolSet();
     private static readonly HashSet<string> PreferredYahooWorldIndexSymbols = BuildPreferredYahooWorldIndexSet();
     private static readonly HashSet<string> OfficialMacroSymbols = BuildOfficialMacroSymbolSet();
@@ -1132,8 +1131,7 @@ public sealed class StartupCoordinator
         if (news.Headlines.Count == 0)
             news.Headlines.Add(new NewsHeadlineViewModel { Text = "Waiting for summarized financial news..." });
 
-        ExpandHeadlineItems(news.Headlines, MinimumHeadlineCount);
-        news.MarqueeText = string.Join(" | ", news.Headlines.Select(headline => headline.Text));
+        news.MarqueeText = string.Join(" STOP ", news.Headlines.Select(headline => headline.Text));
         return news;
     }
 
@@ -1778,40 +1776,6 @@ public sealed class StartupCoordinator
 
         int step = Math.Max(1, itemCount / 2);
         return (cycleIndex * step) % itemCount;
-    }
-
-    private static void ExpandHeadlineItems(ICollection<NewsHeadlineViewModel> items, int minimumCount)
-    {
-        if (items.Count == 0 || items.Count >= minimumCount)
-            return;
-
-        List<NewsHeadlineViewModel> source = items
-            .Where(item => !item.IsSupplemental)
-            .Select(item => new NewsHeadlineViewModel
-            {
-                Text = item.Text,
-                Foreground = item.Foreground,
-                IsSupplemental = item.IsSupplemental
-            })
-            .ToList();
-
-        if (source.Count == 0)
-            return;
-
-        while (items.Count < minimumCount)
-        {
-            foreach (NewsHeadlineViewModel item in source)
-            {
-                items.Add(new NewsHeadlineViewModel
-                {
-                    Text = item.Text,
-                    Foreground = item.Foreground,
-                    IsSupplemental = item.IsSupplemental
-                });
-                if (items.Count >= minimumCount)
-                    break;
-            }
-        }
     }
 
     private static TapeItemViewModel CloneTapeItem(TapeItemViewModel item) => new()

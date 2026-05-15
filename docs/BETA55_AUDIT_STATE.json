@@ -17,7 +17,7 @@
     "latest_recorded_validation_state": {
         "automated_tests": {
             "command": "dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo",
-            "result": "241 / 241 passing",
+            "result": "242 / 242 passing",
             "notes": [
                 "Host regression coverage now includes the SSH-first VM harness scripts, the desktop-session agent workflow, and the remote WinAppDriver startup path.",
                 "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer.",
@@ -32,7 +32,8 @@
                 "The canonical VM harness now auto-purges stale remote build and test artifacts whenever free space drops below 8 GB, stages repo snapshots as TAR archives, strips staged bin/obj and artifact folders before upload, and makes the startup VmAgent launcher a silent no-op if the publish\\agent executable is not present yet.",
                 "The S&P 500 freshness investigation concluded that ^SPX needed to bypass the Yahoo quote endpoint and resolve through the Yahoo spark/chart path; the fix was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454.",
                 "The status-band Updated line now anchors to the ^SPX refresh timestamp with a fallback to the latest available quote, and that behavior was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439.",
-                "Startup recovery no longer uses the large announcement overlay when network is available; instead the Updated line flashes Loading initial values until enough quotes are fresh, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453."
+                "Startup recovery no longer uses the large announcement overlay when network is available; instead the Updated line flashes Loading initial values until enough quotes are fresh, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453.",
+                "The news band now uses teleprinter-style playback with uppercase Courier text, per-item typing, STOP endings, pause-and-clear transitions, and no artificial headline duplication, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853."
             ]
         },
         "build": {
@@ -81,7 +82,8 @@
                 "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-12 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159 after moving DeepSeek closing quotations into separate supplemental ticker items.",
                 "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454 after TAR-based repo staging, low-space auto-cleanup, and the ^SPX Yahoo spark/chart routing fix.",
                 "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439 after anchoring the top-left Updated line to the S&P 500 freshness timestamp.",
-                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453 after replacing the startup recovery card with the status-band Loading initial values message."
+                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453 after replacing the startup recovery card with the status-band Loading initial values message.",
+                "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853 after replacing the marquee news scroller with teleprinter-style playback."
             ]
         }
     },
@@ -606,7 +608,7 @@
             "priority": 3,
             "area": "news_ticker",
             "title": "Replace scrolling news ticker with telegraph-style item playback",
-            "status": "open",
+            "status": "resolved",
             "source": "user_followup",
             "evidence": [
                 "User requested a telegraph/teleprinter-like news presentation instead of continuous scrolling."
@@ -616,7 +618,10 @@
                 "Type characters in one by one for each item.",
                 "If an item is too long, advance it across the band item-by-item instead of using the current marquee behavior.",
                 "Terminate items in teleprinter style with STOP where appropriate.",
-                "After each item, pause briefly, clear the band, then begin the next item."
+                "After each item, pause briefly, clear the band, then begin the next item.",
+                "Resolved by replacing the marquee-loop NewsFlasherControl with a teleprinter playback state machine and by removing the upstream headline-expansion logic so only real items are played.",
+                "The band now types each item in uppercase Courier text, scrolls only when the fully typed line exceeds the viewport, pauses, clears, and advances to the next item.",
+                "Validated with focused news/render/config regression coverage plus the canonical 20-minute VM proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853."
             ]
         },
         {

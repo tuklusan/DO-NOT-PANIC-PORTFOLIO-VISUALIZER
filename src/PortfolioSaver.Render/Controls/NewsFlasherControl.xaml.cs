@@ -1,25 +1,30 @@
-﻿using System.Collections.Specialized;
+using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Linq;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
-using PortfolioSaver.Core.Enums;
-using PortfolioSaver.Render.Services;
 using PortfolioSaver.Render.ViewModels;
 
 namespace PortfolioSaver.Render.Controls;
 
 public partial class NewsFlasherControl : UserControl
 {
-    private const double CopySpacing = 24d;
-    private readonly TapeAnimationController _animationController = new();
-    private bool _metricsQueued;
+    private const double DefaultPauseSeconds = 1.6d;
+    private const double DefaultClearSeconds = 0.45d;
+    private const double DefaultPreScrollPauseSeconds = 0.55d;
+    private const double TelegraphScrollPixelsPerSecond = 48d;
+    private readonly DispatcherTimer _playbackTimer = new() { Interval = TimeSpan.FromMilliseconds(33) };
     private NewsFlasherViewModel? _flasher;
-    private string _contentSignature = string.Empty;
-    private int _renderedSideCopyCount;
+    private int _headlineIndex;
+    private int _visibleCharacterCount;
+    private int _pauseTicksRemaining;
+    private double _currentOffset;
+    private double _activeHeadlineWidth;
+    private PlaybackPhase _phase = PlaybackPhase.Idle;
+    private string _activeText = string.Empty;
+    private Brush _activeForeground = Brushes.WhiteSmoke;
 
     public NewsFlasherControl()
     {
@@ -27,8 +32,9 @@ public partial class NewsFlasherControl : UserControl
 
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
-        SizeChanged += OnSizeChanged;
+        SizeChanged += (_, _) => RefreshLayoutForCurrentState();
         DataContextChanged += OnDataContextChanged;
+        _playbackTimer.Tick += OnPlaybackTick;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -36,18 +42,15 @@ public partial class NewsFlasherControl : UserControl
         if (_flasher is null)
             SubscribeToFlasher(DataContext as NewsFlasherViewModel);
 
-        _animationController.Attach(TrackPanel);
-        _animationController.Start();
-        QueueMetricsUpdate();
+        ResetPlayback();
+        _playbackTimer.Start();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        _animationController.Stop();
+        _playbackTimer.Stop();
         UnsubscribeFromFlasher(_flasher);
     }
-
-    private void OnSizeChanged(object sender, SizeChangedEventArgs e) => QueueMetricsUpdate();
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
@@ -57,61 +60,12 @@ public partial class NewsFlasherControl : UserControl
             SubscribeToFlasher(e.NewValue as NewsFlasherViewModel);
         }
 
-        QueueMetricsUpdate();
-    }
-
-    private void QueueMetricsUpdate()
-    {
-        if (_metricsQueued)
-            return;
-
-        _metricsQueued = true;
-        Dispatcher.BeginInvoke(RefreshMotionMetrics, DispatcherPriority.Loaded);
-    }
-
-    private void RefreshMotionMetrics()
-    {
-        _metricsQueued = false;
-
-        if (DataContext is not NewsFlasherViewModel flasher || !flasher.Headlines.Any())
-        {
-            TrackPanel.Children.Clear();
-            TrackPanel.Width = 0d;
-            _contentSignature = string.Empty;
-            _renderedSideCopyCount = 0;
-            return;
-        }
-
-        UpdateLayout();
-        double viewportWidth = ViewportHost.ActualWidth;
-        if (viewportWidth <= 0)
-            return;
-
-        string signature = BuildHeadlineSignature(flasher);
-        double sequenceWidth = MeasureSequenceWidth(flasher);
-        if (sequenceWidth <= 0)
-            return;
-
-        int requiredSideCopies = CalculateSideCopyCount(viewportWidth, sequenceWidth);
-        if (!string.Equals(signature, _contentSignature, StringComparison.Ordinal) || requiredSideCopies != _renderedSideCopyCount)
-        {
-            RebuildTrack(flasher, requiredSideCopies, sequenceWidth);
-            _contentSignature = signature;
-            _renderedSideCopyCount = requiredSideCopies;
-        }
-
-        double cycleDistance = sequenceWidth + CopySpacing;
-        double pixelsPerSecond = Math.Max(15d, 210.9375d * Math.Max(0.1d, flasher.Speed));
-        double anchorOffset = -requiredSideCopies * cycleDistance;
-        _animationController.Attach(TrackPanel);
-        _animationController.Update(cycleDistance, pixelsPerSecond, ScrollDirection.Left, anchorOffset);
+        ResetPlayback();
     }
 
     private void SubscribeToFlasher(NewsFlasherViewModel? flasher)
     {
         _flasher = flasher;
-        _contentSignature = string.Empty;
-        _renderedSideCopyCount = 0;
         if (_flasher is null)
             return;
 
@@ -130,8 +84,7 @@ public partial class NewsFlasherControl : UserControl
         flasher.Headlines.CollectionChanged -= OnHeadlinesCollectionChanged;
         foreach (NewsHeadlineViewModel headline in flasher.Headlines)
             headline.PropertyChanged -= OnHeadlinePropertyChanged;
-        _contentSignature = string.Empty;
-        _renderedSideCopyCount = 0;
+
         if (ReferenceEquals(_flasher, flasher))
             _flasher = null;
     }
@@ -139,7 +92,7 @@ public partial class NewsFlasherControl : UserControl
     private void OnFlasherPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(NewsFlasherViewModel.Speed) or nameof(NewsFlasherViewModel.MarqueeText))
-            QueueMetricsUpdate();
+            ResetPlayback();
     }
 
     private void OnHeadlinesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -156,92 +109,205 @@ public partial class NewsFlasherControl : UserControl
                 headline.PropertyChanged += OnHeadlinePropertyChanged;
         }
 
-        QueueMetricsUpdate();
+        ResetPlayback();
     }
 
     private void OnHeadlinePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(NewsHeadlineViewModel.Text) or nameof(NewsHeadlineViewModel.Foreground))
-            QueueMetricsUpdate();
+            ResetPlayback();
     }
 
-    private double MeasureSequenceWidth(NewsFlasherViewModel flasher)
+    private void OnPlaybackTick(object? sender, EventArgs e)
     {
-        FrameworkElement sequence = BuildSequencePanel(flasher);
-        sequence.Measure(new Size(double.PositiveInfinity, Math.Max(1d, ViewportHost.ActualHeight)));
-        return Math.Max(sequence.ActualWidth, sequence.DesiredSize.Width);
-    }
-
-    private void RebuildTrack(NewsFlasherViewModel flasher, int sideCopies, double sequenceWidth)
-    {
-        TrackPanel.Children.Clear();
-        double sequenceSpan = sequenceWidth + CopySpacing;
-        int totalCopies = sideCopies * 2 + 1;
-
-        for (int index = 0; index < totalCopies; index++)
+        IReadOnlyList<NewsHeadlineViewModel> headlines = GetPlaybackHeadlines();
+        if (headlines.Count == 0)
         {
-            FrameworkElement sequence = BuildSequencePanel(flasher);
-            Canvas.SetLeft(sequence, index * sequenceSpan);
-            Canvas.SetTop(sequence, 0d);
-            TrackPanel.Children.Add(sequence);
+            ClearDisplay();
+            return;
         }
 
-        TrackPanel.Width = totalCopies * sequenceSpan;
-        TrackPanel.Height = Math.Max(1d, ViewportHost.ActualHeight);
+        if (_phase == PlaybackPhase.Idle)
+            PrepareHeadline(headlines[_headlineIndex % headlines.Count]);
+
+        switch (_phase)
+        {
+            case PlaybackPhase.Typing:
+                StepTyping();
+                break;
+            case PlaybackPhase.PauseBeforeScroll:
+                StepPause(PlaybackPhase.Scrolling);
+                break;
+            case PlaybackPhase.Scrolling:
+                StepScrolling();
+                break;
+            case PlaybackPhase.PauseAfterItem:
+                StepPause(PlaybackPhase.Clearing);
+                break;
+            case PlaybackPhase.Clearing:
+                StepClearing(headlines.Count);
+                break;
+        }
     }
 
-    private static int CalculateSideCopyCount(double viewportWidth, double contentWidth)
+    private IReadOnlyList<NewsHeadlineViewModel> GetPlaybackHeadlines()
+        => _flasher?.Headlines
+            .Where(item => !string.IsNullOrWhiteSpace(item.Text))
+            .ToList() ?? [];
+
+    private void PrepareHeadline(NewsHeadlineViewModel headline)
     {
-        double sequenceSpan = Math.Max(1d, contentWidth + CopySpacing);
-        return Math.Max(2, (int)Math.Ceiling(viewportWidth / sequenceSpan) + 2);
+        _activeText = FormatHeadline(headline.Text);
+        _activeForeground = headline.Foreground;
+        _visibleCharacterCount = 0;
+        _pauseTicksRemaining = 0;
+        _currentOffset = 0d;
+        _phase = PlaybackPhase.Typing;
+        ActiveHeadlineBlock.Foreground = _activeForeground;
+        Canvas.SetLeft(ActiveHeadlineBlock, 0d);
+        ActiveHeadlineBlock.Text = string.Empty;
+        _activeHeadlineWidth = MeasureHeadlineWidth(_activeText);
     }
 
-    private static string BuildHeadlineSignature(NewsFlasherViewModel flasher)
-        => string.Join("|", flasher.Headlines.Select(headline => headline.Text));
-
-    private static FrameworkElement BuildSequencePanel(NewsFlasherViewModel flasher)
+    private void StepTyping()
     {
-        StackPanel panel = new()
+        if (string.IsNullOrWhiteSpace(_activeText))
         {
-            Orientation = Orientation.Horizontal,
-            Height = 38,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-
-        foreach (NewsHeadlineViewModel headline in flasher.Headlines.Where(item => !string.IsNullOrWhiteSpace(item.Text)))
-        {
-            panel.Children.Add(BuildHeadlineBlock(headline));
-            panel.Children.Add(new TextBlock
-            {
-                Text = "|",
-                Foreground = new SolidColorBrush(Color.FromRgb(196, 64, 68)),
-                FontFamily = new FontFamily("Bahnschrift SemiCondensed"),
-                FontSize = 18,
-                FontWeight = FontWeights.Bold,
-                Margin = new Thickness(0, 0, 16, 0),
-                VerticalAlignment = VerticalAlignment.Center
-            });
+            _phase = PlaybackPhase.Clearing;
+            _pauseTicksRemaining = 1;
+            return;
         }
 
-        return panel;
+        _visibleCharacterCount = Math.Min(_activeText.Length, _visibleCharacterCount + GetCharactersPerTick());
+        ActiveHeadlineBlock.Text = _activeText[.._visibleCharacterCount];
+        ActiveHeadlineBlock.Foreground = _activeForeground;
+        Canvas.SetLeft(ActiveHeadlineBlock, 0d);
+
+        if (_visibleCharacterCount < _activeText.Length)
+            return;
+
+        bool needsScroll = _activeHeadlineWidth > Math.Max(1d, ViewportHost.ActualWidth);
+        _phase = needsScroll ? PlaybackPhase.PauseBeforeScroll : PlaybackPhase.PauseAfterItem;
+        _pauseTicksRemaining = GetPauseTicks(needsScroll ? DefaultPreScrollPauseSeconds : DefaultPauseSeconds);
     }
 
-    private static TextBlock BuildHeadlineBlock(NewsHeadlineViewModel headline)
+    private void StepScrolling()
     {
-        TextBlock block = new()
-        {
-            FontFamily = new FontFamily("Bahnschrift SemiCondensed"),
-            FontSize = 17,
-            FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(0, 0, 18, 0),
-            TextWrapping = TextWrapping.NoWrap,
-            VerticalAlignment = VerticalAlignment.Center
-        };
+        double viewportWidth = Math.Max(1d, ViewportHost.ActualWidth);
+        double pixelsPerTick = TelegraphScrollPixelsPerSecond * (_playbackTimer.Interval.TotalSeconds * Math.Max(0.5d, _flasher?.Speed ?? 1d));
+        double targetOffset = viewportWidth - _activeHeadlineWidth;
+        _currentOffset = Math.Max(targetOffset, _currentOffset - pixelsPerTick);
+        Canvas.SetLeft(ActiveHeadlineBlock, _currentOffset);
 
-        BindingOperations.SetBinding(block, TextBlock.TextProperty, new Binding(nameof(NewsHeadlineViewModel.Text)) { Source = headline });
-        BindingOperations.SetBinding(block, TextBlock.ForegroundProperty, new Binding(nameof(NewsHeadlineViewModel.Foreground)) { Source = headline });
-        return block;
+        if (_currentOffset <= targetOffset + 0.1d)
+        {
+            _phase = PlaybackPhase.PauseAfterItem;
+            _pauseTicksRemaining = GetPauseTicks(DefaultPauseSeconds);
+        }
+    }
+
+    private void StepPause(PlaybackPhase nextPhase)
+    {
+        if (_pauseTicksRemaining > 0)
+        {
+            _pauseTicksRemaining--;
+            return;
+        }
+
+        _phase = nextPhase;
+    }
+
+    private void StepClearing(int headlineCount)
+    {
+        if (_pauseTicksRemaining == 0)
+        {
+            ActiveHeadlineBlock.Text = string.Empty;
+            _pauseTicksRemaining = GetPauseTicks(DefaultClearSeconds);
+            return;
+        }
+
+        _pauseTicksRemaining--;
+        if (_pauseTicksRemaining > 0)
+            return;
+
+        _headlineIndex = (_headlineIndex + 1) % Math.Max(1, headlineCount);
+        _phase = PlaybackPhase.Idle;
+    }
+
+    private void ResetPlayback()
+    {
+        _headlineIndex = 0;
+        _phase = PlaybackPhase.Idle;
+        _visibleCharacterCount = 0;
+        _pauseTicksRemaining = 0;
+        _currentOffset = 0d;
+        _activeText = string.Empty;
+        _activeHeadlineWidth = 0d;
+        ClearDisplay();
+    }
+
+    private void ClearDisplay()
+    {
+        ActiveHeadlineBlock.Text = string.Empty;
+        Canvas.SetLeft(ActiveHeadlineBlock, 0d);
+    }
+
+    private void RefreshLayoutForCurrentState()
+    {
+        if (_phase == PlaybackPhase.Scrolling)
+            Canvas.SetLeft(ActiveHeadlineBlock, _currentOffset);
+    }
+
+    private int GetCharactersPerTick()
+    {
+        double speed = Math.Max(0.6d, _flasher?.Speed ?? 1d);
+        return Math.Max(1, (int)Math.Round(speed * 1.5d));
+    }
+
+    private int GetPauseTicks(double seconds)
+        => Math.Max(1, (int)Math.Round(seconds / _playbackTimer.Interval.TotalSeconds));
+
+    private double MeasureHeadlineWidth(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return 0d;
+
+        Typeface typeface = new(
+            ActiveHeadlineBlock.FontFamily,
+            ActiveHeadlineBlock.FontStyle,
+            ActiveHeadlineBlock.FontWeight,
+            ActiveHeadlineBlock.FontStretch);
+
+        double dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        FormattedText formatted = new(
+            text,
+            CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            typeface,
+            ActiveHeadlineBlock.FontSize,
+            Brushes.White,
+            dpi);
+
+        return Math.Ceiling(formatted.WidthIncludingTrailingWhitespace);
+    }
+
+    private static string FormatHeadline(string text)
+    {
+        string normalized = (text ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+            return string.Empty;
+
+        string upper = normalized.ToUpperInvariant();
+        return upper.EndsWith(" STOP", StringComparison.Ordinal) ? upper : upper + " STOP";
+    }
+
+    private enum PlaybackPhase
+    {
+        Idle,
+        Typing,
+        PauseBeforeScroll,
+        Scrolling,
+        PauseAfterItem,
+        Clearing
     }
 }
-
-

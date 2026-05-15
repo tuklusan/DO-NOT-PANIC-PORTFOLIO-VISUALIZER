@@ -35,7 +35,16 @@
                   Height="38"
                   Margin="12,0,10,0"
                   VerticalAlignment="Center">
-                <Canvas x:Name="TrackPanel" />
+                <Canvas x:Name="TrackPanel">
+                    <TextBlock x:Name="ActiveHeadlineBlock"
+                               TextTrimming="None"
+                               TextWrapping="NoWrap"
+                               FontFamily="Courier New"
+                               FontSize="17"
+                               FontWeight="Bold"
+                               Foreground="WhiteSmoke"
+                               VerticalAlignment="Center" />
+                </Canvas>
             </Grid>
         </Grid>
     </Border>

@@ -683,6 +683,31 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void NewsFlasher_UsesTeleprinterPlaybackInsteadOfMarqueeLoop()
+    {
+        string newsXaml = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Render",
+            "Controls",
+            "NewsFlasherControl.xaml"));
+        string newsCode = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Render",
+            "Controls",
+            "NewsFlasherControl.xaml.cs"));
+
+        Assert.Contains("FontFamily=\"Courier New\"", newsXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ActiveHeadlineBlock\"", newsXaml, StringComparison.Ordinal);
+        Assert.Contains("FormatHeadline", newsCode, StringComparison.Ordinal);
+        Assert.Contains("upper + \" STOP\"", newsCode, StringComparison.Ordinal);
+        Assert.Contains("PlaybackPhase.Typing", newsCode, StringComparison.Ordinal);
+        Assert.Contains("PlaybackPhase.Scrolling", newsCode, StringComparison.Ordinal);
+        Assert.Contains("PlaybackPhase.Clearing", newsCode, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TapeAndStatusBarLayout_UseSafeInsetsAndFixedHeightForMotionStability()
     {
         string tapeXaml = File.ReadAllText(Path.Combine(
