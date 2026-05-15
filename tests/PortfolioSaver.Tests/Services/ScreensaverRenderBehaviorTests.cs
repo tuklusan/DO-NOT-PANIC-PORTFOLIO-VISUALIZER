@@ -154,6 +154,20 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void FloatingGraphControl_RendersLatestSegmentOverlayBoundToDedicatedBrush()
+    {
+        string xaml = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Render",
+            "Controls",
+            "FloatingGraphControl.xaml"));
+
+        Assert.Contains("Points=\"{Binding LatestSegmentPoints}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Stroke=\"{Binding LatestSegmentBrush}\"", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ClockControls_UseStableMonospaceClockFontResource()
     {
         string statusBarXaml = File.ReadAllText(Path.Combine(
@@ -268,6 +282,52 @@ public sealed class ScreensaverRenderBehaviorTests
             applyQuoteMethod.Invoke(control, [graph]);
 
             Assert.Equal(1, graph.FlashSequence);
+        });
+    }
+
+    [Fact]
+    public void ApplyQuoteToGraph_AlignsLatestSegmentBrushWithLatestQuoteDirection()
+    {
+        RunOnSta(() =>
+        {
+            ScreensaverSceneControl control = new();
+            FloatingGraphViewModel graph = new()
+            {
+                Symbol = "AAPL",
+                LastText = "190.00",
+                ChangeText = "+0.50%",
+                LatestSegmentBrush = Brushes.LimeGreen,
+                LatestSegmentPoints = [new Point(0, 10), new Point(10, 0)],
+                IsVisible = true
+            };
+
+            Dictionary<string, QuoteSnapshot> quotes = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["AAPL"] = new QuoteSnapshot
+                {
+                    Symbol = "AAPL",
+                    Last = 188m,
+                    ChangePercent = -1.25m,
+                    FetchTimestampUtc = DateTimeOffset.UtcNow,
+                    IsStale = false
+                }
+            };
+
+            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+                "_latestQuotes",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_latestQuotes field not found.");
+            latestQuotesField.SetValue(control, quotes);
+
+            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+                "ApplyQuoteToGraph",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
+            applyQuoteMethod.Invoke(control, [graph]);
+
+            Assert.Same(Brushes.OrangeRed, graph.ChangeForeground);
+            Assert.Same(Brushes.OrangeRed, graph.LatestSegmentBrush);
+            Assert.Equal(2, graph.LatestSegmentPoints.Count);
         });
     }
 

@@ -75,6 +75,14 @@ public sealed class HistoricalGraphBuilder
         vm.RedPoints = red;
         vm.GreenSegments = greenSegments;
         vm.RedSegments = redSegments;
+        if (vm.Points.Count >= 2)
+        {
+            vm.LatestSegmentPoints =
+            [
+                new Point(vm.Points[^2].X, vm.Points[^2].Y),
+                new Point(vm.Points[^1].X, vm.Points[^1].Y)
+            ];
+        }
         vm.MaxScaleText = FormatScaleValue(max);
         vm.MidScaleText = FormatScaleValue((min + max) / 2m);
         vm.MinScaleText = FormatScaleValue(min);
@@ -94,6 +102,7 @@ public sealed class HistoricalGraphBuilder
                 < 0m => Brushes.OrangeRed,
                 _ => Brushes.Gainsboro
             };
+            vm.LatestSegmentBrush = vm.ChangeForeground;
         }
         return vm;
     }

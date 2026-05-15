@@ -31,6 +31,8 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
     private bool _isRefreshTravelFlashActive;
     private PointCollection _greenPoints = [];
     private PointCollection _redPoints = [];
+    private PointCollection _latestSegmentPoints = [];
+    private Brush _latestSegmentBrush = Brushes.Gainsboro;
 
     public string Symbol
     {
@@ -192,6 +194,18 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
 
     public List<PointCollection> GreenSegments { get; set; } = [];
     public List<PointCollection> RedSegments { get; set; } = [];
+
+    public PointCollection LatestSegmentPoints
+    {
+        get => _latestSegmentPoints;
+        set => SetProperty(ref _latestSegmentPoints, value);
+    }
+
+    public Brush LatestSegmentBrush
+    {
+        get => _latestSegmentBrush;
+        set => SetProperty(ref _latestSegmentBrush, value);
+    }
 
     public void TriggerCardFlash(Brush? brush)
     {

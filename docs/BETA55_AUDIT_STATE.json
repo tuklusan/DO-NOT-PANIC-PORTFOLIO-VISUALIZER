@@ -686,6 +686,120 @@
                 "Resolved by enforcing a fixed 1180x720 restored size, constraining maximized windowed mode to SystemParameters.WorkArea, and suppressing resize/state constraint callbacks while fullscreen transitions clear work-area caps and reapply virtual-screen bounds after the style switch settles.",
                 "Validated with focused DesktopShellMigrationTests and VmHarnessScriptTests, a full 242 / 242 local test pass, and the canonical 20-minute VM proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-194351 where ConfigPhaseStatus=Completed, DesktopPhaseStatus=Completed, DesktopVersionCheck=Passed, and FullScreenToggleStatus=Completed."
             ]
+        },
+        {
+            "id": "NB-016",
+            "tracking_number": "NB-016",
+            "priority": 2,
+            "area": "graph_cards",
+            "title": "Graph cards should align the visually emphasized latest segment with the current quote direction",
+            "status": "resolved",
+            "source": "user_followup",
+            "evidence": [
+                "User observed graph cards whose historical line still looked green while the latest displayed value was red."
+            ],
+            "notes": [
+                "The chosen fix was to preserve the mixed historical red and green segments while re-drawing only the latest segment on top using the current quote direction color.",
+                "HistoricalGraphBuilder now seeds a dedicated LatestSegmentPoints overlay, ScreensaverSceneControl updates LatestSegmentBrush from the live quote direction, and FloatingGraphControl renders that last-segment overlay above the historical segments.",
+                "Validated with focused ScreensaverRenderBehaviorTests covering both the dedicated overlay binding and ApplyQuoteToGraph alignment of LatestSegmentBrush with the current quote direction."
+            ]
+        },
+        {
+            "id": "NB-017",
+            "tracking_number": "NB-017",
+            "priority": 2,
+            "area": "news_ticker",
+            "title": "Refine teleprinter news playback to better match the YouTube reference effect",
+            "status": "open",
+            "source": "user_followup",
+            "evidence": [
+                "User provided a YouTube clip as the desired reference behavior after the initial teleprinter conversion was already implemented."
+            ],
+            "notes": [
+                "The broad teleprinter shift is already in place under NB-012, but the later YouTube reference implies a more specific target feel.",
+                "This ticket covers type-on cadence, per-item dwell timing, clear-and-next transitions, and overall resemblance to the reference clip rather than only the presence of uppercase teleprinter styling."
+            ]
+        },
+        {
+            "id": "NB-018",
+            "tracking_number": "NB-018",
+            "priority": 3,
+            "area": "animated_overlays",
+            "title": "Disable the bull and bear critters for now",
+            "status": "open",
+            "source": "user_followup",
+            "evidence": [
+                "User explicitly requested disabling the critters temporarily."
+            ],
+            "notes": [
+                "A local-only disable was reported in chat, but that request was not previously promoted into the tracked backlog.",
+                "This ticket keeps the temporary product decision explicit until the critters are either formally removed or intentionally re-enabled."
+            ]
+        },
+        {
+            "id": "NB-019",
+            "tracking_number": "NB-019",
+            "priority": 2,
+            "area": "startup_freshness_policy",
+            "title": "Audit remaining startup surfaces so no stale value is shown where a waiting state would be safer",
+            "status": "open",
+            "source": "user_followup",
+            "evidence": [
+                "User stated the operating principle that at startup no value is better than a stale value."
+            ],
+            "notes": [
+                "Global Markets and macro cards have already been updated to prefer waiting cues over stale cached values at startup.",
+                "This ticket covers the broader policy audit: identify any other startup surfaces that still show stale values and convert them to a waiting or blank state until sufficiently fresh data is available."
+            ]
+        },
+        {
+            "id": "NB-020",
+            "tracking_number": "NB-020",
+            "priority": 2,
+            "area": "desktop_launch_flow",
+            "title": "Make test launches follow true application flow by opening the desktop app first and launching configuration from the menu",
+            "status": "open",
+            "source": "user_followup",
+            "evidence": [
+                "User requested replacing the screensaver-like validation order where the config applet launches first with a truer application-like flow."
+            ],
+            "notes": [
+                "The current UX validation harness still treats the configuration app as the first phase before the desktop app.",
+                "This ticket changes the validation posture so the desktop app launches first and configuration is exercised from the desktop menu path, matching the intended product experience more closely."
+            ]
+        },
+        {
+            "id": "NB-021",
+            "tracking_number": "NB-021",
+            "priority": 1,
+            "area": "manual_ui_qa",
+            "title": "Create and execute a full manual UI QA suite covering every configurable option and resilience edge case",
+            "status": "open",
+            "source": "user_followup",
+            "evidence": [
+                "User requested a full manual UI QA suite with per-setting validation and idiot-proofing coverage."
+            ],
+            "notes": [
+                "Exercise each configurable item one by one and verify that configuration changes are actually reflected in runtime behavior.",
+                "Include resilience and idiot-proofing coverage such as empty API keys, partially empty key sets, nonsensical slider values, and strange advanced-option combinations.",
+                "The output should be a repeatable manual QA checklist plus findings, not just ad hoc spot checks."
+            ]
+        },
+        {
+            "id": "NB-022",
+            "tracking_number": "NB-022",
+            "priority": 2,
+            "area": "display_compatibility",
+            "title": "Validate the product across a range of monitor sizes and aspect ratios supported by the VM",
+            "status": "open",
+            "source": "user_followup",
+            "evidence": [
+                "User requested testing from small laptop-like displays through large and ultra-wide layouts as much as the VM supports."
+            ],
+            "notes": [
+                "Exercise the UI on multiple VM display sizes, including small roughly 12-inch laptop-like resolutions, larger desktop resolutions, and ultra-wide shapes when supported.",
+                "Capture layout, clipping, spacing, and fullscreen behavior issues that only appear at certain display sizes or aspect ratios."
+            ]
         }
     ]
 }

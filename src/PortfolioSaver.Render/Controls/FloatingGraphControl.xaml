@@ -116,6 +116,15 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
+                    <Polyline Points="{Binding LatestSegmentPoints}"
+                              Stroke="{Binding LatestSegmentBrush}"
+                              StrokeThickness="3"
+                              StrokeLineJoin="Round"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              SnapsToDevicePixels="True"
+                              IsHitTestVisible="False" />
+
                     <Grid Grid.Row="1" Margin="2,3,12,0" ClipToBounds="False">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />

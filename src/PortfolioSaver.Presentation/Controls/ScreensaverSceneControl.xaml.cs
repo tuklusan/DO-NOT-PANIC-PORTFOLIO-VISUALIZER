@@ -2319,6 +2319,7 @@ public partial class ScreensaverSceneControl : UserControl
         graph.LastText = lastText;
         graph.ChangeText = changeText;
         graph.ChangeForeground = changeBrush;
+        graph.LatestSegmentBrush = changeBrush;
         graph.QuoteUpdateToken = quoteUpdateToken;
 
         if (hadPriorSymbol && (valueChanged || updateTokenChanged) && !string.IsNullOrWhiteSpace(lastText))
