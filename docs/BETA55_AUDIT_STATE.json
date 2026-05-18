@@ -934,7 +934,7 @@
       "priority": 4,
       "area": "trace_semantics",
       "title": "Startup recovery/loading trace semantics do not match actual scene behavior",
-      "status": "open",
+      "status": "resolved",
       "source": "latest_circular_trace",
       "evidence": [
         "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:7",
@@ -942,8 +942,9 @@
         "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:14"
       ],
       "notes": [
-        "BootstrapSceneBuilt reports show_recovery_overlay=true while the next ApplySceneState reports waiting=False and ApplySceneStateComplete reports waiting_overlay_visible=false.",
-        "This may reflect intentional product behavior after the startup UX changes, but the trace semantics no longer describe the actual scene behavior truthfully."
+        "BootstrapSceneBuilt had reported show_recovery_overlay=true while the next ApplySceneState reported waiting=False and ApplySceneStateComplete reported waiting_overlay_visible=false.",
+        "Resolved on 2026-05-18 by renaming the bootstrap trace fields to show_startup_loading_status and show_network_waiting_overlay so the trace vocabulary matches the actual status-band loading design.",
+        "Focused startup/render validation passed 83/83."
       ]
     },
     {

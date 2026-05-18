@@ -198,6 +198,21 @@ public sealed class StartupCoordinatorAdvancedTests
     }
 
     [Fact]
+    public void BuildBootstrapScene_TraceFields_DescribeLoadingStatusAndNetworkOverlaySeparately()
+    {
+        string startupCoordinator = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Services",
+            "StartupCoordinator.cs"));
+
+        Assert.Contains("\"show_startup_loading_status\"", startupCoordinator, StringComparison.Ordinal);
+        Assert.Contains("\"show_network_waiting_overlay\"", startupCoordinator, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"show_recovery_overlay\"", startupCoordinator, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void BuildBootstrapScene_WhenNetworkUnavailable_ShowsFloatingWaitingOverlay()
     {
         string localDataRoot = CreateIsolatedLocalDataRoot();
