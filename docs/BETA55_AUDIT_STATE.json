@@ -714,14 +714,15 @@
       "priority": 2,
       "area": "news_ticker",
       "title": "Refine teleprinter news playback to better match the YouTube reference effect",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User provided a YouTube clip as the desired reference behavior after the initial teleprinter conversion was already implemented."
       ],
       "notes": [
-        "The broad teleprinter shift is already in place under NB-012, but the later YouTube reference implies a more specific target feel.",
-        "This ticket covers type-on cadence, per-item dwell timing, clear-and-next transitions, and overall resemblance to the reference clip rather than only the presence of uppercase teleprinter styling."
+        "The broad teleprinter shift was already in place under NB-012, but the later YouTube reference implied a more specific target feel.",
+        "Resolved on 2026-05-18 by moving the band to single-character type-on pacing, adding a visible teleprinter cursor during dwell, and changing clear-and-next playback into a real character-by-character clear instead of an abrupt blank reset.",
+        "Focused render/news/config text validation passed 60/60, and a short canonical VM proof completed cleanly in ux-deep-ssh-20260518-112814."
       ]
     },
     {

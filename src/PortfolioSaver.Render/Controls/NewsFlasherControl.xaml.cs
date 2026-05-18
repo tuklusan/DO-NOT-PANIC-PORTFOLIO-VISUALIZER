@@ -11,10 +11,12 @@ namespace PortfolioSaver.Render.Controls;
 
 public partial class NewsFlasherControl : UserControl
 {
-    private const double DefaultPauseSeconds = 1.6d;
-    private const double DefaultClearSeconds = 0.45d;
-    private const double DefaultPreScrollPauseSeconds = 0.55d;
+    private const double DefaultPauseSeconds = 1.8d;
+    private const double DefaultPreScrollPauseSeconds = 0.9d;
     private const double TelegraphScrollPixelsPerSecond = 48d;
+    private const int TypewriterCharactersPerTick = 1;
+    private const int ClearCharactersPerTick = 2;
+    private const string TeleprinterCursor = " █";
     private readonly DispatcherTimer _playbackTimer = new() { Interval = TimeSpan.FromMilliseconds(33) };
     private NewsFlasherViewModel? _flasher;
     private int _headlineIndex;
@@ -165,7 +167,7 @@ public partial class NewsFlasherControl : UserControl
         _phase = PlaybackPhase.Typing;
         ActiveHeadlineBlock.Foreground = _activeForeground;
         Canvas.SetLeft(ActiveHeadlineBlock, 0d);
-        ActiveHeadlineBlock.Text = string.Empty;
+        SetDisplayedHeadlineText(string.Empty, includeCursor: true);
         _activeHeadlineWidth = MeasureHeadlineWidth(_activeText);
     }
 
@@ -174,12 +176,11 @@ public partial class NewsFlasherControl : UserControl
         if (string.IsNullOrWhiteSpace(_activeText))
         {
             _phase = PlaybackPhase.Clearing;
-            _pauseTicksRemaining = 1;
             return;
         }
 
         _visibleCharacterCount = Math.Min(_activeText.Length, _visibleCharacterCount + GetCharactersPerTick());
-        ActiveHeadlineBlock.Text = _activeText[.._visibleCharacterCount];
+        SetDisplayedHeadlineText(_activeText[.._visibleCharacterCount], includeCursor: _visibleCharacterCount < _activeText.Length);
         ActiveHeadlineBlock.Foreground = _activeForeground;
         Canvas.SetLeft(ActiveHeadlineBlock, 0d);
 
@@ -197,6 +198,7 @@ public partial class NewsFlasherControl : UserControl
         double pixelsPerTick = TelegraphScrollPixelsPerSecond * (_playbackTimer.Interval.TotalSeconds * Math.Max(0.5d, _flasher?.Speed ?? 1d));
         double targetOffset = viewportWidth - _activeHeadlineWidth;
         _currentOffset = Math.Max(targetOffset, _currentOffset - pixelsPerTick);
+        SetDisplayedHeadlineText(_activeText, includeCursor: false);
         Canvas.SetLeft(ActiveHeadlineBlock, _currentOffset);
 
         if (_currentOffset <= targetOffset + 0.1d)
@@ -210,6 +212,7 @@ public partial class NewsFlasherControl : UserControl
     {
         if (_pauseTicksRemaining > 0)
         {
+            SetDisplayedHeadlineText(_activeText, includeCursor: true);
             _pauseTicksRemaining--;
             return;
         }
@@ -219,16 +222,13 @@ public partial class NewsFlasherControl : UserControl
 
     private void StepClearing(int headlineCount)
     {
-        if (_pauseTicksRemaining == 0)
+        if (_visibleCharacterCount > 0)
         {
-            ActiveHeadlineBlock.Text = string.Empty;
-            _pauseTicksRemaining = GetPauseTicks(DefaultClearSeconds);
+            _visibleCharacterCount = Math.Max(0, _visibleCharacterCount - ClearCharactersPerTick);
+            SetDisplayedHeadlineText(_activeText[.._visibleCharacterCount], includeCursor: false);
+            Canvas.SetLeft(ActiveHeadlineBlock, 0d);
             return;
         }
-
-        _pauseTicksRemaining--;
-        if (_pauseTicksRemaining > 0)
-            return;
 
         _headlineIndex = (_headlineIndex + 1) % Math.Max(1, headlineCount);
         _phase = PlaybackPhase.Idle;
@@ -248,7 +248,7 @@ public partial class NewsFlasherControl : UserControl
 
     private void ClearDisplay()
     {
-        ActiveHeadlineBlock.Text = string.Empty;
+        SetDisplayedHeadlineText(string.Empty, includeCursor: false);
         Canvas.SetLeft(ActiveHeadlineBlock, 0d);
     }
 
@@ -260,8 +260,7 @@ public partial class NewsFlasherControl : UserControl
 
     private int GetCharactersPerTick()
     {
-        double speed = Math.Max(0.6d, _flasher?.Speed ?? 1d);
-        return Math.Max(1, (int)Math.Round(speed * 1.5d));
+        return TypewriterCharactersPerTick;
     }
 
     private int GetPauseTicks(double seconds)
@@ -299,6 +298,13 @@ public partial class NewsFlasherControl : UserControl
 
         string upper = normalized.ToUpperInvariant();
         return upper.EndsWith(" STOP", StringComparison.Ordinal) ? upper : upper + " STOP";
+    }
+
+    private void SetDisplayedHeadlineText(string text, bool includeCursor)
+    {
+        ActiveHeadlineBlock.Text = includeCursor
+            ? text + TeleprinterCursor
+            : text;
     }
 
     private enum PlaybackPhase

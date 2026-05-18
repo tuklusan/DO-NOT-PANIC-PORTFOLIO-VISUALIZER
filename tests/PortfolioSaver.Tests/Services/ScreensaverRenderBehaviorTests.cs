@@ -808,6 +808,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("PlaybackPhase.Typing", newsCode, StringComparison.Ordinal);
         Assert.Contains("PlaybackPhase.Scrolling", newsCode, StringComparison.Ordinal);
         Assert.Contains("PlaybackPhase.Clearing", newsCode, StringComparison.Ordinal);
+        Assert.Contains("TeleprinterCursor", newsCode, StringComparison.Ordinal);
+        Assert.Contains("SetDisplayedHeadlineText(_activeText, includeCursor: true);", newsCode, StringComparison.Ordinal);
+        Assert.Contains("ClearCharactersPerTick = 2", newsCode, StringComparison.Ordinal);
     }
 
     [Fact]
