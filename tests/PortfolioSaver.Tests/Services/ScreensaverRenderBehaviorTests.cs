@@ -1379,7 +1379,9 @@ public sealed class ScreensaverRenderBehaviorTests
 
         Assert.Contains("MarketSpriteItemsControl", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("DataType=\"{x:Type vm:MarketSpriteViewModel}\"", sceneXaml, StringComparison.Ordinal);
-        Assert.Contains("MarketSpriteItemsControl.ItemsSource = _marketSprites;", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private static readonly bool EnableMarketCritters = false;", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("if (EnableMarketCritters)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MarketSpriteItemsControl.Visibility = Visibility.Collapsed;", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("EnsureMarketSpritesInitialized()", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StepMarketSpriteMotion(elapsedSeconds);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SpriteText = \"🐂\"", sceneCodeBehind, StringComparison.Ordinal);

@@ -98,8 +98,15 @@ public partial class ScreensaverSceneControl : UserControl
         _marketStatusService.UpdateCalendarSnapshot(_exchangeMarketCalendarService.LoadNyseSnapshotFromCacheOrOffline());
         TapeItemsControl.ItemsSource = _tapes;
         NewsFlasherHost.Content = _newsViewModel;
-        MarketSpriteItemsControl.ItemsSource = _marketSprites;
-        MarketSpriteItemsControl.Visibility = EnableMarketCritters ? Visibility.Visible : Visibility.Collapsed;
+        if (EnableMarketCritters)
+        {
+            MarketSpriteItemsControl.ItemsSource = _marketSprites;
+            MarketSpriteItemsControl.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            MarketSpriteItemsControl.Visibility = Visibility.Collapsed;
+        }
 
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -791,7 +798,8 @@ public partial class ScreensaverSceneControl : UserControl
         }
 
         if (EnableMarketCritters)
-            StepMarketSpriteMotion(elapsedSeconds);
+            if (EnableMarketCritters)
+                StepMarketSpriteMotion(elapsedSeconds);
 
         if (_networkWaitingViewModel is not null)
             _motionController.Step(_networkWaitingViewModel, GetWaitingBounds(), elapsedSeconds);

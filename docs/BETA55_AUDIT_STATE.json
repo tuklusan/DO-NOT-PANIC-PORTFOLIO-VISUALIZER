@@ -730,14 +730,15 @@
       "priority": 3,
       "area": "animated_overlays",
       "title": "Disable the bull and bear critters for now",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User explicitly requested disabling the critters temporarily."
       ],
       "notes": [
         "A local-only disable was reported in chat, but that request was not previously promoted into the tracked backlog.",
-        "This ticket keeps the temporary product decision explicit until the critters are either formally removed or intentionally re-enabled."
+        "This ticket keeps the temporary product decision explicit until the critters are either formally removed or intentionally re-enabled.",
+        "Resolved on 2026-05-18 by hard-disabling market critter motion and item binding in ScreensaverSceneControl while keeping the underlying code available for a later deliberate re-enable. Focused render validation passed 44 / 44."
       ]
     },
     {
@@ -811,7 +812,7 @@
       "priority": 1,
       "area": "architecture_refactor",
       "title": "Extract a clean service-ready data engine boundary between retrieval/orchestration and UI rendering",
-      "status": "open",
+      "status": "deferred-next-major-release",
       "source": "user_followup",
       "evidence": [
         "User requested a major refactor to cleanly separate data retrieval from UI rendering so the architecture can later support a Windows service and more controlled provider parallelism."
@@ -832,7 +833,9 @@
         "Phase 7 - future service host feasibility review: only after the in-process DataEngine is stable should we evaluate adding a PortfolioSaver.DataService Windows service host. That later review must explicitly address secrets ownership, per-user versus machine-wide settings, IPC contract choice such as named pipes or gRPC over named pipes, installer behavior, and support burden. This ticket does not require implementing the service host itself.",
         "Key risks to manage: duplicated logic during migration, freshness regressions, cache/secrets path confusion, over-eager concurrency creating race conditions, over-coupling the engine to user-profile storage, and accidental coupling back from Presentation into the engine. Mitigations: move one concern at a time, keep trace semantics stable, add regression tests before each extraction, and insist on small commits that preserve the canonical VM proof path.",
         "Required regression coverage during the refactor: scheduling tests, provider fallback tests, stale/fresh classification tests, startup readiness tests, news cadence tests, graph warmup tests, settings/secrets abstraction tests, and at each major phase a canonical VM proof through the locked harness. No phase should be considered complete if local tests are green but the canonical VM path is broken.",
-        "Definition of done for the full ticket: a new engine layer exists; StartupCoordinator is dramatically reduced and no longer owns most provider orchestration logic; Presentation consumes engine snapshots rather than managing retrieval policy directly; provider scheduling is testable without WPF; settings and secret access are abstracted cleanly enough that a later service host would not require another deep untangling; the canonical VM harness remains the validation baseline; and the resulting architecture is ready for a later optional Windows service host without forcing another major refactor."
+        "Definition of done for the full ticket: a new engine layer exists; StartupCoordinator is dramatically reduced and no longer owns most provider orchestration logic; Presentation consumes engine snapshots rather than managing retrieval policy directly; provider scheduling is testable without WPF; settings and secret access are abstracted cleanly enough that a later service host would not require another deep untangling; the canonical VM harness remains the validation baseline; and the resulting architecture is ready for a later optional Windows service host without forcing another major refactor.",
+        "Deferred from the current beta lane to the next major release so the refactor can be planned and executed as a deliberate architecture program rather than mixed into current stabilization work.",
+        "Not a beta-blocker for the current lane as long as the existing locked harness and data/UI behavior remain stable enough for ongoing product fixes."
       ]
     },
     {
@@ -866,7 +869,10 @@
       ],
       "notes": [
         "At least one latest sampled comparison showed VOO, IJH, and IJR materially off versus the reference feed while VEA, VWO, VSS, EFV, and EFG were close.",
-        "This must be investigated as either a true displayed-value freshness bug, a provider-source inconsistency, or a reference-comparison timing/source mismatch."
+        "This must be investigated as either a true displayed-value freshness bug, a provider-source inconsistency, or a reference-comparison timing/source mismatch.",
+        "This ticket remains open because the earlier 2026-05-15 trace/reference bundle showed real drift for VOO, IJH, and IJR, but the later canonical smoke run on 2026-05-18 produced exact matches for the sampled ETF set.",
+        "Before closing it, we still need a repeatable explanation: either prove the earlier drift came from the comparison timing/source path, or capture a fresh failing case that ties the displayed drift to a real retrieval or scene-state bug.",
+        "Recommended revisit path: run a longer canonical soak, preserve both the circular trace and reference comparison artifacts, and compare whether the same ETFs drift again under live market movement rather than only in a short smoke window."
       ]
     },
     {
