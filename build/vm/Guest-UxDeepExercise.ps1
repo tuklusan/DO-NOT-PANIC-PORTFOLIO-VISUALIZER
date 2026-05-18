@@ -34,7 +34,6 @@ public static class NativeWindowBounds {
 "@
 
 $root = $RootPath
-$configExe = Join-Path $root 'publish\config\PortfolioSaver.Config.exe'
 $desktopExe = Join-Path $root 'publish\desktop\PortfolioSaver.Desktop.exe'
 if ([string]::IsNullOrWhiteSpace($ResultRootPath)) {
     $ResultRootPath = Join-Path $root 'results'
@@ -389,7 +388,6 @@ function Find-ElementMetadataByProcessId {
     return $null
 }
 
-if (-not (Test-Path $configExe)) { throw "Missing config executable: $configExe" }
 if (-not (Test-Path $desktopExe)) { throw "Missing desktop executable: $desktopExe" }
 
 $summary = [ordered]@{
@@ -629,7 +627,27 @@ function Find-ConfigWindow {
         [int]$TimeoutSeconds = 20
     )
 
-    return Get-ProcessWindowElement -Process $Process -TimeoutSeconds $TimeoutSeconds
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    do {
+        $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+            [System.Windows.Automation.TreeScope]::Descendants,
+            [System.Windows.Automation.Condition]::TrueCondition)
+        foreach ($window in $windows) {
+            if ($window.Current.ProcessId -ne $Process.Id) { continue }
+
+            $title = [string]$window.Current.Name
+            $automationId = [string]$window.Current.AutomationId
+            if ($automationId -eq 'DesktopMainWindow') { continue }
+            if ($window.Current.ControlType -eq [System.Windows.Automation.ControlType]::Window -and
+                $title -like '*PORTFOLIO VISUALIZER Config*') {
+                return $window
+            }
+        }
+
+        Start-Sleep -Milliseconds 300
+    } while ((Get-Date) -lt $deadline)
+
+    return $null
 }
 
 function Find-DescendantByAutomationId {
@@ -651,6 +669,19 @@ function Invoke-AutomationElement {
     try {
         $invokePattern = $Element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
         $invokePattern.Invoke()
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+function Expand-AutomationElement {
+    param([Parameter(Mandatory = $true)]$Element)
+
+    try {
+        $expandPattern = $Element.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern)
+        $expandPattern.Expand()
         return $true
     }
     catch {
@@ -843,11 +874,50 @@ Start-Transcript -Path $logPath -Force | Out-Null
 try {
     Reset-PortfolioTraceRoot
     Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    $desktop = $null
+    $window = $null
 
     try {
-        $config = Start-Process -FilePath $configExe -PassThru
-        Start-Sleep -Seconds 3
-        $window = Find-ConfigWindow -Process $config -TimeoutSeconds 20
+        $desktop = Start-Process -FilePath $desktopExe -PassThru
+        Start-Sleep -Seconds 5
+        $desktopWindow = Get-ProcessWindowElement -Process $desktop -TimeoutSeconds 15
+        if ($null -eq $desktopWindow) {
+            throw 'Could not locate desktop shell window via UI Automation.'
+        }
+
+        [void](Focus-ProcessWindow -Process $desktop)
+        $optionsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsMenuRoot'
+        if ($null -ne $optionsMenuItem) {
+            [void](Expand-AutomationElement -Element $optionsMenuItem)
+            Start-Sleep -Milliseconds 400
+        }
+
+        $settingsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsSettingsMenuItem'
+        if ($null -eq $settingsMenuItem) {
+            try {
+                [System.Windows.Forms.SendKeys]::SendWait('%o')
+                Start-Sleep -Milliseconds 300
+                [System.Windows.Forms.SendKeys]::SendWait('s')
+                Start-Sleep -Milliseconds 1200
+            }
+            catch {}
+        }
+        else {
+            if (-not (Invoke-AutomationElement -Element $settingsMenuItem)) {
+                try {
+                    [System.Windows.Forms.SendKeys]::SendWait('%o')
+                    Start-Sleep -Milliseconds 300
+                    [System.Windows.Forms.SendKeys]::SendWait('s')
+                    Start-Sleep -Milliseconds 1200
+                }
+                catch {
+                    throw 'Failed to invoke Settings menu item via UI Automation.'
+                }
+            }
+        }
+
+        Start-Sleep -Seconds 2
+        $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 20
         if ($null -eq $window) { throw 'Could not locate config window via UI Automation.' }
         if ([string]$window.Current.Name -like '*BETA-5.5*' -or
             [string]$window.Current.HelpText -like '*0.9.0-beta5.5*') {
@@ -892,7 +962,7 @@ try {
                 $summary.ConfigShots++
                 $controlIndex++
 
-                Close-ConfigChildWindows -MainProcessId $config.Id
+                Close-ConfigChildWindows -MainProcessId $desktop.Id
 
                 if ($controlIndex -gt 400) {
                     $summary.Notes += "Control traversal capped at 400 controls on tab '$tabName'."
@@ -910,13 +980,24 @@ try {
         Write-SummaryFiles
     }
     finally {
-        Get-Process PortfolioSaver.Config -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        if ($null -ne $window) {
+            try {
+                $windowPattern = $window.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
+                $windowPattern.Close()
+            }
+            catch {
+                try { [System.Windows.Forms.SendKeys]::SendWait('{ESC}') } catch {}
+            }
+        }
         Start-Sleep -Seconds 1
     }
 
     try {
-        $desktop = Start-Process -FilePath $desktopExe -PassThru
-        Start-Sleep -Seconds 5
+        if ($null -eq $desktop -or $desktop.HasExited) {
+            throw 'Desktop process was not running after config phase.'
+        }
+
+        Start-Sleep -Seconds 2
         $desktopWindow = Get-ProcessWindowElement -Process $desktop -TimeoutSeconds 15
         if ($null -eq $desktopWindow) {
             throw 'Could not locate desktop shell window via UI Automation.'

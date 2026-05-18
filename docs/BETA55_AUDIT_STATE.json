@@ -765,14 +765,15 @@
       "priority": 2,
       "area": "desktop_launch_flow",
       "title": "Make test launches follow true application flow by opening the desktop app first and launching configuration from the menu",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested replacing the screensaver-like validation order where the config applet launches first with a truer application-like flow."
       ],
       "notes": [
-        "The current UX validation harness still treats the configuration app as the first phase before the desktop app.",
-        "This ticket changes the validation posture so the desktop app launches first and configuration is exercised from the desktop menu path, matching the intended product experience more closely."
+        "The UX validation harness had treated the configuration app as the first phase before the desktop app.",
+        "Resolved on 2026-05-18 by changing Guest-UxDeepExercise.ps1 to launch the desktop shell first, open Settings from the Options menu path, exercise the config window there, and continue the same desktop process through fullscreen validation.",
+        "Canonical VM proof passed with ConfigPhaseStatus=Completed, DesktopPhaseStatus=Completed, ConfigShots=211, DesktopShots=242 in ux-deep-ssh-20260518-104146."
       ]
     },
     {

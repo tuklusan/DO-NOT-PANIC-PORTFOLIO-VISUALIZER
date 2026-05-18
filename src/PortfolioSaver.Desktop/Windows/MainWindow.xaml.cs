@@ -33,6 +33,16 @@ public partial class MainWindow : Window
             AutomationProperties.SetName(FullScreenMenuItem, "Full Screen");
             AutomationProperties.SetHelpText(FullScreenMenuItem, "Enter or exit fullscreen mode");
         }
+        if (OptionsMenuItem is not null)
+        {
+            AutomationProperties.SetName(OptionsMenuItem, "Options");
+            AutomationProperties.SetHelpText(OptionsMenuItem, "Open desktop options");
+        }
+        if (SettingsMenuItem is not null)
+        {
+            AutomationProperties.SetName(SettingsMenuItem, "Settings");
+            AutomationProperties.SetHelpText(SettingsMenuItem, "Open portfolio visualizer settings");
+        }
 
         ApplyWindowStateConstraints();
     }

@@ -119,9 +119,14 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("ScreensaverHostWindow", script, StringComparison.Ordinal);
         Assert.Contains("DesktopMainWindow", script, StringComparison.Ordinal);
         Assert.Contains("MainWindowTitleFallback", script, StringComparison.Ordinal);
+        Assert.Contains("OptionsMenuRoot", script, StringComparison.Ordinal);
         Assert.Contains("ViewFullScreenMenuItem", script, StringComparison.Ordinal);
+        Assert.Contains("OptionsSettingsMenuItem", script, StringComparison.Ordinal);
         Assert.Contains("Get-ProcessWindowElement", script, StringComparison.Ordinal);
         Assert.Contains("Invoke-AutomationElement", script, StringComparison.Ordinal);
+        Assert.Contains("Expand-AutomationElement", script, StringComparison.Ordinal);
+        Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait('%o')", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("Start-Process -FilePath $configExe", script, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -187,7 +187,7 @@ This is the key behavior that finally worked reliably.
 4. The agent ensures `WinAppDriver` is running inside that same interactive desktop session.
 5. The host waits for the agent heartbeat file.
 6. The host writes a UX command JSON into the remote command queue.
-7. The agent launches and supervises the config app and desktop app visibly on the desktop.
+7. The agent launches the desktop app first, opens the Settings window from the desktop menu path, exercises that config UI, then continues the same desktop-session run into the fullscreen/windowed validation flow.
 8. Guest-UxDeepExercise.ps1 captures screenshots, explicitly focuses the desktop window, validates true fullscreen by comparing the live window bounds to the virtual screen, validates ESC return-to-windowed behavior, copies trace files into the result bundle, and writes:
    - `ux-deep-summary.json`
    - `vm-ux-summary.json`
