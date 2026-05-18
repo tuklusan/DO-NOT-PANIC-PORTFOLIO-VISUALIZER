@@ -1,992 +1,997 @@
-﻿{
-    "document_type":  "audit_state",
-    "title":  "BETA-5.5 Audit State",
-    "date":  "2026-05-11",
-    "current_lane":  "BETA-5.5",
-    "current_snapshot":  {
-                             "product":  "DO NOT PANIC PORTFOLIO VISUALIZER",
-                             "publisher":  "SANYALnet Labs",
-                             "author":  "Supratim Sanyal",
-                             "license":  "MIT LICENSE",
-                             "semantic_version_lane":  "0.9.0-beta5.5",
-                             "target_framework":  "net10.0-windows",
-                             "primary_host":  "PortfolioSaver.Desktop",
-                             "legacy_host":  "PortfolioSaver.Screensaver",
-                             "repository_history":  "main starts at the BETA-5.4 baseline; BETA-5.5 began at commit 3eec8e7"
-                         },
-    "latest_recorded_validation_state":  {
-                                             "automated_tests":  {
-                                                                     "command":  "dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo",
-                                                                     "result":  "242 / 242 passing",
-                                                                     "notes":  [
-                                                                                   "Host regression coverage now includes the SSH-first VM harness scripts, the desktop-session agent workflow, and the remote WinAppDriver startup path.",
-                                                                                   "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don\u0027t-Panic-Portfolio-Visualizer.",
-                                                                                   "A repo-local NuGet.Config now clears stale Visual Studio fallback package folders so restore works on this machine.",
-                                                                                   "The UX harness no longer relies on direct interactive PowerShell launch through PsExec; commands are now queued to PortfolioSaver.VmAgent inside session 1.",
-                                                                                   "Guest long-run UX captures continue to write external Yahoo Finance spot checks plus displayed-versus-reference comparison artifacts.",
-                                                                                   "DeepSeek summarized-news mode now uses the same protected local secret store and environment-override flow as the market-data providers.",
-                                                                                   "Remote live validation can now apply DeepSeek and provider API keys from ignored local build/vm/test-secrets.json via Guest-ApplyTestSecrets.ps1.",
-                                                                                   "The SSH-first remote harness now supports desktop soak durations up to 10080 minutes.",
-                                                                                   "The NB-001 through NB-010 fixes were revalidated with a final local green run plus a clean 20-minute remote desktop-session run in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526.",
-                                                                                   "The current local batch also revalidated Brent crude macro routing through the dedicated Yahoo lane, intraday 1-day graph history, persistent graph-card travel flashes, the scheduler smoothing pass, and separate non-repeating DeepSeek closing-quote headlines.",
-                                                                                   "The canonical VM harness now auto-purges stale remote build and test artifacts whenever free space drops below 8 GB, stages repo snapshots as TAR archives, strips staged bin/obj and artifact folders before upload, and makes the startup VmAgent launcher a silent no-op if the publish\\agent executable is not present yet.",
-                                                                                   "The S\u0026P 500 freshness investigation concluded that ^SPX needed to bypass the Yahoo quote endpoint and resolve through the Yahoo spark/chart path; the fix was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454.",
-                                                                                   "The status-band Updated line now anchors to the ^SPX refresh timestamp with a fallback to the latest available quote, and that behavior was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439.",
-                                                                                   "Startup recovery no longer uses the large announcement overlay when network is available; instead the Updated line flashes Loading initial values until enough quotes are fresh, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453.",
-                                                                                   "The news band now uses teleprinter-style playback with uppercase Courier text, per-item typing, STOP endings, pause-and-clear transitions, and no artificial headline duplication, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853.",
-                                                                                   "The desktop shell now enforces a fixed restored size, maximizes only to the Windows work area, and still enters true fullscreen cleanly, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-194351."
-                                                                               ]
-                                                                 },
-                                             "build":  {
-                                                           "command":  "dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore",
-                                                           "result":  "passed"
-                                                       },
-                                             "publish":  {
-                                                             "command":  ".\\\\build\\\\publish-safe-temp.ps1 -Configuration Release -TimeoutSeconds 1200",
-                                                             "result":  "passed",
-                                                             "artifacts":  [
-                                                                               "build/artifacts/publish-safe-temp/screensaver",
-                                                                               "build/artifacts/publish-safe-temp/config",
-                                                                               "build/artifacts/publish-safe-temp/desktop",
-                                                                               "build/artifacts/publish-safe-temp/agent"
-                                                                           ],
-                                                             "notes":  [
-                                                                           "The temp-workspace publish path now copies repo NuGet.Config into the workspace.",
-                                                                           "Safe-temp publish now publishes screensaver, config, desktop, and VmAgent artifacts into the final artifact layout."
-                                                                       ]
-                                                         },
-                                             "vm_tooling":  {
-                                                                "ssh_access":  "enabled",
-                                                                "dotnet10_sdk_in_guest":  "installed-machine-wide",
-                                                                "powershell7_in_guest":  "installed-machine-wide",
-                                                                "guest_workspace_root":  "C:\\vmharness\\portfolio-saver",
-                                                                "proof_artifacts":  [
-                                                                                        "build/vm/artifacts/host-runs/ssh-push-20260511-182115.json",
-                                                                                        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-182218",
-                                                                                        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619"
-                                                                                    ],
-                                                                "notes":  [
-                                                                              "The guest now resolves bare dotnet to 10.0.203 from C:\\Program Files\\dotnet.",
-                                                                              "The preferred remote harness path is SSH + SFTP using Push-VmWorkspace.ps1, Invoke-VmBuildTest.ps1, and Pull-VmResults.ps1.",
-                                                                              "Remote restore/build/test/publish succeeded end to end inside C:\\vmharness\\portfolio-saver\\repo.",
-                                                                              "The remote machine is now configured for desktop-session automation with autologon-style Winlogon settings, disabled screen saver, and a startup launcher for PortfolioSaver.VmAgent.",
-                                                                              "PortfolioSaver.VmAgent now owns the interactive desktop session, starts WinAppDriver when needed, and executes queued UX runs from inside session 1.",
-                                                                              "Latest short remote desktop UX validation completed cleanly through the agent-based harness in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260503-152112.",
-                                                                              "The guest secret-overlay flow now supports DeepSeek alongside the existing market-data providers.",
-                                                                              "Latest clean direct-agent UX validation completed on the refreshed publish in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526.",
-                                                                              "Guest-UxDeepExercise.ps1 now explicitly focuses the desktop window before F11/ESC and verifies true fullscreen by comparing the window bounds against the virtual screen, rather than trusting the toggle blindly.",
-                                                                              "A fresh clean direct-agent UX validation completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-154444.",
-                                                                              "The clean 2026-05-11 proof used process-bound config window discovery plus DesktopMainWindow and ViewFullScreenMenuItem automation anchors to avoid prior UI Automation ambiguity.",
-                                                                              "Focused regression updates now cover curated DeepSeek closing quotations, preemptive near-due refresh smoothing, and the animated market critter overlay.",
-                                                                              "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-182218.",
-                                                                              "A fresh 60-minute direct-agent soak completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619.",
-                                                                              "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-12 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159 after moving DeepSeek closing quotations into separate supplemental ticker items.",
-                                                                              "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454 after TAR-based repo staging, low-space auto-cleanup, and the ^SPX Yahoo spark/chart routing fix.",
-                                                                              "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439 after anchoring the top-left Updated line to the S\u0026P 500 freshness timestamp.",
-                                                                              "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453 after replacing the startup recovery card with the status-band Loading initial values message.",
-                                                                              "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853 after replacing the marquee news scroller with teleprinter-style playback.",
-                                                                              "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-194351 after fixing restored/maximized window constraints without regressing true fullscreen."
-                                                                          ]
-                                                            }
-                                         },
-    "post_remote_recovery_replay":  {
-                                        "baseline_remote_commit":  "3eec8e7395b81e680312560ebd34d5f87babf4b5",
-                                        "source_of_truth":  "Recovered from the surviving chat record after catastrophic local storage loss.",
-                                        "replayed_changes":  [
-                                                                 "Retargeted the solution from net8.0-windows / SDK 8.0.420 to net10.0-windows / SDK 10.0.201.",
-                                                                 "Created PortfolioSaver.Presentation and moved the reusable scene control plus runtime presentation services out of the screensaver host.",
-                                                                 "Created PortfolioSaver.Settings and moved the shared settings UI, content, services, and view models out of the Config launcher.",
-                                                                 "Created PortfolioSaver.Desktop as the new primary app host with File/Exit, View/Full Screen, Options/Settings, and Help/About.",
-                                                                 "Implemented fullscreen toggle plus ESC-to-windowed behavior in the desktop shell.",
-                                                                 "Kept PortfolioSaver.Config as a thin launcher around the shared Settings window.",
-                                                                 "Kept PortfolioSaver.Screensaver as a legacy compatibility host wired to the extracted Presentation scene.",
-                                                                 "Updated publish, installer, and VM staging scripts to understand the new desktop artifact alongside the legacy screensaver artifact.",
-                                                                 "Updated README and BUILD_AND_DEPLOY to describe the desktop-first Beta 5.5 product model.",
-                                                                 "Added DesktopShellMigrationTests and updated path-based regression tests for the moved code."
-                                                             ]
-                                    },
-    "beta55_migration_program":  {
-                                     "goal":  "Upgrade to .NET 10 and convert the screensaver product into a desktop app with fullscreen mode while retaining a temporary legacy screensaver compatibility host.",
-                                     "status":  "completed",
-                                     "current_phase":  "P7",
-                                     "design_decisions":  [
-                                                              "Use a new desktop host project instead of mutating the screensaver executable in place.",
-                                                              "Extract the reusable scene/runtime into PortfolioSaver.Presentation.",
-                                                              "Extract the reusable settings experience into PortfolioSaver.Settings.",
-                                                              "Keep the legacy screensaver host during Beta 5.5 for compatibility while documenting the desktop app as the primary product surface."
-                                                          ],
-                                     "known_vm_tooling_note":  "The remote Windows target now uses machine-wide .NET 10 SDK 10.0.203, PowerShell 7.6.1, SSH/SFTP deployment, and a desktop-session agent rooted at C:\\vmharness\\portfolio-saver.",
-                                     "phases":  [
-                                                    {
-                                                        "id":  "P1",
-                                                        "name":  ".NET 10 upgrade",
-                                                        "status":  "completed",
-                                                        "acceptance":  [
-                                                                           "All projects target net10.0-windows.",
-                                                                           "global.json pins 10.0.201.",
-                                                                           "Host build and tests pass under .NET 10."
-                                                                       ]
-                                                    },
-                                                    {
-                                                        "id":  "P2",
-                                                        "name":  "Extract reusable presentation/runtime layer",
-                                                        "status":  "completed",
-                                                        "acceptance":  [
-                                                                           "ScreensaverSceneControl and runtime presentation services live in PortfolioSaver.Presentation.",
-                                                                           "Legacy screensaver host compiles against the extracted presentation assembly."
-                                                                       ]
-                                                    },
-                                                    {
-                                                        "id":  "P3",
-                                                        "name":  "Create desktop app host",
-                                                        "status":  "completed",
-                                                        "acceptance":  [
-                                                                           "PortfolioSaver.Desktop exists and builds.",
-                                                                           "Desktop shell hosts the shared scene and provides the required menu structure.",
-                                                                           "Fullscreen toggle plus ESC exit behavior are implemented."
-                                                                       ]
-                                                    },
-                                                    {
-                                                        "id":  "P4",
-                                                        "name":  "Reuse settings UI inside desktop app",
-                                                        "status":  "completed",
-                                                        "acceptance":  [
-                                                                           "PortfolioSaver.Settings contains the shared settings window, content, services, and view models.",
-                                                                           "Options -\u003e Settings opens the shared settings window.",
-                                                                           "PortfolioSaver.Config remains a thin launcher."
-                                                                       ]
-                                                    },
-                                                    {
-                                                        "id":  "P5",
-                                                        "name":  "Desktop About/help surface",
-                                                        "status":  "completed",
-                                                        "acceptance":  [
-                                                                           "Help -\u003e About is implemented in the desktop shell.",
-                                                                           "About shows app identity, version, and MIT license statement."
-                                                                       ]
-                                                    },
-                                                    {
-                                                        "id":  "P6",
-                                                        "name":  "Demote legacy screensaver semantics",
-                                                        "status":  "completed",
-                                                        "acceptance":  [
-                                                                           "Desktop app is documented as the primary product path.",
-                                                                           "Legacy screensaver host is preserved only for compatibility."
-                                                                       ]
-                                                    },
-                                                    {
-                                                        "id":  "P7",
-                                                        "name":  "Rework packaging, VM automation, and docs",
-                                                        "status":  "completed",
-                                                        "acceptance":  [
-                                                                           "Safe-temp publish outputs desktop, config, and legacy screensaver artifacts.",
-                                                                           "VM prep/validation scripts know about the desktop artifact.",
-                                                                           "README, BUILD_AND_DEPLOY, and VM runbook are desktop-first for Beta 5.5."
-                                                                       ]
-                                                    }
-                                                ]
-                                 },
-    "ssh_first_vm_harness":  {
-                                 "status":  "implemented",
-                                 "host_scripts":  [
-                                                      "build/vm/Push-VmWorkspace.ps1",
-                                                      "build/vm/Invoke-VmBuildTest.ps1",
-                                                      "build/vm/Pull-VmResults.ps1"
-                                                  ],
-                                 "shared_helper":  "build/vm/VmSshCommon.ps1",
-                                 "guest_bootstrap":  "build/vm/Guest-BootstrapVmRemoteTools.ps1",
-                                 "guest_workspace_root":  "C:\\vmharness\\portfolio-saver",
-                                 "validated_flows":  [
-                                                         "guest bootstrap",
-                                                         "repository snapshot upload",
-                                                         "remote dotnet restore",
-                                                         "remote dotnet build",
-                                                         "remote dotnet test",
-                                                         "remote publish-safe-temp",
-                                                         "desktop-session agent startup heartbeat",
-                                                         "WinAppDriver startup inside session 1",
-                                                         "queued remote desktop UX cycle with command acknowledgement and live summary updates"
-                                                     ],
-                                 "latest_remote_build_summary":  "C:\\vmharness\\portfolio-saver\\results\\buildtest-20260503-152105.json",
-                                 "interactive_launch_method":  "Push-VmWorkspace.ps1 stages the repo and publish bundle, Guest-ConfigureDesktopAutomation.ps1 prepares the desktop account, the host starts PortfolioSaver.VmAgent.exe in session 1 with PsExec, waits for agent-status.json, then queues a UX command JSON under commands\\ that the agent executes inside the interactive desktop session while supervising WinAppDriver and invoking fullscreen through the ViewFullScreenMenuItem automation hook.",
-                                 "latest_full_ux_result":  "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619",
-                                 "harness_policy":  "locked",
-                                 "harness_policy_notes":  [
-                                                              "The current SSH/SFTP plus PortfolioSaver.VmAgent desktop-session harness is the canonical supported workflow.",
-                                                              "Do not re-optimize or re-architect the working harness glue during normal feature work.",
-                                                              "Change the harness only when the current path is broken or a concrete new validation requirement cannot be met with the existing flow."
-                                                          ],
-                                 "latest_short_ux_result":  "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-182218"
-                             },
-    "pending_next_build_issues":  [
-                                      {
-                                          "id":  "NB-001",
-                                          "area":  "macro_data",
-                                          "title":  "CRUDE and GOLD macros are not updating reliably",
-                                          "status":  "resolved",
-                                          "notes":  [
-                                                        "Verified in the final 20-minute remote run: GOLD and CRUDE rendered with live values, changed between frames, and trace MacroSnapshot entries reported missing_symbols=[] for the latest run."
-                                                    ]
-                                      },
-                                      {
-                                          "id":  "NB-002",
-                                          "area":  "config_ui",
-                                          "title":  "Advanced tab of the config applet is too large for the screen",
-                                          "status":  "resolved",
-                                          "notes":  [
-                                                        "Verified in config-tab-002-Advanced.png from ux-deep-ssh-20260504-130526: the Advanced tab fits on-screen with vertical scrolling only and no horizontal cutoff."
-                                                    ]
-                                      },
-                                      {
-                                          "id":  "NB-003",
-                                          "area":  "top_band_layout",
-                                          "title":  "Top-left market open/close info needs to split across lines without widening the band",
-                                          "status":  "resolved",
-                                          "notes":  [
-                                                        "Verified in desktop screenshots from ux-deep-ssh-20260504-130526: market status, countdown, and Updated timestamp now occupy three lines inside the existing top band without widening it."
-                                                    ]
-                                      },
-                                      {
-                                          "id":  "NB-004",
-                                          "area":  "ai_news",
-                                          "title":  "DeepSeek summarized news must only restyle supplied current facts",
-                                          "status":  "resolved",
-                                          "notes":  [
-                                                        "Summarized-news mode now passes curated live headlines to DeepSeek for style-only rewriting, explicitly forbids investment recommendations, and forbids specific numerical facts in the rewritten paragraph.",
-                                                        "Verified visually in the final remote run: the band stayed factual and macro-oriented without stock-picking language or numeric price clutter."
-                                                    ]
-                                      },
-                                      {
-                                          "id":  "NB-005",
-                                          "area":  "graph_cards",
-                                          "title":  "Vary graph-card swimming speed dynamically in a plus/minus 20 percent range",
-                                          "status":  "resolved",
-                                          "notes":  [
-                                                        "Graph cards now modulate their motion around nominal velocity in a plus/minus 20 percent range via a time-varying speed factor.",
-                                                        "Observed in the final 20-minute run as continued non-uniform card drift across captures."
-                                                    ]
-                                      },
-                                      {
-                                          "id":  "NB-006",
-                                          "area":  "backgrounds",
-                                          "title":  "Optionally mix in remote open-source cityscape images when not using a custom folder",
-                                          "status":  "resolved",
-                                          "notes":  [
-                                                        "Remote open-source cityscape URLs are now mixed into the non-custom background rotation without local persistence.",
-                                                        "Verified in the final trace: backgrounds=15, confirming remote additions beyond the packaged local set."
-                                                    ]
-                                      },
-                                      {
-                                          "id":  "NB-007",
-                                          "area":  "ticker_tape",
-                                          "title":  "Ticker scrolling should be smooth",
-                                          "status":  "resolved",
-                                          "notes":  [
-                                                        "Ticker animation now uses RenderingEventArgs.RenderingTime instead of wall-clock deltas to smooth the scroll cadence.",
-                                                        "Validated by unit coverage and a clean 20-minute desktop run without ticker hitching regressions."
-                                                    ]
-                                      },
-                                      {
-                                          "id":  "NB-008",
-                                          "area":  "global_markets",
-                                          "title":  "Pinned New York card is too wide and Sydney/London delimiter needs visual correction",
-                                          "status":  "resolved",
-                                          "notes":  [
-                                                        "Pinned New York card width and inter-card delimiter spacing were tightened.",
-                                                        "Verified in the final desktop captures: the pinned card is slimmer and the strip spacing reads cleanly without the earlier merge/cutoff effect."
-                                                    ]
-                                      },
-                                      {
-                                          "id":  "NB-009",
-                                          "area":  "clock_widget",
-                                          "title":  "Top-right date/time widget is too wide",
-                                          "status":  "resolved",
-                                          "notes":  [
-                                                        "Clock widget width, padding, and date format were reduced.",
-                                                        "Verified in the final desktop captures: the clock stays compact without colliding with the macro lane."
-                                                    ]
-                                      },
-                                      {
-                                          "id":  "NB-010",
-                                          "area":  "graph_cards",
-                                          "title":  "Graph-card refresh direction cue needs visible fast travel, not teleportation",
-                                          "status":  "resolved",
-                                          "notes":  [
-                                                        "Refresh cues now queue a fast visible travel toward the top or bottom rather than teleporting instantly to the edge.",
-                                                        "Validated by dedicated render tests and by the final 20-minute remote run on the updated motion code."
-                                                    ]
-                                      }
-                                  ],
-    "remaining_validation_gaps":  [
-
-                                  ],
-    "current_operational_recommendations":  [
-                                                "Use the SSH/SFTP remote harness for normal Windows target build, publish, and UX validation work.",
-                                                "Treat PortfolioSaver.Desktop as the primary runtime target for Beta 5.5 work.",
-                                                "Retain the legacy screensaver host only while compatibility still matters.",
-                                                "Use the safe-temp build/publish scripts for repeatable validation rather than ad-hoc repo-path publish commands.",
-                                                "Treat the remote target as a generic Windows machine so the same harness can move from a VM to a physical PC without orchestration changes.",
-                                                "Let PortfolioSaver.VmAgent own interactive-session automation instead of attempting to launch UX runs directly through SSH-driven PowerShell.",
-                                                "Use build/vm/test-secrets.json for remote live validation secrets instead of persisting any API keys into plaintext settings.json.",
-                                                "Treat the current agent-based remote harness glue as locked unless it breaks or a new validation requirement forces a targeted change."
-                                            ],
-    "current_priority_backlog":  [
-                                     {
-                                         "id":  "BL-001",
-                                         "priority":  1,
-                                         "title":  "DeepSeek news integrity and quote append",
-                                         "status":  "resolved",
-                                         "notes":  [
-                                                       "Prompt remains style-only, forbids factual invention, and appends a fixed verified closing quotation for the selected writer."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "BL-002",
-                                         "priority":  2,
-                                         "title":  "Brent crude consistency across runtime and support assets",
-                                         "status":  "resolved",
-                                         "notes":  [
-                                                       "Runtime macro path stays on BZ=F and sample VM/sandbox settings were updated from CL=F to Brent references."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "BL-003",
-                                         "priority":  3,
-                                         "title":  "Refresh smoothing and first-population quality",
-                                         "status":  "resolved",
-                                         "notes":  [
-                                                       "Scheduler now allows a conservative single preemptive near-due refresh pass when the normal due set is empty, reducing visible quiet stretches."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "BL-004",
-                                         "priority":  4,
-                                         "title":  "Animated bulls and bears overlay",
-                                         "status":  "resolved",
-                                         "notes":  [
-                                                       "Small market critter overlay added with two chasing critters and dollar/euro bags in a constrained lower lane."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "BL-005",
-                                         "priority":  5,
-                                         "title":  "Longer confidence validation on latest baseline",
-                                         "status":  "resolved",
-                                         "notes":  [
-                                                       "Completed a fresh 60-minute direct-agent soak on 2026-05-11 with completed config, desktop, version, and fullscreen checks."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "TRC-001",
-                                         "tracking_number":  "TRC-001",
-                                         "priority":  1,
-                                         "area":  "macro_data",
-                                         "title":  "Brent crude macro symbol BZ=F remains unresolved during soak runs",
-                                         "status":  "resolved",
-                                         "source":  "latest_circular_trace",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:89",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:120",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:620"
-                                                      ],
-                                         "notes":  [
-                                                       "MacroSnapshot repeatedly reports missing_symbols=[BZ=F] while CRUDE shows a fallback-looking static value.",
-                                                       "QuoteResolutionSummary repeatedly reports stale_symbols=[BZ=F] and macro_missing_symbols=[BZ=F].",
-                                                       "Resolved on 2026-05-12 by routing Brent to the Stooq global-market provider using cb.f instead of treating BZ=F as a dedicated Yahoo-only warmup symbol.",
-                                                       "Fresh VM proof ux-deep-ssh-20260512-074109 shows MacroSnapshot with CRUDE:105.20:+0.9% and missing_symbols=[]."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "TRC-002",
-                                         "tracking_number":  "TRC-002",
-                                         "priority":  2,
-                                         "area":  "provider_limits",
-                                         "title":  "Yahoo warmup for Brent crude is rate-limited with HTTP 429 at startup",
-                                         "status":  "resolved",
-                                         "source":  "latest_circular_trace",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:28",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:29",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:30"
-                                                      ],
-                                         "notes":  [
-                                                       "The startup Yahoo spark warmup for [BZ=F] fails with Too Many Requests and is deferred to later scheduled refreshes.",
-                                                       "This appears to be the leading cause of TRC-001.",
-                                                       "Resolved on 2026-05-12 by removing Brent from the dedicated Yahoo warmup lane, eliminating the startup 429 dependency for BZ=F.",
-                                                       "Fresh VM proof ux-deep-ssh-20260512-074109 no longer shows startup Yahoo rate-limit failures for Brent."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "TRC-003",
-                                         "tracking_number":  "TRC-003",
-                                         "priority":  3,
-                                         "area":  "graph_cards",
-                                         "title":  "Graph cards never materialize during the latest one-hour soak",
-                                         "status":  "resolved",
-                                         "source":  "latest_circular_trace",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:130",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:293",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:466"
-                                                      ],
-                                         "notes":  [
-                                                       "ApplySceneStateComplete continues to report graph_count=0 throughout the soak.",
-                                                       "WarmGraphsAsync repeatedly starts and is then cancelled without producing visible graph cards.",
-                                                       "Resolved on 2026-05-12 by preserving an in-flight graph warmup across refresh ticks instead of cancelling it on each preserveLayout refresh.",
-                                                       "Fresh VM proof ux-deep-ssh-20260512-081832 shows WarmGraphsAsync yielded SIZE, ApplyOrUpdateGraph count=1, and sustained ApplySceneStateComplete graph_count=1 for the remainder of the run."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "TRC-004",
-                                         "tracking_number":  "TRC-004",
-                                         "priority":  4,
-                                         "area":  "provider_label_quality",
-                                         "title":  "Scene stays in Live+Cache (Partial) because Brent never resolves",
-                                         "status":  "resolved",
-                                         "source":  "latest_circular_trace",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:85",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:488",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:620"
-                                                      ],
-                                         "notes":  [
-                                                       "The runtime continues to operate, but the provider label remains partial because the Brent macro symbol never leaves the stale/missing set.",
-                                                       "This is a downstream product-quality symptom of TRC-001 and TRC-002.",
-                                                       "Resolved on 2026-05-12 as a downstream effect of the Brent reroute; QuoteResolutionSummary in ux-deep-ssh-20260512-074109 reaches remaining_symbol_count=0 and macro_missing_symbols=[].",
-                                                       "The scene no longer remains stuck in a Brent-driven partial state during the validated 20-minute proof."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "TRC-005",
-                                         "tracking_number":  "TRC-005",
-                                         "priority":  5,
-                                         "area":  "diagnostics",
-                                         "title":  "Displayed-vs-reference comparison capture yields empty comparison arrays",
-                                         "status":  "resolved",
-                                         "source":  "latest_reference_artifact",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/reference-spot-check-comparisons.jsonl",
-                                                          "build/vm/PostProcess-ReferenceSpotChecks.ps1",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-093105/reference-spot-check-comparisons.jsonl"
-                                                      ],
-                                         "notes":  [
-                                                       "The original guest-side extractor produced empty comparison arrays because it tried to read the live circular trace as a normal append-only tail during the run.",
-                                                       "Resolved on 2026-05-12 by adding host-side PostProcess-ReferenceSpotChecks.ps1, which reconstructs the pulled circular trace using trace.circular.log plus trace.circular.idx and writes non-empty DisplayedVsReferenceFeed comparisons after Pull-VmResults completes.",
-                                                       "Guest-UxDeepExercise now treats guest-side reference spot checks as best-effort so a failed live trace read no longer fails the desktop phase.",
-                                                       "The diagnostic is now actionable because comparison arrays are populated from real pulled VM traces rather than left empty."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NWS-001",
-                                         "tracking_number":  "NWS-001",
-                                         "priority":  6,
-                                         "area":  "ai_news",
-                                         "title":  "Douglas Adams / William Shakespeare closing quote repeats distractingly in the news ticker",
-                                         "status":  "resolved",
-                                         "source":  "live_ui_observation",
-                                         "notes":  [
-                                                       "Resolved on 2026-05-12 by separating the DeepSeek summary paragraph from the closing quotation and marking the quotation as a supplemental headline that is shown once per expanded sequence instead of being multiplied during headline expansion.",
-                                                       "FinanceNewsService now returns the quote as a separate prefixed item, BuildNews styles and preserves that supplemental item, and ExpandHeadlineItems duplicates only normal headline items.",
-                                                       "Validated by focused unit coverage plus a fresh green VM proof in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "SOAK-001",
-                                         "tracking_number":  "SOAK-001",
-                                         "priority":  2,
-                                         "area":  "diagnostics",
-                                         "title":  "Reference spot-checking remains functionally broken in the latest soak bundle",
-                                         "status":  "resolved",
-                                         "source":  "latest_soak_audit",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/reference-spot-checks.jsonl",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/reference-spot-check-comparisons.jsonl",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-165028/reference-spot-check-comparisons.jsonl"
-                                                      ],
-                                         "notes":  [
-                                                       "The latest reference spot-check bundle records empty Results arrays and repeated errors that \"0m\" is not recognized, leaving all comparisons effectively unusable.",
-                                                       "Resolved on 2026-05-12 by replacing invalid PowerShell decimal seed literals in both the guest and host comparison scripts and by comparing against the full displayed symbol sample instead of truncating the symbol list.",
-                                                       "Fresh 20-minute VM proof ux-deep-ssh-20260512-165028 now writes non-empty TwelveDataQuote results and DisplayedVsReferenceFeed comparisons with concrete close matches for every sampled symbol."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "SOAK-002",
-                                         "tracking_number":  "SOAK-002",
-                                         "priority":  3,
-                                         "area":  "startup_quality",
-                                         "title":  "Startup still presents a rough stale-data warmup window before recovering",
-                                         "status":  "resolved",
-                                         "source":  "latest_soak_audit",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-185818/ux-deep-summary.json",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-185818/trace/trace.circular.log"
-                                                      ],
-                                         "notes":  [
-                                                       "Early ApplySceneStateComplete and DisplayedTapeSample trace entries still show a heavily stale first impression before the quote set recovers.",
-                                                       "Resolved on 2026-05-12 by boosting the initial due-symbol work set during broad stale recovery and holding the scene behind a recovery overlay while the cache is still broadly stale.",
-                                                       "Fresh 20-minute VM proof ux-deep-ssh-20260512-185818 shows BootstrapSceneBuilt with show_recovery_overlay=true, waiting_overlay_visible=true while stale_quote_count stays broadly degraded, and then drops the overlay once stale_quote_count recovers into the teens and continues to zero."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "SOAK-003",
-                                         "tracking_number":  "SOAK-003",
-                                         "priority":  1,
-                                         "area":  "graph_cards",
-                                         "title":  "Graph carts are present again but the latest soak only shows a single card",
-                                         "status":  "resolved",
-                                         "source":  "latest_soak_audit",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/desktop-010.png",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-160820/trace/trace.circular.log",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-160820/desktop-010.png"
-                                                      ],
-                                         "notes":  [
-                                                       "The one-hour soak recovers from graph_count=0, but only one graph survives the 1-day history path, leaving the scene underpopulated.",
-                                                       "Resolved on 2026-05-12 by relaxing the 1-day history fallback so sparse recent intraday data still yields a usable short-horizon snapshot instead of being discarded for most symbols.",
-                                                       "Fresh 20-minute VM proof ux-deep-ssh-20260512-160820 now grows the graph layer from graph_count=0 to graph_count=32, with multiple tape groups populating instead of a single surviving card."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "SOAK-004",
-                                         "tracking_number":  "SOAK-004",
-                                         "priority":  4,
-                                         "area":  "trace_hygiene",
-                                         "title":  "Pulled circular trace still includes non-run testhost noise at the front",
-                                         "status":  "resolved",
-                                         "source":  "latest_soak_audit",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log",
-                                                          "build/vm/artifacts/ssh-runs/trace-proof-20260512-201311/ux-deep-summary.json",
-                                                          "build/vm/artifacts/ssh-runs/trace-proof-20260512-201311/trace/trace.circular.log"
-                                                      ],
-                                         "notes":  [
-                                                       "The beginning of the pulled trace still contains unrelated testhost noise before the actual desktop soak session.",
-                                                       "Resolved on 2026-05-12 by resetting %APPDATA%\\PortfolioSaver\\Trace at the start of Guest-UxDeepExercise.ps1 before launching the config or desktop hosts.",
-                                                       "Fresh guest trace proof trace-proof-20260512-201311 now starts directly with the current PortfolioSaver.Config and PortfolioSaver.Desktop startup lines, with no inherited testhost noise at the front of the pulled circular trace."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "SOAK-005",
-                                         "tracking_number":  "SOAK-005",
-                                         "priority":  5,
-                                         "area":  "macro_bootstrap",
-                                         "title":  "Initial macro state is briefly inconsistent before settling",
-                                         "status":  "resolved",
-                                         "source":  "latest_soak_audit",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log",
-                                                          "build/vm/artifacts/ssh-runs/macro-proof-20260512-203949/ux-deep-summary.json",
-                                                          "build/vm/artifacts/ssh-runs/macro-proof-20260512-203949/trace/trace.circular.log"
-                                                      ],
-                                         "notes":  [
-                                                       "Early MacroSnapshot events report missing symbols even while cached macro values are already visible, producing a brief bootstrap inconsistency.",
-                                                       "Resolved on 2026-05-12 by separating truly missing macro symbols from stale-but-renderable ones inside TraceMacroSnapshot, so cached macro values are no longer misreported as missing.",
-                                                       "Fresh guest macro proof macro-proof-20260512-203949 now records missing_symbols=[] while the cached startup macro values are visible, and uses stale_symbols=[...] until the live macro refresh arrives and clears them."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-011",
-                                         "tracking_number":  "NB-011",
-                                         "priority":  3,
-                                         "area":  "startup_status_band",
-                                         "title":  "Use the Updated line for initial-value loading feedback instead of the large waiting overlay",
-                                         "status":  "resolved",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User requested replacing the startup announcement-style hold overlay with a flashing top-left Updated-line message."
-                                                      ],
-                                         "notes":  [
-                                                       "At startup, the third status-band line should flash \u0027Loading initial values\u0027 until enough fresh quotes are available.",
-                                                       "Once the initial recovery threshold is reached, the normal Updated age text should replace the loading message.",
-                                                       "The goal is to preserve the scene presentation while making startup recovery feedback smaller and less intrusive than the current announcement-style hold state.",
-                                                       "Resolved by removing the recovery-path waiting overlay while network is available and using the status-band Updated line as the loading indicator instead.",
-                                                       "ScreensaverSceneControl now flashes Loading initial values on the third status-band line while StartupCoordinator.ShouldShowInitialValueLoadingStatus remains true, then automatically falls back to the normal Updated age once enough fresh quotes are present.",
-                                                       "Validated with focused regression coverage plus the canonical 20-minute VM proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453, where the trace records updated_text=Loading initial values and waiting_overlay_visible=false at startup."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-012",
-                                         "tracking_number":  "NB-012",
-                                         "priority":  3,
-                                         "area":  "news_ticker",
-                                         "title":  "Replace scrolling news ticker with telegraph-style item playback",
-                                         "status":  "resolved",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User requested a telegraph/teleprinter-like news presentation instead of continuous scrolling."
-                                                      ],
-                                         "notes":  [
-                                                       "Render news in uppercase Courier-style typography.",
-                                                       "Type characters in one by one for each item.",
-                                                       "If an item is too long, advance it across the band item-by-item instead of using the current marquee behavior.",
-                                                       "Terminate items in teleprinter style with STOP where appropriate.",
-                                                       "After each item, pause briefly, clear the band, then begin the next item.",
-                                                       "Resolved by replacing the marquee-loop NewsFlasherControl with a teleprinter playback state machine and by removing the upstream headline-expansion logic so only real items are played.",
-                                                       "The band now types each item in uppercase Courier text, scrolls only when the fully typed line exceeds the viewport, pauses, clears, and advances to the next item.",
-                                                       "Validated with focused news/render/config regression coverage plus the canonical 20-minute VM proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-013",
-                                         "tracking_number":  "NB-013",
-                                         "priority":  2,
-                                         "area":  "status_freshness",
-                                         "title":  "Drive the Updated time from the last S\u0026P 500 refresh in Global Markets",
-                                         "status":  "resolved",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User requested that the top-left Updated field reflect the last update time of the S\u0026P 500 value shown in Global Markets."
-                                                      ],
-                                         "notes":  [
-                                                       "Use the S\u0026P 500 item in Global Markets as the freshness anchor for the top-left Updated line.",
-                                                       "The displayed Updated age should track the last refresh timestamp for that S\u0026P 500 payload rather than a broader scene-level or provider-level fallback timestamp.",
-                                                       "If the S\u0026P 500 value is unavailable, define a clear fallback behavior during implementation.",
-                                                       "Resolved by teaching both StartupCoordinator and ScreensaverSceneControl to prefer the ^SPX FetchTimestampUtc when computing the top-left Updated age.",
-                                                       "Fallback behavior is the newest available quote timestamp when ^SPX is unavailable.",
-                                                       "Validated with focused regression coverage plus the canonical 20-minute VM proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-014",
-                                         "tracking_number":  "NB-014",
-                                         "priority":  1,
-                                         "area":  "global_markets_accuracy",
-                                         "title":  "Investigate stale or inaccurate S\u0026P 500 values in Global Markets",
-                                         "status":  "resolved",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User observed the app showing S\u0026P 500 at -0.60% while the actual market value was approximately -0.89%."
-                                                      ],
-                                         "notes":  [
-                                                       "Investigate whether the S\u0026P 500 feed, scheduler, cache, symbol mapping, market-hours handling, or display-layer freshness rules are causing stale or lagging values.",
-                                                       "The specific concern is that even after an apparent refresh, the S\u0026P 500 value in Global Markets may still not reflect the latest market reading.",
-                                                       "This ticket is about data correctness, not just timestamp labeling.",
-                                                       "Resolved by routing ^SPX through the Yahoo Finance v8 spark/chart path instead of the dedicated quote endpoint path that was lagging or failing for this symbol.",
-                                                       "StartupCoordinator now keeps ^SPX out of the Stooq world-index lane and reserves it for the dedicated Yahoo pass, while YahooFinanceQuoteProvider explicitly avoids the quote endpoint for ^SPX.",
-                                                       "Verified in the canonical VM harness proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454 where trace lines show ProviderReturnedQuotes / provider=Yahoo Finance v8 / requested_symbols=[^SPX] / fetched_symbols=[^SPX] and world_index_missing_symbols=[]."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-015",
-                                         "tracking_number":  "NB-015",
-                                         "priority":  2,
-                                         "area":  "desktop_window_shell",
-                                         "title":  "Constrain window sizing and formalize restored, maximized, and fullscreen behaviors",
-                                         "status":  "resolved",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User requested a fixed minimum usable window size, a controlled restored size, standard maximized windowed behavior, and reliable true fullscreen behavior."
-                                                      ],
-                                         "notes":  [
-                                                       "Compute the minimum usable application window size that avoids distortion or cutoff.",
-                                                       "Use that computed size as the fixed restored window size rather than allowing arbitrary user resizing.",
-                                                       "Maximized windowed mode should use the normal work area outside the Windows taskbar, keeping the menu bar and full window chrome visible.",
-                                                       "View -\u003e Full Screen should occupy the entire screen, with F11 toggling fullscreen and Esc exiting back to windowed mode.",
-                                                       "In restored and maximized windowed modes, the menu bar and window frame must remain completely visible.",
-                                                       "Resolved by enforcing a fixed 1180x720 restored size, constraining maximized windowed mode to SystemParameters.WorkArea, and suppressing resize/state constraint callbacks while fullscreen transitions clear work-area caps and reapply virtual-screen bounds after the style switch settles.",
-                                                       "Validated with focused DesktopShellMigrationTests and VmHarnessScriptTests, a full 242 / 242 local test pass, and the canonical 20-minute VM proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-194351 where ConfigPhaseStatus=Completed, DesktopPhaseStatus=Completed, DesktopVersionCheck=Passed, and FullScreenToggleStatus=Completed."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-016",
-                                         "tracking_number":  "NB-016",
-                                         "priority":  2,
-                                         "area":  "graph_cards",
-                                         "title":  "Graph cards should align the visually emphasized latest segment with the current quote direction",
-                                         "status":  "resolved",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User observed graph cards whose historical line still looked green while the latest displayed value was red."
-                                                      ],
-                                         "notes":  [
-                                                       "The chosen fix was to preserve the mixed historical red and green segments while re-drawing only the latest segment on top using the current quote direction color.",
-                                                       "HistoricalGraphBuilder now seeds a dedicated LatestSegmentPoints overlay, ScreensaverSceneControl updates LatestSegmentBrush from the live quote direction, and FloatingGraphControl renders that last-segment overlay above the historical segments.",
-                                                       "Validated with focused ScreensaverRenderBehaviorTests covering both the dedicated overlay binding and ApplyQuoteToGraph alignment of LatestSegmentBrush with the current quote direction."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-017",
-                                         "tracking_number":  "NB-017",
-                                         "priority":  2,
-                                         "area":  "news_ticker",
-                                         "title":  "Refine teleprinter news playback to better match the YouTube reference effect",
-                                         "status":  "open",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User provided a YouTube clip as the desired reference behavior after the initial teleprinter conversion was already implemented."
-                                                      ],
-                                         "notes":  [
-                                                       "The broad teleprinter shift is already in place under NB-012, but the later YouTube reference implies a more specific target feel.",
-                                                       "This ticket covers type-on cadence, per-item dwell timing, clear-and-next transitions, and overall resemblance to the reference clip rather than only the presence of uppercase teleprinter styling."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-018",
-                                         "tracking_number":  "NB-018",
-                                         "priority":  3,
-                                         "area":  "animated_overlays",
-                                         "title":  "Disable the bull and bear critters for now",
-                                         "status":  "open",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User explicitly requested disabling the critters temporarily."
-                                                      ],
-                                         "notes":  [
-                                                       "A local-only disable was reported in chat, but that request was not previously promoted into the tracked backlog.",
-                                                       "This ticket keeps the temporary product decision explicit until the critters are either formally removed or intentionally re-enabled."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-019",
-                                         "tracking_number":  "NB-019",
-                                         "priority":  2,
-                                         "area":  "startup_freshness_policy",
-                                         "title":  "Audit remaining startup surfaces so no stale value is shown where a waiting state would be safer",
-                                         "status":  "open",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User stated the operating principle that at startup no value is better than a stale value."
-                                                      ],
-                                         "notes":  [
-                                                       "Global Markets and macro cards have already been updated to prefer waiting cues over stale cached values at startup.",
-                                                       "This ticket covers the broader policy audit: identify any other startup surfaces that still show stale values and convert them to a waiting or blank state until sufficiently fresh data is available."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-020",
-                                         "tracking_number":  "NB-020",
-                                         "priority":  2,
-                                         "area":  "desktop_launch_flow",
-                                         "title":  "Make test launches follow true application flow by opening the desktop app first and launching configuration from the menu",
-                                         "status":  "open",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User requested replacing the screensaver-like validation order where the config applet launches first with a truer application-like flow."
-                                                      ],
-                                         "notes":  [
-                                                       "The current UX validation harness still treats the configuration app as the first phase before the desktop app.",
-                                                       "This ticket changes the validation posture so the desktop app launches first and configuration is exercised from the desktop menu path, matching the intended product experience more closely."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-021",
-                                         "tracking_number":  "NB-021",
-                                         "priority":  1,
-                                         "area":  "manual_ui_qa",
-                                         "title":  "Create and execute a full manual UI QA suite covering every configurable option and resilience edge case",
-                                         "status":  "open",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User requested a full manual UI QA suite with per-setting validation and idiot-proofing coverage."
-                                                      ],
-                                         "notes":  [
-                                                       "Exercise each configurable item one by one and verify that configuration changes are actually reflected in runtime behavior.",
-                                                       "Include resilience and idiot-proofing coverage such as empty API keys, partially empty key sets, nonsensical slider values, and strange advanced-option combinations.",
-                                                       "The output should be a repeatable manual QA checklist plus findings, not just ad hoc spot checks."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-022",
-                                         "tracking_number":  "NB-022",
-                                         "priority":  2,
-                                         "area":  "display_compatibility",
-                                         "title":  "Validate the product across a range of monitor sizes and aspect ratios supported by the VM",
-                                         "status":  "open",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User requested testing from small laptop-like displays through large and ultra-wide layouts as much as the VM supports."
-                                                      ],
-                                         "notes":  [
-                                                       "Exercise the UI on multiple VM display sizes, including small roughly 12-inch laptop-like resolutions, larger desktop resolutions, and ultra-wide shapes when supported.",
-                                                       "Capture layout, clipping, spacing, and fullscreen behavior issues that only appear at certain display sizes or aspect ratios."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-023",
-                                         "tracking_number":  "NB-023",
-                                         "priority":  1,
-                                         "area":  "architecture_refactor",
-                                         "title":  "Extract a clean service-ready data engine boundary between retrieval/orchestration and UI rendering",
-                                         "status":  "open",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User requested a major refactor to cleanly separate data retrieval from UI rendering so the architecture can later support a Windows service and more controlled provider parallelism."
-                                                      ],
-                                         "notes":  [
-                                                       "Manual code-review validation summary: the core diagnosis remains correct, but the ticket must explicitly account for three seams that are easy to underestimate. First, StartupCoordinator is not just long; it directly constructs concrete infrastructure such as QuoteCacheService, multiple provider implementations, ProviderHealthService, FinanceNewsService, ScreensaverSettingsService, SymbolProfileStore, and ExchangePhotoCacheService. Second, settings, secrets, traces, and caches are still user-profile rooted through PathHelper and ProviderSecretStoreService, which means a future service-ready engine needs explicit settings/secrets abstractions rather than assuming those concerns can stay ambient. Third, several orchestration types still live under the PortfolioSaver.Screensaver.Services namespace even though the product is desktop-first, so namespace and composition cleanup should be treated as part of the refactor rather than deferred as mere polish.",
-                                                       "Current diagnosis: the repository already has a meaningful provider layer under src/PortfolioSaver.Data and domain models under src/PortfolioSaver.Core, but the main runtime orchestration still lives in src/PortfolioSaver.Presentation/Services/StartupCoordinator.cs. StartupCoordinator is approximately 1800 lines and currently owns quote scheduling, provider fallback ordering, startup warmup policy, graph warmup, news refresh orchestration, cache usage, freshness logic, tracing, and scene-shaping decisions. ScreensaverSceneControl is over 2100 lines and still depends on some of that orchestration behavior directly. FinanceNewsService and ScreensaverSettingsService also sit in the same runtime namespace, reinforcing that the retrieval/runtime layer is not yet cleanly separated from the product surface.",
-                                                       "The goal of this ticket is not merely to prepare for a future Windows service. The deeper goal is to establish a stable architectural seam that improves concurrency, testability, startup behavior, scheduling clarity, and future maintainability while keeping the existing desktop product working throughout the migration.",
-                                                       "Target architecture: keep PortfolioSaver.Core for immutable models, enums, validation rules, and provider policy definitions; keep PortfolioSaver.Data for raw provider clients, caches, symbol metadata, and persistence helpers; introduce a new middle layer such as PortfolioSaver.DataEngine for quote scheduling, provider execution planning, budget/rate-limit enforcement, snapshot aggregation, startup/warmup policy, historical warmup coordination, and news scheduling; leave PortfolioSaver.Presentation focused on view-model shaping, animation, scene-state rendering, and UX display policy. Introduce explicit abstractions for settings access, secret resolution, cache paths, trace sinks, and clock/network probes so the engine is not tied directly to user-profile helpers or UI-era service classes. A future PortfolioSaver.DataService host may run the same DataEngine later, but the refactor should not depend on introducing a Windows service immediately.",
-                                                       "Non-goal: do not attempt a big-bang rewrite, do not re-architect the locked VM harness in the process, and do not start by adding arbitrary multithreading. Parallel provider execution should be a controlled outcome of the new engine boundary, not the first step.",
-                                                       "Phase 0 - dependency audit and boundary contracts: before moving logic, catalog every concrete dependency currently new\u0027ed inside StartupCoordinator and related runtime services, then introduce abstractions for settings access, secret resolution, cache/storage access, trace logging, network availability, time, and provider factories. Acceptance: DataEngine can be composed from contracts rather than constructing environment-bound helpers internally.",
-                                                       "Phase 1 - seam definition: define engine-facing contracts for quote snapshots, quote-refresh requests/results, provider execution plans, freshness anchors, startup readiness, and historical/news work items. During this phase, copy as little behavior as possible; prefer extracting interfaces and pure helper types first. Acceptance: Presentation can depend on an engine contract instead of directly owning provider ladder decisions.",
-                                                       "Phase 2 - extract scheduler and provider orchestration: move refresh-window building, due-symbol selection, stagger logic, provider plan ordering, rate-limit cooldown handling, partial-result handling, and quote-merge logic out of StartupCoordinator into DataEngine services. Keep concurrency behavior semantically equivalent at first. Acceptance: unit tests can validate scheduling and provider fallback behavior without constructing WPF controls or scene state.",
-                                                       "Phase 3 - extract startup/warmup and freshness policies: move initial stale-data recovery logic, dedicated Yahoo warmup rules, graph warmup coordination, startup readiness thresholds, and status freshness anchor calculation into the engine layer. Acceptance: the engine can produce a clean startup state model such as loading, warming, live, partial, stale without the scene control owning the logic directly.",
-                                                       "Phase 4 - extract news orchestration and runtime settings access: move summarized news scheduling, feed selection cadence, cache decisions, and teleprinter item preparation into engine-facing services while keeping the visual teleprinter playback itself in Presentation. At the same time, split settings read/write concerns from runtime settings consumption so the engine depends on a read model rather than the settings UI service classes directly. Acceptance: news retrieval and news rendering become distinct responsibilities and the engine is no longer coupled to ScreensaverSettingsService.",
-                                                       "Phase 5 - scene adaptation and namespace cleanup: reduce StartupCoordinator to a thin adapter that asks DataEngine for a state snapshot and maps that into ScreensaverSceneState and view models. Rename or relocate residual runtime classes out of PortfolioSaver.Screensaver.Services where appropriate so the desktop-first architecture is reflected clearly. Acceptance: StartupCoordinator becomes a compositional facade instead of the core runtime brain, and service names/namespaces no longer imply legacy ownership of the modern runtime layer.",
-                                                       "Phase 6 - optional controlled concurrency: once the engine owns scheduling, add bounded async worker lanes by concern or provider group, for example Yahoo quotes, provider fallbacks, historical warmup, news, and treasury/macros. Use bounded concurrency, explicit cooldown/budget gates, deterministic merge rules, and structured tracing. Acceptance: parallelism improves cadence without introducing nondeterministic UI regressions.",
-                                                       "Phase 7 - future service host feasibility review: only after the in-process DataEngine is stable should we evaluate adding a PortfolioSaver.DataService Windows service host. That later review must explicitly address secrets ownership, per-user versus machine-wide settings, IPC contract choice such as named pipes or gRPC over named pipes, installer behavior, and support burden. This ticket does not require implementing the service host itself.",
-                                                       "Key risks to manage: duplicated logic during migration, freshness regressions, cache/secrets path confusion, over-eager concurrency creating race conditions, over-coupling the engine to user-profile storage, and accidental coupling back from Presentation into the engine. Mitigations: move one concern at a time, keep trace semantics stable, add regression tests before each extraction, and insist on small commits that preserve the canonical VM proof path.",
-                                                       "Required regression coverage during the refactor: scheduling tests, provider fallback tests, stale/fresh classification tests, startup readiness tests, news cadence tests, graph warmup tests, settings/secrets abstraction tests, and at each major phase a canonical VM proof through the locked harness. No phase should be considered complete if local tests are green but the canonical VM path is broken.",
-                                                       "Definition of done for the full ticket: a new engine layer exists; StartupCoordinator is dramatically reduced and no longer owns most provider orchestration logic; Presentation consumes engine snapshots rather than managing retrieval policy directly; provider scheduling is testable without WPF; settings and secret access are abstracted cleanly enough that a later service host would not require another deep untangling; the canonical VM harness remains the validation baseline; and the resulting architecture is ready for a later optional Windows service host without forcing another major refactor."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-024",
-                                         "tracking_number":  "NB-024",
-                                         "priority":  3,
-                                         "area":  "branding",
-                                         "title":  "Create and wire an app-specific icon to replace the current generic icon",
-                                         "status":  "open",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User requested an icon appropriate for the product instead of the current generic application icon."
-                                                      ],
-                                         "notes":  [
-                                                       "Design or source a product-appropriate icon for DO NOT PANIC PORTFOLIO VISUALIZER.",
-                                                       "Ensure the icon is applied consistently across the desktop app, config app, installer surfaces where relevant, and any packaging metadata that currently falls back to a generic executable icon.",
-                                                       "Validate the icon at common Windows sizes so it remains readable in taskbar, Alt-Tab, title bar, and Explorer contexts."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "TRC-006",
-                                         "tracking_number":  "TRC-006",
-                                         "priority":  1,
-                                         "area":  "data_accuracy",
-                                         "title":  "Investigate reference drift for core ETF values during otherwise healthy retrieval passes",
-                                         "status":  "open",
-                                         "source":  "latest_circular_trace",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/reference-spot-check-comparisons.jsonl",
-                                                          "The sampled DisplayedVsReferenceFeed comparisons report drift for VOO, IJH, and IJR while other sampled symbols remain close."
-                                                      ],
-                                         "notes":  [
-                                                       "At least one latest sampled comparison showed VOO, IJH, and IJR materially off versus the reference feed while VEA, VWO, VSS, EFV, and EFG were close.",
-                                                       "This must be investigated as either a true displayed-value freshness bug, a provider-source inconsistency, or a reference-comparison timing/source mismatch."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "TRC-007",
-                                         "tracking_number":  "TRC-007",
-                                         "priority":  2,
-                                         "area":  "startup_recovery",
-                                         "title":  "Startup stale-data burn-down still takes multiple refresh cycles before the scene becomes fully live",
-                                         "status":  "open",
-                                         "source":  "latest_circular_trace",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:100",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:183",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:267"
-                                                      ],
-                                         "notes":  [
-                                                       "The retrieval engine recovers cleanly, but stale_quote_count still steps down across several passes from 25 to 17 to 9 before reaching zero later in the run.",
-                                                       "This is not a catastrophic failure, but it remains a startup-quality and freshness concern worth tightening."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "TRC-008",
-                                         "tracking_number":  "TRC-008",
-                                         "priority":  3,
-                                         "area":  "status_telemetry",
-                                         "title":  "Provider label still reports Live+Cache even when stale_quote_count has fallen to zero",
-                                         "status":  "open",
-                                         "source":  "latest_circular_trace",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:1672",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:1759"
-                                                      ],
-                                         "notes":  [
-                                                       "Later ApplySceneStateComplete events show stale_quote_count=0 while provider_text still renders Provider: Live+Cache.",
-                                                       "This appears to be a status-label semantics issue rather than a retrieval failure, but it makes the runtime telemetry less truthful than it could be."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-025",
-                                         "tracking_number":  "NB-025",
-                                         "priority":  2,
-                                         "area":  "diagnostics",
-                                         "title":  "Completely remove the feature that sends traces to remote syslog",
-                                         "status":  "open",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User requested full removal of remote syslog trace forwarding."
-                                                      ],
-                                         "notes":  [
-                                                       "Remove runtime support, configuration paths, and any dormant integration points related to sending PortfolioSaver traces to a remote syslog target.",
-                                                       "The goal is to keep tracing local and bundle-based only, without any remote trace forwarding behavior remaining in the product."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "TRC-009",
-                                         "tracking_number":  "TRC-009",
-                                         "priority":  4,
-                                         "area":  "trace_semantics",
-                                         "title":  "Startup recovery/loading trace semantics do not match actual scene behavior",
-                                         "status":  "open",
-                                         "source":  "latest_circular_trace",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:7",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:8",
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:14"
-                                                      ],
-                                         "notes":  [
-                                                       "BootstrapSceneBuilt reports show_recovery_overlay=true while the next ApplySceneState reports waiting=False and ApplySceneStateComplete reports waiting_overlay_visible=false.",
-                                                       "This may reflect intentional product behavior after the startup UX changes, but the trace semantics no longer describe the actual scene behavior truthfully."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "TRC-010",
-                                         "tracking_number":  "TRC-010",
-                                         "priority":  5,
-                                         "area":  "trace_semantics",
-                                         "title":  "ClockMarketDataSummary startup counts are misleading when exchanges are intentionally hidden pending fresh values",
-                                         "status":  "open",
-                                         "source":  "latest_circular_trace",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:11"
-                                                      ],
-                                         "notes":  [
-                                                       "At startup the trace reports populated_exchange_count=0 and missing_exchange_count=0 simultaneously.",
-                                                       "If hidden-until-fresh exchanges are neither populated nor missing, the summary needs clearer semantics so startup diagnostics stay useful."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "TRC-011",
-                                         "tracking_number":  "TRC-011",
-                                         "priority":  6,
-                                         "area":  "startup_status",
-                                         "title":  "Updated field is blank at initial startup instead of explicitly signaling loading",
-                                         "status":  "open",
-                                         "source":  "latest_circular_trace",
-                                         "evidence":  [
-                                                          "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:14"
-                                                      ],
-                                         "notes":  [
-                                                       "The first ApplySceneStateComplete snapshot shows updated_text blank while stale_quote_count=49 and startup recovery is still in progress.",
-                                                       "This weakens the startup-status story and may contradict the intended Loading initial values behavior on the status band."
-                                                   ]
-                                     },
-                                     {
-                                         "id":  "NB-026",
-                                         "tracking_number":  "NB-026",
-                                         "priority":  1,
-                                         "area":  "release_readiness",
-                                         "title":  "Run a full code-review, cleanup, dry-run, smoke-test, documentation, and final check-in pass",
-                                         "status":  "open",
-                                         "source":  "user_followup",
-                                         "evidence":  [
-                                                          "User requested a highest-priority next run covering code review, code-comment cleanup, dry run, smoke test, documentation review/update, and final commit/push."
-                                                      ],
-                                         "notes":  [
-                                                       "Perform a full line-by-line code review of the active codebase and clean up issues found during the pass.",
-                                                       "Perform a full line-by-line cleanup of code comments, removing stale, noisy, misleading, or redundant comments and improving any comments that remain necessary.",
-                                                       "Run a full dry run through the canonical workflow to catch integration issues before smoke validation.",
-                                                       "Run a full smoke test using the locked canonical VM harness and verify the core launch, config, desktop, fullscreen, startup-freshness, and data-update behaviors still hold.",
-                                                       "Review and update the project documentation/workbooks so they accurately match the final working code and harness state after the cleanup pass.",
-                                                       "Commit everything and push everything once the pass is complete and validated."
-                                                   ]
-                                     }
-                                 ]
+{
+  "document_type": "audit_state",
+  "title": "BETA-5.5 Audit State",
+  "date": "2026-05-18",
+  "current_lane": "BETA-5.5",
+  "current_snapshot": {
+    "product": "DO NOT PANIC PORTFOLIO VISUALIZER",
+    "publisher": "SANYALnet Labs",
+    "author": "Supratim Sanyal",
+    "license": "MIT LICENSE",
+    "semantic_version_lane": "0.9.0-beta5.5",
+    "target_framework": "net10.0-windows",
+    "primary_host": "PortfolioSaver.Desktop",
+    "legacy_host": "PortfolioSaver.Screensaver",
+    "repository_history": "main starts at the BETA-5.4 baseline; BETA-5.5 began at commit 3eec8e7"
+  },
+  "latest_recorded_validation_state": {
+    "automated_tests": {
+      "command": "dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo",
+      "result": "245 / 245 passing",
+      "notes": [
+        "Host regression coverage now includes the SSH-first VM harness scripts, the desktop-session agent workflow, and the remote WinAppDriver startup path.",
+        "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer.",
+        "A repo-local NuGet.Config now clears stale Visual Studio fallback package folders so restore works on this machine.",
+        "The UX harness no longer relies on direct interactive PowerShell launch through PsExec; commands are now queued to PortfolioSaver.VmAgent inside session 1.",
+        "Guest long-run UX captures continue to write external Yahoo Finance spot checks plus displayed-versus-reference comparison artifacts.",
+        "DeepSeek summarized-news mode now uses the same protected local secret store and environment-override flow as the market-data providers.",
+        "Remote live validation can now apply DeepSeek and provider API keys from ignored local build/vm/test-secrets.json via Guest-ApplyTestSecrets.ps1.",
+        "The SSH-first remote harness now supports desktop soak durations up to 10080 minutes.",
+        "The NB-001 through NB-010 fixes were revalidated with a final local green run plus a clean 20-minute remote desktop-session run in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526.",
+        "The current local batch also revalidated Brent crude macro routing through the dedicated Yahoo lane, intraday 1-day graph history, persistent graph-card travel flashes, the scheduler smoothing pass, and separate non-repeating DeepSeek closing-quote headlines.",
+        "The canonical VM harness now auto-purges stale remote build and test artifacts whenever free space drops below 8 GB, stages repo snapshots as TAR archives, strips staged bin/obj and artifact folders before upload, and makes the startup VmAgent launcher a silent no-op if the publish\\agent executable is not present yet.",
+        "The S&P 500 freshness investigation concluded that ^SPX needed to bypass the Yahoo quote endpoint and resolve through the Yahoo spark/chart path; the fix was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454.",
+        "The status-band Updated line now anchors to the ^SPX refresh timestamp with a fallback to the latest available quote, and that behavior was re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439.",
+        "Startup recovery no longer uses the large announcement overlay when network is available; instead the Updated line flashes Loading initial values until enough quotes are fresh, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453.",
+        "The news band now uses teleprinter-style playback with uppercase Courier text, per-item typing, STOP endings, pause-and-clear transitions, and no artificial headline duplication, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853.",
+        "The desktop shell now enforces a fixed restored size, maximizes only to the Windows work area, and still enters true fullscreen cleanly, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-194351.",
+        "NB-026 line-by-line review pass completed locally on 2026-05-18 with a full Release build and a 245 / 245 green test suite."
+      ]
+    },
+    "build": {
+      "command": "dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore",
+      "result": "passed"
+    },
+    "publish": {
+      "command": ".\\\\build\\\\publish-safe-temp.ps1 -Configuration Release -TimeoutSeconds 1200",
+      "result": "passed",
+      "artifacts": [
+        "build/artifacts/publish-safe-temp/screensaver",
+        "build/artifacts/publish-safe-temp/config",
+        "build/artifacts/publish-safe-temp/desktop",
+        "build/artifacts/publish-safe-temp/agent"
+      ],
+      "notes": [
+        "The temp-workspace publish path now copies repo NuGet.Config into the workspace.",
+        "Safe-temp publish now publishes screensaver, config, desktop, and VmAgent artifacts into the final artifact layout."
+      ]
+    },
+    "vm_tooling": {
+      "ssh_access": "enabled",
+      "dotnet10_sdk_in_guest": "installed-machine-wide",
+      "powershell7_in_guest": "installed-machine-wide",
+      "guest_workspace_root": "C:\\vmharness\\portfolio-saver",
+      "proof_artifacts": [
+        "build/vm/artifacts/host-runs/ssh-push-20260511-182115.json",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-182218",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619",
+        "build/vm/artifacts/host-runs/ssh-push-20260518-075750.json",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260518-075758"
+      ],
+      "notes": [
+        "The guest now resolves bare dotnet to 10.0.203 from C:\\Program Files\\dotnet.",
+        "The preferred remote harness path is SSH + SFTP using Push-VmWorkspace.ps1, Invoke-VmBuildTest.ps1, and Pull-VmResults.ps1.",
+        "Remote restore/build/test/publish succeeded end to end inside C:\\vmharness\\portfolio-saver\\repo.",
+        "The remote machine is now configured for desktop-session automation with autologon-style Winlogon settings, disabled screen saver, and a startup launcher for PortfolioSaver.VmAgent.",
+        "PortfolioSaver.VmAgent now owns the interactive desktop session, starts WinAppDriver when needed, and executes queued UX runs from inside session 1.",
+        "Latest short remote desktop UX validation completed cleanly through the agent-based harness in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260503-152112.",
+        "The guest secret-overlay flow now supports DeepSeek alongside the existing market-data providers.",
+        "Latest clean direct-agent UX validation completed on the refreshed publish in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260504-130526.",
+        "Guest-UxDeepExercise.ps1 now explicitly focuses the desktop window before F11/ESC and verifies true fullscreen by comparing the window bounds against the virtual screen, rather than trusting the toggle blindly.",
+        "A fresh clean direct-agent UX validation completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-154444.",
+        "The clean 2026-05-11 proof used process-bound config window discovery plus DesktopMainWindow and ViewFullScreenMenuItem automation anchors to avoid prior UI Automation ambiguity.",
+        "Focused regression updates now cover curated DeepSeek closing quotations, preemptive near-due refresh smoothing, and the animated market critter overlay.",
+        "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-182218.",
+        "A fresh 60-minute direct-agent soak completed successfully on 2026-05-11 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619.",
+        "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-12 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159 after moving DeepSeek closing quotations into separate supplemental ticker items.",
+        "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454 after TAR-based repo staging, low-space auto-cleanup, and the ^SPX Yahoo spark/chart routing fix.",
+        "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439 after anchoring the top-left Updated line to the S&P 500 freshness timestamp.",
+        "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453 after replacing the startup recovery card with the status-band Loading initial values message.",
+        "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853 after replacing the marquee news scroller with teleprinter-style playback.",
+        "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-194351 after fixing restored/maximized window constraints without regressing true fullscreen.",
+        "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-18 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260518-075758 after the NB-026 review, cleanup, dry-run, and smoke-test pass."
+      ]
+    }
+  },
+  "post_remote_recovery_replay": {
+    "baseline_remote_commit": "3eec8e7395b81e680312560ebd34d5f87babf4b5",
+    "source_of_truth": "Recovered from the surviving chat record after catastrophic local storage loss.",
+    "replayed_changes": [
+      "Retargeted the solution from net8.0-windows / SDK 8.0.420 to net10.0-windows / SDK 10.0.201.",
+      "Created PortfolioSaver.Presentation and moved the reusable scene control plus runtime presentation services out of the screensaver host.",
+      "Created PortfolioSaver.Settings and moved the shared settings UI, content, services, and view models out of the Config launcher.",
+      "Created PortfolioSaver.Desktop as the new primary app host with File/Exit, View/Full Screen, Options/Settings, and Help/About.",
+      "Implemented fullscreen toggle plus ESC-to-windowed behavior in the desktop shell.",
+      "Kept PortfolioSaver.Config as a thin launcher around the shared Settings window.",
+      "Kept PortfolioSaver.Screensaver as a legacy compatibility host wired to the extracted Presentation scene.",
+      "Updated publish, installer, and VM staging scripts to understand the new desktop artifact alongside the legacy screensaver artifact.",
+      "Updated README and BUILD_AND_DEPLOY to describe the desktop-first Beta 5.5 product model.",
+      "Added DesktopShellMigrationTests and updated path-based regression tests for the moved code."
+    ]
+  },
+  "beta55_migration_program": {
+    "goal": "Upgrade to .NET 10 and convert the screensaver product into a desktop app with fullscreen mode while retaining a temporary legacy screensaver compatibility host.",
+    "status": "completed",
+    "current_phase": "P7",
+    "design_decisions": [
+      "Use a new desktop host project instead of mutating the screensaver executable in place.",
+      "Extract the reusable scene/runtime into PortfolioSaver.Presentation.",
+      "Extract the reusable settings experience into PortfolioSaver.Settings.",
+      "Keep the legacy screensaver host during Beta 5.5 for compatibility while documenting the desktop app as the primary product surface."
+    ],
+    "known_vm_tooling_note": "The remote Windows target now uses machine-wide .NET 10 SDK 10.0.203, PowerShell 7.6.1, SSH/SFTP deployment, and a desktop-session agent rooted at C:\\vmharness\\portfolio-saver.",
+    "phases": [
+      {
+        "id": "P1",
+        "name": ".NET 10 upgrade",
+        "status": "completed",
+        "acceptance": [
+          "All projects target net10.0-windows.",
+          "global.json pins 10.0.201.",
+          "Host build and tests pass under .NET 10."
+        ]
+      },
+      {
+        "id": "P2",
+        "name": "Extract reusable presentation/runtime layer",
+        "status": "completed",
+        "acceptance": [
+          "ScreensaverSceneControl and runtime presentation services live in PortfolioSaver.Presentation.",
+          "Legacy screensaver host compiles against the extracted presentation assembly."
+        ]
+      },
+      {
+        "id": "P3",
+        "name": "Create desktop app host",
+        "status": "completed",
+        "acceptance": [
+          "PortfolioSaver.Desktop exists and builds.",
+          "Desktop shell hosts the shared scene and provides the required menu structure.",
+          "Fullscreen toggle plus ESC exit behavior are implemented."
+        ]
+      },
+      {
+        "id": "P4",
+        "name": "Reuse settings UI inside desktop app",
+        "status": "completed",
+        "acceptance": [
+          "PortfolioSaver.Settings contains the shared settings window, content, services, and view models.",
+          "Options -> Settings opens the shared settings window.",
+          "PortfolioSaver.Config remains a thin launcher."
+        ]
+      },
+      {
+        "id": "P5",
+        "name": "Desktop About/help surface",
+        "status": "completed",
+        "acceptance": [
+          "Help -> About is implemented in the desktop shell.",
+          "About shows app identity, version, and MIT license statement."
+        ]
+      },
+      {
+        "id": "P6",
+        "name": "Demote legacy screensaver semantics",
+        "status": "completed",
+        "acceptance": [
+          "Desktop app is documented as the primary product path.",
+          "Legacy screensaver host is preserved only for compatibility."
+        ]
+      },
+      {
+        "id": "P7",
+        "name": "Rework packaging, VM automation, and docs",
+        "status": "completed",
+        "acceptance": [
+          "Safe-temp publish outputs desktop, config, and legacy screensaver artifacts.",
+          "VM prep/validation scripts know about the desktop artifact.",
+          "README, BUILD_AND_DEPLOY, and VM runbook are desktop-first for Beta 5.5."
+        ]
+      }
+    ]
+  },
+  "ssh_first_vm_harness": {
+    "status": "implemented",
+    "host_scripts": [
+      "build/vm/Push-VmWorkspace.ps1",
+      "build/vm/Invoke-VmBuildTest.ps1",
+      "build/vm/Pull-VmResults.ps1"
+    ],
+    "shared_helper": "build/vm/VmSshCommon.ps1",
+    "guest_bootstrap": "build/vm/Guest-BootstrapVmRemoteTools.ps1",
+    "guest_workspace_root": "C:\\vmharness\\portfolio-saver",
+    "validated_flows": [
+      "guest bootstrap",
+      "repository snapshot upload",
+      "remote dotnet restore",
+      "remote dotnet build",
+      "remote dotnet test",
+      "remote publish-safe-temp",
+      "desktop-session agent startup heartbeat",
+      "WinAppDriver startup inside session 1",
+      "queued remote desktop UX cycle with command acknowledgement and live summary updates"
+    ],
+    "latest_remote_build_summary": "C:\\vmharness\\portfolio-saver\\results\\buildtest-20260503-152105.json",
+    "interactive_launch_method": "Push-VmWorkspace.ps1 stages the repo and publish bundle, Guest-ConfigureDesktopAutomation.ps1 prepares the desktop account, the host starts PortfolioSaver.VmAgent.exe in session 1 with PsExec, waits for agent-status.json, then queues a UX command JSON under commands\\ that the agent executes inside the interactive desktop session while supervising WinAppDriver and invoking fullscreen through the ViewFullScreenMenuItem automation hook.",
+    "latest_full_ux_result": "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619",
+    "harness_policy": "locked",
+    "harness_policy_notes": [
+      "The current SSH/SFTP plus PortfolioSaver.VmAgent desktop-session harness is the canonical supported workflow.",
+      "Do not re-optimize or re-architect the working harness glue during normal feature work.",
+      "Change the harness only when the current path is broken or a concrete new validation requirement cannot be met with the existing flow."
+    ],
+    "latest_short_ux_result": "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-182218"
+  },
+  "pending_next_build_issues": [
+    {
+      "id": "NB-001",
+      "area": "macro_data",
+      "title": "CRUDE and GOLD macros are not updating reliably",
+      "status": "resolved",
+      "notes": [
+        "Verified in the final 20-minute remote run: GOLD and CRUDE rendered with live values, changed between frames, and trace MacroSnapshot entries reported missing_symbols=[] for the latest run."
+      ]
+    },
+    {
+      "id": "NB-002",
+      "area": "config_ui",
+      "title": "Advanced tab of the config applet is too large for the screen",
+      "status": "resolved",
+      "notes": [
+        "Verified in config-tab-002-Advanced.png from ux-deep-ssh-20260504-130526: the Advanced tab fits on-screen with vertical scrolling only and no horizontal cutoff."
+      ]
+    },
+    {
+      "id": "NB-003",
+      "area": "top_band_layout",
+      "title": "Top-left market open/close info needs to split across lines without widening the band",
+      "status": "resolved",
+      "notes": [
+        "Verified in desktop screenshots from ux-deep-ssh-20260504-130526: market status, countdown, and Updated timestamp now occupy three lines inside the existing top band without widening it."
+      ]
+    },
+    {
+      "id": "NB-004",
+      "area": "ai_news",
+      "title": "DeepSeek summarized news must only restyle supplied current facts",
+      "status": "resolved",
+      "notes": [
+        "Summarized-news mode now passes curated live headlines to DeepSeek for style-only rewriting, explicitly forbids investment recommendations, and forbids specific numerical facts in the rewritten paragraph.",
+        "Verified visually in the final remote run: the band stayed factual and macro-oriented without stock-picking language or numeric price clutter."
+      ]
+    },
+    {
+      "id": "NB-005",
+      "area": "graph_cards",
+      "title": "Vary graph-card swimming speed dynamically in a plus/minus 20 percent range",
+      "status": "resolved",
+      "notes": [
+        "Graph cards now modulate their motion around nominal velocity in a plus/minus 20 percent range via a time-varying speed factor.",
+        "Observed in the final 20-minute run as continued non-uniform card drift across captures."
+      ]
+    },
+    {
+      "id": "NB-006",
+      "area": "backgrounds",
+      "title": "Optionally mix in remote open-source cityscape images when not using a custom folder",
+      "status": "resolved",
+      "notes": [
+        "Remote open-source cityscape URLs are now mixed into the non-custom background rotation without local persistence.",
+        "Verified in the final trace: backgrounds=15, confirming remote additions beyond the packaged local set."
+      ]
+    },
+    {
+      "id": "NB-007",
+      "area": "ticker_tape",
+      "title": "Ticker scrolling should be smooth",
+      "status": "resolved",
+      "notes": [
+        "Ticker animation now uses RenderingEventArgs.RenderingTime instead of wall-clock deltas to smooth the scroll cadence.",
+        "Validated by unit coverage and a clean 20-minute desktop run without ticker hitching regressions."
+      ]
+    },
+    {
+      "id": "NB-008",
+      "area": "global_markets",
+      "title": "Pinned New York card is too wide and Sydney/London delimiter needs visual correction",
+      "status": "resolved",
+      "notes": [
+        "Pinned New York card width and inter-card delimiter spacing were tightened.",
+        "Verified in the final desktop captures: the pinned card is slimmer and the strip spacing reads cleanly without the earlier merge/cutoff effect."
+      ]
+    },
+    {
+      "id": "NB-009",
+      "area": "clock_widget",
+      "title": "Top-right date/time widget is too wide",
+      "status": "resolved",
+      "notes": [
+        "Clock widget width, padding, and date format were reduced.",
+        "Verified in the final desktop captures: the clock stays compact without colliding with the macro lane."
+      ]
+    },
+    {
+      "id": "NB-010",
+      "area": "graph_cards",
+      "title": "Graph-card refresh direction cue needs visible fast travel, not teleportation",
+      "status": "resolved",
+      "notes": [
+        "Refresh cues now queue a fast visible travel toward the top or bottom rather than teleporting instantly to the edge.",
+        "Validated by dedicated render tests and by the final 20-minute remote run on the updated motion code."
+      ]
+    }
+  ],
+  "remaining_validation_gaps": [],
+  "current_operational_recommendations": [
+    "Use the SSH/SFTP remote harness for normal Windows target build, publish, and UX validation work.",
+    "Treat PortfolioSaver.Desktop as the primary runtime target for Beta 5.5 work.",
+    "Retain the legacy screensaver host only while compatibility still matters.",
+    "Use the safe-temp build/publish scripts for repeatable validation rather than ad-hoc repo-path publish commands.",
+    "Treat the remote target as a generic Windows machine so the same harness can move from a VM to a physical PC without orchestration changes.",
+    "Let PortfolioSaver.VmAgent own interactive-session automation instead of attempting to launch UX runs directly through SSH-driven PowerShell.",
+    "Use build/vm/test-secrets.json for remote live validation secrets instead of persisting any API keys into plaintext settings.json.",
+    "Treat the current agent-based remote harness glue as locked unless it breaks or a new validation requirement forces a targeted change."
+  ],
+  "current_priority_backlog": [
+    {
+      "id": "BL-001",
+      "priority": 1,
+      "title": "DeepSeek news integrity and quote append",
+      "status": "resolved",
+      "notes": [
+        "Prompt remains style-only, forbids factual invention, and appends a fixed verified closing quotation for the selected writer."
+      ]
+    },
+    {
+      "id": "BL-002",
+      "priority": 2,
+      "title": "Brent crude consistency across runtime and support assets",
+      "status": "resolved",
+      "notes": [
+        "Runtime macro path stays on BZ=F and sample VM/sandbox settings were updated from CL=F to Brent references."
+      ]
+    },
+    {
+      "id": "BL-003",
+      "priority": 3,
+      "title": "Refresh smoothing and first-population quality",
+      "status": "resolved",
+      "notes": [
+        "Scheduler now allows a conservative single preemptive near-due refresh pass when the normal due set is empty, reducing visible quiet stretches."
+      ]
+    },
+    {
+      "id": "BL-004",
+      "priority": 4,
+      "title": "Animated bulls and bears overlay",
+      "status": "resolved",
+      "notes": [
+        "Small market critter overlay added with two chasing critters and dollar/euro bags in a constrained lower lane."
+      ]
+    },
+    {
+      "id": "BL-005",
+      "priority": 5,
+      "title": "Longer confidence validation on latest baseline",
+      "status": "resolved",
+      "notes": [
+        "Completed a fresh 60-minute direct-agent soak on 2026-05-11 with completed config, desktop, version, and fullscreen checks."
+      ]
+    },
+    {
+      "id": "TRC-001",
+      "tracking_number": "TRC-001",
+      "priority": 1,
+      "area": "macro_data",
+      "title": "Brent crude macro symbol BZ=F remains unresolved during soak runs",
+      "status": "resolved",
+      "source": "latest_circular_trace",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:89",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:120",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:620"
+      ],
+      "notes": [
+        "MacroSnapshot repeatedly reports missing_symbols=[BZ=F] while CRUDE shows a fallback-looking static value.",
+        "QuoteResolutionSummary repeatedly reports stale_symbols=[BZ=F] and macro_missing_symbols=[BZ=F].",
+        "Resolved on 2026-05-12 by routing Brent to the Stooq global-market provider using cb.f instead of treating BZ=F as a dedicated Yahoo-only warmup symbol.",
+        "Fresh VM proof ux-deep-ssh-20260512-074109 shows MacroSnapshot with CRUDE:105.20:+0.9% and missing_symbols=[]."
+      ]
+    },
+    {
+      "id": "TRC-002",
+      "tracking_number": "TRC-002",
+      "priority": 2,
+      "area": "provider_limits",
+      "title": "Yahoo warmup for Brent crude is rate-limited with HTTP 429 at startup",
+      "status": "resolved",
+      "source": "latest_circular_trace",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:28",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:29",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:30"
+      ],
+      "notes": [
+        "The startup Yahoo spark warmup for [BZ=F] fails with Too Many Requests and is deferred to later scheduled refreshes.",
+        "This appears to be the leading cause of TRC-001.",
+        "Resolved on 2026-05-12 by removing Brent from the dedicated Yahoo warmup lane, eliminating the startup 429 dependency for BZ=F.",
+        "Fresh VM proof ux-deep-ssh-20260512-074109 no longer shows startup Yahoo rate-limit failures for Brent."
+      ]
+    },
+    {
+      "id": "TRC-003",
+      "tracking_number": "TRC-003",
+      "priority": 3,
+      "area": "graph_cards",
+      "title": "Graph cards never materialize during the latest one-hour soak",
+      "status": "resolved",
+      "source": "latest_circular_trace",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:130",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:293",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:466"
+      ],
+      "notes": [
+        "ApplySceneStateComplete continues to report graph_count=0 throughout the soak.",
+        "WarmGraphsAsync repeatedly starts and is then cancelled without producing visible graph cards.",
+        "Resolved on 2026-05-12 by preserving an in-flight graph warmup across refresh ticks instead of cancelling it on each preserveLayout refresh.",
+        "Fresh VM proof ux-deep-ssh-20260512-081832 shows WarmGraphsAsync yielded SIZE, ApplyOrUpdateGraph count=1, and sustained ApplySceneStateComplete graph_count=1 for the remainder of the run."
+      ]
+    },
+    {
+      "id": "TRC-004",
+      "tracking_number": "TRC-004",
+      "priority": 4,
+      "area": "provider_label_quality",
+      "title": "Scene stays in Live+Cache (Partial) because Brent never resolves",
+      "status": "resolved",
+      "source": "latest_circular_trace",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:85",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:488",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/trace/trace.circular.log:620"
+      ],
+      "notes": [
+        "The runtime continues to operate, but the provider label remains partial because the Brent macro symbol never leaves the stale/missing set.",
+        "This is a downstream product-quality symptom of TRC-001 and TRC-002.",
+        "Resolved on 2026-05-12 as a downstream effect of the Brent reroute; QuoteResolutionSummary in ux-deep-ssh-20260512-074109 reaches remaining_symbol_count=0 and macro_missing_symbols=[].",
+        "The scene no longer remains stuck in a Brent-driven partial state during the validated 20-minute proof."
+      ]
+    },
+    {
+      "id": "TRC-005",
+      "tracking_number": "TRC-005",
+      "priority": 5,
+      "area": "diagnostics",
+      "title": "Displayed-vs-reference comparison capture yields empty comparison arrays",
+      "status": "resolved",
+      "source": "latest_reference_artifact",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619/reference-spot-check-comparisons.jsonl",
+        "build/vm/PostProcess-ReferenceSpotChecks.ps1",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-093105/reference-spot-check-comparisons.jsonl"
+      ],
+      "notes": [
+        "The original guest-side extractor produced empty comparison arrays because it tried to read the live circular trace as a normal append-only tail during the run.",
+        "Resolved on 2026-05-12 by adding host-side PostProcess-ReferenceSpotChecks.ps1, which reconstructs the pulled circular trace using trace.circular.log plus trace.circular.idx and writes non-empty DisplayedVsReferenceFeed comparisons after Pull-VmResults completes.",
+        "Guest-UxDeepExercise now treats guest-side reference spot checks as best-effort so a failed live trace read no longer fails the desktop phase.",
+        "The diagnostic is now actionable because comparison arrays are populated from real pulled VM traces rather than left empty."
+      ]
+    },
+    {
+      "id": "NWS-001",
+      "tracking_number": "NWS-001",
+      "priority": 6,
+      "area": "ai_news",
+      "title": "Douglas Adams / William Shakespeare closing quote repeats distractingly in the news ticker",
+      "status": "resolved",
+      "source": "live_ui_observation",
+      "notes": [
+        "Resolved on 2026-05-12 by separating the DeepSeek summary paragraph from the closing quotation and marking the quotation as a supplemental headline that is shown once per expanded sequence instead of being multiplied during headline expansion.",
+        "FinanceNewsService now returns the quote as a separate prefixed item, BuildNews styles and preserves that supplemental item, and ExpandHeadlineItems duplicates only normal headline items.",
+        "Validated by focused unit coverage plus a fresh green VM proof in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159."
+      ]
+    },
+    {
+      "id": "SOAK-001",
+      "tracking_number": "SOAK-001",
+      "priority": 2,
+      "area": "diagnostics",
+      "title": "Reference spot-checking remains functionally broken in the latest soak bundle",
+      "status": "resolved",
+      "source": "latest_soak_audit",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/reference-spot-checks.jsonl",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/reference-spot-check-comparisons.jsonl",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-165028/reference-spot-check-comparisons.jsonl"
+      ],
+      "notes": [
+        "The latest reference spot-check bundle records empty Results arrays and repeated errors that \"0m\" is not recognized, leaving all comparisons effectively unusable.",
+        "Resolved on 2026-05-12 by replacing invalid PowerShell decimal seed literals in both the guest and host comparison scripts and by comparing against the full displayed symbol sample instead of truncating the symbol list.",
+        "Fresh 20-minute VM proof ux-deep-ssh-20260512-165028 now writes non-empty TwelveDataQuote results and DisplayedVsReferenceFeed comparisons with concrete close matches for every sampled symbol."
+      ]
+    },
+    {
+      "id": "SOAK-002",
+      "tracking_number": "SOAK-002",
+      "priority": 3,
+      "area": "startup_quality",
+      "title": "Startup still presents a rough stale-data warmup window before recovering",
+      "status": "resolved",
+      "source": "latest_soak_audit",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-185818/ux-deep-summary.json",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-185818/trace/trace.circular.log"
+      ],
+      "notes": [
+        "Early ApplySceneStateComplete and DisplayedTapeSample trace entries still show a heavily stale first impression before the quote set recovers.",
+        "Resolved on 2026-05-12 by boosting the initial due-symbol work set during broad stale recovery and holding the scene behind a recovery overlay while the cache is still broadly stale.",
+        "Fresh 20-minute VM proof ux-deep-ssh-20260512-185818 shows BootstrapSceneBuilt with show_recovery_overlay=true, waiting_overlay_visible=true while stale_quote_count stays broadly degraded, and then drops the overlay once stale_quote_count recovers into the teens and continues to zero."
+      ]
+    },
+    {
+      "id": "SOAK-003",
+      "tracking_number": "SOAK-003",
+      "priority": 1,
+      "area": "graph_cards",
+      "title": "Graph carts are present again but the latest soak only shows a single card",
+      "status": "resolved",
+      "source": "latest_soak_audit",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/desktop-010.png",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-160820/trace/trace.circular.log",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-160820/desktop-010.png"
+      ],
+      "notes": [
+        "The one-hour soak recovers from graph_count=0, but only one graph survives the 1-day history path, leaving the scene underpopulated.",
+        "Resolved on 2026-05-12 by relaxing the 1-day history fallback so sparse recent intraday data still yields a usable short-horizon snapshot instead of being discarded for most symbols.",
+        "Fresh 20-minute VM proof ux-deep-ssh-20260512-160820 now grows the graph layer from graph_count=0 to graph_count=32, with multiple tape groups populating instead of a single surviving card."
+      ]
+    },
+    {
+      "id": "SOAK-004",
+      "tracking_number": "SOAK-004",
+      "priority": 4,
+      "area": "trace_hygiene",
+      "title": "Pulled circular trace still includes non-run testhost noise at the front",
+      "status": "resolved",
+      "source": "latest_soak_audit",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log",
+        "build/vm/artifacts/ssh-runs/trace-proof-20260512-201311/ux-deep-summary.json",
+        "build/vm/artifacts/ssh-runs/trace-proof-20260512-201311/trace/trace.circular.log"
+      ],
+      "notes": [
+        "The beginning of the pulled trace still contains unrelated testhost noise before the actual desktop soak session.",
+        "Resolved on 2026-05-12 by resetting %APPDATA%\\PortfolioSaver\\Trace at the start of Guest-UxDeepExercise.ps1 before launching the config or desktop hosts.",
+        "Fresh guest trace proof trace-proof-20260512-201311 now starts directly with the current PortfolioSaver.Config and PortfolioSaver.Desktop startup lines, with no inherited testhost noise at the front of the pulled circular trace."
+      ]
+    },
+    {
+      "id": "SOAK-005",
+      "tracking_number": "SOAK-005",
+      "priority": 5,
+      "area": "macro_bootstrap",
+      "title": "Initial macro state is briefly inconsistent before settling",
+      "status": "resolved",
+      "source": "latest_soak_audit",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260512-132159/trace/trace.circular.log",
+        "build/vm/artifacts/ssh-runs/macro-proof-20260512-203949/ux-deep-summary.json",
+        "build/vm/artifacts/ssh-runs/macro-proof-20260512-203949/trace/trace.circular.log"
+      ],
+      "notes": [
+        "Early MacroSnapshot events report missing symbols even while cached macro values are already visible, producing a brief bootstrap inconsistency.",
+        "Resolved on 2026-05-12 by separating truly missing macro symbols from stale-but-renderable ones inside TraceMacroSnapshot, so cached macro values are no longer misreported as missing.",
+        "Fresh guest macro proof macro-proof-20260512-203949 now records missing_symbols=[] while the cached startup macro values are visible, and uses stale_symbols=[...] until the live macro refresh arrives and clears them."
+      ]
+    },
+    {
+      "id": "NB-011",
+      "tracking_number": "NB-011",
+      "priority": 3,
+      "area": "startup_status_band",
+      "title": "Use the Updated line for initial-value loading feedback instead of the large waiting overlay",
+      "status": "resolved",
+      "source": "user_followup",
+      "evidence": [
+        "User requested replacing the startup announcement-style hold overlay with a flashing top-left Updated-line message."
+      ],
+      "notes": [
+        "At startup, the third status-band line should flash 'Loading initial values' until enough fresh quotes are available.",
+        "Once the initial recovery threshold is reached, the normal Updated age text should replace the loading message.",
+        "The goal is to preserve the scene presentation while making startup recovery feedback smaller and less intrusive than the current announcement-style hold state.",
+        "Resolved by removing the recovery-path waiting overlay while network is available and using the status-band Updated line as the loading indicator instead.",
+        "ScreensaverSceneControl now flashes Loading initial values on the third status-band line while StartupCoordinator.ShouldShowInitialValueLoadingStatus remains true, then automatically falls back to the normal Updated age once enough fresh quotes are present.",
+        "Validated with focused regression coverage plus the canonical 20-minute VM proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453, where the trace records updated_text=Loading initial values and waiting_overlay_visible=false at startup."
+      ]
+    },
+    {
+      "id": "NB-012",
+      "tracking_number": "NB-012",
+      "priority": 3,
+      "area": "news_ticker",
+      "title": "Replace scrolling news ticker with telegraph-style item playback",
+      "status": "resolved",
+      "source": "user_followup",
+      "evidence": [
+        "User requested a telegraph/teleprinter-like news presentation instead of continuous scrolling."
+      ],
+      "notes": [
+        "Render news in uppercase Courier-style typography.",
+        "Type characters in one by one for each item.",
+        "If an item is too long, advance it across the band item-by-item instead of using the current marquee behavior.",
+        "Terminate items in teleprinter style with STOP where appropriate.",
+        "After each item, pause briefly, clear the band, then begin the next item.",
+        "Resolved by replacing the marquee-loop NewsFlasherControl with a teleprinter playback state machine and by removing the upstream headline-expansion logic so only real items are played.",
+        "The band now types each item in uppercase Courier text, scrolls only when the fully typed line exceeds the viewport, pauses, clears, and advances to the next item.",
+        "Validated with focused news/render/config regression coverage plus the canonical 20-minute VM proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853."
+      ]
+    },
+    {
+      "id": "NB-013",
+      "tracking_number": "NB-013",
+      "priority": 2,
+      "area": "status_freshness",
+      "title": "Drive the Updated time from the last S&P 500 refresh in Global Markets",
+      "status": "resolved",
+      "source": "user_followup",
+      "evidence": [
+        "User requested that the top-left Updated field reflect the last update time of the S&P 500 value shown in Global Markets."
+      ],
+      "notes": [
+        "Use the S&P 500 item in Global Markets as the freshness anchor for the top-left Updated line.",
+        "The displayed Updated age should track the last refresh timestamp for that S&P 500 payload rather than a broader scene-level or provider-level fallback timestamp.",
+        "If the S&P 500 value is unavailable, define a clear fallback behavior during implementation.",
+        "Resolved by teaching both StartupCoordinator and ScreensaverSceneControl to prefer the ^SPX FetchTimestampUtc when computing the top-left Updated age.",
+        "Fallback behavior is the newest available quote timestamp when ^SPX is unavailable.",
+        "Validated with focused regression coverage plus the canonical 20-minute VM proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-164439."
+      ]
+    },
+    {
+      "id": "NB-014",
+      "tracking_number": "NB-014",
+      "priority": 1,
+      "area": "global_markets_accuracy",
+      "title": "Investigate stale or inaccurate S&P 500 values in Global Markets",
+      "status": "resolved",
+      "source": "user_followup",
+      "evidence": [
+        "User observed the app showing S&P 500 at -0.60% while the actual market value was approximately -0.89%."
+      ],
+      "notes": [
+        "Investigate whether the S&P 500 feed, scheduler, cache, symbol mapping, market-hours handling, or display-layer freshness rules are causing stale or lagging values.",
+        "The specific concern is that even after an apparent refresh, the S&P 500 value in Global Markets may still not reflect the latest market reading.",
+        "This ticket is about data correctness, not just timestamp labeling.",
+        "Resolved by routing ^SPX through the Yahoo Finance v8 spark/chart path instead of the dedicated quote endpoint path that was lagging or failing for this symbol.",
+        "StartupCoordinator now keeps ^SPX out of the Stooq world-index lane and reserves it for the dedicated Yahoo pass, while YahooFinanceQuoteProvider explicitly avoids the quote endpoint for ^SPX.",
+        "Verified in the canonical VM harness proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-160454 where trace lines show ProviderReturnedQuotes / provider=Yahoo Finance v8 / requested_symbols=[^SPX] / fetched_symbols=[^SPX] and world_index_missing_symbols=[]."
+      ]
+    },
+    {
+      "id": "NB-015",
+      "tracking_number": "NB-015",
+      "priority": 2,
+      "area": "desktop_window_shell",
+      "title": "Constrain window sizing and formalize restored, maximized, and fullscreen behaviors",
+      "status": "resolved",
+      "source": "user_followup",
+      "evidence": [
+        "User requested a fixed minimum usable window size, a controlled restored size, standard maximized windowed behavior, and reliable true fullscreen behavior."
+      ],
+      "notes": [
+        "Compute the minimum usable application window size that avoids distortion or cutoff.",
+        "Use that computed size as the fixed restored window size rather than allowing arbitrary user resizing.",
+        "Maximized windowed mode should use the normal work area outside the Windows taskbar, keeping the menu bar and full window chrome visible.",
+        "View -> Full Screen should occupy the entire screen, with F11 toggling fullscreen and Esc exiting back to windowed mode.",
+        "In restored and maximized windowed modes, the menu bar and window frame must remain completely visible.",
+        "Resolved by enforcing a fixed 1180x720 restored size, constraining maximized windowed mode to SystemParameters.WorkArea, and suppressing resize/state constraint callbacks while fullscreen transitions clear work-area caps and reapply virtual-screen bounds after the style switch settles.",
+        "Validated with focused DesktopShellMigrationTests and VmHarnessScriptTests, a full 242 / 242 local test pass, and the canonical 20-minute VM proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-194351 where ConfigPhaseStatus=Completed, DesktopPhaseStatus=Completed, DesktopVersionCheck=Passed, and FullScreenToggleStatus=Completed."
+      ]
+    },
+    {
+      "id": "NB-016",
+      "tracking_number": "NB-016",
+      "priority": 2,
+      "area": "graph_cards",
+      "title": "Graph cards should align the visually emphasized latest segment with the current quote direction",
+      "status": "resolved",
+      "source": "user_followup",
+      "evidence": [
+        "User observed graph cards whose historical line still looked green while the latest displayed value was red."
+      ],
+      "notes": [
+        "The chosen fix was to preserve the mixed historical red and green segments while re-drawing only the latest segment on top using the current quote direction color.",
+        "HistoricalGraphBuilder now seeds a dedicated LatestSegmentPoints overlay, ScreensaverSceneControl updates LatestSegmentBrush from the live quote direction, and FloatingGraphControl renders that last-segment overlay above the historical segments.",
+        "Validated with focused ScreensaverRenderBehaviorTests covering both the dedicated overlay binding and ApplyQuoteToGraph alignment of LatestSegmentBrush with the current quote direction."
+      ]
+    },
+    {
+      "id": "NB-017",
+      "tracking_number": "NB-017",
+      "priority": 2,
+      "area": "news_ticker",
+      "title": "Refine teleprinter news playback to better match the YouTube reference effect",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User provided a YouTube clip as the desired reference behavior after the initial teleprinter conversion was already implemented."
+      ],
+      "notes": [
+        "The broad teleprinter shift is already in place under NB-012, but the later YouTube reference implies a more specific target feel.",
+        "This ticket covers type-on cadence, per-item dwell timing, clear-and-next transitions, and overall resemblance to the reference clip rather than only the presence of uppercase teleprinter styling."
+      ]
+    },
+    {
+      "id": "NB-018",
+      "tracking_number": "NB-018",
+      "priority": 3,
+      "area": "animated_overlays",
+      "title": "Disable the bull and bear critters for now",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User explicitly requested disabling the critters temporarily."
+      ],
+      "notes": [
+        "A local-only disable was reported in chat, but that request was not previously promoted into the tracked backlog.",
+        "This ticket keeps the temporary product decision explicit until the critters are either formally removed or intentionally re-enabled."
+      ]
+    },
+    {
+      "id": "NB-019",
+      "tracking_number": "NB-019",
+      "priority": 2,
+      "area": "startup_freshness_policy",
+      "title": "Audit remaining startup surfaces so no stale value is shown where a waiting state would be safer",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User stated the operating principle that at startup no value is better than a stale value."
+      ],
+      "notes": [
+        "Global Markets and macro cards have already been updated to prefer waiting cues over stale cached values at startup.",
+        "This ticket covers the broader policy audit: identify any other startup surfaces that still show stale values and convert them to a waiting or blank state until sufficiently fresh data is available."
+      ]
+    },
+    {
+      "id": "NB-020",
+      "tracking_number": "NB-020",
+      "priority": 2,
+      "area": "desktop_launch_flow",
+      "title": "Make test launches follow true application flow by opening the desktop app first and launching configuration from the menu",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested replacing the screensaver-like validation order where the config applet launches first with a truer application-like flow."
+      ],
+      "notes": [
+        "The current UX validation harness still treats the configuration app as the first phase before the desktop app.",
+        "This ticket changes the validation posture so the desktop app launches first and configuration is exercised from the desktop menu path, matching the intended product experience more closely."
+      ]
+    },
+    {
+      "id": "NB-021",
+      "tracking_number": "NB-021",
+      "priority": 1,
+      "area": "manual_ui_qa",
+      "title": "Create and execute a full manual UI QA suite covering every configurable option and resilience edge case",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested a full manual UI QA suite with per-setting validation and idiot-proofing coverage."
+      ],
+      "notes": [
+        "Exercise each configurable item one by one and verify that configuration changes are actually reflected in runtime behavior.",
+        "Include resilience and idiot-proofing coverage such as empty API keys, partially empty key sets, nonsensical slider values, and strange advanced-option combinations.",
+        "The output should be a repeatable manual QA checklist plus findings, not just ad hoc spot checks."
+      ]
+    },
+    {
+      "id": "NB-022",
+      "tracking_number": "NB-022",
+      "priority": 2,
+      "area": "display_compatibility",
+      "title": "Validate the product across a range of monitor sizes and aspect ratios supported by the VM",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested testing from small laptop-like displays through large and ultra-wide layouts as much as the VM supports."
+      ],
+      "notes": [
+        "Exercise the UI on multiple VM display sizes, including small roughly 12-inch laptop-like resolutions, larger desktop resolutions, and ultra-wide shapes when supported.",
+        "Capture layout, clipping, spacing, and fullscreen behavior issues that only appear at certain display sizes or aspect ratios."
+      ]
+    },
+    {
+      "id": "NB-023",
+      "tracking_number": "NB-023",
+      "priority": 1,
+      "area": "architecture_refactor",
+      "title": "Extract a clean service-ready data engine boundary between retrieval/orchestration and UI rendering",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested a major refactor to cleanly separate data retrieval from UI rendering so the architecture can later support a Windows service and more controlled provider parallelism."
+      ],
+      "notes": [
+        "Manual code-review validation summary: the core diagnosis remains correct, but the ticket must explicitly account for three seams that are easy to underestimate. First, StartupCoordinator is not just long; it directly constructs concrete infrastructure such as QuoteCacheService, multiple provider implementations, ProviderHealthService, FinanceNewsService, ScreensaverSettingsService, SymbolProfileStore, and ExchangePhotoCacheService. Second, settings, secrets, traces, and caches are still user-profile rooted through PathHelper and ProviderSecretStoreService, which means a future service-ready engine needs explicit settings/secrets abstractions rather than assuming those concerns can stay ambient. Third, several orchestration types still live under the PortfolioSaver.Screensaver.Services namespace even though the product is desktop-first, so namespace and composition cleanup should be treated as part of the refactor rather than deferred as mere polish.",
+        "Current diagnosis: the repository already has a meaningful provider layer under src/PortfolioSaver.Data and domain models under src/PortfolioSaver.Core, but the main runtime orchestration still lives in src/PortfolioSaver.Presentation/Services/StartupCoordinator.cs. StartupCoordinator is approximately 1800 lines and currently owns quote scheduling, provider fallback ordering, startup warmup policy, graph warmup, news refresh orchestration, cache usage, freshness logic, tracing, and scene-shaping decisions. ScreensaverSceneControl is over 2100 lines and still depends on some of that orchestration behavior directly. FinanceNewsService and ScreensaverSettingsService also sit in the same runtime namespace, reinforcing that the retrieval/runtime layer is not yet cleanly separated from the product surface.",
+        "The goal of this ticket is not merely to prepare for a future Windows service. The deeper goal is to establish a stable architectural seam that improves concurrency, testability, startup behavior, scheduling clarity, and future maintainability while keeping the existing desktop product working throughout the migration.",
+        "Target architecture: keep PortfolioSaver.Core for immutable models, enums, validation rules, and provider policy definitions; keep PortfolioSaver.Data for raw provider clients, caches, symbol metadata, and persistence helpers; introduce a new middle layer such as PortfolioSaver.DataEngine for quote scheduling, provider execution planning, budget/rate-limit enforcement, snapshot aggregation, startup/warmup policy, historical warmup coordination, and news scheduling; leave PortfolioSaver.Presentation focused on view-model shaping, animation, scene-state rendering, and UX display policy. Introduce explicit abstractions for settings access, secret resolution, cache paths, trace sinks, and clock/network probes so the engine is not tied directly to user-profile helpers or UI-era service classes. A future PortfolioSaver.DataService host may run the same DataEngine later, but the refactor should not depend on introducing a Windows service immediately.",
+        "Non-goal: do not attempt a big-bang rewrite, do not re-architect the locked VM harness in the process, and do not start by adding arbitrary multithreading. Parallel provider execution should be a controlled outcome of the new engine boundary, not the first step.",
+        "Phase 0 - dependency audit and boundary contracts: before moving logic, catalog every concrete dependency currently new'ed inside StartupCoordinator and related runtime services, then introduce abstractions for settings access, secret resolution, cache/storage access, trace logging, network availability, time, and provider factories. Acceptance: DataEngine can be composed from contracts rather than constructing environment-bound helpers internally.",
+        "Phase 1 - seam definition: define engine-facing contracts for quote snapshots, quote-refresh requests/results, provider execution plans, freshness anchors, startup readiness, and historical/news work items. During this phase, copy as little behavior as possible; prefer extracting interfaces and pure helper types first. Acceptance: Presentation can depend on an engine contract instead of directly owning provider ladder decisions.",
+        "Phase 2 - extract scheduler and provider orchestration: move refresh-window building, due-symbol selection, stagger logic, provider plan ordering, rate-limit cooldown handling, partial-result handling, and quote-merge logic out of StartupCoordinator into DataEngine services. Keep concurrency behavior semantically equivalent at first. Acceptance: unit tests can validate scheduling and provider fallback behavior without constructing WPF controls or scene state.",
+        "Phase 3 - extract startup/warmup and freshness policies: move initial stale-data recovery logic, dedicated Yahoo warmup rules, graph warmup coordination, startup readiness thresholds, and status freshness anchor calculation into the engine layer. Acceptance: the engine can produce a clean startup state model such as loading, warming, live, partial, stale without the scene control owning the logic directly.",
+        "Phase 4 - extract news orchestration and runtime settings access: move summarized news scheduling, feed selection cadence, cache decisions, and teleprinter item preparation into engine-facing services while keeping the visual teleprinter playback itself in Presentation. At the same time, split settings read/write concerns from runtime settings consumption so the engine depends on a read model rather than the settings UI service classes directly. Acceptance: news retrieval and news rendering become distinct responsibilities and the engine is no longer coupled to ScreensaverSettingsService.",
+        "Phase 5 - scene adaptation and namespace cleanup: reduce StartupCoordinator to a thin adapter that asks DataEngine for a state snapshot and maps that into ScreensaverSceneState and view models. Rename or relocate residual runtime classes out of PortfolioSaver.Screensaver.Services where appropriate so the desktop-first architecture is reflected clearly. Acceptance: StartupCoordinator becomes a compositional facade instead of the core runtime brain, and service names/namespaces no longer imply legacy ownership of the modern runtime layer.",
+        "Phase 6 - optional controlled concurrency: once the engine owns scheduling, add bounded async worker lanes by concern or provider group, for example Yahoo quotes, provider fallbacks, historical warmup, news, and treasury/macros. Use bounded concurrency, explicit cooldown/budget gates, deterministic merge rules, and structured tracing. Acceptance: parallelism improves cadence without introducing nondeterministic UI regressions.",
+        "Phase 7 - future service host feasibility review: only after the in-process DataEngine is stable should we evaluate adding a PortfolioSaver.DataService Windows service host. That later review must explicitly address secrets ownership, per-user versus machine-wide settings, IPC contract choice such as named pipes or gRPC over named pipes, installer behavior, and support burden. This ticket does not require implementing the service host itself.",
+        "Key risks to manage: duplicated logic during migration, freshness regressions, cache/secrets path confusion, over-eager concurrency creating race conditions, over-coupling the engine to user-profile storage, and accidental coupling back from Presentation into the engine. Mitigations: move one concern at a time, keep trace semantics stable, add regression tests before each extraction, and insist on small commits that preserve the canonical VM proof path.",
+        "Required regression coverage during the refactor: scheduling tests, provider fallback tests, stale/fresh classification tests, startup readiness tests, news cadence tests, graph warmup tests, settings/secrets abstraction tests, and at each major phase a canonical VM proof through the locked harness. No phase should be considered complete if local tests are green but the canonical VM path is broken.",
+        "Definition of done for the full ticket: a new engine layer exists; StartupCoordinator is dramatically reduced and no longer owns most provider orchestration logic; Presentation consumes engine snapshots rather than managing retrieval policy directly; provider scheduling is testable without WPF; settings and secret access are abstracted cleanly enough that a later service host would not require another deep untangling; the canonical VM harness remains the validation baseline; and the resulting architecture is ready for a later optional Windows service host without forcing another major refactor."
+      ]
+    },
+    {
+      "id": "NB-024",
+      "tracking_number": "NB-024",
+      "priority": 3,
+      "area": "branding",
+      "title": "Create and wire an app-specific icon to replace the current generic icon",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested an icon appropriate for the product instead of the current generic application icon."
+      ],
+      "notes": [
+        "Design or source a product-appropriate icon for DO NOT PANIC PORTFOLIO VISUALIZER.",
+        "Ensure the icon is applied consistently across the desktop app, config app, installer surfaces where relevant, and any packaging metadata that currently falls back to a generic executable icon.",
+        "Validate the icon at common Windows sizes so it remains readable in taskbar, Alt-Tab, title bar, and Explorer contexts."
+      ]
+    },
+    {
+      "id": "TRC-006",
+      "tracking_number": "TRC-006",
+      "priority": 1,
+      "area": "data_accuracy",
+      "title": "Investigate reference drift for core ETF values during otherwise healthy retrieval passes",
+      "status": "open",
+      "source": "latest_circular_trace",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/reference-spot-check-comparisons.jsonl",
+        "The sampled DisplayedVsReferenceFeed comparisons report drift for VOO, IJH, and IJR while other sampled symbols remain close."
+      ],
+      "notes": [
+        "At least one latest sampled comparison showed VOO, IJH, and IJR materially off versus the reference feed while VEA, VWO, VSS, EFV, and EFG were close.",
+        "This must be investigated as either a true displayed-value freshness bug, a provider-source inconsistency, or a reference-comparison timing/source mismatch."
+      ]
+    },
+    {
+      "id": "TRC-007",
+      "tracking_number": "TRC-007",
+      "priority": 2,
+      "area": "startup_recovery",
+      "title": "Startup stale-data burn-down still takes multiple refresh cycles before the scene becomes fully live",
+      "status": "open",
+      "source": "latest_circular_trace",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:100",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:183",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:267"
+      ],
+      "notes": [
+        "The retrieval engine recovers cleanly, but stale_quote_count still steps down across several passes from 25 to 17 to 9 before reaching zero later in the run.",
+        "This is not a catastrophic failure, but it remains a startup-quality and freshness concern worth tightening."
+      ]
+    },
+    {
+      "id": "TRC-008",
+      "tracking_number": "TRC-008",
+      "priority": 3,
+      "area": "status_telemetry",
+      "title": "Provider label still reports Live+Cache even when stale_quote_count has fallen to zero",
+      "status": "open",
+      "source": "latest_circular_trace",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:1672",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:1759"
+      ],
+      "notes": [
+        "Later ApplySceneStateComplete events show stale_quote_count=0 while provider_text still renders Provider: Live+Cache.",
+        "This appears to be a status-label semantics issue rather than a retrieval failure, but it makes the runtime telemetry less truthful than it could be."
+      ]
+    },
+    {
+      "id": "NB-025",
+      "tracking_number": "NB-025",
+      "priority": 2,
+      "area": "diagnostics",
+      "title": "Completely remove the feature that sends traces to remote syslog",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested full removal of remote syslog trace forwarding."
+      ],
+      "notes": [
+        "Remove runtime support, configuration paths, and any dormant integration points related to sending PortfolioSaver traces to a remote syslog target.",
+        "The goal is to keep tracing local and bundle-based only, without any remote trace forwarding behavior remaining in the product."
+      ]
+    },
+    {
+      "id": "TRC-009",
+      "tracking_number": "TRC-009",
+      "priority": 4,
+      "area": "trace_semantics",
+      "title": "Startup recovery/loading trace semantics do not match actual scene behavior",
+      "status": "open",
+      "source": "latest_circular_trace",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:7",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:8",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:14"
+      ],
+      "notes": [
+        "BootstrapSceneBuilt reports show_recovery_overlay=true while the next ApplySceneState reports waiting=False and ApplySceneStateComplete reports waiting_overlay_visible=false.",
+        "This may reflect intentional product behavior after the startup UX changes, but the trace semantics no longer describe the actual scene behavior truthfully."
+      ]
+    },
+    {
+      "id": "TRC-010",
+      "tracking_number": "TRC-010",
+      "priority": 5,
+      "area": "trace_semantics",
+      "title": "ClockMarketDataSummary startup counts are misleading when exchanges are intentionally hidden pending fresh values",
+      "status": "open",
+      "source": "latest_circular_trace",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:11"
+      ],
+      "notes": [
+        "At startup the trace reports populated_exchange_count=0 and missing_exchange_count=0 simultaneously.",
+        "If hidden-until-fresh exchanges are neither populated nor missing, the summary needs clearer semantics so startup diagnostics stay useful."
+      ]
+    },
+    {
+      "id": "TRC-011",
+      "tracking_number": "TRC-011",
+      "priority": 6,
+      "area": "startup_status",
+      "title": "Updated field is blank at initial startup instead of explicitly signaling loading",
+      "status": "open",
+      "source": "latest_circular_trace",
+      "evidence": [
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:14"
+      ],
+      "notes": [
+        "The first ApplySceneStateComplete snapshot shows updated_text blank while stale_quote_count=49 and startup recovery is still in progress.",
+        "This weakens the startup-status story and may contradict the intended Loading initial values behavior on the status band."
+      ]
+    },
+    {
+      "id": "NB-026",
+      "tracking_number": "NB-026",
+      "priority": 1,
+      "area": "release_readiness",
+      "title": "Run a full code-review, cleanup, dry-run, smoke-test, documentation, and final check-in pass",
+      "status": "resolved",
+      "source": "user_followup",
+      "evidence": [
+        "User requested a highest-priority next run covering code review, code-comment cleanup, dry run, smoke test, documentation review/update, and final commit/push."
+      ],
+      "notes": [
+        "Perform a full line-by-line code review of the active codebase and clean up issues found during the pass.",
+        "Perform a full line-by-line cleanup of code comments, removing stale, noisy, misleading, or redundant comments and improving any comments that remain necessary.",
+        "Run a full dry run through the canonical workflow to catch integration issues before smoke validation.",
+        "Run a full smoke test using the locked canonical VM harness and verify the core launch, config, desktop, fullscreen, startup-freshness, and data-update behaviors still hold.",
+        "Review and update the project documentation/workbooks so they accurately match the final working code and harness state after the cleanup pass.",
+        "Commit everything and push everything once the pass is complete and validated.",
+        "Completed on 2026-05-18 with a line-by-line review pass over the highest-risk runtime and harness files, a stale comment cleanup, a full local Release build, a 245 / 245 green test run, a clean publish-safe-temp dry run, and a canonical green 20-minute VM smoke validation in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260518-075758.",
+        "No documentation drift requiring content changes was found during the final workbook review; the docs were confirmed accurate against the current locked harness and runtime state.",
+        "The only blocker during execution was a temporary SSH credential expiry, which was resolved before the final canonical push and smoke run succeeded."
+      ]
+    }
+  ]
 }
