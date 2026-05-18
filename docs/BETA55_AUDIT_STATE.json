@@ -968,14 +968,15 @@
       "priority": 6,
       "area": "startup_status",
       "title": "Updated field is blank at initial startup instead of explicitly signaling loading",
-      "status": "open",
+      "status": "resolved",
       "source": "latest_circular_trace",
       "evidence": [
         "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:14"
       ],
       "notes": [
-        "The first ApplySceneStateComplete snapshot shows updated_text blank while stale_quote_count=49 and startup recovery is still in progress.",
-        "This weakens the startup-status story and may contradict the intended Loading initial values behavior on the status band."
+        "The first ApplySceneStateComplete snapshot showed updated_text blank while stale_quote_count=49 and startup recovery was still in progress.",
+        "Resolved on 2026-05-18 by keeping the Updated line explicitly set to Loading initial values throughout startup recovery instead of blinking it to empty.",
+        "Focused startup/render validation passed 82/82 across ScreensaverRenderBehaviorTests and StartupCoordinatorAdvancedTests."
       ]
     },
     {

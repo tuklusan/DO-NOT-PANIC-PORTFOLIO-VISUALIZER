@@ -2353,8 +2353,7 @@ public partial class ScreensaverSceneControl : UserControl
 
         if (StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow()))
         {
-            bool showMessage = GetReferenceUtcNow().Second % 2 == 0;
-            _statusViewModel.UpdatedText = showMessage ? "Loading initial values" : string.Empty;
+            _statusViewModel.UpdatedText = "Loading initial values";
             return;
         }
 
