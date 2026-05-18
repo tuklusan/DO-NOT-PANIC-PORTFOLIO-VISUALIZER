@@ -1121,7 +1121,7 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void TickerTape_WaitingGlyphLivesBesideSymbolWithoutReplacingStaleValues()
+    public void TickerTape_WaitingGlyphLivesBesideSymbolWhileWaitingValuesStayBlank()
     {
         string tapeCode = File.ReadAllText(Path.Combine(
             GetRepoRoot(),

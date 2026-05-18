@@ -26,7 +26,7 @@ public sealed class StartupCoordinatorTapeItemTests
     }
 
     [Fact]
-    public void BuildTapeItem_StaleQuote_KeepsLastKnownValuesWhileFlaggingWaitState()
+    public void BuildTapeItem_StaleQuote_HidesValuesWhileFlaggingWaitState()
     {
         DateTimeOffset now = new(2026, 4, 10, 12, 0, 0, TimeSpan.Zero);
         QuoteSnapshot staleQuote = new()
@@ -44,8 +44,8 @@ public sealed class StartupCoordinatorTapeItemTests
         Assert.True(item.IsWaitingOnData);
         Assert.False(item.HasMissingData);
         Assert.Equal("🕒", item.WaitingGlyphText);
-        Assert.Equal("100.00", item.LastText);
-        Assert.Equal("+1.00%", item.ChangeText);
+        Assert.Equal(string.Empty, item.LastText);
+        Assert.Equal(string.Empty, item.ChangeText);
     }
 
     [Fact]

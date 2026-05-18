@@ -747,14 +747,16 @@
       "priority": 2,
       "area": "startup_freshness_policy",
       "title": "Audit remaining startup surfaces so no stale value is shown where a waiting state would be safer",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User stated the operating principle that at startup no value is better than a stale value."
       ],
       "notes": [
-        "Global Markets and macro cards have already been updated to prefer waiting cues over stale cached values at startup.",
-        "This ticket covers the broader policy audit: identify any other startup surfaces that still show stale values and convert them to a waiting or blank state until sufficiently fresh data is available."
+        "Global Markets and macro cards had already been updated to prefer waiting cues over stale cached values at startup.",
+        "Resolved on 2026-05-18 after auditing the remaining startup surfaces and updating ticker tape items so stale startup quotes keep the symbol and waiting glyph but no longer show stale numeric values.",
+        "Graph cards already hide stale startup quotes, and startup news/status surfaces now use explicit loading states instead of stale values.",
+        "Focused startup/render/tape validation passed 87/87."
       ]
     },
     {

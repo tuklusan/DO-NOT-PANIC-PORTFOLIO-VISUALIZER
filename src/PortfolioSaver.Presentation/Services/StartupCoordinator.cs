@@ -1144,8 +1144,11 @@ public sealed class StartupCoordinator
         bool hasUsableValue = last is not null;
         bool isMissing = !hasUsableValue;
         bool isStale = !isMissing && IsQuoteBeyondStaleThreshold(quote, settings, nowUtc);
-        string lastText = last is decimal lastValue ? lastValue.ToString("0.00", CultureInfo.InvariantCulture) : string.Empty;
-        string percentText = percent is decimal percentValue
+        bool hideValuesUntilFresh = isStale || isMissing;
+        string lastText = !hideValuesUntilFresh && last is decimal lastValue
+            ? lastValue.ToString("0.00", CultureInfo.InvariantCulture)
+            : string.Empty;
+        string percentText = !hideValuesUntilFresh && percent is decimal percentValue
             ? $"{(percentValue >= 0 ? "+" : string.Empty)}{percentValue:0.00}%"
             : string.Empty;
         Brush changeBrush = percent switch
@@ -1160,7 +1163,7 @@ public sealed class StartupCoordinator
             SymbolText = symbol,
             LastText = lastText,
             ChangeText = percentText,
-            IsWaitingOnData = isStale || isMissing,
+            IsWaitingOnData = hideValuesUntilFresh,
             HasMissingData = isMissing,
             WaitingGlyphText = isMissing ? "◌" : "🕒",
             WaitingGlyphForeground = isMissing ? Brushes.DarkOrange : Brushes.Goldenrod,
