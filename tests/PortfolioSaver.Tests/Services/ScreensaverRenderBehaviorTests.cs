@@ -1013,6 +1013,10 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("city.IndexChangeText = \"--\";", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("city.IndexChangeForeground = Brushes.Goldenrod;", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("city.MiniGraphPoints = [];", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("List<string> loadingSymbols = [];", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("loadingSymbols.Add(city.ExchangeSymbol);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new KeyValuePair<string, object?>(\"loading_exchange_count\", loadingSymbols.Count)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new KeyValuePair<string, object?>(\"loading_exchange_symbols\", loadingSymbols.Take(10).ToList())", sceneCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]

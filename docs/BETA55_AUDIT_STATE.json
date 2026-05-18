@@ -952,14 +952,15 @@
       "priority": 5,
       "area": "trace_semantics",
       "title": "ClockMarketDataSummary startup counts are misleading when exchanges are intentionally hidden pending fresh values",
-      "status": "open",
+      "status": "resolved",
       "source": "latest_circular_trace",
       "evidence": [
         "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:11"
       ],
       "notes": [
-        "At startup the trace reports populated_exchange_count=0 and missing_exchange_count=0 simultaneously.",
-        "If hidden-until-fresh exchanges are neither populated nor missing, the summary needs clearer semantics so startup diagnostics stay useful."
+        "At startup the trace reported populated_exchange_count=0 and missing_exchange_count=0 simultaneously.",
+        "Resolved on 2026-05-18 by adding explicit loading_exchange_count and loading_exchange_symbols fields so intentionally held-back exchanges are reported truthfully during startup recovery.",
+        "Focused render validation passed 45/45."
       ]
     },
     {

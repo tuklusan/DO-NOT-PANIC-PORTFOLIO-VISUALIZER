@@ -1283,6 +1283,7 @@ public partial class ScreensaverSceneControl : UserControl
             return;
 
         List<string> missingSymbols = [];
+        List<string> loadingSymbols = [];
         int populatedCount = 0;
         bool loadingInitialValues = StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow());
         foreach (ClockCityViewModel city in _clockViewModel.Cities.Where(city => city.ShowExchangeDetails))
@@ -1298,6 +1299,7 @@ public partial class ScreensaverSceneControl : UserControl
 
             if (loadingInitialValues)
             {
+                loadingSymbols.Add(city.ExchangeSymbol);
                 city.IndexValueText = GlobalMarketsWaitingGlyph;
                 city.IndexChangeText = "--";
                 city.IndexChangeForeground = Brushes.Goldenrod;
@@ -1354,6 +1356,8 @@ public partial class ScreensaverSceneControl : UserControl
             TraceSceneState(
                 "ClockMarketDataSummary",
                 new KeyValuePair<string, object?>("populated_exchange_count", populatedCount),
+                new KeyValuePair<string, object?>("loading_exchange_count", loadingSymbols.Count),
+                new KeyValuePair<string, object?>("loading_exchange_symbols", loadingSymbols.Take(10).ToList()),
                 new KeyValuePair<string, object?>("missing_exchange_count", missingSymbols.Count),
                 new KeyValuePair<string, object?>("missing_exchange_symbols", missingSymbols.Take(10).ToList()));
         }
