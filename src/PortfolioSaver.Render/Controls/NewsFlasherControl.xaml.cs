@@ -297,6 +297,7 @@ public partial class NewsFlasherControl : UserControl
         if (string.IsNullOrWhiteSpace(normalized))
             return string.Empty;
 
+        normalized = Regex.Replace(normalized, @"[\u0000-\u001F\u007F]+", " ");
         normalized = Regex.Replace(normalized, @"\s+", " ");
         string upper = normalized.ToUpperInvariant();
         return upper.EndsWith(" STOP", StringComparison.Ordinal) ? upper : upper + " STOP";

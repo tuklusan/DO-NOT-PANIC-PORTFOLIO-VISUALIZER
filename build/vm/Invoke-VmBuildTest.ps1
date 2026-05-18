@@ -9,6 +9,9 @@ param(
     [int]$GuestScreensaverDurationMinutes = 20,
     [ValidateRange(1, 3600)]
     [int]$CaptureIntervalSeconds = 5,
+    [int]$DisplayWidth,
+    [int]$DisplayHeight,
+    [string]$DisplayProfile,
     [int]$BuildTimeoutSeconds = 3600,
     [int]$UxTimeoutSeconds = 2400
 )
@@ -169,6 +172,9 @@ if (Test-Path '$remoteAgentStatus') {
                 ResultRootPath = (Join-Path $RootPath 'results')
                 ScreensaverDurationMinutes = $GuestScreensaverDurationMinutes
                 CaptureIntervalSeconds = $CaptureIntervalSeconds
+                DisplayWidth = if ($DisplayWidth -gt 0) { $DisplayWidth } else { $null }
+                DisplayHeight = if ($DisplayHeight -gt 0) { $DisplayHeight } else { $null }
+                DisplayProfile = if (-not [string]::IsNullOrWhiteSpace($DisplayProfile)) { $DisplayProfile } else { $null }
             }
         } | ConvertTo-Json -Depth 5
         Write-VmSshStep "Queuing UX run through desktop-session agent"

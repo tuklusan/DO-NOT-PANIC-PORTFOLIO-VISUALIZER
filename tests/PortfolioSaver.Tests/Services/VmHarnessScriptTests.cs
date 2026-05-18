@@ -71,6 +71,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Guest-ConfigureDesktopAutomation.ps1", script, StringComparison.Ordinal);
         Assert.Contains("Guest-ApplyTestSecrets.ps1", script, StringComparison.Ordinal);
         Assert.Contains("[ValidateRange(1, 10080)]", script, StringComparison.Ordinal);
+        Assert.Contains("[int]$DisplayWidth", script, StringComparison.Ordinal);
+        Assert.Contains("[int]$DisplayHeight", script, StringComparison.Ordinal);
+        Assert.Contains("[string]$DisplayProfile", script, StringComparison.Ordinal);
         Assert.Contains("agent\\agent-status.json", script, StringComparison.Ordinal);
         Assert.Contains("agent\\command-results\\$uxResultName.result.json", script, StringComparison.Ordinal);
         Assert.Contains("commands\\$uxResultName.json", script, StringComparison.Ordinal);
@@ -79,6 +82,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Queuing UX run through desktop-session agent", script, StringComparison.Ordinal);
         Assert.Contains("Set-Content -LiteralPath $localAgentCommandPath -Encoding UTF8", script, StringComparison.Ordinal);
         Assert.Contains("Send-VmItem -Bundle $bundle -LocalPath $localAgentCommandPath", script, StringComparison.Ordinal);
+        Assert.Contains("DisplayWidth = if ($DisplayWidth -gt 0) { $DisplayWidth } else { $null }", script, StringComparison.Ordinal);
+        Assert.Contains("DisplayHeight = if ($DisplayHeight -gt 0) { $DisplayHeight } else { $null }", script, StringComparison.Ordinal);
+        Assert.Contains("DisplayProfile = if (-not [string]::IsNullOrWhiteSpace($DisplayProfile)) { $DisplayProfile } else { $null }", script, StringComparison.Ordinal);
         Assert.Contains("PostProcess-ReferenceSpotChecks.ps1", script, StringComparison.Ordinal);
         Assert.Contains("LOCAL_RESULT_DIR=", script, StringComparison.Ordinal);
         Assert.Contains("Timed out waiting for remote desktop-session agent heartbeat", script, StringComparison.Ordinal);
@@ -126,6 +132,21 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Invoke-AutomationElement", script, StringComparison.Ordinal);
         Assert.Contains("Expand-AutomationElement", script, StringComparison.Ordinal);
         Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait('%o')", script, StringComparison.Ordinal);
+        Assert.Contains("function Find-DescendantByNameAndControlType", script, StringComparison.Ordinal);
+        Assert.Contains("function Find-TabItemByName", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-RepresentativeExerciseControls", script, StringComparison.Ordinal);
+        Assert.Contains("function Validate-AndCloseConfigWindow", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-ProcessOwnedWindows", script, StringComparison.Ordinal);
+        Assert.Contains("function Close-ConfigWindowIfPresent", script, StringComparison.Ordinal);
+        Assert.Contains("function Click-AutomationElementCenter", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-ConfigStatusText", script, StringComparison.Ordinal);
+        Assert.Contains("$window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 2", script, StringComparison.Ordinal);
+        Assert.Contains("Get-RepresentativeExerciseControls -Controls (Get-ExerciseControls -Window $window) -MaximumCount 8", script, StringComparison.Ordinal);
+        Assert.Contains("Find-DescendantByNameAndControlType -Root $Window -Name 'Validate'", script, StringComparison.Ordinal);
+        Assert.Contains("$statusText -like '*Validation passed. Saving and closing in *'", script, StringComparison.Ordinal);
+        Assert.Contains("Validate-AndCloseConfigWindow -Process $desktop -Window $window", script, StringComparison.Ordinal);
+        Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')", script, StringComparison.Ordinal);
+        Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait('%{F4}')", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Start-Process -FilePath $configExe", script, StringComparison.Ordinal);
     }
 
@@ -141,10 +162,16 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[string]$RootPath", script, StringComparison.Ordinal);
         Assert.Contains("[string]$ResultRootPath", script, StringComparison.Ordinal);
         Assert.Contains("[ValidateRange(1, 10080)]", script, StringComparison.Ordinal);
+        Assert.Contains("[int]$DisplayWidth", script, StringComparison.Ordinal);
+        Assert.Contains("[int]$DisplayHeight", script, StringComparison.Ordinal);
+        Assert.Contains("[string]$DisplayProfile = 'default'", script, StringComparison.Ordinal);
         Assert.Contains("$root = $RootPath", script, StringComparison.Ordinal);
         Assert.Contains("$summary.ExportMode = 'LocalWorkspace'", script, StringComparison.Ordinal);
         Assert.Contains("$localTraceTarget = Join-Path $results 'trace'", script, StringComparison.Ordinal);
         Assert.Contains("function Reset-PortfolioTraceRoot", script, StringComparison.Ordinal);
+        Assert.Contains("function Try-ApplyDisplayResolution", script, StringComparison.Ordinal);
+        Assert.Contains("RequestedDisplayProfile", script, StringComparison.Ordinal);
+        Assert.Contains("RuntimeDesktopResolution = Get-CurrentVirtualScreenSize", script, StringComparison.Ordinal);
         Assert.Contains("Reset-PortfolioTraceRoot", script, StringComparison.Ordinal);
         Assert.Contains("$summary.DesktopPhaseStatus = \"Running\"", script, StringComparison.Ordinal);
         Assert.Contains("Write-SummaryFiles", script, StringComparison.Ordinal);

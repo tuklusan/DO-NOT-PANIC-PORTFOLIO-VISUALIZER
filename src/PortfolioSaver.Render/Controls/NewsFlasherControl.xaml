@@ -39,6 +39,8 @@
                     <TextBlock x:Name="ActiveHeadlineBlock"
                                TextTrimming="None"
                                TextWrapping="NoWrap"
+                               LineStackingStrategy="BlockLineHeight"
+                               LineHeight="19"
                                FontFamily="Courier New"
                                FontSize="17"
                                FontWeight="Bold"

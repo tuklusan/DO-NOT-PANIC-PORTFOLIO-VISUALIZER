@@ -242,11 +242,25 @@ internal static class Program
             string launcherPath = Path.Combine(scriptsPath, $"agent-launch-{resultName}.cmd");
             int duration = command.Payload?.ScreensaverDurationMinutes ?? 20;
             int captureInterval = command.Payload?.CaptureIntervalSeconds ?? 5;
+            int? displayWidth = command.Payload?.DisplayWidth;
+            int? displayHeight = command.Payload?.DisplayHeight;
+            string? displayProfile = command.Payload?.DisplayProfile;
+            string displayArguments = string.Empty;
+            if (displayWidth.HasValue && displayHeight.HasValue && displayWidth.Value > 0 && displayHeight.Value > 0)
+            {
+                displayArguments = $" -DisplayWidth {displayWidth.Value} -DisplayHeight {displayHeight.Value}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(displayProfile))
+            {
+                displayArguments += $" -DisplayProfile \"{displayProfile.Replace("\"", "\\\"")}\"";
+            }
+
             string launcherContents = string.Join(Environment.NewLine, new[]
             {
                 "@echo off",
                 $"cd /d \"{_rootPath}\"",
-                $"\"{_pwshPath}\" -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"{_uxScript}\" -RootPath \"{_rootPath}\" -ResultName \"{resultName}\" -ResultRootPath \"{resultRoot}\" -ScreensaverDurationMinutes {duration} -CaptureIntervalSeconds {captureInterval} 1>\"{stdoutPath}\" 2>\"{stderrPath}\""
+                $"\"{_pwshPath}\" -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"{_uxScript}\" -RootPath \"{_rootPath}\" -ResultName \"{resultName}\" -ResultRootPath \"{resultRoot}\" -ScreensaverDurationMinutes {duration} -CaptureIntervalSeconds {captureInterval}{displayArguments} 1>\"{stdoutPath}\" 2>\"{stderrPath}\""
             });
             File.WriteAllText(launcherPath, launcherContents);
 
@@ -419,6 +433,9 @@ internal static class Program
         public string? ResultRootPath { get; set; }
         public int? ScreensaverDurationMinutes { get; set; }
         public int? CaptureIntervalSeconds { get; set; }
+        public int? DisplayWidth { get; set; }
+        public int? DisplayHeight { get; set; }
+        public string? DisplayProfile { get; set; }
         public string? OutputPath { get; set; }
         public bool ForceRestart { get; set; }
     }

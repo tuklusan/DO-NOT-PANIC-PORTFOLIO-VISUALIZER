@@ -3,6 +3,9 @@ param(
     [int]$ScreensaverDurationMinutes = 6,
     [ValidateRange(1, 3600)]
     [int]$CaptureIntervalSeconds = 5,
+    [int]$DisplayWidth,
+    [int]$DisplayHeight,
+    [string]$DisplayProfile = 'default',
     [string]$RootPath = (Join-Path $env:USERPROFILE 'Desktop\PortfolioVmUx'),
     [string]$ResultName = ('ux-deep-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
     [string]$ResultRootPath
@@ -30,6 +33,74 @@ public static class NativeWindowBounds {
 
     [DllImport("user32.dll")]
     public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+}
+"@
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class NativeMouseInput {
+    public const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+    public const uint MOUSEEVENTF_LEFTUP = 0x0004;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SetCursorPos(int x, int y);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
+}
+"@
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class NativeDisplaySettings {
+    public const int ENUM_CURRENT_SETTINGS = -1;
+    public const int CDS_UPDATEREGISTRY = 0x00000001;
+    public const int CDS_GLOBAL = 0x00000008;
+    public const int DISP_CHANGE_SUCCESSFUL = 0;
+    public const int DM_PELSWIDTH = 0x00080000;
+    public const int DM_PELSHEIGHT = 0x00100000;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public struct DEVMODE {
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string dmDeviceName;
+        public short dmSpecVersion;
+        public short dmDriverVersion;
+        public short dmSize;
+        public short dmDriverExtra;
+        public int dmFields;
+        public int dmPositionX;
+        public int dmPositionY;
+        public int dmDisplayOrientation;
+        public int dmDisplayFixedOutput;
+        public short dmColor;
+        public short dmDuplex;
+        public short dmYResolution;
+        public short dmTTOption;
+        public short dmCollate;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string dmFormName;
+        public short dmLogPixels;
+        public int dmBitsPerPel;
+        public int dmPelsWidth;
+        public int dmPelsHeight;
+        public int dmDisplayFlags;
+        public int dmDisplayFrequency;
+        public int dmICMMethod;
+        public int dmICMIntent;
+        public int dmMediaType;
+        public int dmDitherType;
+        public int dmReserved1;
+        public int dmReserved2;
+        public int dmPanningWidth;
+        public int dmPanningHeight;
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)]
+    public static extern bool EnumDisplaySettings(string deviceName, int modeNum, ref DEVMODE devMode);
+
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)]
+    public static extern int ChangeDisplaySettings(ref DEVMODE devMode, int flags);
 }
 "@
 
@@ -156,13 +227,38 @@ function Get-ProcessWindowElement {
 function Get-TabItems {
     param($Window)
 
-    $tabCondition = New-Object System.Windows.Automation.PropertyCondition(
-        [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
-        [System.Windows.Automation.ControlType]::TabItem)
-    $tabs = $Window.FindAll([System.Windows.Automation.TreeScope]::Descendants, $tabCondition)
-    $result = @()
-    foreach ($t in $tabs) { $result += $t }
-    return $result
+    try {
+        $tabCondition = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+            [System.Windows.Automation.ControlType]::TabItem)
+        $tabs = $Window.FindAll([System.Windows.Automation.TreeScope]::Descendants, $tabCondition)
+        $result = @()
+        foreach ($t in $tabs) { $result += $t }
+        return $result
+    }
+    catch {
+        return @()
+    }
+}
+
+function Find-TabItemByName {
+    param(
+        [Parameter(Mandatory = $true)]$Window,
+        [Parameter(Mandatory = $true)][string]$TabName
+    )
+
+    foreach ($tab in @(Get-TabItems -Window $Window)) {
+        try {
+            if ([string]$tab.Current.Name -eq $TabName) {
+                return $tab
+            }
+        }
+        catch {
+            continue
+        }
+    }
+
+    return $null
 }
 
 function Select-TabItem {
@@ -197,16 +293,21 @@ function Get-ExerciseControls {
             $ct)
     }
 
-    $orCondition = New-Object System.Windows.Automation.OrCondition($conditions)
-    $all = $Window.FindAll([System.Windows.Automation.TreeScope]::Descendants, $orCondition)
+    try {
+        $orCondition = New-Object System.Windows.Automation.OrCondition($conditions)
+        $all = $Window.FindAll([System.Windows.Automation.TreeScope]::Descendants, $orCondition)
 
-    $list = @()
-    foreach ($c in $all) {
-        if ($c.Current.IsOffscreen) { continue }
-        $list += $c
+        $list = @()
+        foreach ($c in $all) {
+            if ($c.Current.IsOffscreen) { continue }
+            $list += $c
+        }
+
+        return $list | Sort-Object { $_.Current.BoundingRectangle.Top }, { $_.Current.BoundingRectangle.Left }
     }
-
-    return $list | Sort-Object { $_.Current.BoundingRectangle.Top }, { $_.Current.BoundingRectangle.Left }
+    catch {
+        return @()
+    }
 }
 
 function Close-ConfigChildWindows {
@@ -324,6 +425,60 @@ function Exercise-Control {
     }
 }
 
+function Get-RepresentativeExerciseControls {
+    param(
+        [Parameter(Mandatory = $true)]$Controls,
+        [int]$MaximumCount = 10
+    )
+
+    $selected = @()
+    $seenKeys = New-Object 'System.Collections.Generic.HashSet[string]'
+    $preferredTypes = @(
+        [System.Windows.Automation.ControlType]::Edit.ProgrammaticName,
+        [System.Windows.Automation.ControlType]::CheckBox.ProgrammaticName,
+        [System.Windows.Automation.ControlType]::ComboBox.ProgrammaticName,
+        [System.Windows.Automation.ControlType]::Slider.ProgrammaticName
+    )
+
+    foreach ($preferredType in $preferredTypes) {
+        foreach ($control in $Controls) {
+            try {
+                if ($control.Current.ControlType.ProgrammaticName -ne $preferredType) { continue }
+
+                $name = [string]$control.Current.Name
+                $automationId = [string]$control.Current.AutomationId
+                $key = '{0}|{1}|{2}' -f $preferredType, $automationId, $name
+                if (-not $seenKeys.Add($key)) { continue }
+
+                $selected += $control
+                break
+            }
+            catch {
+                continue
+            }
+        }
+    }
+
+    foreach ($control in $Controls) {
+        if ($selected.Count -ge $MaximumCount) { break }
+        try {
+            $type = $control.Current.ControlType.ProgrammaticName
+            if ($type -eq [System.Windows.Automation.ControlType]::Button.ProgrammaticName) { continue }
+
+            $name = [string]$control.Current.Name
+            $automationId = [string]$control.Current.AutomationId
+            $key = '{0}|{1}|{2}' -f $type, $automationId, $name
+            if (-not $seenKeys.Add($key)) { continue }
+            $selected += $control
+        }
+        catch {
+            continue
+        }
+    }
+
+    return @($selected | Select-Object -First $MaximumCount)
+}
+
 function Find-ElementMetadataByProcessId {
     param(
         [int]$ProcessId,
@@ -406,6 +561,9 @@ $summary = [ordered]@{
     Notes = @()
     PlannedScreensaverDurationMinutes = $ScreensaverDurationMinutes
     CaptureIntervalSeconds = $CaptureIntervalSeconds
+    RequestedDisplayProfile = $DisplayProfile
+    RequestedDisplayWidth = if ($DisplayWidth -gt 0) { $DisplayWidth } else { $null }
+    RequestedDisplayHeight = if ($DisplayHeight -gt 0) { $DisplayHeight } else { $null }
 }
 
 $summaryPath = Join-Path $results 'ux-deep-summary.json'
@@ -450,6 +608,53 @@ function Reset-PortfolioTraceRoot {
     }
 
     New-Item -ItemType Directory -Force -Path $traceRoot | Out-Null
+}
+
+function Get-CurrentVirtualScreenSize {
+    $screen = [System.Windows.Forms.SystemInformation]::VirtualScreen
+    return [pscustomobject]@{
+        Width = $screen.Width
+        Height = $screen.Height
+    }
+}
+
+function Try-ApplyDisplayResolution {
+    param(
+        [int]$Width,
+        [int]$Height
+    )
+
+    if ($Width -le 0 -or $Height -le 0) {
+        return [pscustomobject]@{
+            Applied = $false
+            RequestedWidth = $null
+            RequestedHeight = $null
+            ResultCode = $null
+        }
+    }
+
+    $mode = New-Object NativeDisplaySettings+DEVMODE
+    $mode.dmSize = [System.Runtime.InteropServices.Marshal]::SizeOf([type]([NativeDisplaySettings+DEVMODE]))
+    if (-not [NativeDisplaySettings]::EnumDisplaySettings($null, [NativeDisplaySettings]::ENUM_CURRENT_SETTINGS, [ref]$mode)) {
+        return [pscustomobject]@{
+            Applied = $false
+            RequestedWidth = $Width
+            RequestedHeight = $Height
+            ResultCode = 'enum-failed'
+        }
+    }
+
+    $mode.dmPelsWidth = $Width
+    $mode.dmPelsHeight = $Height
+    $mode.dmFields = [NativeDisplaySettings]::DM_PELSWIDTH -bor [NativeDisplaySettings]::DM_PELSHEIGHT
+    $result = [NativeDisplaySettings]::ChangeDisplaySettings([ref]$mode, [NativeDisplaySettings]::CDS_UPDATEREGISTRY -bor [NativeDisplaySettings]::CDS_GLOBAL)
+    Start-Sleep -Seconds 2
+    return [pscustomobject]@{
+        Applied = ($result -eq [NativeDisplaySettings]::DISP_CHANGE_SUCCESSFUL)
+        RequestedWidth = $Width
+        RequestedHeight = $Height
+        ResultCode = $result
+    }
 }
 
 function Write-ReferenceSpotCheck {
@@ -701,18 +906,15 @@ function Find-ConfigWindow {
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     do {
-        $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
-            [System.Windows.Automation.TreeScope]::Descendants,
-            [System.Windows.Automation.Condition]::TrueCondition)
-        foreach ($window in $windows) {
-            if ($window.Current.ProcessId -ne $Process.Id) { continue }
-
-            $title = [string]$window.Current.Name
-            $automationId = [string]$window.Current.AutomationId
-            if ($automationId -eq 'DesktopMainWindow') { continue }
-            if ($window.Current.ControlType -eq [System.Windows.Automation.ControlType]::Window -and
-                $title -like '*PORTFOLIO VISUALIZER Config*') {
-                return $window
+        foreach ($window in @(Get-ProcessOwnedWindows -Process $Process)) {
+            try {
+                $title = [string]$window.Current.Name
+                if ($title -like '*PORTFOLIO VISUALIZER Config*') {
+                    return $window
+                }
+            }
+            catch {
+                continue
             }
         }
 
@@ -720,6 +922,97 @@ function Find-ConfigWindow {
     } while ((Get-Date) -lt $deadline)
 
     return $null
+}
+
+function Get-ProcessOwnedWindows {
+    param(
+        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process
+    )
+
+    try {
+        $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+            [System.Windows.Automation.TreeScope]::Descendants,
+            [System.Windows.Automation.Condition]::TrueCondition)
+
+        $ownedWindows = @()
+        for ($index = 0; $index -lt $windows.Count; $index++) {
+            try {
+                $window = $windows.Item($index)
+                if ($null -eq $window) { continue }
+                if ($window.Current.ProcessId -ne $Process.Id) { continue }
+                if ($window.Current.ControlType -ne [System.Windows.Automation.ControlType]::Window) { continue }
+                if ([string]$window.Current.AutomationId -eq 'DesktopMainWindow') { continue }
+                $ownedWindows += $window
+            }
+            catch {
+                continue
+            }
+        }
+
+        return @($ownedWindows)
+    }
+    catch {
+        return @()
+    }
+}
+
+function Close-ConfigWindowIfPresent {
+    param(
+        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process,
+        $Window
+    )
+
+    $ownedWindows = @(Get-ProcessOwnedWindows -Process $Process)
+    if ($null -eq $Window -and $ownedWindows.Count -eq 0) {
+        return
+    }
+
+    for ($attempt = 0; $attempt -lt 6; $attempt++) {
+        $windowsToClose = @(Get-ProcessOwnedWindows -Process $Process)
+        if ($null -ne $Window) {
+            $windowsToClose = @($Window) + @($windowsToClose | Where-Object { $_ -ne $Window })
+        }
+
+        if ($windowsToClose.Count -eq 0) {
+            return
+        }
+
+        foreach ($candidate in ($windowsToClose | Sort-Object { if ([string]$_.Current.Name -like '*PORTFOLIO VISUALIZER Config*') { 1 } else { 0 } })) {
+            try {
+                $windowPattern = $candidate.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
+                $windowPattern.Close()
+            }
+            catch {
+                try {
+                    $candidate.SetFocus()
+                    try { [System.Windows.Forms.SendKeys]::SendWait('{ENTER}') } catch {}
+                    Start-Sleep -Milliseconds 160
+                    try { [System.Windows.Forms.SendKeys]::SendWait('{ESC}') } catch {}
+                    Start-Sleep -Milliseconds 160
+                    try { [System.Windows.Forms.SendKeys]::SendWait('%{F4}') } catch {}
+                }
+                catch {
+                    try {
+                        [void](Focus-ProcessWindow -Process $Process)
+                        [System.Windows.Forms.SendKeys]::SendWait('%{F4}')
+                    }
+                    catch {
+                        try { [System.Windows.Forms.SendKeys]::SendWait('{ESC}') } catch {}
+                    }
+                }
+            }
+
+            Start-Sleep -Milliseconds 250
+        }
+
+        Start-Sleep -Milliseconds 500
+        $remainingWindows = @(Get-ProcessOwnedWindows -Process $Process)
+        if ($remainingWindows.Count -eq 0) {
+            return
+        }
+
+        $Window = $remainingWindows | Where-Object { [string]$_.Current.Name -like '*PORTFOLIO VISUALIZER Config*' } | Select-Object -First 1
+    }
 }
 
 function Find-DescendantByAutomationId {
@@ -732,7 +1025,34 @@ function Find-DescendantByAutomationId {
         [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
         $AutomationId)
 
-    return $Root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+    try {
+        return $Root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+    }
+    catch {
+        return $null
+    }
+}
+
+function Find-DescendantByNameAndControlType {
+    param(
+        [Parameter(Mandatory = $true)]$Root,
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)]$ControlType
+    )
+
+    $nameCondition = New-Object System.Windows.Automation.PropertyCondition(
+        [System.Windows.Automation.AutomationElement]::NameProperty,
+        $Name)
+    $controlCondition = New-Object System.Windows.Automation.PropertyCondition(
+        [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+        $ControlType)
+    $condition = New-Object System.Windows.Automation.AndCondition($nameCondition, $controlCondition)
+    try {
+        return $Root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+    }
+    catch {
+        return $null
+    }
 }
 
 function Invoke-AutomationElement {
@@ -746,6 +1066,116 @@ function Invoke-AutomationElement {
     catch {
         return $false
     }
+}
+
+function Click-AutomationElementCenter {
+    param([Parameter(Mandatory = $true)]$Element)
+
+    try {
+        $bounds = $Element.Current.BoundingRectangle
+        if ($null -eq $bounds -or $bounds.Width -le 1 -or $bounds.Height -le 1) {
+            return $false
+        }
+
+        $x = [int]([Math]::Round($bounds.Left + ($bounds.Width / 2.0)))
+        $y = [int]([Math]::Round($bounds.Top + ($bounds.Height / 2.0)))
+        [void][NativeMouseInput]::SetCursorPos($x, $y)
+        Start-Sleep -Milliseconds 80
+        [NativeMouseInput]::mouse_event([NativeMouseInput]::MOUSEEVENTF_LEFTDOWN, 0, 0, 0, [UIntPtr]::Zero)
+        Start-Sleep -Milliseconds 40
+        [NativeMouseInput]::mouse_event([NativeMouseInput]::MOUSEEVENTF_LEFTUP, 0, 0, 0, [UIntPtr]::Zero)
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+function Get-ConfigStatusText {
+    param(
+        [Parameter(Mandatory = $true)]$Window
+    )
+
+    try {
+        $texts = $Window.FindAll(
+            [System.Windows.Automation.TreeScope]::Descendants,
+            (New-Object System.Windows.Automation.PropertyCondition(
+                [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+                [System.Windows.Automation.ControlType]::Text)))
+
+        for ($index = 0; $index -lt $texts.Count; $index++) {
+            $text = [string]$texts.Item($index).Current.Name
+            if ([string]::IsNullOrWhiteSpace($text)) { continue }
+            if ($text -like '*Validation passed. Saving and closing in *' -or
+                $text -like '*saved at *' -or
+                $text -like '*Click Validate.*' -or
+                $text -like '*Loading initial values*') {
+                return $text.Trim()
+            }
+        }
+    }
+    catch {}
+
+    return $null
+}
+
+function Validate-AndCloseConfigWindow {
+    param(
+        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process,
+        $Window
+    )
+
+    for ($attempt = 0; $attempt -lt 2; $attempt++) {
+        Close-ConfigChildWindows -MainProcessId $Process.Id
+        $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 2
+
+        if ($null -eq $Window) {
+            return $true
+        }
+
+        $validateButton = Find-DescendantByNameAndControlType -Root $Window -Name 'Validate' -ControlType ([System.Windows.Automation.ControlType]::Button)
+        if ($null -eq $validateButton) {
+            $script:summary.Notes += 'Validate button could not be located in the config window.'
+            break
+        }
+
+        try { $validateButton.SetFocus() } catch {}
+        $invoked = Click-AutomationElementCenter -Element $validateButton
+        if (-not $invoked) {
+            $invoked = Invoke-AutomationElement -Element $validateButton
+        }
+        if (-not $invoked) {
+            try { [System.Windows.Forms.SendKeys]::SendWait(' ') } catch {}
+            Start-Sleep -Milliseconds 150
+            try { [System.Windows.Forms.SendKeys]::SendWait('{ENTER}') } catch {}
+        }
+
+        $deadline = (Get-Date).AddSeconds(15)
+        $sawValidatedCountdown = $false
+        do {
+            Start-Sleep -Milliseconds 250
+            $Process.Refresh()
+            Close-ConfigChildWindows -MainProcessId $Process.Id
+            $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
+            if ($null -ne $Window) {
+                $statusText = Get-ConfigStatusText -Window $Window
+                if (-not [string]::IsNullOrWhiteSpace($statusText) -and
+                    $statusText -like '*Validation passed. Saving and closing in *') {
+                    $sawValidatedCountdown = $true
+                }
+            }
+        } while ($null -ne $Window -and (Get-Date) -lt $deadline)
+
+        if ($null -eq $Window) {
+            return $true
+        }
+
+        if ($sawValidatedCountdown) {
+            $script:summary.Notes += 'Observed validation success countdown, but config window still remained after timeout.'
+        }
+    }
+
+    return $false
 }
 
 function Expand-AutomationElement {
@@ -945,6 +1375,16 @@ Start-Transcript -Path $logPath -Force | Out-Null
 
 try {
     Reset-PortfolioTraceRoot
+    $displayApply = Try-ApplyDisplayResolution -Width $DisplayWidth -Height $DisplayHeight
+    $summary.DisplayResolutionChange = $displayApply
+    $summary.RuntimeDesktopResolution = Get-CurrentVirtualScreenSize
+    if ($DisplayWidth -gt 0 -and $DisplayHeight -gt 0 -and -not $displayApply.Applied) {
+        $summary.Notes += "Requested display resolution ${DisplayWidth}x${DisplayHeight} could not be applied; result code $($displayApply.ResultCode)."
+    }
+    elseif ($DisplayWidth -gt 0 -and $DisplayHeight -gt 0) {
+        $summary.Notes += "Requested display resolution ${DisplayWidth}x${DisplayHeight} applied before UX run."
+    }
+    Write-SummaryFiles
     Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     $desktop = $null
     $window = $null
@@ -1002,17 +1442,34 @@ try {
 
         $tabs = Get-TabItems -Window $window
         if ($tabs.Count -eq 0) { throw 'No tab items found in config window.' }
+        $tabNames = @(
+            $tabs |
+                ForEach-Object {
+                    try { [string]$_.Current.Name } catch { $null }
+                } |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        )
 
         $shotIndex = 1
-        foreach ($tab in $tabs) {
+        foreach ($rawTabName in $tabNames) {
+            $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 2
+            if ($null -eq $window) {
+                throw 'Config window disappeared during tab traversal.'
+            }
+
+            $tab = Find-TabItemByName -Window $window -TabName $rawTabName
+            if ($null -eq $tab) {
+                $summary.Notes += "Could not reacquire tab '$rawTabName'; skipping."
+                continue
+            }
+
             [void](Select-TabItem -Tab $tab)
-            $tabName = "tab"
-            try { $tabName = (($tab.Current.Name -replace '[^A-Za-z0-9_-]','_')) } catch {}
+            $tabName = ($rawTabName -replace '[^A-Za-z0-9_-]','_')
             Capture-Screen -Path (Join-Path $results ("config-tab-{0:D3}-{1}.png" -f $shotIndex, $tabName))
             $summary.ConfigShots++
             $shotIndex++
 
-            $controls = Get-ExerciseControls -Window $window
+            $controls = Get-RepresentativeExerciseControls -Controls (Get-ExerciseControls -Window $window) -MaximumCount 8
             $invokedButtons = New-Object 'System.Collections.Generic.HashSet[string]'
             $controlIndex = 1
             foreach ($control in $controls) {
@@ -1035,12 +1492,17 @@ try {
                 $controlIndex++
 
                 Close-ConfigChildWindows -MainProcessId $desktop.Id
-
-                if ($controlIndex -gt 400) {
-                    $summary.Notes += "Control traversal capped at 400 controls on tab '$tabName'."
-                    break
+                $refreshedWindow = Find-ConfigWindow -Process $desktop -TimeoutSeconds 1
+                if ($null -ne $refreshedWindow) {
+                    $window = $refreshedWindow
                 }
+
+                if ($controlIndex -gt 32) { break }
             }
+        }
+
+        if (-not (Validate-AndCloseConfigWindow -Process $desktop -Window $window)) {
+            $summary.Notes += 'Validate did not close the config window automatically; falling back to forced close.'
         }
 
         $summary.ConfigPhaseStatus = "Completed"
@@ -1048,19 +1510,17 @@ try {
     }
     catch {
         $summary.ConfigPhaseStatus = "Failed"
-        $summary.Notes += "Config phase error: $($_.Exception.Message)"
+        $position = if ($_.InvocationInfo -and -not [string]::IsNullOrWhiteSpace($_.InvocationInfo.PositionMessage)) {
+            $_.InvocationInfo.PositionMessage.Trim()
+        }
+        else {
+            'position unavailable'
+        }
+        $summary.Notes += "Config phase error: $($_.Exception.Message) @ $position"
         Write-SummaryFiles
     }
     finally {
-        if ($null -ne $window) {
-            try {
-                $windowPattern = $window.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
-                $windowPattern.Close()
-            }
-            catch {
-                try { [System.Windows.Forms.SendKeys]::SendWait('{ESC}') } catch {}
-            }
-        }
+        Close-ConfigWindowIfPresent -Process $desktop -Window $window
         Start-Sleep -Seconds 1
     }
 
