@@ -11,6 +11,38 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class ApiKeyValidationServiceTests
 {
     [Fact]
+    public async Task ValidateAsync_EmptyKeys_ReportRequiredErrors()
+    {
+        ApiKeyValidationService service = CreateService(new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)));
+        ApiKeyValidationResult result = await service.ValidateAsync(Defaults.CreateSettings());
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.Contains("Finnhub API key is required.", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, error => error.Contains("Twelve Data API key is required.", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, error => error.Contains("Tiingo API key is required.", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, error => error.Contains("Financial Modeling Prep API key is required.", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, error => error.Contains("EODHD API key is required.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ValidateAsync_PlaceholderKeys_ReportInstallerSampleFormatErrors()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.FinnhubApiKey = "abcdefghijklmnopqrstuvwxyz01234567890abc";
+        settings.TwelveDataApiKey = "abcdefghijklmnopqrstuvwxyz012345";
+        settings.TiingoApiKey = "abcdefghijklmnopqrstuvwxyz01234567890abc";
+        settings.FinancialModelingPrepApiKey = "abcdefghijklmnopqrstuvwxyz012345";
+        settings.EodhdApiKey = "abcdefghijklmn.01234567";
+
+        ApiKeyValidationService service = CreateService(new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)));
+        ApiKeyValidationResult result = await service.ValidateAsync(settings);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.Contains("installer sample format", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(5, result.Errors.Count);
+    }
+
+    [Fact]
     public async Task ValidateAsync_AcceptsTiingoWithoutLegacyResampleFreqProbe()
     {
         RecordingHandler handler = new(request =>

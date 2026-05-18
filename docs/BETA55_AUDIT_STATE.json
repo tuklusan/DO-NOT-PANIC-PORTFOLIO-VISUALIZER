@@ -782,7 +782,7 @@
       "priority": 1,
       "area": "manual_ui_qa",
       "title": "Create and execute a full manual UI QA suite covering every configurable option and resilience edge case",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested a full manual UI QA suite with per-setting validation and idiot-proofing coverage."
@@ -790,7 +790,7 @@
       "notes": [
         "Exercise each configurable item one by one and verify that configuration changes are actually reflected in runtime behavior.",
         "Include resilience and idiot-proofing coverage such as empty API keys, partially empty key sets, nonsensical slider values, and strange advanced-option combinations.",
-        "The output should be a repeatable manual QA checklist plus findings, not just ad hoc spot checks."
+        "Resolved on 2026-05-18 by adding docs/MANUAL_UI_QA_SUITE.md and docs/MANUAL_UI_QA_RESULTS_2026-05-18.md, executing the desktop-first canonical VM sweep in ux-deep-ssh-20260518-104146, and running the focused config validation set with 36/36 passing tests."
       ]
     },
     {
