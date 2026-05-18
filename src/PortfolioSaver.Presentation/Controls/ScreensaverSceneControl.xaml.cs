@@ -2388,6 +2388,13 @@ public partial class ScreensaverSceneControl : UserControl
             return;
 
         _statusViewModel.ProviderText = CompactProviderText(_statusViewModel.ProviderText);
+
+        if (_latestQuotes.Count > 0 &&
+            _latestQuotes.Values.All(quote => !IsQuoteBeyondStaleThreshold(quote)) &&
+            string.Equals(_statusViewModel.ProviderText, "Provider: Live+Cache", StringComparison.Ordinal))
+        {
+            _statusViewModel.ProviderText = "Provider: Live";
+        }
     }
 
     private static string CompactProviderText(string providerText)

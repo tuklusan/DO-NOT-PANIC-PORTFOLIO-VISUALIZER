@@ -899,7 +899,7 @@
       "priority": 3,
       "area": "status_telemetry",
       "title": "Provider label still reports Live+Cache even when stale_quote_count has fallen to zero",
-      "status": "open",
+      "status": "resolved",
       "source": "latest_circular_trace",
       "evidence": [
         "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:1672",
@@ -907,7 +907,8 @@
       ],
       "notes": [
         "Later ApplySceneStateComplete events show stale_quote_count=0 while provider_text still renders Provider: Live+Cache.",
-        "This appears to be a status-label semantics issue rather than a retrieval failure, but it makes the runtime telemetry less truthful than it could be."
+        "This appears to be a status-label semantics issue rather than a retrieval failure, but it makes the runtime telemetry less truthful than it could be.",
+        "Resolved on 2026-05-18 by collapsing the top-band provider text from Live+Cache to Live once all current quotes are beyond the stale threshold. Focused render validation passed 45 / 45."
       ]
     },
     {

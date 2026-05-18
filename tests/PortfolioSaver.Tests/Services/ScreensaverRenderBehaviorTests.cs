@@ -725,6 +725,49 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void ProviderStatusText_DropsCacheSuffixOnceAllQuotesAreLive()
+    {
+        RunOnSta(() =>
+        {
+            ScreensaverSceneControl control = new();
+            StatusBarViewModel status = new() { ProviderText = "Provider: Cboe + Finnhub + Cache, ^SPX Updated 0s ago" };
+
+            FieldInfo statusField = typeof(ScreensaverSceneControl).GetField(
+                "_statusViewModel",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_statusViewModel field not found.");
+            statusField.SetValue(control, status);
+
+            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+                "_latestQuotes",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_latestQuotes field not found.");
+            latestQuotesField.SetValue(
+                control,
+                new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["^SPX"] = new QuoteSnapshot
+                    {
+                        Symbol = "^SPX",
+                        Last = 100m,
+                        PreviousClose = 99m,
+                        FetchTimestampUtc = DateTimeOffset.UtcNow,
+                        IsStale = false
+                    }
+                });
+
+            MethodInfo compactMethod = typeof(ScreensaverSceneControl).GetMethod(
+                "CompactStatusText",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("CompactStatusText method not found.");
+
+            compactMethod.Invoke(control, []);
+
+            Assert.Equal("Provider: Live", status.ProviderText);
+        });
+    }
+
+    [Fact]
     public void StatusFreshness_IsRecomputedFromLatestQuoteTimestamps()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
