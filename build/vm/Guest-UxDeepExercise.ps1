@@ -458,7 +458,7 @@ function Write-ReferenceSpotCheck {
         [Parameter(Mandatory = $true)][int]$CaptureIndex
     )
 
-    $displayedSample = @(Get-LatestDisplayedTapeSample)
+    $displayedSample = @(Get-PreferredDisplayedTapeSample)
     $symbols = if ($displayedSample.Count -gt 0) {
         @($displayedSample | Select-Object -ExpandProperty Symbol -Unique | Select-Object -First 6)
     }
@@ -546,6 +546,78 @@ function Get-LatestDisplayedTapeSample {
     }
 
     return @($items)
+}
+
+function Test-IsDisplayedSampleFullyLive {
+    param([Parameter(Mandatory = $true)][object[]]$DisplayedSample)
+
+    if ($DisplayedSample.Count -eq 0) {
+        return $false
+    }
+
+    return -not ($DisplayedSample | Where-Object { [string]$_.State -ne 'live' } | Select-Object -First 1)
+}
+
+function Get-PreferredDisplayedTapeSample {
+    $tracePath = Join-Path $env:APPDATA 'PortfolioSaver\Trace\trace.circular.log'
+    if (-not (Test-Path $tracePath)) {
+        return @()
+    }
+
+    $tailText = Read-TextFileTailShared -Path $tracePath -MaxBytes 524288
+    if ([string]::IsNullOrWhiteSpace($tailText)) {
+        return @()
+    }
+
+    $sampleLines = @(($tailText -split "`r?`n") |
+        Where-Object { $_ -like '*event=DisplayedTapeSample*' })
+    if ($sampleLines.Count -eq 0) {
+        return @()
+    }
+
+    $parsedSamples = New-Object System.Collections.Generic.List[object]
+    foreach ($line in $sampleLines) {
+        $match = [regex]::Match($line, 'sample=\[(.*)\]\s*$')
+        if (-not $match.Success) {
+            continue
+        }
+
+        $sampleText = $match.Groups[1].Value
+        if ([string]::IsNullOrWhiteSpace($sampleText)) {
+            continue
+        }
+
+        $items = New-Object System.Collections.Generic.List[object]
+        foreach ($entry in ($sampleText -split ', ')) {
+            $parts = $entry -split '~', 4
+            if ($parts.Count -lt 4) {
+                continue
+            }
+
+            $items.Add([pscustomobject]@{
+                Symbol = $parts[0]
+                LastText = $parts[1]
+                ChangeText = $parts[2]
+                State = $parts[3]
+            })
+        }
+
+        if ($items.Count -gt 0) {
+            $parsedSamples.Add(@($items))
+        }
+    }
+
+    if ($parsedSamples.Count -eq 0) {
+        return @()
+    }
+
+    foreach ($sample in (@($parsedSamples) | Select-Object -Reverse)) {
+        if (Test-IsDisplayedSampleFullyLive -DisplayedSample $sample) {
+            return @($sample)
+        }
+    }
+
+    return @($parsedSamples[$parsedSamples.Count - 1])
 }
 
 function Read-TextFileTailShared {

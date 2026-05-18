@@ -109,6 +109,28 @@ function Parse-DisplayedTapeSamples {
     return @($records)
 }
 
+function Test-IsDisplayedSampleFullyLive {
+    param([Parameter(Mandatory = $true)]$SampleRecord)
+
+    $items = @($SampleRecord.DisplayedSample)
+    if ($items.Count -eq 0) {
+        return $false
+    }
+
+    return -not ($items | Where-Object { [string]$_.State -ne 'live' } | Select-Object -First 1)
+}
+
+function Get-PreferredDisplayedTapeSample {
+    param([Parameter(Mandatory = $true)][object[]]$Samples)
+
+    $fullyLive = @($Samples | Where-Object { Test-IsDisplayedSampleFullyLive -SampleRecord $_ })
+    if ($fullyLive.Count -gt 0) {
+        return $fullyLive[-1]
+    }
+
+    return $Samples[-1]
+}
+
 function Get-ReferenceResults {
     param([Parameter(Mandatory = $true)][string[]]$Symbols)
 
@@ -265,13 +287,15 @@ $samples = Parse-DisplayedTapeSamples -TraceText $traceText
 
 $sampleRecords = @()
 $comparisonRecords = @()
-foreach ($sample in @($samples | Select-Object -Last 1)) {
+$preferredSample = if ($samples.Count -gt 0) { Get-PreferredDisplayedTapeSample -Samples $samples } else { $null }
+foreach ($sample in @($preferredSample)) {
     $symbols = @($sample.DisplayedSample | Select-Object -ExpandProperty Symbol -Unique)
     $reference = Get-ReferenceResults -Symbols $symbols
     $sampleRecords += [pscustomobject]@{
         CapturedAt = $sample.CapturedAt
         CaptureIndex = $sample.CaptureIndex
         Source = [string]$reference.Source
+        SampleSelection = if (Test-IsDisplayedSampleFullyLive -SampleRecord $sample) { 'latest-fully-live' } else { 'latest-available' }
         Symbols = $symbols
         DisplayedSample = @($sample.DisplayedSample)
         Results = @($reference.Results)
@@ -283,6 +307,7 @@ foreach ($sample in @($samples | Select-Object -Last 1)) {
         CaptureIndex = $sample.CaptureIndex
         Source = 'DisplayedVsReferenceFeed'
         ReferenceSource = [string]$reference.Source
+        SampleSelection = if (Test-IsDisplayedSampleFullyLive -SampleRecord $sample) { 'latest-fully-live' } else { 'latest-available' }
         Comparisons = @(Build-ComparisonEntries -DisplayedSample $sample.DisplayedSample -ReferenceResults $reference.Results)
     }
 }

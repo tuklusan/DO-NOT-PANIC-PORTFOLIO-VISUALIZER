@@ -167,12 +167,15 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Get-TwelveDataReferenceResults", script, StringComparison.Ordinal);
         Assert.Contains("PORTFOLIOSAVER_TWELVEDATA_API_KEY", script, StringComparison.Ordinal);
         Assert.Contains("function Get-LatestDisplayedTapeSample", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-PreferredDisplayedTapeSample", script, StringComparison.Ordinal);
+        Assert.Contains("function Test-IsDisplayedSampleFullyLive", script, StringComparison.Ordinal);
         Assert.Contains("function Write-ReferenceSpotCheckComparison", script, StringComparison.Ordinal);
         Assert.Contains("query1.finance.yahoo.com/v7/finance/quote", script, StringComparison.Ordinal);
         Assert.Contains("DisplayedVsReferenceFeed", script, StringComparison.Ordinal);
         Assert.Contains(".Replace(\"`0\", '')", script, StringComparison.Ordinal);
         Assert.Contains("[System.IO.Path]::ChangeExtension($Path, '.idx')", script, StringComparison.Ordinal);
         Assert.Contains("[System.IO.File]::ReadAllBytes($Path)", script, StringComparison.Ordinal);
+        Assert.Contains("$displayedSample = @(Get-PreferredDisplayedTapeSample)", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -186,9 +189,13 @@ public sealed class VmHarnessScriptTests
 
         Assert.Contains("function Read-CircularTraceText", script, StringComparison.Ordinal);
         Assert.Contains("function Parse-DisplayedTapeSamples", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-PreferredDisplayedTapeSample", script, StringComparison.Ordinal);
+        Assert.Contains("function Test-IsDisplayedSampleFullyLive", script, StringComparison.Ordinal);
         Assert.Contains("function Get-ReferenceResults", script, StringComparison.Ordinal);
         Assert.Contains("DisplayedVsReferenceFeed", script, StringComparison.Ordinal);
         Assert.Contains("reference-spot-check-comparisons.jsonl", script, StringComparison.Ordinal);
+        Assert.Contains("SampleSelection", script, StringComparison.Ordinal);
+        Assert.Contains("latest-fully-live", script, StringComparison.Ordinal);
         Assert.Contains("[decimal]::Zero", script, StringComparison.Ordinal);
         Assert.DoesNotContain("0m", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Select-Object -First 6", script, StringComparison.Ordinal);

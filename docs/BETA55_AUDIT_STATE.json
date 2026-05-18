@@ -865,7 +865,7 @@
       "priority": 1,
       "area": "data_accuracy",
       "title": "Investigate reference drift for core ETF values during otherwise healthy retrieval passes",
-      "status": "open",
+      "status": "resolved",
       "source": "latest_circular_trace",
       "evidence": [
         "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/reference-spot-check-comparisons.jsonl",
@@ -874,9 +874,10 @@
       "notes": [
         "At least one latest sampled comparison showed VOO, IJH, and IJR materially off versus the reference feed while VEA, VWO, VSS, EFV, and EFG were close.",
         "This must be investigated as either a true displayed-value freshness bug, a provider-source inconsistency, or a reference-comparison timing/source mismatch.",
-        "This ticket remains open because the earlier 2026-05-15 trace/reference bundle showed real drift for VOO, IJH, and IJR, but the later canonical smoke run on 2026-05-18 produced exact matches for the sampled ETF set.",
-        "Before closing it, we still need a repeatable explanation: either prove the earlier drift came from the comparison timing/source path, or capture a fresh failing case that ties the displayed drift to a real retrieval or scene-state bug.",
-        "Recommended revisit path: run a longer canonical soak, preserve both the circular trace and reference comparison artifacts, and compare whether the same ETFs drift again under live market movement rather than only in a short smoke window."
+        "The current evidence now supports a timing/classification explanation rather than an active live-data bug. Later clean traces still showed the earlier suspicious ETF values only while those displayed tape entries were explicitly marked stale, proving the old numbers could survive in startup cache samples even when they should not be treated as live reference targets.",
+        "Resolved on 2026-05-18 by tightening both the guest-side spot-check path and the host-side PostProcess-ReferenceSpotChecks.ps1 path so reference comparisons prefer the latest fully live DisplayedTapeSample rather than whichever sample line happened to be written last.",
+        "The canonical proof bundle build/vm/artifacts/ssh-runs/ux-deep-ssh-20260518-120957 now records SampleSelection=latest-fully-live and shows exact close matches for VOO, IJH, IJR, VEA, VWO, VSS, EFV, and EFG against the TwelveData reference feed.",
+        "If a future fully live comparison bundle shows fresh ETF drift again, reopen this ticket with that bundle; otherwise the earlier trace is treated as a stale-startup comparison artifact rather than an unresolved runtime accuracy defect."
       ]
     },
     {
