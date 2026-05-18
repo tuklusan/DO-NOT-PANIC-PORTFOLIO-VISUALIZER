@@ -38,6 +38,7 @@ public sealed class StartupCoordinator
     private static readonly TimeSpan TwelveDataReuseInterval = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan YahooWarmupInterBatchDelay = TimeSpan.FromSeconds(YahooGeneralReuseSeconds);
     private const int MaxBatchSymbolsPerPass = 8;
+    private const int MaxRecoveryBatchSymbolsPerPass = 16;
     private const int MaxSequentialSymbolsPerPass = 4;
     private const int MinimumTapeItemCount = 18;
     private static readonly HashSet<string> DedicatedYahooSymbols = BuildDedicatedYahooSymbolSet();
@@ -1440,7 +1441,7 @@ public sealed class StartupCoordinator
             return missingQuote || !HasUsableQuote(cached) || cached!.IsStale;
         });
         if (degradedCount >= 6 && degradedCount * 3 >= budgetedDueSymbols.Count)
-            targetCount = Math.Max(targetCount, Math.Min(MaxBatchSymbolsPerPass, degradedCount));
+            targetCount = Math.Max(targetCount, Math.Min(MaxRecoveryBatchSymbolsPerPass, degradedCount));
 
         List<string> selected = orderedSymbols
             .Where(symbol => budgetedDueSymbols.Contains(symbol))

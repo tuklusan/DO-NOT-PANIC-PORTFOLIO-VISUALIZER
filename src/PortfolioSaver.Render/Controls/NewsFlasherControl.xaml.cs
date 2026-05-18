@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -296,6 +297,7 @@ public partial class NewsFlasherControl : UserControl
         if (string.IsNullOrWhiteSpace(normalized))
             return string.Empty;
 
+        normalized = Regex.Replace(normalized, @"\s+", " ");
         string upper = normalized.ToUpperInvariant();
         return upper.EndsWith(" STOP", StringComparison.Ordinal) ? upper : upper + " STOP";
     }

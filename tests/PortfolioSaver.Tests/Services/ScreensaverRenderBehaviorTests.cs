@@ -804,6 +804,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("FontFamily=\"Courier New\"", newsXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ActiveHeadlineBlock\"", newsXaml, StringComparison.Ordinal);
         Assert.Contains("FormatHeadline", newsCode, StringComparison.Ordinal);
+        Assert.Contains("Regex.Replace(normalized, @\"\\s+\", \" \")", newsCode, StringComparison.Ordinal);
         Assert.Contains("upper + \" STOP\"", newsCode, StringComparison.Ordinal);
         Assert.Contains("PlaybackPhase.Typing", newsCode, StringComparison.Ordinal);
         Assert.Contains("PlaybackPhase.Scrolling", newsCode, StringComparison.Ordinal);

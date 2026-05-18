@@ -886,7 +886,7 @@
       "priority": 2,
       "area": "startup_recovery",
       "title": "Startup stale-data burn-down still takes multiple refresh cycles before the scene becomes fully live",
-      "status": "open",
+      "status": "resolved",
       "source": "latest_circular_trace",
       "evidence": [
         "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-210012/trace/trace.circular.log:100",
@@ -895,7 +895,9 @@
       ],
       "notes": [
         "The retrieval engine recovers cleanly, but stale_quote_count still steps down across several passes from 25 to 17 to 9 before reaching zero later in the run.",
-        "This is not a catastrophic failure, but it remains a startup-quality and freshness concern worth tightening."
+        "This was not catastrophic, but it was a measurable startup-quality issue.",
+        "Resolved on 2026-05-18 by adding a recovery-only due-symbol ceiling above the steady-state batch ceiling, so broadly degraded startup passes can schedule more quote work without changing normal minute-cadence behavior.",
+        "The canonical proof bundle build/vm/artifacts/ssh-runs/ux-deep-ssh-20260518-123907 shows the improved burn-down progression 25 -> 13 -> 1 -> 0 with the second startup pass boosted to scheduled_due_symbol_count=16."
       ]
     },
     {

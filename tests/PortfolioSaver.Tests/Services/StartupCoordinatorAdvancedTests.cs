@@ -943,8 +943,8 @@ public sealed class StartupCoordinatorAdvancedTests
             null,
             [orderedSymbols, dueSymbols, refreshWindows, cachedQuotes, nowUtc, TimeSpan.FromMinutes(1)])!);
 
-        Assert.Equal(8, selected.Count);
-        Assert.Equal(orderedSymbols.Take(8), selected);
+        Assert.Equal(10, selected.Count);
+        Assert.Equal(orderedSymbols, selected);
     }
 
     [Fact]
