@@ -916,14 +916,15 @@
       "priority": 2,
       "area": "diagnostics",
       "title": "Completely remove the feature that sends traces to remote syslog",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested full removal of remote syslog trace forwarding."
       ],
       "notes": [
         "Remove runtime support, configuration paths, and any dormant integration points related to sending PortfolioSaver traces to a remote syslog target.",
-        "The goal is to keep tracing local and bundle-based only, without any remote trace forwarding behavior remaining in the product."
+        "The goal is to keep tracing local and bundle-based only, without any remote trace forwarding behavior remaining in the product.",
+        "Resolved on 2026-05-18 by removing UDP/syslog forwarding from TraceLog so tracing is local-only and bundle-based. TraceLog-focused validation passed 2 / 2, and no remaining source references to the old remote endpoint remain."
       ]
     },
     {

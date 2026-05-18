@@ -16,15 +16,11 @@ public static class TraceLog
     private const int MaxTraceBytes = 4 * 1024 * 1024;
     private const int MaxLineLength = 1900;
     private const int MaxFieldValueLength = 280;
-    private static readonly TimeSpan UdpResolveRetryInterval = TimeSpan.FromSeconds(30);
     private static readonly object FileSync = new();
-    private static readonly object EndpointSync = new();
     private static readonly ConcurrentQueue<string> Queue = new();
     private static readonly string ProgramName = Process.GetCurrentProcess().ProcessName;
     private static readonly string HostName = GetHostNameSafe();
     private static readonly string LocalIp = GetPrimaryIpSafe();
-    private static IPEndPoint? _udpEndpoint;
-    private static DateTimeOffset _nextUdpResolveUtc = DateTimeOffset.MinValue;
     private static int _workerStarted;
 
     private static string TraceDirectory
@@ -216,14 +212,6 @@ public static class TraceLog
             catch
             {
             }
-
-            try
-            {
-                SendUdp(line);
-            }
-            catch
-            {
-            }
         }
     }
 
@@ -291,67 +279,6 @@ public static class TraceLog
         }
         catch
         {
-        }
-    }
-
-    private static void SendUdp(string line)
-    {
-        IPEndPoint? endpoint = GetUdpEndpoint();
-        if (endpoint is null)
-            return;
-
-        try
-        {
-            byte[] payload = Encoding.UTF8.GetBytes(line);
-            using UdpClient client = new();
-            client.Send(payload, payload.Length, endpoint);
-        }
-        catch
-        {
-            InvalidateUdpEndpoint();
-        }
-    }
-
-    private static IPEndPoint? GetUdpEndpoint()
-    {
-        DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
-        lock (EndpointSync)
-        {
-            if (_udpEndpoint is not null)
-                return _udpEndpoint;
-
-            if (nowUtc < _nextUdpResolveUtc)
-                return null;
-
-            _udpEndpoint = ResolveUdpEndpoint();
-            _nextUdpResolveUtc = _udpEndpoint is null
-                ? nowUtc.Add(UdpResolveRetryInterval)
-                : DateTimeOffset.MinValue;
-            return _udpEndpoint;
-        }
-    }
-
-    private static void InvalidateUdpEndpoint()
-    {
-        lock (EndpointSync)
-        {
-            _udpEndpoint = null;
-            _nextUdpResolveUtc = DateTimeOffset.UtcNow.Add(UdpResolveRetryInterval);
-        }
-    }
-
-    private static IPEndPoint? ResolveUdpEndpoint()
-    {
-        try
-        {
-            IPAddress[] addresses = Dns.GetHostAddresses("sanyalnet-oracle-vps2.duckdns.org");
-            IPAddress? target = addresses.FirstOrDefault(address => address.AddressFamily == AddressFamily.InterNetwork)
-                                ?? addresses.FirstOrDefault();
-            return target is null ? null : new IPEndPoint(target, 65514);
-        }
-        catch
-        {
-            return null;
         }
     }
 
