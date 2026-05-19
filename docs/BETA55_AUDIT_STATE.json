@@ -796,7 +796,8 @@
       "notes": [
         "Exercise each configurable item one by one and verify that configuration changes are actually reflected in runtime behavior.",
         "Include resilience and idiot-proofing coverage such as empty API keys, partially empty key sets, nonsensical slider values, and strange advanced-option combinations.",
-        "Resolved on 2026-05-18 by adding docs/MANUAL_UI_QA_SUITE.md and docs/MANUAL_UI_QA_RESULTS_2026-05-18.md, executing the desktop-first canonical VM sweep in ux-deep-ssh-20260518-104146, and running the focused config validation set with 36/36 passing tests."
+        "Resolved on 2026-05-18 by adding docs/MANUAL_UI_QA_SUITE.md and docs/MANUAL_UI_QA_RESULTS_2026-05-18.md, executing the desktop-first canonical VM sweep in ux-deep-ssh-20260518-104146, and running the focused config validation set with 36/36 passing tests.",
+        "Refreshed on 2026-05-19 after the config-validation-flow stabilization work: the suite now explicitly covers Validate-button disabling, the transient Validation Progress window, scene pause/resume around config work, and local-evidence-first ticker validation; execution was re-proven in docs/MANUAL_UI_QA_RESULTS_2026-05-19.md and ux-deep-ssh-20260519-130940 with 255/255 passing local tests."
       ]
     },
     {

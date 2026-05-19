@@ -19,6 +19,7 @@ This suite exercises every user-configurable surface in the configuration UI and
 - config screenshots for every tab/control sweep
 - desktop screenshots for fullscreen/windowed proof
 - local passing test output for the focused validation set
+- a trace slice showing config open, validation progress, validation pass/fail, and natural config close
 
 ## Checklist
 
@@ -118,6 +119,10 @@ Checks:
 6. summarized mode does not require a valid RSS URL
 7. invalid ticker symbols are disabled and called out
 8. validated-save-close sequence behaves predictably after a successful validation
+9. `Validate` is disabled while validation is running
+10. a transient validation-progress window opens during validation, logs symbol/provider progress, and closes when validation ends
+11. the desktop scene is paused for the config session and resumes afterward
+12. ticker validation trusts recent local quote/profile evidence before falling back to Yahoo Finance
 
 ## Definition of done
 
@@ -127,4 +132,5 @@ The suite is complete when:
 - the desktop-first VM harness run completes cleanly
 - the config control sweep produces screenshots across both tabs
 - the focused validation test set passes
+- the trace confirms config validation progress and natural close behavior
 - the execution results are written down in a dated results document
