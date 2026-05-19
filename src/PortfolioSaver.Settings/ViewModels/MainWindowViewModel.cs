@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
@@ -11,7 +12,10 @@ using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Core.Services;
 using PortfolioSaver.Core.Validation;
+using PortfolioSaver.Data.Services;
 using PortfolioSaver.Shared;
+using PortfolioSaver.Shared.Diagnostics;
+using PortfolioSaver.Shared.Helpers;
 using PortfolioSaver.Shared.Infrastructure;
 
 namespace PortfolioSaver.Config.ViewModels;
@@ -21,9 +25,11 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly SettingsFileService _settingsFileService;
     private readonly SettingsValidator _settingsValidator;
     private readonly NewsFeedValidationService _newsFeedValidationService;
-    private readonly ConfigConnectivityService _connectivityService;
+    private readonly IConnectivityService _connectivityService;
     private readonly YahooSymbolValidationService _yahooSymbolValidationService;
     private readonly ApiKeyValidationService _apiKeyValidationService;
+    private readonly SymbolProfileStore _symbolProfileStore;
+    private readonly QuoteCacheService _quoteCacheService;
     private readonly DispatcherTimer _stateTimer;
     private readonly DispatcherTimer _validatedCloseTimer;
     private readonly HashSet<TickerGroupEditorViewModel> _trackedGroups = [];
@@ -40,21 +46,32 @@ public sealed class MainWindowViewModel : BindableBase
     private string _validatedFingerprint = string.Empty;
     private int _validationCloseCountdownSeconds;
     private AppSettings? _pendingValidatedSettings;
+    private string _validationLogText = string.Empty;
+    private static readonly TimeSpan CachedProfileTrustWindow = TimeSpan.FromDays(30);
+    private static readonly TimeSpan CachedQuoteTrustWindow = TimeSpan.FromDays(14);
 
     public MainWindowViewModel()
+        : this(connectivityService: null)
+    {
+    }
+
+    public MainWindowViewModel(IConnectivityService? connectivityService)
     {
         _settingsFileService = new SettingsFileService();
         _settingsValidator = new SettingsValidator();
         _newsFeedValidationService = new NewsFeedValidationService();
-        _connectivityService = new ConfigConnectivityService();
+        _connectivityService = connectivityService ?? new ConfigConnectivityService();
         _yahooSymbolValidationService = new YahooSymbolValidationService();
         _apiKeyValidationService = new ApiKeyValidationService();
+        _symbolProfileStore = new SymbolProfileStore(Path.Combine(PathHelper.GetLocalDataDirectory(), "symbol-profiles.json"));
+        _quoteCacheService = new QuoteCacheService(Path.Combine(PathHelper.GetLocalDataDirectory(), "quotes-cache.json"));
 
         _settings = _settingsFileService.Load();
         Groups = new ObservableCollection<TickerGroupEditorViewModel>(
             _settings.Groups.Select(group => new TickerGroupEditorViewModel(group, RemoveGroup)));
         DataSources = new ObservableCollection<DataSourcePolicyEditorViewModel>(
             _settings.DataSources.Select(policy => new DataSourcePolicyEditorViewModel(policy)));
+        ValidationLogText = string.Empty;
 
         PrimaryCommand = new RelayCommand(() => _ = ExecutePrimaryAsync(), () => !_isApplying && !_isValidationClosePending);
         RetryNetworkCommand = new RelayCommand(RetryConnectivity);
@@ -77,6 +94,7 @@ public sealed class MainWindowViewModel : BindableBase
     }
 
     public event Action? CloseRequested;
+    public event Action<bool>? ValidationActivityChanged;
 
     public AppSettings Settings
     {
@@ -115,6 +133,8 @@ public sealed class MainWindowViewModel : BindableBase
 
     public bool IsConfigActive => IsNetworkAvailable && !_isApplying && !_isValidationClosePending;
     public bool ShowNetworkLockOverlay => !IsNetworkAvailable;
+    public bool IsApplying => _isApplying;
+    public bool IsValidationActionEnabled => !_isApplying && !_isValidationClosePending && IsNetworkAvailable;
 
     public bool IsValidated
     {
@@ -128,8 +148,13 @@ public sealed class MainWindowViewModel : BindableBase
         }
     }
 
-    public string PrimaryButtonText => "Validate";
+    public string PrimaryButtonText => _isApplying ? "Validating..." : "Validate";
     public string VersionLabel => $"{PortfolioVersion.BaselineLabel} ({PortfolioVersion.SemanticVersion})";
+    public string ValidationLogText
+    {
+        get => _validationLogText;
+        private set => SetProperty(ref _validationLogText, value);
+    }
     public bool IsSummarizedFinancialNewsSelected
     {
         get => Settings.NewsScrollerMode == NewsScrollerMode.SummarizedFinancialNews;
@@ -202,6 +227,16 @@ public sealed class MainWindowViewModel : BindableBase
         if (_allowClose)
             return true;
 
+        if (_isApplying)
+        {
+            MessageBox.Show(
+                "Validation is still running. Wait for the validation loop to finish.",
+                "Validation In Progress",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return false;
+        }
+
         MessageBox.Show(
             "Validate the configuration first. After a successful validation, the app saves and closes automatically.",
             "Validation Required",
@@ -241,7 +276,7 @@ public sealed class MainWindowViewModel : BindableBase
         if (_isApplying || _isValidationClosePending)
             return;
 
-        if (!IsNetworkAvailable)
+        if (!EnsureValidationConnectivity())
         {
             StatusMessage = "Internet connection is required before validation can run.";
             MessageBox.Show(
@@ -257,15 +292,17 @@ public sealed class MainWindowViewModel : BindableBase
 
     private async Task ValidateConfigurationAsync()
     {
-        SetApplying(true);
+        BeginValidationRun();
         try
         {
             AppSettings candidate = BuildCandidateSettings();
             ApplyNormalizedAdvancedSettings(candidate);
             Settings = candidate;
+            AppendValidationLog("VALIDATION STARTED");
 
             if (candidate.NewsScrollerMode == NewsScrollerMode.RssFeed)
             {
+                AppendValidationLog("RSS FEED CHECK...");
                 NewsFeedValidationResult feedValidation = await _newsFeedValidationService.ValidateAsync(
                     candidate.NewsFeedUrl,
                     candidate.HttpTimeoutSeconds,
@@ -278,10 +315,12 @@ public sealed class MainWindowViewModel : BindableBase
                         "News Feed Reset",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
+                    AppendValidationLog("RSS FEED RESET TO DEFAULT");
                 }
                 else
                 {
                     candidate.NewsFeedUrl = feedValidation.ResolvedFeedUrl;
+                    AppendValidationLog(feedValidation.ValidationSkipped ? "RSS FEED CHECK SKIPPED" : "RSS FEED OK");
                 }
             }
 
@@ -289,6 +328,8 @@ public sealed class MainWindowViewModel : BindableBase
             if (configErrors.Count > 0)
             {
                 StatusMessage = configErrors[0];
+                foreach (string configError in configErrors)
+                    AppendValidationLog($"SETTINGS: {configError}");
                 MessageBox.Show(
                     string.Join(Environment.NewLine, configErrors),
                     "Settings Need Attention",
@@ -298,11 +339,37 @@ public sealed class MainWindowViewModel : BindableBase
             }
 
             List<string> enabledSymbols = GetEnabledSymbols(candidate).ToList();
-            YahooSymbolValidationResult symbolValidation = await ValidateSymbolsAgainstYahooAsync(candidate, enabledSymbols);
+            AppendValidationLog($"TICKER VALIDATION: {enabledSymbols.Count} SYMBOL(S)");
+            YahooSymbolValidationResult symbolValidation = await ValidateSymbolsAgainstSourcesAsync(candidate, enabledSymbols);
+            int autoNamedCount = ApplyResolvedDisplayNames(symbolValidation);
+            SaveTrustedSymbolProfiles(symbolValidation);
+            if (symbolValidation.WasRateLimited || symbolValidation.DeferredSymbols.Count > 0)
+            {
+                string deferredList = string.Join(", ", symbolValidation.DeferredSymbols.Take(8));
+                StatusMessage = "Yahoo Finance throttled ticker validation. Nothing was disabled; try Validate again shortly.";
+                AppendValidationLog("TICKER VALIDATION DEFERRED BY YAHOO RATE LIMITING");
+                TraceValidation("TickerValidationDeferred",
+                    ("rate_limited", symbolValidation.WasRateLimited),
+                    ("deferred_count", symbolValidation.DeferredSymbols.Count),
+                    ("invalid_count", symbolValidation.InvalidSymbols.Count));
+                MessageBox.Show(
+                    "Yahoo Finance temporarily throttled ticker validation." + Environment.NewLine + Environment.NewLine +
+                    "No ticker entries were disabled during this pass." + Environment.NewLine +
+                    "Wait a little and click Validate again." +
+                    (string.IsNullOrWhiteSpace(deferredList) ? string.Empty : Environment.NewLine + Environment.NewLine + "Deferred symbols: " + deferredList),
+                    "Ticker Validation Rate Limited",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
             if (symbolValidation.InvalidSymbols.Count > 0)
             {
                 int disabledCount = DisableInvalidSymbols(symbolValidation.InvalidSymbols);
                 StatusMessage = "Ticker validation failed. Correct invalid symbols and validate again.";
+                AppendValidationLog($"TICKER VALIDATION FAILED: {symbolValidation.InvalidSymbols.Count} INVALID, {disabledCount} DISABLED");
+                TraceValidation("TickerValidationInvalid",
+                    ("invalid_count", symbolValidation.InvalidSymbols.Count),
+                    ("disabled_count", disabledCount));
                 MessageBox.Show(
                     "These symbols are invalid on Yahoo Finance:" + Environment.NewLine + Environment.NewLine +
                     string.Join(Environment.NewLine, symbolValidation.InvalidSymbols.Select(symbol => $"- {symbol}")) +
@@ -314,12 +381,19 @@ public sealed class MainWindowViewModel : BindableBase
                 return;
             }
 
-            int autoNamedCount = ApplyResolvedDisplayNames(symbolValidation);
+            AppendValidationLog(autoNamedCount > 0
+                ? $"DISPLAY NAMES UPDATED: {autoNamedCount}"
+                : "DISPLAY NAMES UNCHANGED");
 
-            ApiKeyValidationResult apiKeyValidation = await _apiKeyValidationService.ValidateAsync(candidate);
+            AppendValidationLog("API KEY VALIDATION...");
+            ApiKeyValidationResult apiKeyValidation = await _apiKeyValidationService.ValidateAsync(
+                candidate,
+                new Progress<ApiKeyValidationProgress>(ReportApiKeyProgress));
             if (!apiKeyValidation.IsValid)
             {
                 StatusMessage = "API key validation failed. Update keys and validate again.";
+                AppendValidationLog("API KEY VALIDATION FAILED");
+                TraceValidation("ApiValidationFailed", ("error_count", apiKeyValidation.Errors.Count));
                 MessageBox.Show(
                     string.Join(Environment.NewLine, apiKeyValidation.Errors),
                     "API Key Validation Failed",
@@ -332,36 +406,105 @@ public sealed class MainWindowViewModel : BindableBase
             IsValidated = true;
             _validatedFingerprint = BuildFingerprint(candidate);
             _allowClose = false;
+            AppendValidationLog("VALIDATION PASSED");
+            TraceValidation("ValidationPassed", ("auto_named_count", autoNamedCount));
             BeginValidatedCloseSequence(candidate, autoNamedCount);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Validation stopped unexpectedly. Review the details and try again.";
+            AppendValidationLog($"VALIDATION ERROR: {ex.Message}");
+            TraceLog.Error("Config.Validation", "ValidateConfigurationAsync", ex);
+            MessageBox.Show(
+                $"Validation stopped unexpectedly:{Environment.NewLine}{Environment.NewLine}{ex.Message}",
+                "Validation Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
         finally
         {
-            SetApplying(false);
+            EndValidationRun();
         }
     }
 
-    private async Task<YahooSymbolValidationResult> ValidateSymbolsAgainstYahooAsync(AppSettings settings, IReadOnlyList<string> enabledSymbols)
+    private async Task<YahooSymbolValidationResult> ValidateSymbolsAgainstSourcesAsync(AppSettings settings, IReadOnlyList<string> enabledSymbols)
     {
-        MarkSymbolStates(enabledSymbols, SymbolValidationState.Checking, "Checking Yahoo Finance...");
+        YahooSymbolValidationResult aggregate = new(enabledSymbols);
+        List<TrustedValidationEvidence> trustedEvidence = GetTrustedValidationEvidence(enabledSymbols);
+        HashSet<string> trustedSymbols = trustedEvidence
+            .Select(entry => entry.Symbol)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        YahooSymbolValidationResult result = await _yahooSymbolValidationService.ValidateAsync(
-            enabledSymbols,
-            settings.HttpTimeoutSeconds);
+        TraceValidation(
+            "TickerValidationTrustPlan",
+            ("requested_count", enabledSymbols.Count),
+            ("trusted_count", trustedEvidence.Count),
+            ("trusted_symbols", string.Join(", ", trustedEvidence.Select(entry => entry.Symbol))));
+
+        foreach (TrustedValidationEvidence trusted in trustedEvidence)
+        {
+            aggregate.MarkValid(trusted.Symbol, trusted.DisplayName, trusted.DisplayName);
+            MarkSymbolState(trusted.Symbol, SymbolValidationState.Valid, trusted.Message);
+            AppendValidationLog($"{trusted.Symbol} -> {(!string.IsNullOrWhiteSpace(trusted.DisplayName) ? trusted.DisplayName : "VALID")} ({trusted.SourceTag})");
+            TraceValidation(
+                "TickerValidationProgress",
+                ("symbol", trusted.Symbol),
+                ("is_valid", true),
+                ("message", trusted.Message),
+                ("resolved_name", trusted.DisplayName),
+                ("source", trusted.SourceTag));
+        }
+
+        List<string> networkSymbols = enabledSymbols
+            .Select(SymbolProfileHeuristics.Normalize)
+            .Where(symbol => !trustedSymbols.Contains(symbol))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        TraceValidation(
+            "TickerValidationNetworkPlan",
+            ("network_symbol_count", networkSymbols.Count),
+            ("network_symbols", string.Join(", ", networkSymbols)));
+
+        if (networkSymbols.Count > 0)
+        {
+            MarkSymbolStates(networkSymbols, SymbolValidationState.Checking, "Checking Yahoo Finance...");
+
+            YahooSymbolValidationResult networkResult = await _yahooSymbolValidationService.ValidateAsync(
+                networkSymbols,
+                settings.HttpTimeoutSeconds,
+                new Progress<YahooSymbolValidationProgress>(ReportSymbolValidationProgress));
+            aggregate.MergeFrom(networkResult);
+        }
+        else
+        {
+            AppendValidationLog("YAHOO LOOKUP SKIPPED: ALL SYMBOLS ALREADY TRUSTED LOCALLY");
+        }
 
         foreach (string symbol in enabledSymbols.Distinct(StringComparer.OrdinalIgnoreCase))
         {
             string normalized = SymbolProfileHeuristics.Normalize(symbol);
-            if (result.Entries.TryGetValue(normalized, out YahooSymbolValidationEntry? entry) && entry.IsValid)
+            if (aggregate.Entries.TryGetValue(normalized, out YahooSymbolValidationEntry? entry) && entry.IsValid)
             {
-                MarkSymbolState(normalized, SymbolValidationState.Valid, "Validated via Yahoo Finance");
+                if (!trustedSymbols.Contains(normalized))
+                    MarkSymbolState(normalized, SymbolValidationState.Valid, "Validated via Yahoo Finance");
                 continue;
             }
 
-            MarkSymbolState(normalized, SymbolValidationState.Invalid, "Yahoo Finance does not recognize this symbol");
+            if (aggregate.Entries.TryGetValue(normalized, out entry) && entry.WasChecked)
+            {
+                MarkSymbolState(normalized, SymbolValidationState.Invalid, "Yahoo Finance does not recognize this symbol");
+                continue;
+            }
+
+            string deferredMessage = aggregate.Entries.TryGetValue(normalized, out entry) && !string.IsNullOrWhiteSpace(entry.FailureReason)
+                ? entry.FailureReason
+                : "Validation deferred";
+            MarkSymbolState(normalized, SymbolValidationState.Unknown, deferredMessage);
         }
 
         MarkDisabledSymbolsAsUnknown(enabledSymbols);
-        return result;
+        return aggregate;
     }
 
     private int DisableInvalidSymbols(IEnumerable<string> invalidSymbols)
@@ -415,6 +558,95 @@ public sealed class MainWindowViewModel : BindableBase
         }
 
         return updated;
+    }
+
+    private List<TrustedValidationEvidence> GetTrustedValidationEvidence(IReadOnlyList<string> enabledSymbols)
+    {
+        DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
+        IReadOnlyDictionary<string, SymbolProfile> cachedProfiles = _symbolProfileStore.Load();
+        IReadOnlyDictionary<string, QuoteSnapshot> cachedQuotes = _quoteCacheService.LoadCached()
+            .Where(quote => !string.IsNullOrWhiteSpace(quote.Symbol))
+            .GroupBy(quote => SymbolProfileHeuristics.Normalize(quote.Symbol), StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.Last())
+            .ToDictionary(quote => SymbolProfileHeuristics.Normalize(quote.Symbol), StringComparer.OrdinalIgnoreCase);
+
+        Dictionary<string, string> currentDisplayNames = EnumerateTickerEditors()
+            .Where(ticker => ticker.Enabled && !string.IsNullOrWhiteSpace(ticker.Symbol))
+            .GroupBy(ticker => SymbolProfileHeuristics.Normalize(ticker.Symbol), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(ticker => (ticker.DisplayName ?? string.Empty).Trim())
+                    .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name)) ?? string.Empty,
+                StringComparer.OrdinalIgnoreCase);
+
+        List<TrustedValidationEvidence> trusted = [];
+        foreach (string symbol in enabledSymbols.Select(SymbolProfileHeuristics.Normalize).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (cachedProfiles.TryGetValue(symbol, out SymbolProfile? profile) &&
+                profile.SupportedQuoteSources.Count > 0 &&
+                profile.LastValidatedUtc > DateTimeOffset.MinValue &&
+                nowUtc - profile.LastValidatedUtc <= CachedProfileTrustWindow)
+            {
+                string profileName = !string.IsNullOrWhiteSpace(profile.DisplayName)
+                    ? profile.DisplayName.Trim()
+                    : currentDisplayNames.GetValueOrDefault(symbol, string.Empty);
+                trusted.Add(new TrustedValidationEvidence(
+                    symbol,
+                    profileName,
+                    "Validated from cached symbol profile",
+                    "LOCAL-PROFILE"));
+                continue;
+            }
+
+            if (cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? quote) &&
+                quote.FetchTimestampUtc > DateTimeOffset.MinValue &&
+                nowUtc - quote.FetchTimestampUtc <= CachedQuoteTrustWindow &&
+                (quote.Last is decimal last && last > 0 || quote.PreviousClose is decimal previousClose && previousClose > 0))
+            {
+                trusted.Add(new TrustedValidationEvidence(
+                    symbol,
+                    currentDisplayNames.GetValueOrDefault(symbol, string.Empty),
+                    quote.IsStale
+                        ? "Validated from cached local quote history"
+                        : "Validated from recent local quote cache",
+                    "LOCAL-CACHE"));
+            }
+        }
+
+        return trusted;
+    }
+
+    private void SaveTrustedSymbolProfiles(YahooSymbolValidationResult validation)
+    {
+        IReadOnlyDictionary<string, SymbolProfile> existing = _symbolProfileStore.Load();
+        Dictionary<string, SymbolProfile> merged = existing.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+        DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
+
+        foreach (YahooSymbolValidationEntry entry in validation.Entries.Values.Where(entry => entry.IsValid))
+        {
+            if (!merged.TryGetValue(entry.Symbol, out SymbolProfile? profile))
+            {
+                profile = new SymbolProfile
+                {
+                    Symbol = entry.Symbol,
+                    CanonicalSymbol = entry.Symbol
+                };
+            }
+
+            profile.Symbol = entry.Symbol;
+            profile.CanonicalSymbol = string.IsNullOrWhiteSpace(profile.CanonicalSymbol) ? entry.Symbol : profile.CanonicalSymbol;
+            if (!string.IsNullOrWhiteSpace(entry.DisplayName))
+                profile.DisplayName = entry.DisplayName.Trim();
+            profile.LastValidatedUtc = nowUtc;
+            if (!profile.SupportedQuoteSources.Contains(DataSourceKind.YahooFinance))
+                profile.SupportedQuoteSources.Add(DataSourceKind.YahooFinance);
+            if (string.IsNullOrWhiteSpace(profile.ValidationSummary))
+                profile.ValidationSummary = "Validated during config apply.";
+
+            merged[entry.Symbol] = profile;
+        }
+
+        _symbolProfileStore.Save(merged.Values);
     }
 
     private async Task OnStateTimerTickAsync()
@@ -535,21 +767,44 @@ public sealed class MainWindowViewModel : BindableBase
 
     private void UpdateConnectivityState()
     {
+        bool wasNetworkAvailable = _isNetworkAvailable;
         bool connected = _connectivityService.IsInternetAvailable();
         IsNetworkAvailable = connected;
         if (!connected)
         {
             InvalidateValidationState("Internet connection is required for ticker and key validation.");
             ResetAllSymbolValidationStates("Internet required");
+            return;
         }
+
+        if (!wasNetworkAvailable &&
+            (string.IsNullOrWhiteSpace(StatusMessage) ||
+             StatusMessage.StartsWith("Internet connection", StringComparison.OrdinalIgnoreCase)))
+        {
+            StatusMessage = "Internet connection detected. Continue with Validate.";
+        }
+    }
+
+    private bool EnsureValidationConnectivity()
+    {
+        if (IsNetworkAvailable)
+            return true;
+
+        _connectivityService.ForceProbe();
+        UpdateConnectivityState();
+        return IsNetworkAvailable;
     }
 
     private void SetApplying(bool applying)
     {
         _isApplying = applying;
+        RaisePropertyChanged(nameof(IsApplying));
         RaisePropertyChanged(nameof(IsConfigActive));
+        RaisePropertyChanged(nameof(IsValidationActionEnabled));
         RaisePropertyChanged(nameof(ShowNetworkLockOverlay));
+        RaisePropertyChanged(nameof(PrimaryButtonText));
         RaiseCommandCanExecuteChanged();
+        ValidationActivityChanged?.Invoke(applying);
     }
 
     private void RaiseCommandCanExecuteChanged()
@@ -715,6 +970,56 @@ public sealed class MainWindowViewModel : BindableBase
         StatusMessage = $"{namingText}Validation passed. Saving and closing in {_validationCloseCountdownSeconds}s.";
     }
 
+    private void BeginValidationRun()
+    {
+        ValidationLogText = string.Empty;
+        SetApplying(true);
+    }
+
+    private void EndValidationRun()
+    {
+        SetApplying(false);
+    }
+
+    private void AppendValidationLog(string line)
+    {
+        string normalized = (line ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+            return;
+
+        ValidationLogText = string.IsNullOrWhiteSpace(ValidationLogText)
+            ? normalized
+            : $"{ValidationLogText}{Environment.NewLine}{normalized}";
+    }
+
+    private void ReportSymbolValidationProgress(YahooSymbolValidationProgress progress)
+    {
+        string message = progress.IsValid
+            ? $"{progress.Symbol} -> {(!string.IsNullOrWhiteSpace(progress.ResolvedName) ? progress.ResolvedName : "VALID")}"
+            : $"{progress.Symbol} -> {progress.Message.ToUpperInvariant()}";
+        AppendValidationLog(message);
+        TraceValidation("TickerValidationProgress",
+            ("symbol", progress.Symbol),
+            ("is_valid", progress.IsValid),
+            ("message", progress.Message),
+            ("resolved_name", progress.ResolvedName));
+    }
+
+    private void ReportApiKeyProgress(ApiKeyValidationProgress progress)
+    {
+        AppendValidationLog($"{progress.Provider.ToUpperInvariant()} -> {(progress.IsValid ? "VALIDATED" : progress.Message.ToUpperInvariant())}");
+        TraceValidation("ApiValidationProgress",
+            ("provider", progress.Provider),
+            ("is_valid", progress.IsValid),
+            ("message", progress.Message));
+    }
+
+    private static void TraceValidation(string eventName, params (string Key, object? Value)[] fields)
+        => TraceLog.InfoState(
+            "Config.Validation",
+            eventName,
+            fields.Select(field => new KeyValuePair<string, object?>(field.Key, field.Value)).ToArray());
+
     private void ApplyNormalizedAdvancedSettings(AppSettings candidate)
     {
         IReadOnlyList<DataSourcePolicySettings> normalizedPolicies = DataSourceCatalog.NormalizePolicies(candidate.DataSources);
@@ -728,4 +1033,10 @@ public sealed class MainWindowViewModel : BindableBase
                 editor.ApplyModel(policy);
         }
     }
+
+    private sealed record TrustedValidationEvidence(
+        string Symbol,
+        string DisplayName,
+        string Message,
+        string SourceTag);
 }

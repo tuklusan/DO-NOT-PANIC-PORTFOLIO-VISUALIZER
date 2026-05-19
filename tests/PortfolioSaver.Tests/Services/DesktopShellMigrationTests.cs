@@ -39,6 +39,7 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("AutomationProperties.AutomationId=\"ViewFullScreenMenuItem\"", xaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.AutomationId=\"OptionsSettingsMenuItem\"", xaml, StringComparison.Ordinal);
         Assert.Contains("PortfolioSaver.Presentation", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SceneHost\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Width=\"1180\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Height=\"720\"", xaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"1180\"", xaml, StringComparison.Ordinal);
@@ -72,6 +73,8 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("AutomationProperties.SetHelpText(this, PortfolioVersion.SemanticVersion)", code, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(OptionsMenuItem, \"Options\")", code, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(SettingsMenuItem, \"Settings\")", code, StringComparison.Ordinal);
+        Assert.Contains("window.ValidationActivityChanged += OnValidationActivityChanged;", code, StringComparison.Ordinal);
+        Assert.Contains("SceneHost?.SetValidationPause(isValidating);", code, StringComparison.Ordinal);
     }
 
     [Fact]

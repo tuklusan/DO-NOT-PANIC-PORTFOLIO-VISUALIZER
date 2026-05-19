@@ -187,8 +187,9 @@ This is the key behavior that finally worked reliably.
 4. The agent ensures `WinAppDriver` is running inside that same interactive desktop session.
 5. The host waits for the agent heartbeat file.
 6. The host writes a UX command JSON into the remote command queue.
-7. The agent launches the desktop app first, opens the Settings window from the desktop menu path, exercises that config UI, then continues the same desktop-session run into the fullscreen/windowed validation flow.
-8. Guest-UxDeepExercise.ps1 captures screenshots, explicitly focuses the desktop window, validates true fullscreen by comparing the live window bounds to the virtual screen, validates ESC return-to-windowed behavior, copies trace files into the result bundle, and writes:
+7. The agent launches the desktop app first, opens the Settings window from the desktop menu path, drives a minimal keyboard-first config smoke path, waits for Validate to succeed and the window to close naturally, then continues the same desktop-session run into the fullscreen/windowed validation flow.
+   During Validate, the config app is expected to disable the Validate button, show a small Validation Progress window, and trust recent local quote/profile evidence before falling back to Yahoo Finance.
+8. Guest-UxDeepExercise.ps1 captures screenshots, explicitly focuses the desktop window, prefers keyboard navigation over coordinate clicks for config interaction, validates true fullscreen by comparing the live window bounds to the virtual screen, validates ESC return-to-windowed behavior, copies trace files into the result bundle, and writes:
    - `ux-deep-summary.json`
    - `vm-ux-summary.json`
 9. The host polls the summary file until `FinishedAt` appears.
@@ -211,6 +212,8 @@ That run completed with:
 The harness details that made this pass reliable are now considered part of the locked workflow:
 
 - config window lookup is process-bound and may use the process main window handle directly
+- config smoke interaction is keyboard-first and intentionally limited to deterministic tab traversal plus Validate
+- config Validate should close naturally without fallback dialogs; if validation blocks, the harness records the blocking dialog text instead of force-closing blindly
 - the desktop shell exposes `DesktopMainWindow` automation metadata with semantic-version help text
 - the desktop fullscreen action exposes `ViewFullScreenMenuItem` for direct UI Automation invocation
 - `F11` remains only a fallback if the automation invoke path is unavailable
@@ -261,6 +264,10 @@ That behavior is intentional. It prevents noisy Windows popup failures during bo
 ### WinAppDriver ownership
 
 `WinAppDriver` is part of the supported stack, but it is **not** the top-level orchestrator.
+`WinAppRunner` is not part of the supported stack on this VM. The installed UI-driver binary is:
+
+- `C:\Program Files (x86)\Windows Application Driver\WinAppDriver.exe`
+
 `PortfolioSaver.VmAgent` owns:
 
 - starting `WinAppDriver` if needed

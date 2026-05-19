@@ -17,7 +17,7 @@
   "latest_recorded_validation_state": {
     "automated_tests": {
       "command": "dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo",
-      "result": "245 / 245 passing",
+      "result": "255 / 255 passing",
       "notes": [
         "Host regression coverage now includes the SSH-first VM harness scripts, the desktop-session agent workflow, and the remote WinAppDriver startup path.",
         "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer.",
@@ -35,7 +35,9 @@
         "Startup recovery no longer uses the large announcement overlay when network is available; instead the Updated line flashes Loading initial values until enough quotes are fresh, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453.",
         "The news band now uses teleprinter-style playback with uppercase Courier text, per-item typing, STOP endings, pause-and-clear transitions, and no artificial headline duplication, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853.",
         "The desktop shell now enforces a fixed restored size, maximizes only to the Windows work area, and still enters true fullscreen cleanly, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-194351.",
-        "NB-026 line-by-line review pass completed locally on 2026-05-18 with a full Release build and a 245 / 245 green test suite."
+        "NB-026 line-by-line review pass completed locally on 2026-05-18 with a full Release build and a 245 / 245 green test suite.",
+        "Config validation now uses a keyboard-first desktop smoke path, opens a transient Validation Progress window during validation, and trusts recent local quote/profile evidence before falling back to Yahoo Finance, avoiding the prior 429 loop during harness-driven Validate runs.",
+        "A full local regression pass reached 255 / 255 passing on 2026-05-19 after adding coverage for connectivity recovery, validation progress state, and stale local quote trust during ticker validation."
       ]
     },
     "build": {
@@ -66,7 +68,9 @@
         "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-182218",
         "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-184619",
         "build/vm/artifacts/host-runs/ssh-push-20260518-075750.json",
-        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260518-075758"
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260518-075758",
+        "build/vm/artifacts/host-runs/ssh-push-20260519-130933.json",
+        "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260519-130940"
       ],
       "notes": [
         "The guest now resolves bare dotnet to 10.0.203 from C:\\Program Files\\dotnet.",
@@ -89,7 +93,8 @@
         "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-172453 after replacing the startup recovery card with the status-band Loading initial values message.",
         "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-180853 after replacing the marquee news scroller with teleprinter-style playback.",
         "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-15 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-194351 after fixing restored/maximized window constraints without regressing true fullscreen.",
-        "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-18 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260518-075758 after the NB-026 review, cleanup, dry-run, and smoke-test pass."
+        "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-18 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260518-075758 after the NB-026 review, cleanup, dry-run, and smoke-test pass.",
+        "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-19 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260519-130940 after replacing the brittle ping-based config connectivity gate, pausing the desktop scene during the config session, and trusting recent local quote/profile evidence so Validate no longer falls into a Yahoo Finance 429 loop."
       ]
     }
   },
@@ -1009,6 +1014,24 @@
         "Completed on 2026-05-18 with a line-by-line review pass over the highest-risk runtime and harness files, a stale comment cleanup, a full local Release build, a 245 / 245 green test run, a clean publish-safe-temp dry run, and a canonical green 20-minute VM smoke validation in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260518-075758.",
         "No documentation drift requiring content changes was found during the final workbook review; the docs were confirmed accurate against the current locked harness and runtime state.",
         "The only blocker during execution was a temporary SSH credential expiry, which was resolved before the final canonical push and smoke run succeeded."
+      ]
+    },
+    {
+      "id": "NB-027",
+      "tracking_number": "NB-027",
+      "priority": 1,
+      "area": "config_validation_flow",
+      "title": "Stabilize desktop-first config validation so the UI QA harness can Validate and close naturally",
+      "status": "resolved",
+      "source": "user_followup",
+      "evidence": [
+        "User reported repeated Internet Required and Validation Required popups during harness-driven Validate runs, with trace evidence showing Yahoo Finance 429 rate limiting during config validation."
+      ],
+      "notes": [
+        "The root cause was a mix of brittle connectivity probing, a desktop scene that could continue consuming provider budget before validation, and config validation treating symbol existence as a forced live Yahoo lookup even when trustworthy local evidence already existed.",
+        "Resolved on 2026-05-19 by replacing the old connectivity probe with lightweight HTTP endpoints, pausing the desktop scene for the config session, surfacing a Validation Progress window with live symbol/provider logging, disabling the Validate button while validation is in progress, and trusting recent local quote/profile evidence before falling back to Yahoo Finance.",
+        "The VM harness was also tightened into a faster keyboard-first config smoke path with shorter interaction delays, blocking-dialog detection, and explicit natural-close verification after Validate.",
+        "Canonical proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260519-130940 completed with ConfigPhaseStatus=Completed and DesktopPhaseStatus=Completed, and the trace records TickerValidationTrustPlan / requested_count=32 / trusted_count=32 / network_symbol_count=0 followed by ValidationPassed and ConfigDialogClosed."
       ]
     }
   ]

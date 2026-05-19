@@ -3,6 +3,7 @@ using System.Windows.Input;
 using System.Windows.Automation;
 using System.Windows.Threading;
 using PortfolioSaver.Shared;
+using PortfolioSaver.Shared.Diagnostics;
 using SettingsWindow = PortfolioSaver.Config.Windows.MainWindow;
 
 namespace PortfolioSaver.Desktop.Windows;
@@ -146,7 +147,22 @@ public partial class MainWindow : Window
         {
             Owner = this
         };
-        window.ShowDialog();
+        void OnValidationActivityChanged(bool isValidating)
+            => SceneHost?.SetValidationPause(isValidating);
+
+        window.ValidationActivityChanged += OnValidationActivityChanged;
+        TraceLog.InfoState("Desktop.Config", "ConfigDialogOpening", []);
+        SceneHost?.SetValidationPause(true);
+        try
+        {
+            window.ShowDialog();
+        }
+        finally
+        {
+            window.ValidationActivityChanged -= OnValidationActivityChanged;
+            SceneHost?.SetValidationPause(false);
+            TraceLog.InfoState("Desktop.Config", "ConfigDialogClosed", []);
+        }
     }
 
     private void OnAboutClick(object sender, RoutedEventArgs e)

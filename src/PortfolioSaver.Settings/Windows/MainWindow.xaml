@@ -586,6 +586,7 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Column="0"
+                           AutomationProperties.AutomationId="ConfigStatusText"
                            Text="{Binding StatusMessage}"
                            Foreground="#CCCCCC"
                            VerticalAlignment="Center"
@@ -600,7 +601,10 @@
                            TextWrapping="NoWrap"
                            Margin="0,0,16,0" />
                 <Button Grid.Column="2"
+                        x:Name="ValidateButton"
+                        AutomationProperties.AutomationId="ConfigValidateButton"
                         Content="{Binding PrimaryButtonText}"
+                        IsEnabled="{Binding IsValidationActionEnabled}"
                         Command="{Binding PrimaryCommand}"
                         MinWidth="112"
                         Padding="14,6"

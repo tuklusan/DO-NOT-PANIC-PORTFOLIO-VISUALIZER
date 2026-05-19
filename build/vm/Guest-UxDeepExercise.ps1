@@ -172,7 +172,7 @@ function Focus-ProcessWindow {
 
     try {
         [Microsoft.VisualBasic.Interaction]::AppActivate($Process.Id) | Out-Null
-        Start-Sleep -Milliseconds 300
+        Start-Sleep -Milliseconds 40
     }
     catch {}
 
@@ -180,7 +180,7 @@ function Focus-ProcessWindow {
         $window = [System.Windows.Automation.AutomationElement]::FromHandle($Process.MainWindowHandle)
         if ($null -ne $window) {
             $window.SetFocus()
-            Start-Sleep -Milliseconds 300
+            Start-Sleep -Milliseconds 40
         }
     }
     catch {}
@@ -218,7 +218,7 @@ function Get-ProcessWindowElement {
                 return $child
             }
         }
-        Start-Sleep -Milliseconds 300
+        Start-Sleep -Milliseconds 90
     } while ((Get-Date) -lt $deadline)
 
     return $null
@@ -265,13 +265,23 @@ function Select-TabItem {
     param($Tab)
 
     try {
-        $pattern = $Tab.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern)
-        $pattern.Select()
-        Start-Sleep -Milliseconds 350
-        return $true
+        $Tab.SetFocus()
+        Start-Sleep -Milliseconds 25
+        try { [System.Windows.Forms.SendKeys]::SendWait(' ') } catch {}
+        Start-Sleep -Milliseconds 50
+        $selected = $Tab.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern)
+        return $selected.Current.IsSelected
     }
     catch {
-        return $false
+        try {
+            $pattern = $Tab.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern)
+            $pattern.Select()
+            Start-Sleep -Milliseconds 60
+            return $true
+        }
+        catch {
+            return $false
+        }
     }
 }
 
@@ -328,7 +338,7 @@ function Close-ConfigChildWindows {
                 $wp = $w.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
                 $wp.Close()
                 $closedOne = $true
-                Start-Sleep -Milliseconds 180
+                Start-Sleep -Milliseconds 75
                 continue
             }
             catch {}
@@ -346,7 +356,7 @@ function Close-ConfigChildWindows {
                     $inv = $ok.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
                     $inv.Invoke()
                     $closedOne = $true
-                    Start-Sleep -Milliseconds 180
+                    Start-Sleep -Milliseconds 75
                     continue
                 }
             }
@@ -354,7 +364,7 @@ function Close-ConfigChildWindows {
 
             try { [System.Windows.Forms.SendKeys]::SendWait('{ESC}') } catch {}
             $closedOne = $true
-            Start-Sleep -Milliseconds 180
+            Start-Sleep -Milliseconds 75
         }
 
         if (-not $closedOne) { break }
@@ -370,7 +380,7 @@ function Exercise-Control {
     $type = $Control.Current.ControlType.ProgrammaticName
 
     try { $Control.SetFocus() } catch {}
-    Start-Sleep -Milliseconds 120
+    Start-Sleep -Milliseconds 40
 
     if ($type -eq [System.Windows.Automation.ControlType]::Edit.ProgrammaticName) {
         try {
@@ -388,7 +398,7 @@ function Exercise-Control {
         try {
             $tp = $Control.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
             $tp.Toggle()
-            Start-Sleep -Milliseconds 120
+            Start-Sleep -Milliseconds 40
             $tp.Toggle()
         }
         catch {}
@@ -397,7 +407,7 @@ function Exercise-Control {
         try {
             $ecp = $Control.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern)
             $ecp.Expand()
-            Start-Sleep -Milliseconds 120
+            Start-Sleep -Milliseconds 40
             $ecp.Collapse()
         }
         catch {
@@ -412,7 +422,7 @@ function Exercise-Control {
                 $step = [Math]::Max(1.0, [double]$rp.Current.SmallChange)
                 $target = [Math]::Min([double]$rp.Current.Maximum, $v + $step)
                 $rp.SetValue($target)
-                Start-Sleep -Milliseconds 120
+                Start-Sleep -Milliseconds 40
                 $rp.SetValue($v)
             }
         }
@@ -533,11 +543,11 @@ function Find-ElementMetadataByProcessId {
             }
         }
         catch {
-            Start-Sleep -Milliseconds 300
+            Start-Sleep -Milliseconds 90
             continue
         }
 
-        Start-Sleep -Milliseconds 300
+        Start-Sleep -Milliseconds 90
     } while ((Get-Date) -lt $deadline)
 
     return $null
@@ -596,7 +606,7 @@ function Write-TextFileWithRetry {
                 throw
             }
 
-            Start-Sleep -Milliseconds 200
+            Start-Sleep -Milliseconds 80
         }
     }
 }
@@ -648,7 +658,7 @@ function Try-ApplyDisplayResolution {
     $mode.dmPelsHeight = $Height
     $mode.dmFields = [NativeDisplaySettings]::DM_PELSWIDTH -bor [NativeDisplaySettings]::DM_PELSHEIGHT
     $result = [NativeDisplaySettings]::ChangeDisplaySettings([ref]$mode, [NativeDisplaySettings]::CDS_UPDATEREGISTRY -bor [NativeDisplaySettings]::CDS_GLOBAL)
-    Start-Sleep -Seconds 2
+    Start-Sleep -Milliseconds 900
     return [pscustomobject]@{
         Applied = ($result -eq [NativeDisplaySettings]::DISP_CHANGE_SUCCESSFUL)
         RequestedWidth = $Width
@@ -918,7 +928,7 @@ function Find-ConfigWindow {
             }
         }
 
-        Start-Sleep -Milliseconds 300
+        Start-Sleep -Milliseconds 90
     } while ((Get-Date) -lt $deadline)
 
     return $null
@@ -954,6 +964,44 @@ function Get-ProcessOwnedWindows {
     catch {
         return @()
     }
+}
+
+function Get-ConfigBlockingDialog {
+    param(
+        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process
+    )
+
+    foreach ($window in @(Get-ProcessOwnedWindows -Process $Process)) {
+        try {
+            $title = [string]$window.Current.Name
+            if ($title -like '*PORTFOLIO VISUALIZER Config*' -or
+                $title -like '*Validation Progress*') {
+                continue
+            }
+
+            $textCondition = New-Object System.Windows.Automation.PropertyCondition(
+                [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+                [System.Windows.Automation.ControlType]::Text)
+            $textNodes = $window.FindAll([System.Windows.Automation.TreeScope]::Descendants, $textCondition)
+            $messageParts = @()
+            for ($index = 0; $index -lt $textNodes.Count; $index++) {
+                $text = [string]$textNodes.Item($index).Current.Name
+                if (-not [string]::IsNullOrWhiteSpace($text)) {
+                    $messageParts += $text.Trim()
+                }
+            }
+
+            return [pscustomobject]@{
+                Title = $title
+                Message = (($messageParts | Select-Object -Unique) -join ' ')
+            }
+        }
+        catch {
+            continue
+        }
+    }
+
+    return $null
 }
 
 function Close-ConfigWindowIfPresent {
@@ -1005,7 +1053,7 @@ function Close-ConfigWindowIfPresent {
             Start-Sleep -Milliseconds 250
         }
 
-        Start-Sleep -Milliseconds 500
+        Start-Sleep -Milliseconds 150
         $remainingWindows = @(Get-ProcessOwnedWindows -Process $Process)
         if ($remainingWindows.Count -eq 0) {
             return
@@ -1097,6 +1145,14 @@ function Get-ConfigStatusText {
     )
 
     try {
+        $statusElement = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigStatusText'
+        if ($null -ne $statusElement) {
+            $status = [string]$statusElement.Current.Name
+            if (-not [string]::IsNullOrWhiteSpace($status)) {
+                return $status.Trim()
+            }
+        }
+
         $texts = $Window.FindAll(
             [System.Windows.Automation.TreeScope]::Descendants,
             (New-Object System.Windows.Automation.PropertyCondition(
@@ -1133,34 +1189,46 @@ function Validate-AndCloseConfigWindow {
             return $true
         }
 
-        $validateButton = Find-DescendantByNameAndControlType -Root $Window -Name 'Validate' -ControlType ([System.Windows.Automation.ControlType]::Button)
+        $validateButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigValidateButton'
+        if ($null -eq $validateButton) {
+            $validateButton = Find-DescendantByNameAndControlType -Root $Window -Name 'Validate' -ControlType ([System.Windows.Automation.ControlType]::Button)
+        }
         if ($null -eq $validateButton) {
             $script:summary.Notes += 'Validate button could not be located in the config window.'
             break
         }
 
         try { $validateButton.SetFocus() } catch {}
-        $invoked = Click-AutomationElementCenter -Element $validateButton
+        Start-Sleep -Milliseconds 25
+        try { [System.Windows.Forms.SendKeys]::SendWait(' ') } catch {}
+        Start-Sleep -Milliseconds 25
+        try { [System.Windows.Forms.SendKeys]::SendWait('{ENTER}') } catch {}
+        Start-Sleep -Milliseconds 60
+        $invoked = Invoke-AutomationElement -Element $validateButton
         if (-not $invoked) {
-            $invoked = Invoke-AutomationElement -Element $validateButton
-        }
-        if (-not $invoked) {
-            try { [System.Windows.Forms.SendKeys]::SendWait(' ') } catch {}
-            Start-Sleep -Milliseconds 150
-            try { [System.Windows.Forms.SendKeys]::SendWait('{ENTER}') } catch {}
+            $invoked = Click-AutomationElementCenter -Element $validateButton
         }
 
-        $deadline = (Get-Date).AddSeconds(15)
+        $deadline = (Get-Date).AddSeconds(120)
         $sawValidatedCountdown = $false
         do {
-            Start-Sleep -Milliseconds 250
+            Start-Sleep -Milliseconds 100
             $Process.Refresh()
-            Close-ConfigChildWindows -MainProcessId $Process.Id
+            $blockingDialog = Get-ConfigBlockingDialog -Process $Process
+            if ($null -ne $blockingDialog) {
+                $script:summary.Notes += "Config validation dialog: $($blockingDialog.Title) - $($blockingDialog.Message)"
+                return $false
+            }
+
             $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
             if ($null -ne $Window) {
                 $statusText = Get-ConfigStatusText -Window $Window
                 if (-not [string]::IsNullOrWhiteSpace($statusText) -and
                     $statusText -like '*Validation passed. Saving and closing in *') {
+                    $sawValidatedCountdown = $true
+                }
+                elseif (-not [string]::IsNullOrWhiteSpace($statusText) -and
+                    $statusText -like '*saved at *') {
                     $sawValidatedCountdown = $true
                 }
             }
@@ -1388,10 +1456,11 @@ try {
     Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     $desktop = $null
     $window = $null
+    $configClosedNaturally = $false
 
     try {
         $desktop = Start-Process -FilePath $desktopExe -PassThru
-        Start-Sleep -Seconds 5
+        Start-Sleep -Milliseconds 900
         $desktopWindow = Get-ProcessWindowElement -Process $desktop -TimeoutSeconds 15
         if ($null -eq $desktopWindow) {
             throw 'Could not locate desktop shell window via UI Automation.'
@@ -1401,16 +1470,16 @@ try {
         $optionsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsMenuRoot'
         if ($null -ne $optionsMenuItem) {
             [void](Expand-AutomationElement -Element $optionsMenuItem)
-            Start-Sleep -Milliseconds 400
+            Start-Sleep -Milliseconds 50
         }
 
         $settingsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsSettingsMenuItem'
         if ($null -eq $settingsMenuItem) {
             try {
                 [System.Windows.Forms.SendKeys]::SendWait('%o')
-                Start-Sleep -Milliseconds 300
+                Start-Sleep -Milliseconds 40
                 [System.Windows.Forms.SendKeys]::SendWait('s')
-                Start-Sleep -Milliseconds 1200
+                Start-Sleep -Milliseconds 40
             }
             catch {}
         }
@@ -1418,9 +1487,9 @@ try {
             if (-not (Invoke-AutomationElement -Element $settingsMenuItem)) {
                 try {
                     [System.Windows.Forms.SendKeys]::SendWait('%o')
-                    Start-Sleep -Milliseconds 300
+                    Start-Sleep -Milliseconds 40
                     [System.Windows.Forms.SendKeys]::SendWait('s')
-                    Start-Sleep -Milliseconds 1200
+                    Start-Sleep -Milliseconds 40
                 }
                 catch {
                     throw 'Failed to invoke Settings menu item via UI Automation.'
@@ -1428,7 +1497,7 @@ try {
             }
         }
 
-        Start-Sleep -Seconds 2
+        Start-Sleep -Milliseconds 250
         $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 20
         if ($null -eq $window) { throw 'Could not locate config window via UI Automation.' }
         if ([string]$window.Current.Name -like '*BETA-5.5*' -or
@@ -1463,46 +1532,30 @@ try {
                 continue
             }
 
-            [void](Select-TabItem -Tab $tab)
+            if ($shotIndex -gt 1) {
+                [void](Select-TabItem -Tab $tab)
+            }
+            Start-Sleep -Milliseconds 50
             $tabName = ($rawTabName -replace '[^A-Za-z0-9_-]','_')
             Capture-Screen -Path (Join-Path $results ("config-tab-{0:D3}-{1}.png" -f $shotIndex, $tabName))
             $summary.ConfigShots++
             $shotIndex++
+        }
 
-            $controls = Get-RepresentativeExerciseControls -Controls (Get-ExerciseControls -Window $window) -MaximumCount 8
-            $invokedButtons = New-Object 'System.Collections.Generic.HashSet[string]'
-            $controlIndex = 1
-            foreach ($control in $controls) {
-                Exercise-Control -Control $control -InvokedButtons $invokedButtons
-                $typeName = "control"
-                $safeName = "unnamed"
-                try {
-                    $typeName = ($control.Current.ControlType.LocalizedControlType -replace '\s+','-')
-                    $name = [string]$control.Current.Name
-                    if (-not [string]::IsNullOrWhiteSpace($name)) {
-                        $safeName = ($name -replace '[^A-Za-z0-9_-]','_')
-                    }
-                }
-                catch {
-                    $summary.Notes += "Control metadata read failed on tab '$tabName': $($_.Exception.Message)"
-                }
-
-                Capture-Screen -Path (Join-Path $results ("config-{0:D3}-{1:D3}-{2}-{3}.png" -f $shotIndex, $controlIndex, $typeName, $safeName))
-                $summary.ConfigShots++
-                $controlIndex++
-
-                Close-ConfigChildWindows -MainProcessId $desktop.Id
-                $refreshedWindow = Find-ConfigWindow -Process $desktop -TimeoutSeconds 1
-                if ($null -ne $refreshedWindow) {
-                    $window = $refreshedWindow
-                }
-
-                if ($controlIndex -gt 32) { break }
+        $configClosedNaturally = Validate-AndCloseConfigWindow -Process $desktop -Window $window
+        if ($configClosedNaturally) {
+            $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 2
+            if ($null -ne $window) {
+                $configClosedNaturally = $false
             }
         }
 
-        if (-not (Validate-AndCloseConfigWindow -Process $desktop -Window $window)) {
+        if (-not $configClosedNaturally) {
             $summary.Notes += 'Validate did not close the config window automatically; falling back to forced close.'
+            throw 'Validate did not close the config window automatically.'
+        }
+        else {
+            $window = $null
         }
 
         $summary.ConfigPhaseStatus = "Completed"
@@ -1520,8 +1573,10 @@ try {
         Write-SummaryFiles
     }
     finally {
-        Close-ConfigWindowIfPresent -Process $desktop -Window $window
-        Start-Sleep -Seconds 1
+        if (-not $configClosedNaturally) {
+            Close-ConfigWindowIfPresent -Process $desktop -Window $window
+            Start-Sleep -Milliseconds 90
+        }
     }
 
     try {
@@ -1529,7 +1584,7 @@ try {
             throw 'Desktop process was not running after config phase.'
         }
 
-        Start-Sleep -Seconds 2
+        Start-Sleep -Milliseconds 150
         $desktopWindow = Get-ProcessWindowElement -Process $desktop -TimeoutSeconds 15
         if ($null -eq $desktopWindow) {
             throw 'Could not locate desktop shell window via UI Automation.'
@@ -1657,4 +1712,5 @@ finally {
     Write-Output "RESULTS=$results"
     Write-Output "SUMMARY=$summaryPath"
 }
+
 

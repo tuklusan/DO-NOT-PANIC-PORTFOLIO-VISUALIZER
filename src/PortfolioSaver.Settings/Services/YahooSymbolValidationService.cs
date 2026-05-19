@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Net.Http;
+using System.Net;
 using System.IO;
 using PortfolioSaver.Data.Services;
 
@@ -9,10 +10,17 @@ public sealed class YahooSymbolValidationService
 {
     private const int MaxBatchSymbols = 8;
     private static readonly TimeSpan InterBatchDelay = TimeSpan.FromSeconds(2);
+    private readonly Func<TimeSpan, HttpClient> _httpClientFactory;
+
+    public YahooSymbolValidationService(Func<TimeSpan, HttpClient>? httpClientFactory = null)
+    {
+        _httpClientFactory = httpClientFactory ?? HttpClientFactory.Create;
+    }
 
     public async Task<YahooSymbolValidationResult> ValidateAsync(
         IEnumerable<string> symbols,
         int timeoutSeconds,
+        IProgress<YahooSymbolValidationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         List<string> normalizedSymbols = symbols
@@ -24,56 +32,91 @@ public sealed class YahooSymbolValidationService
         if (normalizedSymbols.Count == 0)
             return result;
 
-        using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, timeoutSeconds)));
+        using HttpClient httpClient = _httpClientFactory(TimeSpan.FromSeconds(Math.Max(3, timeoutSeconds)));
         YahooFinanceSessionService sessionService = new(httpClient);
 
         IReadOnlyList<List<string>> batches = ChunkSymbols(normalizedSymbols, MaxBatchSymbols).ToList();
         for (int batchIndex = 0; batchIndex < batches.Count; batchIndex++)
         {
             List<string> batch = batches[batchIndex];
-            cancellationToken.ThrowIfCancellationRequested();
-            string symbolsCsv = string.Join(",", batch.Select(Uri.EscapeDataString));
-            string url = $"https://query1.finance.yahoo.com/v8/finance/spark?symbols={symbolsCsv}&range=7d&interval=1d&includePrePost=false";
-            using HttpResponseMessage response = await sessionService.GetAsync(url, cancellationToken);
-            response.EnsureSuccessStatusCode();
-
-            await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-            if (!document.RootElement.TryGetProperty("spark", out JsonElement sparkElement) ||
-                !sparkElement.TryGetProperty("result", out JsonElement resultArray) ||
-                resultArray.ValueKind != JsonValueKind.Array)
+            try
             {
-                continue;
-            }
+                HashSet<string> resolvedBatchSymbols = new(StringComparer.OrdinalIgnoreCase);
+                cancellationToken.ThrowIfCancellationRequested();
+                string symbolsCsv = string.Join(",", batch.Select(Uri.EscapeDataString));
+                string url = $"https://query1.finance.yahoo.com/v8/finance/spark?symbols={symbolsCsv}&range=7d&interval=1d&includePrePost=false";
+                using HttpResponseMessage response = await sessionService.GetAsync(url, cancellationToken);
+                response.EnsureSuccessStatusCode();
 
-            foreach (JsonElement entry in resultArray.EnumerateArray())
-            {
-                string symbol = GetString(entry, "symbol");
-                if (string.IsNullOrWhiteSpace(symbol))
-                    continue;
-
-                if (!entry.TryGetProperty("response", out JsonElement responseArray) ||
-                    responseArray.ValueKind != JsonValueKind.Array ||
-                    responseArray.GetArrayLength() == 0)
+                await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+                if (!document.RootElement.TryGetProperty("spark", out JsonElement sparkElement) ||
+                    !sparkElement.TryGetProperty("result", out JsonElement resultArray) ||
+                    resultArray.ValueKind != JsonValueKind.Array)
                 {
+                    result.MarkDeferredBatch(batch, "Yahoo Finance validation returned an unreadable response.");
+                    foreach (string symbol in batch)
+                        progress?.Report(new YahooSymbolValidationProgress(symbol, false, string.Empty, "Validation unavailable"));
+
                     continue;
                 }
 
-                JsonElement responseElement = responseArray[0];
-                JsonElement metaElement = responseElement.TryGetProperty("meta", out JsonElement meta) && meta.ValueKind == JsonValueKind.Object
-                    ? meta
-                    : default;
+                foreach (JsonElement entry in resultArray.EnumerateArray())
+                {
+                    string symbol = GetString(entry, "symbol");
+                    if (string.IsNullOrWhiteSpace(symbol))
+                        continue;
 
-                bool hasLiveData = HasAnyDataPoint(responseElement) ||
-                                   TryGetDecimal(metaElement, "regularMarketPrice") is decimal;
-                if (!hasLiveData)
-                    continue;
+                    if (!entry.TryGetProperty("response", out JsonElement responseArray) ||
+                        responseArray.ValueKind != JsonValueKind.Array ||
+                        responseArray.GetArrayLength() == 0)
+                    {
+                        continue;
+                    }
 
-                string normalized = Normalize(symbol);
-                result.MarkValid(
-                    normalized,
-                    GetString(metaElement, "shortName"),
-                    GetString(metaElement, "longName"));
+                    JsonElement responseElement = responseArray[0];
+                    JsonElement metaElement = responseElement.TryGetProperty("meta", out JsonElement meta) && meta.ValueKind == JsonValueKind.Object
+                        ? meta
+                        : default;
+
+                    bool hasLiveData = HasAnyDataPoint(responseElement) ||
+                                       TryGetDecimal(metaElement, "regularMarketPrice") is decimal;
+                    if (!hasLiveData)
+                        continue;
+
+                    string normalized = Normalize(symbol);
+                    resolvedBatchSymbols.Add(normalized);
+                    string resolvedName = GetString(metaElement, "shortName");
+                    if (string.IsNullOrWhiteSpace(resolvedName))
+                        resolvedName = GetString(metaElement, "longName");
+                    result.MarkValid(
+                        normalized,
+                        resolvedName,
+                        GetString(metaElement, "longName"));
+                    progress?.Report(new YahooSymbolValidationProgress(normalized, true, resolvedName, "Validated via Yahoo Finance"));
+                }
+
+                foreach (string requestedSymbol in batch)
+                {
+                    string normalized = Normalize(requestedSymbol);
+                    if (resolvedBatchSymbols.Contains(normalized))
+                        continue;
+
+                    result.MarkInvalid(normalized, "Yahoo Finance does not recognize this symbol.");
+                    progress?.Report(new YahooSymbolValidationProgress(normalized, false, string.Empty, "Failed"));
+                }
+            }
+            catch (Exception ex) when (IsTooManyRequests(ex))
+            {
+                result.MarkRateLimitedBatch(batch, ex.Message);
+                foreach (string symbol in batch)
+                    progress?.Report(new YahooSymbolValidationProgress(symbol, false, string.Empty, "Rate limited"));
+            }
+            catch (Exception ex)
+            {
+                result.MarkDeferredBatch(batch, ex.Message);
+                foreach (string symbol in batch)
+                    progress?.Report(new YahooSymbolValidationProgress(symbol, false, string.Empty, "Validation unavailable"));
             }
 
             if (batchIndex < batches.Count - 1)
@@ -142,11 +185,24 @@ public sealed class YahooSymbolValidationService
 
         return false;
     }
+
+    private static bool IsTooManyRequests(Exception ex)
+        => ex is HttpRequestException { StatusCode: HttpStatusCode.TooManyRequests } ||
+           ex.Message.Contains("429", StringComparison.OrdinalIgnoreCase) ||
+           ex.Message.Contains("too many requests", StringComparison.OrdinalIgnoreCase) ||
+           ex.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase);
 }
+
+public sealed record YahooSymbolValidationProgress(
+    string Symbol,
+    bool IsValid,
+    string ResolvedName,
+    string Message);
 
 public sealed class YahooSymbolValidationResult
 {
     private readonly Dictionary<string, YahooSymbolValidationEntry> _entries;
+    private readonly HashSet<string> _rateLimitedSymbols = new(StringComparer.OrdinalIgnoreCase);
 
     public YahooSymbolValidationResult(IEnumerable<string> requestedSymbols)
     {
@@ -163,10 +219,45 @@ public sealed class YahooSymbolValidationResult
     public IReadOnlyDictionary<string, YahooSymbolValidationEntry> Entries => _entries;
 
     public IReadOnlyList<string> InvalidSymbols => _entries.Values
-        .Where(entry => !entry.IsValid)
+        .Where(entry => entry.WasChecked && !entry.IsValid)
         .Select(entry => entry.Symbol)
         .OrderBy(symbol => symbol, StringComparer.OrdinalIgnoreCase)
         .ToList();
+
+    public IReadOnlyList<string> DeferredSymbols => _entries.Values
+        .Where(entry => !entry.WasChecked && !entry.IsValid)
+        .Select(entry => entry.Symbol)
+        .OrderBy(symbol => symbol, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    public IReadOnlyList<string> RateLimitedSymbols => _rateLimitedSymbols
+        .OrderBy(symbol => symbol, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    public bool WasRateLimited => _rateLimitedSymbols.Count > 0;
+
+    public void MergeFrom(YahooSymbolValidationResult other)
+    {
+        foreach (YahooSymbolValidationEntry entry in other.Entries.Values)
+        {
+            if (entry.IsValid)
+            {
+                MarkValid(entry.Symbol, entry.DisplayName, entry.DisplayName);
+                continue;
+            }
+
+            if (entry.WasChecked)
+            {
+                MarkInvalid(entry.Symbol, entry.FailureReason);
+                continue;
+            }
+
+            MarkDeferred(entry.Symbol, entry.FailureReason);
+        }
+
+        foreach (string symbol in other._rateLimitedSymbols)
+            _rateLimitedSymbols.Add(symbol);
+    }
 
     public void MarkValid(string symbol, string? shortName, string? longName)
     {
@@ -175,9 +266,51 @@ public sealed class YahooSymbolValidationResult
             return;
 
         entry.IsValid = true;
+        entry.WasChecked = true;
+        entry.FailureReason = string.Empty;
         entry.DisplayName = !string.IsNullOrWhiteSpace(shortName)
             ? shortName!.Trim()
             : (!string.IsNullOrWhiteSpace(longName) ? longName!.Trim() : entry.DisplayName);
+    }
+
+    public void MarkInvalid(string symbol, string reason)
+    {
+        string normalized = Normalize(symbol);
+        if (!_entries.TryGetValue(normalized, out YahooSymbolValidationEntry? entry))
+            return;
+
+        entry.IsValid = false;
+        entry.WasChecked = true;
+        entry.FailureReason = reason;
+    }
+
+    public void MarkDeferredBatch(IEnumerable<string> symbols, string reason)
+    {
+        foreach (string symbol in symbols)
+            MarkDeferred(symbol, reason);
+    }
+
+    public void MarkRateLimitedBatch(IEnumerable<string> symbols, string reason)
+    {
+        foreach (string symbol in symbols)
+        {
+            string normalized = Normalize(symbol);
+            _rateLimitedSymbols.Add(normalized);
+            MarkDeferred(normalized, string.IsNullOrWhiteSpace(reason)
+                ? "Yahoo Finance rate limited this validation request."
+                : $"Yahoo Finance rate limited this validation request: {reason}");
+        }
+    }
+
+    private void MarkDeferred(string symbol, string reason)
+    {
+        string normalized = Normalize(symbol);
+        if (!_entries.TryGetValue(normalized, out YahooSymbolValidationEntry? entry))
+            return;
+
+        entry.IsValid = false;
+        entry.WasChecked = false;
+        entry.FailureReason = reason;
     }
 
     private static string Normalize(string? symbol)
@@ -190,9 +323,12 @@ public sealed class YahooSymbolValidationEntry
     {
         Symbol = symbol;
         IsValid = false;
+        WasChecked = false;
     }
 
     public string Symbol { get; }
     public bool IsValid { get; set; }
+    public bool WasChecked { get; set; }
     public string DisplayName { get; set; } = string.Empty;
+    public string FailureReason { get; set; } = string.Empty;
 }

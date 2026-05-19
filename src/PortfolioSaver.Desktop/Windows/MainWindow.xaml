@@ -44,6 +44,6 @@
             </MenuItem>
         </Menu>
 
-        <scene:ScreensaverSceneControl />
+        <scene:ScreensaverSceneControl x:Name="SceneHost" />
     </DockPanel>
 </Window>

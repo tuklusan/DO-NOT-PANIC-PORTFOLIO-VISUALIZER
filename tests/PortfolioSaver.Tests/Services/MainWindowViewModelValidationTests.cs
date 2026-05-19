@@ -1,9 +1,12 @@
 using System.ComponentModel;
+using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Threading;
+using PortfolioSaver.Config.Services;
 using PortfolioSaver.Config.ViewModels;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Data.Services;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
@@ -86,9 +89,117 @@ public sealed class MainWindowViewModelValidationTests
         Assert.Equal("Pending validation", ticker.ValidationMessage);
     }
 
-    private static MainWindowViewModel CreateIsolatedViewModel()
+    [Fact]
+    public void UpdateConnectivityState_WhenConnectivityRecovers_ClearsInternetRequiredStatus()
     {
-        MainWindowViewModel vm = new();
+        FakeConnectivityService connectivity = new(initiallyAvailable: true);
+        MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
+        vm.StatusMessage = "Internet connection is required for ticker and key validation.";
+        SetPrivateField(vm, "_isNetworkAvailable", false);
+
+        InvokePrivate<object?>(vm, "UpdateConnectivityState", []);
+
+        Assert.True(vm.IsNetworkAvailable);
+        Assert.Equal("Internet connection detected. Continue with Validate.", vm.StatusMessage);
+    }
+
+    [Fact]
+    public void EnsureValidationConnectivity_ForcesFreshProbeBeforeBlockingValidation()
+    {
+        FakeConnectivityService connectivity = new(initiallyAvailable: false);
+        MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
+        connectivity.SetAvailable(true);
+
+        bool available = InvokePrivate<bool>(vm, "EnsureValidationConnectivity", []);
+
+        Assert.True(available);
+        Assert.True(vm.IsNetworkAvailable);
+        Assert.Equal(1, connectivity.ForceProbeCalls);
+    }
+
+    [Fact]
+    public void SetApplying_UpdatesPrimaryActionState_AndValidationLog()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));
+
+        InvokePrivate<object?>(vm, "BeginValidationRun", []);
+
+        Assert.True(vm.IsApplying);
+        Assert.False(vm.IsValidationActionEnabled);
+        Assert.Equal("Validating...", vm.PrimaryButtonText);
+
+        InvokePrivate<object?>(vm, "AppendValidationLog", ["AAPL -> APPLE INC."]);
+        Assert.Contains("AAPL -> APPLE INC.", vm.ValidationLogText, StringComparison.Ordinal);
+
+        InvokePrivate<object?>(vm, "EndValidationRun", []);
+
+        Assert.False(vm.IsApplying);
+        Assert.True(vm.IsValidationActionEnabled);
+        Assert.Equal("Validate", vm.PrimaryButtonText);
+    }
+
+    [Fact]
+    public async Task ValidateSymbolsAgainstSourcesAsync_TrustsRecentStaleLocalQuoteCache()
+    {
+        string localDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(localDataRoot);
+        string? originalLocalDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", localDataRoot);
+
+        try
+        {
+            QuoteCacheService cache = new(Path.Combine(localDataRoot, "quotes-cache.json"));
+            await cache.SaveAsync(
+            [
+                new QuoteSnapshot
+                {
+                    Symbol = "AAPL",
+                    Last = 187.42m,
+                    PreviousClose = 186.80m,
+                    FetchTimestampUtc = DateTimeOffset.UtcNow.AddHours(-6),
+                    IsStale = true
+                }
+            ]);
+
+            MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));
+            TickerGroupEditorViewModel group = new();
+            group.Tickers.Clear();
+            group.Tickers.Add(new TickerItemEditorViewModel(new TickerItem
+            {
+                Symbol = "AAPL",
+                DisplayName = "Apple Inc.",
+                Enabled = true
+            }));
+            vm.Groups.Clear();
+            vm.Groups.Add(group);
+
+            YahooSymbolValidationResult result = await InvokePrivate<Task<YahooSymbolValidationResult>>(
+                vm,
+                "ValidateSymbolsAgainstSourcesAsync",
+                [vm.Settings, (IReadOnlyList<string>)["AAPL"]]);
+
+            YahooSymbolValidationEntry entry = Assert.Single(result.Entries.Values);
+            Assert.True(entry.IsValid);
+            Assert.Empty(result.InvalidSymbols);
+            Assert.Empty(result.DeferredSymbols);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", originalLocalDataRoot);
+            try
+            {
+                if (Directory.Exists(localDataRoot))
+                    Directory.Delete(localDataRoot, recursive: true);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private static MainWindowViewModel CreateIsolatedViewModel(IConnectivityService? connectivity = null)
+    {
+        MainWindowViewModel vm = new(connectivity);
         DispatcherTimer timer = GetPrivateField<DispatcherTimer>(vm, "_stateTimer");
         timer.Stop();
         return vm;
@@ -115,5 +226,21 @@ public sealed class MainWindowViewModelValidationTests
         Assert.NotNull(field);
         object? value = field!.GetValue(instance);
         return Assert.IsType<T>(value);
+    }
+
+    private sealed class FakeConnectivityService(bool initiallyAvailable) : IConnectivityService
+    {
+        private bool _available = initiallyAvailable;
+
+        public int ForceProbeCalls { get; private set; }
+
+        public bool IsInternetAvailable() => _available;
+
+        public void ForceProbe()
+        {
+            ForceProbeCalls++;
+        }
+
+        public void SetAvailable(bool available) => _available = available;
     }
 }

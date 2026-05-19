@@ -1,11 +1,17 @@
-using System.Net.NetworkInformation;
+using System.Net.Http;
 using System.Threading;
 
 namespace PortfolioSaver.Shared.Services;
 
 public sealed class InternetProbeService
 {
-    private readonly string _host;
+    private static readonly string[] DefaultProbeUrls =
+    [
+        "https://www.msftconnecttest.com/connecttest.txt",
+        "https://www.gstatic.com/generate_204"
+    ];
+
+    private readonly string[] _probeUrls;
     private readonly int _attempts;
     private readonly int _timeoutMilliseconds;
     private readonly TimeSpan _cacheDuration;
@@ -15,15 +21,15 @@ public sealed class InternetProbeService
     private bool _lastProbeResult;
 
     public InternetProbeService(
-        string host = "baidu.com",
-        int attempts = 5,
-        int timeoutMilliseconds = 1000,
+        IEnumerable<string>? probeUrls = null,
+        int attempts = 2,
+        int timeoutMilliseconds = 1500,
         TimeSpan? cacheDuration = null)
     {
-        _host = string.IsNullOrWhiteSpace(host) ? "baidu.com" : host.Trim();
+        _probeUrls = NormalizeProbeUrls(probeUrls);
         _attempts = Math.Max(1, attempts);
         _timeoutMilliseconds = Math.Clamp(timeoutMilliseconds, 250, 5000);
-        _cacheDuration = cacheDuration ?? TimeSpan.FromSeconds(30);
+        _cacheDuration = cacheDuration ?? TimeSpan.FromSeconds(10);
     }
 
     public bool IsInternetAvailable()
@@ -51,23 +57,50 @@ public sealed class InternetProbeService
 
     private bool ProbeInternet()
     {
-        using Ping ping = new();
+        using HttpClient client = new()
+        {
+            Timeout = TimeSpan.FromMilliseconds(_timeoutMilliseconds)
+        };
+
         for (int attempt = 0; attempt < _attempts; attempt++)
         {
-            try
+            foreach (string probeUrl in _probeUrls)
             {
-                PingReply reply = ping.Send(_host, _timeoutMilliseconds);
-                if (reply.Status == IPStatus.Success)
+                if (TryProbeUrl(client, probeUrl))
                     return true;
-            }
-            catch
-            {
             }
 
             if (attempt < _attempts - 1)
-                Thread.Sleep(1000);
+                Thread.Sleep(250);
         }
 
         return false;
+    }
+
+    private static bool TryProbeUrl(HttpClient client, string probeUrl)
+    {
+        try
+        {
+            using HttpRequestMessage request = new(HttpMethod.Get, probeUrl);
+            using HttpResponseMessage response = client.Send(request, HttpCompletionOption.ResponseHeadersRead);
+            int statusCode = (int)response.StatusCode;
+            return statusCode >= 200 && statusCode < 500;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string[] NormalizeProbeUrls(IEnumerable<string>? probeUrls)
+    {
+        string[] normalized = (probeUrls ?? DefaultProbeUrls)
+            .Select(url => (url ?? string.Empty).Trim())
+            .Where(url => !string.IsNullOrWhiteSpace(url))
+            .Select(url => url.Contains("://", StringComparison.Ordinal) ? url : $"https://{url}")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return normalized.Length > 0 ? normalized : DefaultProbeUrls;
     }
 }

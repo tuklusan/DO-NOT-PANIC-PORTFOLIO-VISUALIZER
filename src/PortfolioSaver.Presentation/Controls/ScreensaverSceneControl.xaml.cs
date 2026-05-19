@@ -84,6 +84,7 @@ public partial class ScreensaverSceneControl : UserControl
     private DateTimeOffset _lastStatusAncillaryRefreshUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastClockAncillaryRefreshUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastSceneHeartbeatUtc = DateTimeOffset.MinValue;
+    private bool _isValidationPaused;
 
     public ScreensaverSceneControl()
     {
@@ -172,6 +173,12 @@ public partial class ScreensaverSceneControl : UserControl
 
     private async Task RefreshSceneAsync(bool preserveLayout)
     {
+        if (_isValidationPaused)
+        {
+            TraceScene("RefreshSceneAsync skipped because validation pause is active.");
+            return;
+        }
+
         if (_isRefreshing)
             return;
 
@@ -180,6 +187,12 @@ public partial class ScreensaverSceneControl : UserControl
         {
             int currentRotationSeed = _graphRotationSeed;
             ScreensaverSceneState state = await _startupCoordinator.BuildSceneAsync(currentRotationSeed);
+            if (_isValidationPaused)
+            {
+                TraceScene("RefreshSceneAsync discarded fetched scene because validation pause became active.");
+                return;
+            }
+
             ApplySceneState(state, preserveLayout);
             RestartGraphWarmup(currentRotationSeed, preserveLayout);
             if (preserveLayout && _settings.EnableFloatingGraphs)
@@ -270,6 +283,12 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void RestartGraphWarmup(int rotationSeed, bool preserveLayout)
     {
+        if (_isValidationPaused)
+        {
+            TraceScene("RestartGraphWarmup skipped because validation pause is active.");
+            return;
+        }
+
         if (!_settings.EnableFloatingGraphs)
         {
             CancelGraphWarmup();
@@ -332,6 +351,11 @@ public partial class ScreensaverSceneControl : UserControl
             await foreach (StartupWarmupBatch batch in _startupCoordinator.WarmStartupYahooQuotesAsync(_settings, cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (_isValidationPaused)
+                {
+                    TraceScene("RunStartupWarmupAsync stopping because validation pause is active.");
+                    break;
+                }
 
                 _latestQuotes = MergeQuotes(_latestQuotes, batch.Quotes);
                 SyncTapes(_startupCoordinator.BuildTapesForQuotes(_settings, _latestQuotes));
@@ -536,6 +560,12 @@ public partial class ScreensaverSceneControl : UserControl
             await foreach (FloatingGraphViewModel graph in _startupCoordinator.LoadGraphsIncrementallyAsync(_settings, rotationSeed, cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (_isValidationPaused)
+                {
+                    TraceScene("WarmGraphsAsync stopping because validation pause is active.");
+                    break;
+                }
+
                 TraceScene($"WarmGraphsAsync yielded {graph.Symbol} for {graph.TapeName}.");
                 ApplyOrUpdateGraph(graph, preserveLayout);
             }
@@ -592,6 +622,13 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void ConfigureTimers()
     {
+        if (_isValidationPaused)
+        {
+            StopLiveTimers();
+            TraceScene("ConfigureTimers skipped because validation pause is active.");
+            return;
+        }
+
         _clockTimer.Interval = TimeSpan.FromSeconds(Math.Max(1, _settings.ClockRefreshSeconds));
         _refreshTimer.Interval = TimeSpan.FromSeconds(GetRefreshSeconds());
         _backgroundTimer.Interval = TimeSpan.FromSeconds(Math.Max(5, _settings.BackgroundChangeSeconds));
@@ -613,6 +650,50 @@ public partial class ScreensaverSceneControl : UserControl
             new KeyValuePair<string, object?>("world_data_minutes", _worldDataTimer.Interval.TotalMinutes),
             new KeyValuePair<string, object?>("background_rotation_enabled", _backgroundPaths.Count > 1),
             new KeyValuePair<string, object?>("pending_quote_recovery", HasPendingQuoteRecovery()));
+    }
+
+    public void SetValidationPause(bool paused)
+    {
+        if (_isValidationPaused == paused)
+            return;
+
+        _isValidationPaused = paused;
+        if (paused)
+        {
+            StopLiveTimers();
+            CancelGraphWarmup();
+            CancelStartupWarmup();
+            TraceScene("Scene paused for config session.");
+            return;
+        }
+
+        ConfigureTimers();
+        if (_initialized)
+            _ = RefreshSceneAfterValidationPauseAsync();
+
+        TraceScene("Scene resumed after config session.");
+    }
+
+    private void StopLiveTimers()
+    {
+        _clockTimer.Stop();
+        _refreshTimer.Stop();
+        _backgroundTimer.Stop();
+        _backgroundZoomTimer.Stop();
+        _worldDataTimer.Stop();
+        _motionTimer.Stop();
+    }
+
+    private async Task RefreshSceneAfterValidationPauseAsync()
+    {
+        try
+        {
+            await RefreshSceneAsync(preserveLayout: true);
+        }
+        catch (Exception ex)
+        {
+            TraceScene($"RefreshSceneAfterValidationPauseAsync failed: {ex}");
+        }
     }
 
     private double GetRefreshSeconds()
@@ -1190,6 +1271,9 @@ public partial class ScreensaverSceneControl : UserControl
 
     private async Task RefreshClockDataAsync(bool force)
     {
+        if (_isValidationPaused)
+            return;
+
         if (_clockViewModel is null)
             return;
 

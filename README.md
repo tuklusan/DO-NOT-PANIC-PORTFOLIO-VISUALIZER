@@ -146,7 +146,8 @@ The current known-good clean proof path is:
 
 - session-1 `PortfolioSaver.VmAgent`
 - `Guest-UxDeepExercise.ps1` launched by the agent inside the interactive desktop
-- config window discovery by process-bound UI Automation
+- config window discovery by process-bound UI Automation with keyboard-first tab traversal and Validate
+- config validation now trusts recent local quote/profile evidence before falling back to Yahoo Finance, so harness Validate runs avoid re-triggering full-symbol 429 storms
 - desktop fullscreen entry triggered through the `ViewFullScreenMenuItem` automation hook
 - fullscreen validation by comparing live window bounds against the virtual screen
 - result bundle pullback from `build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-154444`

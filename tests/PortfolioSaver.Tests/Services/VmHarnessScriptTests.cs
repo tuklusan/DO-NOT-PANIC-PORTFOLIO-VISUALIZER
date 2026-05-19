@@ -136,17 +136,23 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Find-TabItemByName", script, StringComparison.Ordinal);
         Assert.Contains("function Get-RepresentativeExerciseControls", script, StringComparison.Ordinal);
         Assert.Contains("function Validate-AndCloseConfigWindow", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-ConfigBlockingDialog", script, StringComparison.Ordinal);
         Assert.Contains("function Get-ProcessOwnedWindows", script, StringComparison.Ordinal);
         Assert.Contains("function Close-ConfigWindowIfPresent", script, StringComparison.Ordinal);
         Assert.Contains("function Click-AutomationElementCenter", script, StringComparison.Ordinal);
         Assert.Contains("function Get-ConfigStatusText", script, StringComparison.Ordinal);
         Assert.Contains("$window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 2", script, StringComparison.Ordinal);
-        Assert.Contains("Get-RepresentativeExerciseControls -Controls (Get-ExerciseControls -Window $window) -MaximumCount 8", script, StringComparison.Ordinal);
-        Assert.Contains("Find-DescendantByNameAndControlType -Root $Window -Name 'Validate'", script, StringComparison.Ordinal);
+        Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait(' ')", script, StringComparison.Ordinal);
+        Assert.Contains("$selected.Current.IsSelected", script, StringComparison.Ordinal);
+        Assert.Contains("Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigValidateButton'", script, StringComparison.Ordinal);
+        Assert.Contains("Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigStatusText'", script, StringComparison.Ordinal);
         Assert.Contains("$statusText -like '*Validation passed. Saving and closing in *'", script, StringComparison.Ordinal);
+        Assert.Contains("Config validation dialog:", script, StringComparison.Ordinal);
+        Assert.Contains("throw 'Validate did not close the config window automatically.'", script, StringComparison.Ordinal);
         Assert.Contains("Validate-AndCloseConfigWindow -Process $desktop -Window $window", script, StringComparison.Ordinal);
         Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')", script, StringComparison.Ordinal);
         Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait('%{F4}')", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("$clickedTab = Click-AutomationElementCenter -Element $tab", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Start-Process -FilePath $configExe", script, StringComparison.Ordinal);
     }
 

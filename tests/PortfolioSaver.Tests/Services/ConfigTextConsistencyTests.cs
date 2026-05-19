@@ -72,6 +72,9 @@ public sealed class ConfigTextConsistencyTests
 
         int primaryBindingCount = xaml.Split("Content=\"{Binding PrimaryButtonText}\"", StringSplitOptions.None).Length - 1;
         Assert.Equal(1, primaryBindingCount);
+        Assert.Contains("AutomationProperties.AutomationId=\"ConfigValidateButton\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("IsEnabled=\"{Binding IsValidationActionEnabled}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.AutomationId=\"ConfigStatusText\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding VersionLabel}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("FontSize=\"10\"", xaml, StringComparison.Ordinal);
         Assert.Contains("TextTrimming=\"CharacterEllipsis\"", xaml, StringComparison.Ordinal);
@@ -83,6 +86,7 @@ public sealed class ConfigTextConsistencyTests
     {
         string source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "App.xaml.cs"));
         string windowCode = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml.cs"));
+        string progressXaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "ValidationProgressWindow.xaml"));
 
         Assert.Contains("RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;", source, StringComparison.Ordinal);
         Assert.Contains("Software rendering enabled.", source, StringComparison.Ordinal);
@@ -90,6 +94,8 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("WarmStartupSurfaceAsync()", windowCode, StringComparison.Ordinal);
         Assert.Contains("StartupShield.Visibility = Visibility.Collapsed;", windowCode, StringComparison.Ordinal);
         Assert.Contains("MainTabs.IsEnabled = false;", windowCode, StringComparison.Ordinal);
+        Assert.Contains("ValidationProgressWindow", progressXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding ValidationLogText, Mode=OneWay}\"", progressXaml, StringComparison.Ordinal);
     }
 
     [Fact]

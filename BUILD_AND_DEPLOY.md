@@ -50,6 +50,8 @@ For legacy parser/config routing checks:
 
 ### Config app
 - Settings window opens.
+- In desktop-first validation, open Settings from the desktop `Options` menu and confirm `Validate` closes the window naturally after a successful run.
+- During validation, confirm the `Validate` button is disabled, the transient validation-progress window logs ticker/provider results, and the progress window closes when validation ends.
 - Existing sample settings can be loaded or copied into runtime settings.
 - Ticker groups survive save/reload.
 - Validate flow works online and blocks bad symbols.

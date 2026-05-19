@@ -22,6 +22,12 @@ public sealed class ApiKeyValidationService
     }
 
     public async Task<ApiKeyValidationResult> ValidateAsync(AppSettings settings, CancellationToken cancellationToken = default)
+        => await ValidateAsync(settings, progress: null, cancellationToken);
+
+    public async Task<ApiKeyValidationResult> ValidateAsync(
+        AppSettings settings,
+        IProgress<ApiKeyValidationProgress>? progress,
+        CancellationToken cancellationToken = default)
     {
         ApiKeyValidationResult result = new();
         Dictionary<string, string> keys = new(StringComparer.OrdinalIgnoreCase)
@@ -39,11 +45,15 @@ public sealed class ApiKeyValidationService
             if (string.IsNullOrWhiteSpace(trimmed))
             {
                 result.Errors.Add($"{provider} API key is required.");
+                progress?.Report(new ApiKeyValidationProgress(provider, false, "Missing key"));
                 continue;
             }
 
             if (IsPlaceholder(provider, trimmed))
+            {
                 result.Errors.Add($"{provider} API key is still set to the installer sample format and must be replaced.");
+                progress?.Report(new ApiKeyValidationProgress(provider, false, "Sample placeholder key"));
+            }
         }
 
         if (result.Errors.Count > 0)
@@ -53,18 +63,23 @@ public sealed class ApiKeyValidationService
 
         if (!await ValidateFinnhubAsync(client, settings.FinnhubApiKey, cancellationToken))
             result.Errors.Add("Finnhub API key did not validate.");
+        progress?.Report(new ApiKeyValidationProgress("Finnhub", result.Errors.All(error => !error.StartsWith("Finnhub", StringComparison.Ordinal)), result.Errors.Any(error => error.StartsWith("Finnhub", StringComparison.Ordinal)) ? "Failed" : "Validated"));
 
         if (!await ValidateTwelveDataAsync(client, settings.TwelveDataApiKey, cancellationToken))
             result.Errors.Add("Twelve Data API key did not validate.");
+        progress?.Report(new ApiKeyValidationProgress("Twelve Data", result.Errors.All(error => !error.StartsWith("Twelve Data", StringComparison.Ordinal)), result.Errors.Any(error => error.StartsWith("Twelve Data", StringComparison.Ordinal)) ? "Failed" : "Validated"));
 
         if (!await ValidateTiingoAsync(client, settings.TiingoApiKey, cancellationToken))
             result.Errors.Add("Tiingo API key did not validate.");
+        progress?.Report(new ApiKeyValidationProgress("Tiingo", result.Errors.All(error => !error.StartsWith("Tiingo", StringComparison.Ordinal)), result.Errors.Any(error => error.StartsWith("Tiingo", StringComparison.Ordinal)) ? "Failed" : "Validated"));
 
         if (!await ValidateFmpAsync(client, settings.FinancialModelingPrepApiKey, cancellationToken))
             result.Errors.Add("Financial Modeling Prep API key did not validate.");
+        progress?.Report(new ApiKeyValidationProgress("Financial Modeling Prep", result.Errors.All(error => !error.StartsWith("Financial Modeling Prep", StringComparison.Ordinal)), result.Errors.Any(error => error.StartsWith("Financial Modeling Prep", StringComparison.Ordinal)) ? "Failed" : "Validated"));
 
         if (!await ValidateEodhdAsync(client, settings.EodhdApiKey, cancellationToken))
             result.Errors.Add("EODHD API key did not validate.");
+        progress?.Report(new ApiKeyValidationProgress("EODHD", result.Errors.All(error => !error.StartsWith("EODHD", StringComparison.Ordinal)), result.Errors.Any(error => error.StartsWith("EODHD", StringComparison.Ordinal)) ? "Failed" : "Validated"));
 
         return result;
     }
@@ -161,3 +176,8 @@ public sealed class ApiKeyValidationResult
     public List<string> Errors { get; } = [];
     public bool IsValid => Errors.Count == 0;
 }
+
+public sealed record ApiKeyValidationProgress(
+    string Provider,
+    bool IsValid,
+    string Message);
