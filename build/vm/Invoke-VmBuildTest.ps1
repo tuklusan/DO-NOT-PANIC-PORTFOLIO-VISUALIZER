@@ -121,12 +121,10 @@ Write-Output ('BUILD_SUMMARY=' + `$resultPath)
         Write-VmSshStep "Configuring remote desktop automation"
         Invoke-VmPwshCommand -Bundle $bundle -Command $prepareAutomationCommand -TimeOutSeconds 120 | Out-Null
 
-        $stopExistingAgentCommand = @"
-Get-Process PortfolioSaver.VmAgent -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-Remove-Item -LiteralPath '$remoteAgentStatus' -Force -ErrorAction SilentlyContinue
-"@
+        $remoteAgentStatusCmdPath = $remoteAgentStatus.Replace('/', '\')
+        $stopExistingAgentCommand = "cmd /c taskkill /IM PortfolioSaver.VmAgent.exe /F >nul 2>&1 & del /F /Q `"$remoteAgentStatusCmdPath`" >nul 2>&1 & exit /b 0"
         Write-VmSshStep "Stopping any existing desktop-session agent"
-        Invoke-VmPwshCommand -Bundle $bundle -Command $stopExistingAgentCommand -TimeOutSeconds 60 | Out-Null
+        Invoke-VmRawCommand -Bundle $bundle -Command $stopExistingAgentCommand -TimeOutSeconds 60 -AllowedExitCodes @(0) | Out-Null
 
         $startAgentCommand = @"
 `$psexec = 'C:\Program Files\SysinternalsSuite\PsExec.exe'
@@ -139,7 +137,19 @@ if (-not (Test-Path '$remoteAgentExe')) {
 & `$psexec -accepteula -i 1 -d -u '$remoteUser' -p '$remotePassword' '$remoteAgentExe' --root-path '$RootPath'
 "@
         Write-VmSshStep "Starting desktop-session agent"
-        Invoke-VmRawCommand -Bundle $bundle -Command ('pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ' + (ConvertTo-VmPwshEncodedCommand -Command $startAgentCommand)) -TimeOutSeconds 120 -SuccessOutputPattern 'started on WINDOWS10 with process ID' | Out-Null
+        $startEncoded = ConvertTo-VmPwshEncodedCommand -Command $startAgentCommand
+        $startSucceeded = $false
+        for ($startAttempt = 1; $startAttempt -le 2 -and -not $startSucceeded; $startAttempt++) {
+            try {
+                Invoke-VmRawCommand -Bundle $bundle -Command ('pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ' + $startEncoded) -TimeOutSeconds 120 -SuccessOutputPattern 'started on WINDOWS10 with process ID' | Out-Null
+                $startSucceeded = $true
+            }
+            catch {
+                if ($startAttempt -ge 2) { throw }
+                Write-VmSshStep "Desktop-session agent start attempt failed once; retrying."
+                Start-Sleep -Seconds 3
+            }
+        }
 
         $agentDeadline = (Get-Date).AddSeconds(120)
         do {

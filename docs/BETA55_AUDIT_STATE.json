@@ -1052,6 +1052,26 @@
         "If more than four symbols were updated in the batch, append an ellipsis '...'.",
         "If four or fewer symbols were updated, do not append an ellipsis."
       ]
+    },
+    {
+      "id": "NB-029",
+      "tracking_number": "NB-029",
+      "priority": 3,
+      "area": "yahoo_data_provider",
+      "title": "Evaluate and port the core yfinance-style Yahoo retrieval stack into a native .NET provider framework",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested a ticket to migrate Yahoo Finance retrieval around a yfinance-style framework with cookie and crumb management, rate limiting, caching, chart/history access, quoteSummary fundamentals, optional batching, and websocket streaming concepts."
+      ],
+      "notes": [
+        "Use the supplied pseudocode as the starting blueprint for a native C#/.NET 10 implementation rather than introducing a Python runtime dependency into the product.",
+        "Review the existing Yahoo provider stack first and decide whether this work is a replacement, a convergence/refactor of the current implementation, or an isolated experimental provider lane.",
+        "Core capabilities to evaluate and/or port include session bootstrap, cookie jar handling, crumb extraction, request pacing, 429 backoff, memory caching, chart endpoint history retrieval, quoteSummary fundamentals, batch-friendly quote/history retrieval where Yahoo actually supports it, and websocket streaming feasibility.",
+        "Define sensible compatibility with the current provider abstractions, scheduler, cache strategy, trace instrumentation, and startup-freshness rules before implementation begins.",
+        "Document the legal and operational risk clearly: this is an unofficial Yahoo path, subject to breakage or throttling, so it must remain budgeted, observable, and easy to disable or fall back from.",
+        "A future implementation ticket should include side-by-side comparison against the current YahooFinanceSessionService and YahooFinanceQuoteProvider behavior, plus VM-proof validation for rate limiting, startup recovery, and data sanity before adoption."
+      ]
     }
   ]
 }

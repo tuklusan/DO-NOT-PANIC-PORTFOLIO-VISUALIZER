@@ -54,18 +54,10 @@ using System;
 using System.Runtime.InteropServices;
 public static class NativeDisplaySettings {
     public const int ENUM_CURRENT_SETTINGS = -1;
-    public const int ENUM_REGISTRY_SETTINGS = -2;
     public const int CDS_UPDATEREGISTRY = 0x00000001;
-    public const int CDS_GLOBAL = 0x00000008;
     public const int DISP_CHANGE_SUCCESSFUL = 0;
     public const int DM_PELSWIDTH = 0x00080000;
     public const int DM_PELSHEIGHT = 0x00100000;
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    public struct POINTL {
-        public int x;
-        public int y;
-    }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     public struct DEVMODE {
@@ -76,7 +68,8 @@ public static class NativeDisplaySettings {
         public short dmSize;
         public short dmDriverExtra;
         public int dmFields;
-        public POINTL dmPosition;
+        public int dmPositionX;
+        public int dmPositionY;
         public int dmDisplayOrientation;
         public int dmDisplayFixedOutput;
         public short dmColor;
@@ -91,6 +84,7 @@ public static class NativeDisplaySettings {
         public int dmPelsWidth;
         public int dmPelsHeight;
         public int dmDisplayFlags;
+        public int dmNup;
         public int dmDisplayFrequency;
         public int dmICMMethod;
         public int dmICMIntent;
@@ -103,7 +97,7 @@ public static class NativeDisplaySettings {
     }
 
     [DllImport("user32.dll", EntryPoint = "EnumDisplaySettingsW", CharSet = CharSet.Unicode)]
-    public static extern bool EnumDisplaySettings(string deviceName, int modeNum, ref DEVMODE devMode);
+    public static extern int EnumDisplaySettings(string deviceName, int modeNum, ref DEVMODE devMode);
 
     [DllImport("user32.dll", EntryPoint = "ChangeDisplaySettingsW", CharSet = CharSet.Unicode)]
     public static extern int ChangeDisplaySettings(ref DEVMODE devMode, int flags);
@@ -507,6 +501,95 @@ function Send-KeySequence {
     }
 }
 
+function Get-ScrollPatternTarget {
+    param(
+        [Parameter(Mandatory = $true)]$Window,
+        [string]$TabName
+    )
+
+    try {
+        $all = $Window.FindAll(
+            [System.Windows.Automation.TreeScope]::Descendants,
+            [System.Windows.Automation.Condition]::TrueCondition)
+
+        $best = $null
+        $bestArea = -1.0
+        foreach ($candidate in $all) {
+            try {
+                $pattern = $candidate.GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern)
+                if ($null -eq $pattern) { continue }
+                if (-not $pattern.Current.VerticallyScrollable) { continue }
+
+                $rect = $candidate.Current.BoundingRectangle
+                $area = [double]([Math]::Max(0, $rect.Width) * [Math]::Max(0, $rect.Height))
+                if ($area -le $bestArea) { continue }
+
+                $best = [pscustomobject]@{
+                    Element = $candidate
+                    Pattern = $pattern
+                }
+                $bestArea = $area
+            }
+            catch {
+                continue
+            }
+        }
+
+        return $best
+    }
+    catch {
+        return $null
+    }
+}
+
+function Try-ScrollWindowContent {
+    param(
+        [Parameter(Mandatory = $true)]$Window,
+        [string]$TabName,
+        [int]$PageCount = 1
+    )
+
+    $target = Get-ScrollPatternTarget -Window $Window -TabName $TabName
+    if ($null -eq $target) {
+        return $false
+    }
+
+    for ($index = 0; $index -lt $PageCount; $index++) {
+        try {
+            $target.Pattern.Scroll(
+                [System.Windows.Automation.ScrollAmount]::NoAmount,
+                [System.Windows.Automation.ScrollAmount]::LargeIncrement)
+            Start-Sleep -Milliseconds 75
+        }
+        catch {
+            return $false
+        }
+    }
+
+    return $true
+}
+
+function Perform-KeyboardScrollPass {
+    param(
+        [Parameter(Mandatory = $true)]$Window,
+        [int]$TabSteps = 10,
+        [int]$DelayMilliseconds = 35
+    )
+
+    if ($TabSteps -le 0) {
+        return $false
+    }
+
+    try { $Window.SetFocus() } catch {}
+    Start-Sleep -Milliseconds 30
+
+    for ($index = 0; $index -lt $TabSteps; $index++) {
+        Send-KeySequence -Keys @('{TAB}') -DelayMilliseconds $DelayMilliseconds
+    }
+
+    return $true
+}
+
 function Perform-VisibleConfigActivity {
     param(
         [Parameter(Mandatory = $true)]$Window,
@@ -515,13 +598,29 @@ function Perform-VisibleConfigActivity {
 
     try { $Window.SetFocus() } catch {}
     Start-Sleep -Milliseconds 40
-    Send-KeySequence -Keys @('{TAB}','{TAB}','{TAB}','{TAB}') -DelayMilliseconds 30
+    $invokedButtons = New-Object 'System.Collections.Generic.HashSet[string]'
+    $controls = @(Get-ExerciseControls -Window $Window)
+    $maxControls = if ($TabName -eq 'Advanced') { 8 } else { 6 }
+    $representativeControls = @(Get-RepresentativeExerciseControls -Controls $controls -MaximumCount $maxControls)
+
+    foreach ($control in $representativeControls) {
+        Exercise-Control -Control $control -InvokedButtons $invokedButtons
+        Start-Sleep -Milliseconds 45
+        Send-KeySequence -Keys @('{TAB}') -DelayMilliseconds 30
+    }
 
     if ($TabName -eq 'Advanced') {
-        Send-KeySequence -Keys @('{PGDN}','{PGDN}') -DelayMilliseconds 70
+        $didScroll = Perform-KeyboardScrollPass -Window $Window -TabSteps 14 -DelayMilliseconds 28
+        if (-not $didScroll) {
+            $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount 2
+        }
+        else {
+            $null = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount 1
+        }
         return $true
     }
 
+    $null = Perform-KeyboardScrollPass -Window $Window -TabSteps 6 -DelayMilliseconds 30
     return $false
 }
 
@@ -672,7 +771,7 @@ function Get-AvailableDisplayModes {
     while ($true) {
         $mode = New-Object NativeDisplaySettings+DEVMODE
         $mode.dmSize = [System.Runtime.InteropServices.Marshal]::SizeOf([type]([NativeDisplaySettings+DEVMODE]))
-        if (-not [NativeDisplaySettings]::EnumDisplaySettings($null, $modeIndex, [ref]$mode)) {
+        if ([NativeDisplaySettings]::EnumDisplaySettings($null, $modeIndex, [ref]$mode) -eq 0) {
             break
         }
 
@@ -690,39 +789,114 @@ function Get-AvailableDisplayModes {
     return @($modes | Sort-Object Width, Height, BitsPerPixel, DisplayFrequency -Unique)
 }
 
+function Get-CimSupportedDisplayModes {
+    $modes = New-Object System.Collections.Generic.List[object]
+
+    try {
+        $resolutions = Get-CimInstance -ClassName CIM_VideoControllerResolution -ErrorAction Stop |
+            Sort-Object HorizontalResolution, VerticalResolution -Descending
+        foreach ($resolution in $resolutions) {
+            if ($null -eq $resolution.HorizontalResolution -or $null -eq $resolution.VerticalResolution) { continue }
+            $modes.Add([pscustomobject]@{
+                    Width = [int]$resolution.HorizontalResolution
+                    Height = [int]$resolution.VerticalResolution
+                    BitsPerPixel = $null
+                    DisplayFrequency = [int]$resolution.RefreshRate
+                    ModeIndex = $null
+                })
+        }
+    }
+    catch {}
+
+    return @($modes | Sort-Object Width, Height, DisplayFrequency -Unique)
+}
+
+function Format-DisplayModeNames {
+    param(
+        [Parameter(Mandatory = $true)]$Modes
+    )
+
+    $names = New-Object System.Collections.Generic.List[string]
+    foreach ($mode in @($Modes)) {
+        if ($null -eq $mode) { continue }
+
+        if ($mode -is [string]) {
+            if (-not [string]::IsNullOrWhiteSpace($mode)) {
+                $names.Add($mode.Trim())
+            }
+            continue
+        }
+
+        $widthProperty = $mode.PSObject.Properties['Width']
+        $heightProperty = $mode.PSObject.Properties['Height']
+        if ($null -ne $widthProperty -and $null -ne $heightProperty) {
+            $name = "{0} x {1}" -f $widthProperty.Value, $heightProperty.Value
+            if (-not [string]::IsNullOrWhiteSpace($name)) {
+                $names.Add($name.Trim())
+            }
+        }
+    }
+
+    return @($names | Sort-Object -Unique)
+}
+
+function Find-TopLevelWindowByNameLike {
+    param(
+        [Parameter(Mandatory = $true)][string]$NameLike,
+        [int]$TimeoutSeconds = 20
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    do {
+        try {
+            $children = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+                [System.Windows.Automation.TreeScope]::Children,
+                [System.Windows.Automation.Condition]::TrueCondition)
+            for ($index = 0; $index -lt $children.Count; $index++) {
+                try {
+                    $child = $children.Item($index)
+                    if ($null -eq $child) { continue }
+                    if ($child.Current.ControlType -ne [System.Windows.Automation.ControlType]::Window) { continue }
+                    $name = [string]$child.Current.Name
+                    if ($name -like $NameLike) {
+                        return $child
+                    }
+                }
+                catch {
+                    continue
+                }
+            }
+        }
+        catch {}
+
+        Start-Sleep -Milliseconds 150
+    } while ((Get-Date) -lt $deadline)
+
+    return $null
+}
+
 function Try-ApplyDisplayResolutionViaSettings {
     param(
         [int]$Width,
         [int]$Height
     )
 
-    $settingsProcess = $null
     try {
-        $settingsProcess = Start-Process -FilePath 'explorer.exe' -ArgumentList 'ms-settings:display' -PassThru
+        Start-Process -FilePath 'cmd.exe' -ArgumentList '/c start "" ms-settings:display' | Out-Null
         Start-Sleep -Milliseconds 1400
 
-        if ($null -eq $settingsProcess) {
-            return [pscustomobject]@{
-                Applied = $false
-                RequestedWidth = $Width
-                RequestedHeight = $Height
-                ResultCode = 'settings-process-not-started'
-                AvailableModes = @()
-            }
-        }
-
-        $window = Get-ProcessWindowElement -Process $settingsProcess -TimeoutSeconds 20
+        $window = Find-TopLevelWindowByNameLike -NameLike '*Settings*' -TimeoutSeconds 20
         if ($null -eq $window) {
             return [pscustomobject]@{
                 Applied = $false
                 RequestedWidth = $Width
                 RequestedHeight = $Height
                 ResultCode = 'settings-window-not-found'
-                AvailableModes = @()
+                AvailableModes = @(Format-DisplayModeNames -Modes (Get-CimSupportedDisplayModes))
             }
         }
 
-        [void](Focus-ProcessWindow -Process $settingsProcess)
+        try { $window.SetFocus() } catch {}
         Start-Sleep -Milliseconds 200
 
         $combo = Find-DescendantByNameAndControlType -Root $window -Name 'Display resolution' -ControlType ([System.Windows.Automation.ControlType]::ComboBox)
@@ -735,7 +909,7 @@ function Try-ApplyDisplayResolutionViaSettings {
                 RequestedWidth = $Width
                 RequestedHeight = $Height
                 ResultCode = 'settings-combo-not-found'
-                AvailableModes = @()
+                AvailableModes = @(Format-DisplayModeNames -Modes (Get-CimSupportedDisplayModes))
             }
         }
 
@@ -769,6 +943,9 @@ function Try-ApplyDisplayResolutionViaSettings {
         catch {}
 
         $availableModes = @($modeItems | Sort-Object -Unique)
+        if ($availableModes.Count -eq 0) {
+            $availableModes = @(Format-DisplayModeNames -Modes (Get-CimSupportedDisplayModes))
+        }
         $targetItem = Find-DescendantByNameAndControlType -Root ([System.Windows.Automation.AutomationElement]::RootElement) -Name $targetName -ControlType ([System.Windows.Automation.ControlType]::ListItem)
         if ($null -eq $targetItem) {
             $targetItem = Find-DescendantByNameLikeAndControlType -Root ([System.Windows.Automation.AutomationElement]::RootElement) -NameLike "$targetName*" -ControlType ([System.Windows.Automation.ControlType]::ListItem)
@@ -828,22 +1005,15 @@ function Try-ApplyDisplayResolutionViaSettings {
             RequestedWidth = $Width
             RequestedHeight = $Height
             ResultCode = ('settings-error: ' + $_.Exception.Message)
-            AvailableModes = @()
+            AvailableModes = @(Format-DisplayModeNames -Modes (Get-CimSupportedDisplayModes))
         }
     }
     finally {
-        if ($null -ne $settingsProcess -and -not $settingsProcess.HasExited) {
-            try {
-                [void](Focus-ProcessWindow -Process $settingsProcess)
-                [System.Windows.Forms.SendKeys]::SendWait('%{F4}')
-                Start-Sleep -Milliseconds 150
-            }
-            catch {}
-            try { $settingsProcess.CloseMainWindow() | Out-Null } catch {}
-            try { $settingsProcess.Refresh() } catch {}
-            if (-not $settingsProcess.HasExited) {
-                try { $settingsProcess.Kill() } catch {}
-            }
+        $settingsWindow = Find-TopLevelWindowByNameLike -NameLike '*Settings*' -TimeoutSeconds 2
+        if ($null -ne $settingsWindow) {
+            try { $settingsWindow.SetFocus() } catch {}
+            try { [System.Windows.Forms.SendKeys]::SendWait('%{F4}') } catch {}
+            Start-Sleep -Milliseconds 150
         }
     }
 }
@@ -863,38 +1033,22 @@ function Try-ApplyDisplayResolution {
         }
     }
 
-    $availableModes = @(Get-AvailableDisplayModes)
-    if ($availableModes.Count -eq 0) {
-        return Try-ApplyDisplayResolutionViaSettings -Width $Width -Height $Height
-    }
-
-    $candidate = $availableModes | Where-Object { $_.Width -eq $Width -and $_.Height -eq $Height } | Sort-Object BitsPerPixel, DisplayFrequency -Descending | Select-Object -First 1
-    if ($null -eq $candidate) {
-        return [pscustomobject]@{
-            Applied = $false
-            RequestedWidth = $Width
-            RequestedHeight = $Height
-            ResultCode = 'mode-not-supported'
-            AvailableModes = @($availableModes)
-        }
-    }
-
     $mode = New-Object NativeDisplaySettings+DEVMODE
     $mode.dmSize = [System.Runtime.InteropServices.Marshal]::SizeOf([type]([NativeDisplaySettings+DEVMODE]))
-    if (-not [NativeDisplaySettings]::EnumDisplaySettings($null, [int]$candidate.ModeIndex, [ref]$mode)) {
-        return [pscustomobject]@{
-            Applied = $false
-            RequestedWidth = $Width
-            RequestedHeight = $Height
-            ResultCode = 'candidate-enum-failed'
-            AvailableModes = @($availableModes)
-        }
+    $currentEnum = [NativeDisplaySettings]::EnumDisplaySettings($null, -1, [ref]$mode)
+    $availableModes = @(Get-CimSupportedDisplayModes)
+    if ($availableModes.Count -eq 0) {
+        $availableModes = @(Get-AvailableDisplayModes)
+    }
+
+    if ($currentEnum -eq 0) {
+        return Try-ApplyDisplayResolutionViaSettings -Width $Width -Height $Height
     }
 
     $mode.dmPelsWidth = $Width
     $mode.dmPelsHeight = $Height
-    $mode.dmFields = [NativeDisplaySettings]::DM_PELSWIDTH -bor [NativeDisplaySettings]::DM_PELSHEIGHT
-    $result = [NativeDisplaySettings]::ChangeDisplaySettings([ref]$mode, [NativeDisplaySettings]::CDS_UPDATEREGISTRY -bor [NativeDisplaySettings]::CDS_GLOBAL)
+    $mode.dmFields = 0x180000
+    $result = [NativeDisplaySettings]::ChangeDisplaySettings([ref]$mode, 0)
     Start-Sleep -Milliseconds 900
     $payload = [pscustomobject]@{
         Applied = ($result -eq [NativeDisplaySettings]::DISP_CHANGE_SUCCESSFUL)
@@ -1763,7 +1917,7 @@ try {
     $displayApply = Try-ApplyDisplayResolution -Width $DisplayWidth -Height $DisplayHeight
     $summary.DisplayResolutionChange = $displayApply
     if ($displayApply.PSObject.Properties.Name -contains 'AvailableModes') {
-        $summary.SupportedDisplayModes = @($displayApply.AvailableModes | ForEach-Object { "{0}x{1}@{2}" -f $_.Width, $_.Height, $_.DisplayFrequency })
+        $summary.SupportedDisplayModes = @(Format-DisplayModeNames -Modes $displayApply.AvailableModes)
     }
     $summary.RuntimeDesktopResolution = Get-CurrentVirtualScreenSize
     if ($DisplayWidth -gt 0 -and $DisplayHeight -gt 0 -and -not $displayApply.Applied) {
