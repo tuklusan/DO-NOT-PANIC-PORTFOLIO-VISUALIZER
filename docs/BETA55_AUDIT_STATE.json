@@ -1066,11 +1066,14 @@
       ],
       "notes": [
         "Use the supplied pseudocode as the starting blueprint for a native C#/.NET 10 implementation rather than introducing a Python runtime dependency into the product.",
-        "Review the existing Yahoo provider stack first and decide whether this work is a replacement, a convergence/refactor of the current implementation, or an isolated experimental provider lane.",
+        "Initial delivery target: port the tuklusan/yfinance codebase concepts into the repo-local YFinance.net workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer\\YFinance.net.",
+        "Initial smoke exerciser: port the attached D:\\Temp\\Yfinance-Test.py script into a basic .NET console or test harness that determines the top S&P 500 tickers by cached market cap and then refreshes their current values on a timed loop with 0.5-second pacing between one-by-one lookup work where batching is not used.",
+        "Treat YFinance.net as an independent clean-room port of tuklusan/yfinance for now; do not depend on the main app's existing Yahoo implementation during the first delivery.",
+        "Design the .NET port so future upstream syncs from the user's fork can be rolled in systematically by mapping Python module responsibilities to stable .NET components rather than scattering Yahoo logic across the app.",
         "Core capabilities to evaluate and/or port include session bootstrap, cookie jar handling, crumb extraction, request pacing, 429 backoff, memory caching, chart endpoint history retrieval, quoteSummary fundamentals, batch-friendly quote/history retrieval where Yahoo actually supports it, and websocket streaming feasibility.",
-        "Define sensible compatibility with the current provider abstractions, scheduler, cache strategy, trace instrumentation, and startup-freshness rules before implementation begins.",
         "Document the legal and operational risk clearly: this is an unofficial Yahoo path, subject to breakage or throttling, so it must remain budgeted, observable, and easy to disable or fall back from.",
-        "A future implementation ticket should include side-by-side comparison against the current YahooFinanceSessionService and YahooFinanceQuoteProvider behavior, plus VM-proof validation for rate limiting, startup recovery, and data sanity before adoption."
+        "The first proving target is VM-based: fetch the top 100 S&P 500 symbols every 5 minutes for 5 cycles with 0.5-second pacing between one-by-one work, while avoiding 429s.",
+        "Future integration with the portfolio app should happen only after the standalone YFinance.net library and exerciser are stable and VM-proven."
       ]
     }
   ]

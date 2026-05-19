@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="YFinance.NET.Exerciser/YFinance.NET.Exerciser.csproj" />
+  <Project Path="YFinance.NET/YFinance.NET.csproj" />
+</Solution>
