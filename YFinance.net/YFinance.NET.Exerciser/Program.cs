@@ -14,6 +14,8 @@ internal static partial class Program
     private const int DefaultCacheTtlHours = 6;
     private const int DefaultTotalCycles = 5;
     private const int DefaultTopCount = 100;
+    private const int DefaultHistoryWarmupCount = 12;
+    private const int DefaultHistoryLookbackDays = 5;
     private static readonly TimeSpan DefaultRefreshInterval = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan DefaultPerTickerDelay = TimeSpan.FromMilliseconds(500);
 
@@ -32,8 +34,9 @@ internal static partial class Program
 
         using YFinanceClient client = new(options);
         string cachePath = Path.Combine(AppContext.BaseDirectory, CacheFileName);
-        List<string> tickers = await GetTopTickersAsync(client, cachePath, runnerOptions, CancellationToken.None);
+        List<string> tickers = await ResolveTickersAsync(client, cachePath, runnerOptions, CancellationToken.None);
         Console.WriteLine($"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz} Loaded top {tickers.Count} S&P 500 symbols.");
+        await WarmHistoryAsync(client, tickers, runnerOptions, CancellationToken.None);
 
         for (int cycle = 1; cycle <= runnerOptions.TotalCycles; cycle++)
         {
@@ -48,6 +51,16 @@ internal static partial class Program
                 await Task.Delay(runnerOptions.RefreshInterval, CancellationToken.None);
             }
         }
+    }
+
+    private static async Task<List<string>> ResolveTickersAsync(YFinanceClient client, string cachePath, RunnerOptions runnerOptions, CancellationToken cancellationToken)
+    {
+        if (runnerOptions.SymbolOverrides.Count > 0)
+        {
+            return runnerOptions.SymbolOverrides.ToList();
+        }
+
+        return await GetTopTickersAsync(client, cachePath, runnerOptions, cancellationToken);
     }
 
     private static async Task<List<string>> GetTopTickersAsync(YFinanceClient client, string cachePath, RunnerOptions runnerOptions, CancellationToken cancellationToken)
@@ -88,6 +101,32 @@ internal static partial class Program
                     .Take(runnerOptions.TopCount)
                     .Select(static item => item.Symbol)
                     .ToList();
+    }
+
+    private static async Task WarmHistoryAsync(YFinanceClient client, IReadOnlyList<string> symbols, RunnerOptions runnerOptions, CancellationToken cancellationToken)
+    {
+        int warmCount = Math.Min(runnerOptions.HistoryWarmupCount, symbols.Count);
+        if (warmCount <= 0)
+        {
+            return;
+        }
+
+        DateTimeOffset endUtc = DateTimeOffset.UtcNow;
+        DateTimeOffset startUtc = endUtc.AddDays(-runnerOptions.HistoryLookbackDays);
+        Console.WriteLine($"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz} Warming {warmCount} history lanes over the last {runnerOptions.HistoryLookbackDays} days.");
+        for (int index = 0; index < warmCount; index++)
+        {
+            string symbol = symbols[index];
+            try
+            {
+                HistoryResponse history = await client.Ticker(symbol).GetHistoryResponseAsync(startUtc, endUtc, "1d", cancellationToken).ConfigureAwait(false);
+                Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} HISTORY {symbol,-8} bars={history.Bars.Count} tz={history.Metadata?.ExchangeTimezoneName ?? "n/a"}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} HISTORY {symbol,-8} FAIL {ex.GetType().Name}: {ex.Message}");
+            }
+        }
     }
 
     private static async Task<IReadOnlyList<QuoteSnapshot>> FetchQuotesByBatchAsync(YFinanceClient client, IReadOnlyList<string> symbols, CancellationToken cancellationToken)
@@ -188,7 +227,15 @@ internal static partial class Program
     private sealed record CacheEnvelope(DateTimeOffset TimestampUtc, List<CacheItem> Items);
     private sealed record CacheItem(string Symbol, long MarketCap);
 
-    private sealed record RunnerOptions(int TopCount, int TotalCycles, TimeSpan RefreshInterval, TimeSpan PerTickerDelay, int CacheTtlHours)
+    private sealed record RunnerOptions(
+        int TopCount,
+        int TotalCycles,
+        TimeSpan RefreshInterval,
+        TimeSpan PerTickerDelay,
+        int CacheTtlHours,
+        int HistoryWarmupCount,
+        int HistoryLookbackDays,
+        IReadOnlyList<string> SymbolOverrides)
     {
         public static RunnerOptions Parse(string[] args)
         {
@@ -197,6 +244,9 @@ internal static partial class Program
             TimeSpan refreshInterval = DefaultRefreshInterval;
             TimeSpan perTickerDelay = DefaultPerTickerDelay;
             int cacheTtlHours = DefaultCacheTtlHours;
+            int historyWarmupCount = DefaultHistoryWarmupCount;
+            int historyLookbackDays = DefaultHistoryLookbackDays;
+            List<string> symbolOverrides = new();
 
             for (int index = 0; index < args.Length; index++)
             {
@@ -229,10 +279,25 @@ internal static partial class Program
                         cacheTtlHours = parsedCacheTtlHours;
                         index++;
                         break;
+                    case "--history-warmup-count" when int.TryParse(value, out int parsedWarmupCount):
+                        historyWarmupCount = parsedWarmupCount;
+                        index++;
+                        break;
+                    case "--history-lookback-days" when int.TryParse(value, out int parsedLookbackDays):
+                        historyLookbackDays = parsedLookbackDays;
+                        index++;
+                        break;
+                    case "--symbols" when !string.IsNullOrWhiteSpace(value):
+                        symbolOverrides = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                              .Select(static symbol => symbol.Replace('.', '-').ToUpperInvariant())
+                                              .Distinct(StringComparer.OrdinalIgnoreCase)
+                                              .ToList();
+                        index++;
+                        break;
                 }
             }
 
-            return new RunnerOptions(topCount, totalCycles, refreshInterval, perTickerDelay, cacheTtlHours);
+            return new RunnerOptions(topCount, totalCycles, refreshInterval, perTickerDelay, cacheTtlHours, historyWarmupCount, historyLookbackDays, symbolOverrides);
         }
     }
 }
