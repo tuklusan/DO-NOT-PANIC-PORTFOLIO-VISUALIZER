@@ -1034,6 +1034,24 @@
         "The VM harness was also tightened into a faster keyboard-first config smoke path with shorter interaction delays, blocking-dialog detection, and explicit natural-close verification after Validate.",
         "Canonical proof build/vm/artifacts/ssh-runs/ux-deep-ssh-20260519-130940 completed with ConfigPhaseStatus=Completed and DesktopPhaseStatus=Completed, and the trace records TickerValidationTrustPlan / requested_count=32 / trusted_count=32 / network_symbol_count=0 followed by ValidationPassed and ConfigDialogClosed."
       ]
+    },
+    {
+      "id": "NB-028",
+      "tracking_number": "NB-028",
+      "priority": 2,
+      "area": "status_band",
+      "title": "After warmup, show the latest updated ticker symbols after 'Updated:' and before the time counter",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested that the Updated line show the latest updated ticker symbols from the most recent batch update after startup warmup."
+      ],
+      "notes": [
+        "After the initial warmup completes, append the latest updated ticker symbols to the Updated line before the age counter.",
+        "Show up to four ticker symbols from the most recent batch update.",
+        "If more than four symbols were updated in the batch, append an ellipsis '...'.",
+        "If four or fewer symbols were updated, do not append an ellipsis."
+      ]
     }
   ]
 }
