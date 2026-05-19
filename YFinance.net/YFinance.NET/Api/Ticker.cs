@@ -10,13 +10,15 @@ public sealed class Ticker
     private readonly string _symbol;
     private readonly QuoteService _quoteService;
     private readonly QuoteSummaryService _quoteSummaryService;
+    private readonly TickerInfoService _tickerInfoService;
     private readonly HistoryService _historyService;
 
-    internal Ticker(string symbol, QuoteService quoteService, QuoteSummaryService quoteSummaryService, HistoryService historyService)
+    internal Ticker(string symbol, QuoteService quoteService, QuoteSummaryService quoteSummaryService, TickerInfoService tickerInfoService, HistoryService historyService)
     {
         _symbol = symbol.Trim().ToUpperInvariant();
         _quoteService = quoteService;
         _quoteSummaryService = quoteSummaryService;
+        _tickerInfoService = tickerInfoService;
         _historyService = historyService;
     }
 
@@ -25,9 +27,15 @@ public sealed class Ticker
     public Task<QuoteSnapshot?> GetQuoteAsync(CancellationToken cancellationToken = default)
         => _quoteService.GetQuoteAsync(_symbol, cancellationToken);
 
-    public Task<QuoteSummaryResult?> GetInfoAsync(CancellationToken cancellationToken = default)
+    public Task<TickerInfo?> GetInfoAsync(CancellationToken cancellationToken = default)
+        => _tickerInfoService.GetInfoAsync(_symbol, cancellationToken);
+
+    public Task<QuoteSummaryResult?> GetSummaryAsync(CancellationToken cancellationToken = default)
         => _quoteSummaryService.GetSummaryAsync(_symbol, DefaultInfoModules, cancellationToken);
 
     public Task<IReadOnlyList<HistoricalBar>> GetHistoryAsync(DateTimeOffset startUtc, DateTimeOffset endUtc, string interval = "1d", CancellationToken cancellationToken = default)
         => _historyService.GetHistoryAsync(_symbol, startUtc, endUtc, interval, cancellationToken);
+
+    public Task<HistoryResponse> GetHistoryResponseAsync(DateTimeOffset startUtc, DateTimeOffset endUtc, string interval = "1d", CancellationToken cancellationToken = default)
+        => _historyService.GetHistoryResponseAsync(_symbol, startUtc, endUtc, interval, cancellationToken);
 }

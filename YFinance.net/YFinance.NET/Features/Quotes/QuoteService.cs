@@ -1,4 +1,5 @@
 using System.Text.Json;
+using YFinance.NET.Config;
 using YFinance.NET.Models;
 using YFinance.NET.Transport;
 
@@ -7,16 +8,18 @@ namespace YFinance.NET.Features.Quotes;
 public sealed class QuoteService
 {
     private readonly YahooFinanceHttpClient _httpClient;
+    private readonly YFinanceOptions _options;
 
-    public QuoteService(YahooFinanceHttpClient httpClient)
+    public QuoteService(YahooFinanceHttpClient httpClient, YFinanceOptions options)
     {
         _httpClient = httpClient;
+        _options = options;
     }
 
     public async Task<QuoteSnapshot?> GetQuoteAsync(string symbol, CancellationToken cancellationToken = default)
     {
-        IReadOnlyDictionary<string, QuoteSnapshot> results = await GetQuotesAsync(new[] { symbol }, cancellationToken).ConfigureAwait(false);
-        return results.TryGetValue(symbol.ToUpperInvariant(), out QuoteSnapshot? snapshot) ? snapshot : null;
+        IReadOnlyDictionary<string, QuoteSnapshot> results = await GetQuotesAsync([symbol], cancellationToken).ConfigureAwait(false);
+        return results.TryGetValue(symbol.Trim().ToUpperInvariant(), out QuoteSnapshot? snapshot) ? snapshot : null;
     }
 
     public async Task<IReadOnlyDictionary<string, QuoteSnapshot>> GetQuotesAsync(IEnumerable<string> symbols, CancellationToken cancellationToken = default)
@@ -30,65 +33,101 @@ public sealed class QuoteService
             return new Dictionary<string, QuoteSnapshot>(StringComparer.Ordinal);
         }
 
-        JsonDocument json = await _httpClient.GetJsonAsync(
-            "/v7/finance/quote",
-            new Dictionary<string, string?>
-            {
-                ["symbols"] = string.Join(',', normalized),
-                ["formatted"] = "false"
-            },
-            cancellationToken).ConfigureAwait(false);
-
         Dictionary<string, QuoteSnapshot> results = new(StringComparer.OrdinalIgnoreCase);
-        JsonElement root = json.RootElement;
-        if (!root.TryGetProperty("quoteResponse", out JsonElement quoteResponse) ||
-            !quoteResponse.TryGetProperty("result", out JsonElement resultArray))
+        foreach (string[] batch in Chunk(normalized, Math.Max(1, _options.MaxSymbolsPerQuoteRequest)))
         {
-            return results;
-        }
+            JsonDocument json = await _httpClient.GetJsonAsync(
+                "/v7/finance/quote",
+                new Dictionary<string, string?>
+                {
+                    ["symbols"] = string.Join(',', batch),
+                    ["formatted"] = "false"
+                },
+                cancellationToken).ConfigureAwait(false);
 
-        foreach (JsonElement item in resultArray.EnumerateArray())
-        {
-            string? symbol = item.TryGetProperty("symbol", out JsonElement symbolValue) ? symbolValue.GetString() : null;
-            if (string.IsNullOrWhiteSpace(symbol)) { continue; }
-            results[symbol.ToUpperInvariant()] = CreateSnapshot(item, symbol);
+            JsonElement root = json.RootElement;
+            if (!root.TryGetProperty("quoteResponse", out JsonElement quoteResponse) ||
+                !quoteResponse.TryGetProperty("result", out JsonElement resultArray))
+            {
+                continue;
+            }
+
+            foreach (JsonElement item in resultArray.EnumerateArray())
+            {
+                string? symbol = GetString(item, "symbol");
+                if (string.IsNullOrWhiteSpace(symbol))
+                {
+                    continue;
+                }
+
+                results[symbol.ToUpperInvariant()] = CreateSnapshot(item, symbol);
+            }
         }
 
         return results;
     }
 
-    private static QuoteSnapshot CreateSnapshot(JsonElement item, string symbol)
+    internal static QuoteSnapshot CreateSnapshot(JsonElement item, string symbol)
     {
         return new QuoteSnapshot(
             Symbol: symbol.ToUpperInvariant(),
             ShortName: GetString(item, "shortName"),
             LongName: GetString(item, "longName"),
+            DisplayName: GetString(item, "displayName"),
             Currency: GetString(item, "currency"),
             Exchange: GetString(item, "fullExchangeName") ?? GetString(item, "exchange"),
+            ExchangeTimezoneName: GetString(item, "exchangeTimezoneName"),
+            ExchangeTimezoneShortName: GetString(item, "exchangeTimezoneShortName"),
             QuoteType: GetString(item, "quoteType"),
+            MarketState: GetString(item, "marketState"),
             RegularMarketPrice: GetDecimal(item, "regularMarketPrice"),
             RegularMarketPreviousClose: GetDecimal(item, "regularMarketPreviousClose"),
+            RegularMarketOpen: GetDecimal(item, "regularMarketOpen"),
+            RegularMarketDayHigh: GetDecimal(item, "regularMarketDayHigh"),
+            RegularMarketDayLow: GetDecimal(item, "regularMarketDayLow"),
+            RegularMarketChange: GetDecimal(item, "regularMarketChange"),
             RegularMarketChangePercent: GetDecimal(item, "regularMarketChangePercent"),
+            FiftyTwoWeekLow: GetDecimal(item, "fiftyTwoWeekLow"),
+            FiftyTwoWeekHigh: GetDecimal(item, "fiftyTwoWeekHigh"),
+            FiftyDayAverage: GetDecimal(item, "fiftyDayAverage"),
+            TwoHundredDayAverage: GetDecimal(item, "twoHundredDayAverage"),
+            RegularMarketVolume: GetLong(item, "regularMarketVolume"),
+            AverageVolume: GetLong(item, "averageVolume"),
+            AverageVolume10Day: GetLong(item, "averageDailyVolume10Day") ?? GetLong(item, "averageVolume10days"),
+            SharesOutstanding: GetLong(item, "sharesOutstanding"),
             MarketCap: GetLong(item, "marketCap"),
+            TrailingPe: GetDecimal(item, "trailingPE"),
+            ForwardPe: GetDecimal(item, "forwardPE"),
             Raw: item.Clone());
     }
 
-    private static string? GetString(JsonElement item, string propertyName)
+    internal static string? GetString(JsonElement item, string propertyName)
         => item.TryGetProperty(propertyName, out JsonElement value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
-    private static decimal? GetDecimal(JsonElement item, string propertyName)
+    internal static decimal? GetDecimal(JsonElement item, string propertyName)
     {
         if (!item.TryGetProperty(propertyName, out JsonElement value)) return null;
         if (value.ValueKind == JsonValueKind.Number && value.TryGetDecimal(out decimal result)) return result;
-        if (value.ValueKind == JsonValueKind.String && decimal.TryParse(value.GetString(), out result)) return result;
+        if (value.ValueKind == JsonValueKind.String && decimal.TryParse(value.GetString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out result)) return result;
         return null;
     }
 
-    private static long? GetLong(JsonElement item, string propertyName)
+    internal static long? GetLong(JsonElement item, string propertyName)
     {
         if (!item.TryGetProperty(propertyName, out JsonElement value)) return null;
         if (value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out long result)) return result;
-        if (value.ValueKind == JsonValueKind.String && long.TryParse(value.GetString(), out result)) return result;
+        if (value.ValueKind == JsonValueKind.String && long.TryParse(value.GetString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out result)) return result;
         return null;
+    }
+
+    private static IEnumerable<string[]> Chunk(string[] values, int chunkSize)
+    {
+        for (int index = 0; index < values.Length; index += chunkSize)
+        {
+            int count = Math.Min(chunkSize, values.Length - index);
+            string[] batch = new string[count];
+            Array.Copy(values, index, batch, 0, count);
+            yield return batch;
+        }
     }
 }

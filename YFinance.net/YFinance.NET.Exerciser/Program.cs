@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using YFinance.NET.Api;
@@ -23,7 +24,10 @@ internal static partial class Program
         {
             MinimumRequestSpacing = runnerOptions.PerTickerDelay,
             MaxRetries = 3,
-            DefaultCacheTtl = TimeSpan.FromMinutes(30)
+            DefaultCacheTtl = TimeSpan.FromMinutes(30),
+            SummaryCacheTtl = TimeSpan.FromHours(6),
+            PersistentMetadataCacheTtl = TimeSpan.FromHours(Math.Max(1, runnerOptions.CacheTtlHours)),
+            MaxSymbolsPerQuoteRequest = 25
         };
 
         using YFinanceClient client = new(options);
@@ -35,7 +39,7 @@ internal static partial class Program
         {
             Console.WriteLine();
             Console.WriteLine($"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz} Cycle {cycle}/{runnerOptions.TotalCycles} starting.");
-            IReadOnlyList<QuoteSnapshot> quotes = await FetchQuotesOneByOneAsync(client, tickers, runnerOptions, CancellationToken.None);
+            IReadOnlyList<QuoteSnapshot> quotes = await FetchQuotesByBatchAsync(client, tickers, CancellationToken.None);
             PrintSummary(quotes, cycle);
 
             if (cycle < runnerOptions.TotalCycles)
@@ -63,12 +67,12 @@ internal static partial class Program
         {
             try
             {
-                QuoteSnapshot? quote = await client.Ticker(symbol).GetQuoteAsync(cancellationToken);
-                if (quote?.MarketCap is > 0)
+                TickerInfo? info = await client.Ticker(symbol).GetInfoAsync(cancellationToken);
+                if (info?.MarketCap is > 0)
                 {
-                    items.Add(new CacheItem(symbol, quote.MarketCap.Value));
+                    items.Add(new CacheItem(symbol, info.MarketCap.Value));
                 }
-                Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} MCAP {symbol,-8} {(quote?.MarketCap?.ToString() ?? "n/a")}");
+                Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} MCAP {symbol,-8} {(info?.MarketCap?.ToString() ?? "n/a")}");
             }
             catch (Exception ex)
             {
@@ -86,33 +90,24 @@ internal static partial class Program
                     .ToList();
     }
 
-    private static async Task<IReadOnlyList<QuoteSnapshot>> FetchQuotesOneByOneAsync(YFinanceClient client, IReadOnlyList<string> symbols, RunnerOptions runnerOptions, CancellationToken cancellationToken)
+    private static async Task<IReadOnlyList<QuoteSnapshot>> FetchQuotesByBatchAsync(YFinanceClient client, IReadOnlyList<string> symbols, CancellationToken cancellationToken)
     {
-        List<QuoteSnapshot> results = new();
+        IReadOnlyDictionary<string, QuoteSnapshot> results = await client.Tickers(symbols).GetQuotesAsync(cancellationToken).ConfigureAwait(false);
+        List<QuoteSnapshot> ordered = new(symbols.Count);
         foreach (string symbol in symbols)
         {
-            try
+            if (results.TryGetValue(symbol, out QuoteSnapshot? quote))
             {
-                QuoteSnapshot? quote = await client.Ticker(symbol).GetQuoteAsync(cancellationToken);
-                if (quote is not null)
-                {
-                    results.Add(quote);
-                    Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} QUOTE {symbol,-8} price={quote.RegularMarketPrice} change={quote.ComputedChangePercent:+0.00;-0.00;0.00}%");
-                }
-                else
-                {
-                    Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} QUOTE {symbol,-8} missing");
-                }
+                ordered.Add(quote);
+                Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} QUOTE {symbol,-8} price={quote.RegularMarketPrice} change={quote.ComputedChangePercent:+0.00;-0.00;0.00}%");
             }
-            catch (Exception ex)
+            else
             {
-                Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} QUOTE {symbol,-8} FAIL {ex.GetType().Name}: {ex.Message}");
+                Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} QUOTE {symbol,-8} missing");
             }
-
-            await Task.Delay(runnerOptions.PerTickerDelay, cancellationToken);
         }
 
-        return results;
+        return ordered;
     }
 
     private static void PrintSummary(IReadOnlyList<QuoteSnapshot> quotes, int cycle)
@@ -134,19 +129,33 @@ internal static partial class Program
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0");
         string html = await httpClient.GetStringAsync(WikipediaUrl, cancellationToken);
 
-        MatchCollection matches = SymbolCellRegex().Matches(html);
-        List<string> symbols = new();
-        foreach (Match match in matches)
+        Match tableMatch = ConstituentsTableRegex().Match(html);
+        if (tableMatch.Success)
         {
-            string symbol = match.Groups["symbol"].Value.Trim();
-            if (string.IsNullOrWhiteSpace(symbol)) { continue; }
-            if (!symbols.Contains(symbol, StringComparer.OrdinalIgnoreCase))
+            MatchCollection rowMatches = ConstituentsRowRegex().Matches(tableMatch.Groups["body"].Value);
+            List<string> symbols = new();
+            foreach (Match rowMatch in rowMatches)
             {
-                symbols.Add(symbol.Replace('.', '-').ToUpperInvariant());
+                string symbol = WebUtility.HtmlDecode(rowMatch.Groups["symbol"].Value.Trim());
+                if (string.IsNullOrWhiteSpace(symbol))
+                {
+                    continue;
+                }
+
+                string normalized = symbol.Replace('.', '-').ToUpperInvariant();
+                if (!symbols.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+                {
+                    symbols.Add(normalized);
+                }
+            }
+
+            if (symbols.Count > 0)
+            {
+                return symbols;
             }
         }
 
-        return symbols.Count > 0 ? symbols :
+        return
         [
             "AAPL","MSFT","GOOGL","AMZN","NVDA","META","BRK-B","LLY","TSLA","V",
             "JPM","WMT","XOM","MA","NFLX","COST","UNH","JNJ","PG","HD"
@@ -170,8 +179,11 @@ internal static partial class Program
         await JsonSerializer.SerializeAsync(stream, cache, new JsonSerializerOptions { WriteIndented = true }, cancellationToken);
     }
 
-    [GeneratedRegex("<td>(?<symbol>[A-Z0-9.\\-]+)</td>", RegexOptions.IgnoreCase)]
-    private static partial Regex SymbolCellRegex();
+    [GeneratedRegex("<table[^>]*id=\"constituents\"[^>]*>.*?<tbody>(?<body>.*?)</tbody>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex ConstituentsTableRegex();
+
+    [GeneratedRegex("<tr>\\s*<td[^>]*>(?:<a[^>]*>)?(?<symbol>[^<]+)", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex ConstituentsRowRegex();
 
     private sealed record CacheEnvelope(DateTimeOffset TimestampUtc, List<CacheItem> Items);
     private sealed record CacheItem(string Symbol, long MarketCap);

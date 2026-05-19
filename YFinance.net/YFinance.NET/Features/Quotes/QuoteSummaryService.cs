@@ -1,4 +1,5 @@
 using System.Text.Json;
+using YFinance.NET.Config;
 using YFinance.NET.Models;
 using YFinance.NET.Transport;
 
@@ -7,10 +8,12 @@ namespace YFinance.NET.Features.Quotes;
 public sealed class QuoteSummaryService
 {
     private readonly YahooFinanceHttpClient _httpClient;
+    private readonly YFinanceOptions _options;
 
-    public QuoteSummaryService(YahooFinanceHttpClient httpClient)
+    public QuoteSummaryService(YahooFinanceHttpClient httpClient, YFinanceOptions options)
     {
         _httpClient = httpClient;
+        _options = options;
     }
 
     public async Task<QuoteSummaryResult?> GetSummaryAsync(string symbol, IEnumerable<string> modules, CancellationToken cancellationToken = default)
@@ -24,15 +27,17 @@ public sealed class QuoteSummaryService
             throw new ArgumentException("At least one quote summary module is required.", nameof(modules));
         }
 
-        JsonDocument json = await _httpClient.GetJsonAsync(
-            $"/v10/finance/quoteSummary/{Uri.EscapeDataString(symbol.ToUpperInvariant())}",
+        string normalizedSymbol = symbol.Trim().ToUpperInvariant();
+        JsonDocument json = await _httpClient.GetCachedJsonAsync(
+            $"/v10/finance/quoteSummary/{Uri.EscapeDataString(normalizedSymbol)}",
             new Dictionary<string, string?>
             {
                 ["modules"] = string.Join(',', moduleList),
                 ["corsDomain"] = "finance.yahoo.com",
                 ["formatted"] = "false",
-                ["symbol"] = symbol.ToUpperInvariant()
+                ["symbol"] = normalizedSymbol
             },
+            _options.SummaryCacheTtl,
             cancellationToken).ConfigureAwait(false);
 
         JsonElement root = json.RootElement;
@@ -51,6 +56,6 @@ public sealed class QuoteSummaryService
             mapped[property.Name] = property.Value.Clone();
         }
 
-        return new QuoteSummaryResult(symbol.ToUpperInvariant(), mapped, JsonDocument.Parse(json.RootElement.GetRawText()));
+        return new QuoteSummaryResult(normalizedSymbol, mapped, JsonDocument.Parse(json.RootElement.GetRawText()));
     }
 }

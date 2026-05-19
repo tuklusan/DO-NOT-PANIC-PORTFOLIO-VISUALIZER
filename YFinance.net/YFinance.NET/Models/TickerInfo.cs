@@ -1,8 +1,6 @@
-using System.Text.Json;
-
 namespace YFinance.NET.Models;
 
-public sealed record QuoteSnapshot(
+public sealed record TickerInfo(
     string Symbol,
     string? ShortName,
     string? LongName,
@@ -31,10 +29,15 @@ public sealed record QuoteSnapshot(
     long? MarketCap,
     decimal? TrailingPe,
     decimal? ForwardPe,
-    JsonElement Raw)
+    decimal? DividendYield,
+    string? Sector,
+    string? Industry,
+    string? LongBusinessSummary,
+    string? Website,
+    IReadOnlyDictionary<string, object?> FlatFields)
 {
     public decimal? ComputedChangePercent =>
-        RegularMarketPrice.HasValue && RegularMarketPreviousClose.HasValue && RegularMarketPreviousClose.Value != 0m
+        RegularMarketPrice.HasValue && RegularMarketPreviousClose is not null && RegularMarketPreviousClose.Value != 0m
             ? ((RegularMarketPrice.Value - RegularMarketPreviousClose.Value) / RegularMarketPreviousClose.Value) * 100m
             : RegularMarketChangePercent;
 }

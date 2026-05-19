@@ -8,6 +8,8 @@ namespace YFinance.NET.Transport;
 
 public sealed class YahooFinanceHttpClient : IDisposable
 {
+    // This transport layer intentionally stays Yahoo-specific and upstream-shaped.
+    // Do not spread request/session mechanics into unrelated app code.
     private readonly YFinanceOptions _options;
     private readonly YahooSessionManager _sessionManager;
     private readonly RequestThrottle _throttle;
@@ -22,9 +24,7 @@ public sealed class YahooFinanceHttpClient : IDisposable
     }
 
     public async Task<JsonDocument> GetJsonAsync(string relativeOrAbsoluteUrl, IReadOnlyDictionary<string, string?>? query = null, CancellationToken cancellationToken = default)
-    {
-        return await SendJsonAsync(relativeOrAbsoluteUrl, query, allowCache: false, cancellationToken).ConfigureAwait(false);
-    }
+        => await SendJsonAsync(relativeOrAbsoluteUrl, query, cancellationToken).ConfigureAwait(false);
 
     public async Task<JsonDocument> GetCachedJsonAsync(string relativeOrAbsoluteUrl, IReadOnlyDictionary<string, string?>? query = null, TimeSpan? ttl = null, CancellationToken cancellationToken = default)
     {
@@ -34,24 +34,21 @@ public sealed class YahooFinanceHttpClient : IDisposable
             return JsonDocument.Parse(cached.RootElement.GetRawText());
         }
 
-        JsonDocument json = await SendJsonAsync(relativeOrAbsoluteUrl, query, allowCache: false, cancellationToken).ConfigureAwait(false);
+        JsonDocument json = await SendJsonAsync(relativeOrAbsoluteUrl, query, cancellationToken).ConfigureAwait(false);
         _cache.Set(cacheKey, JsonDocument.Parse(json.RootElement.GetRawText()), ttl ?? _options.DefaultCacheTtl);
         return json;
     }
 
-    private async Task<JsonDocument> SendJsonAsync(string relativeOrAbsoluteUrl, IReadOnlyDictionary<string, string?>? query, bool allowCache, CancellationToken cancellationToken)
+    private async Task<JsonDocument> SendJsonAsync(string relativeOrAbsoluteUrl, IReadOnlyDictionary<string, string?>? query, CancellationToken cancellationToken)
     {
         for (int attempt = 0; attempt <= _options.MaxRetries; attempt++)
         {
             await _throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
             YahooSessionState session = await _sessionManager.GetSessionAsync(attempt > 0, cancellationToken).ConfigureAwait(false);
             Uri requestUri = BuildUri(relativeOrAbsoluteUrl, query, session.Crumb);
-            using HttpRequestMessage request = new(HttpMethod.Get, requestUri);
-            request.Headers.TryAddWithoutValidation("Cookie", session.CookieHeader);
-            request.Headers.TryAddWithoutValidation("x-csrf-token", session.Crumb);
-            request.Headers.TryAddWithoutValidation("x-yahoo-request-id", Guid.NewGuid().ToString("N"));
+            Func<HttpRequestMessage> requestFactory = () => BuildRequest(requestUri, session);
 
-            using HttpResponseMessage response = await _sessionManager.HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            using HttpResponseMessage response = await _sessionManager.SendAsync(requestFactory, cancellationToken).ConfigureAwait(false);
             if (response.StatusCode == HttpStatusCode.TooManyRequests)
             {
                 if (attempt >= _options.MaxRetries)
@@ -59,28 +56,40 @@ public sealed class YahooFinanceHttpClient : IDisposable
                     throw new YFinanceRateLimitException("Yahoo returned HTTP 429 Too Many Requests.", 429);
                 }
 
-                TimeSpan delay = GetRetryDelay(response, attempt);
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(GetRetryDelay(response, attempt), cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
+            string content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             if ((int)response.StatusCode >= 400)
             {
-                string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                if (ShouldRefreshSession(body, response.StatusCode))
+                if (ShouldRefreshSession(content, response.StatusCode))
                 {
                     _sessionManager.Invalidate();
                     continue;
                 }
 
-                throw new YFinanceApiException($"Yahoo request failed with HTTP {(int)response.StatusCode}: {body}", (int)response.StatusCode);
+                throw new YFinanceApiException($"Yahoo request failed with HTTP {(int)response.StatusCode}: {content}", (int)response.StatusCode);
             }
 
-            string content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            if (LooksLikeConsentPayload(response, content))
+            {
+                _sessionManager.Invalidate();
+                continue;
+            }
+
             return JsonDocument.Parse(content);
         }
 
         throw new YFinanceApiException("Yahoo request exhausted retry attempts.");
+    }
+
+    private HttpRequestMessage BuildRequest(Uri requestUri, YahooSessionState session)
+    {
+        HttpRequestMessage request = new(HttpMethod.Get, requestUri);
+        request.Headers.TryAddWithoutValidation("x-yahoo-request-id", Guid.NewGuid().ToString("N"));
+        request.Headers.Referrer = _options.FinanceHomeUri;
+        return request;
     }
 
     private static bool ShouldRefreshSession(string body, HttpStatusCode statusCode)
@@ -96,6 +105,12 @@ public sealed class YahooFinanceHttpClient : IDisposable
             || (body.Contains("crumb", StringComparison.OrdinalIgnoreCase) && body.Contains("invalid", StringComparison.OrdinalIgnoreCase))
             || body.Contains("csrf", StringComparison.OrdinalIgnoreCase);
     }
+
+    private static bool LooksLikeConsentPayload(HttpResponseMessage response, string body)
+        => response.RequestMessage?.RequestUri?.Host.EndsWith("consent.yahoo.com", StringComparison.OrdinalIgnoreCase) == true
+            || body.Contains("consent.yahoo.com", StringComparison.OrdinalIgnoreCase)
+            || body.Contains("collectConsent", StringComparison.OrdinalIgnoreCase)
+            || body.Contains("guce.yahoo.com", StringComparison.OrdinalIgnoreCase);
 
     private static TimeSpan GetRetryDelay(HttpResponseMessage response, int attempt)
     {

@@ -21,6 +21,26 @@ That means:
 - avoid burying Yahoo-specific logic inside unrelated app code,
 - keep the standalone exerciser as the first proof harness before any Portfolio Visualizer integration.
 
+## Canonical Sync Requirement
+Sync-friendliness with upstream `tuklusan/yfinance` is a canonical requirement of this port, not a nice-to-have.
+
+Every meaningful implementation decision should preserve our ability to:
+
+1. pull a newer upstream fork snapshot,
+2. identify which Python module changed,
+3. map that change to the corresponding .NET component quickly,
+4. merge or re-port the behavior without rediscovering the whole architecture.
+
+In practice, this means:
+
+- keep module responsibility mapping stable over time,
+- prefer explicit feature/service boundaries over clever cross-cutting abstractions,
+- avoid mixing Yahoo transport logic into the Portfolio Visualizer app,
+- avoid “one-off convenience” code that has no clear upstream analogue,
+- document any intentional divergence from upstream behavior at the point it is introduced.
+
+If a future implementation shortcut would make upstream merges materially harder, that shortcut should be treated as a design regression.
+
 ## Core Upstream Modules Reviewed
 The first architecture pass was based on these upstream modules:
 
@@ -207,6 +227,9 @@ These should not block the first delivery:
 3. Keep normalization/parsing logic separate from raw HTTP calls.
 4. Record upstream source module inspiration in code comments sparingly where helpful.
 5. Add a small mapping document whenever a new upstream capability is ported.
+6. When upstream behavior is intentionally simplified or deferred, record that explicitly in this plan or a nearby capability note.
+7. Prefer additive wrappers around upstream-shaped behavior over reshaping the core API too early for local convenience.
+8. Treat the standalone exerciser as the first compatibility proof surface before any Portfolio Visualizer integration changes.
 
 ## VM Validation Plan
 

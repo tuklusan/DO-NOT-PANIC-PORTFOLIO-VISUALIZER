@@ -8,7 +8,11 @@ namespace YFinance.NET.Transport;
 
 public sealed class YahooSessionManager : IDisposable
 {
-    private static readonly Regex CrumbRegex = new("\"CrumbStore\":\\{\"crumb\":\"(?<crumb>[^\"]+)\"\\}", RegexOptions.Compiled);
+    private static readonly Regex FormRegex = new("<form[^>]*action=[\"'](?<action>[^\"']+)[\"'][^>]*>(?<body>.*?)</form>", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex InputRegex = new("<input[^>]*name=[\"'](?<name>[^\"']+)[\"'][^>]*?(?:value=[\"'](?<value>[^\"']*)[\"'])?[^>]*>", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+    // Cookie bootstrap, crumb lifecycle, and consent handling stay centralized
+    // here to preserve a clean mapping back to upstream data.py responsibilities.
     private readonly YFinanceOptions _options;
     private readonly CookieContainer _cookieContainer = new();
     private readonly HttpClientHandler _handler;
@@ -23,11 +27,14 @@ public sealed class YahooSessionManager : IDisposable
         {
             CookieContainer = _cookieContainer,
             AutomaticDecompression = DecompressionMethods.All,
-            UseCookies = true
+            UseCookies = true,
+            AllowAutoRedirect = true
         };
         _httpClient = new HttpClient(_handler);
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(_options.UserAgent);
-        _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        _httpClient.DefaultRequestHeaders.Accept.Clear();
+        _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
+        _httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.9");
     }
 
     public async Task<YahooSessionState> GetSessionAsync(bool forceRefresh = false, CancellationToken cancellationToken = default)
@@ -59,10 +66,28 @@ public sealed class YahooSessionManager : IDisposable
 
     public void Invalidate() => _cachedSession = null;
 
+    public Task<HttpResponseMessage> SendAsync(Func<HttpRequestMessage> requestFactory, CancellationToken cancellationToken = default)
+        => SendAsync(requestFactory, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+    public async Task<HttpResponseMessage> SendAsync(Func<HttpRequestMessage> requestFactory, HttpCompletionOption completionOption, CancellationToken cancellationToken = default)
+    {
+        HttpResponseMessage response = await _httpClient.SendAsync(requestFactory(), completionOption, cancellationToken).ConfigureAwait(false);
+        if (!IsConsentUrl(response.RequestMessage?.RequestUri))
+        {
+            return response;
+        }
+
+        using (response)
+        {
+            using HttpResponseMessage consentResult = await AcceptConsentFormAsync(response, cancellationToken).ConfigureAwait(false);
+        }
+
+        return await _httpClient.SendAsync(requestFactory(), completionOption, cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task<YahooSessionState> RefreshAsync(CancellationToken cancellationToken)
     {
-        using HttpRequestMessage cookieRequest = new(HttpMethod.Get, _options.CookieBootstrapUri);
-        using HttpResponseMessage cookieResponse = await _httpClient.SendAsync(cookieRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        using HttpResponseMessage cookieResponse = await SendSimpleGetAsync(_options.CookieBootstrapUri, cancellationToken).ConfigureAwait(false);
         if ((int)cookieResponse.StatusCode == 429)
         {
             throw new YFinanceRateLimitException("Yahoo rate-limited cookie bootstrap.", 429);
@@ -71,25 +96,24 @@ public sealed class YahooSessionManager : IDisposable
         string cookieHeader = BuildCookieHeader();
         if (string.IsNullOrWhiteSpace(cookieHeader))
         {
-            using HttpRequestMessage homeRequest = new(HttpMethod.Get, _options.FinanceHomeUri);
-            using HttpResponseMessage homeResponse = await _httpClient.SendAsync(homeRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            using HttpResponseMessage homeResponse = await SendSimpleGetAsync(_options.FinanceHomeUri, cancellationToken).ConfigureAwait(false);
             if ((int)homeResponse.StatusCode == 429)
             {
                 throw new YFinanceRateLimitException("Yahoo rate-limited finance home bootstrap.", 429);
             }
+
             cookieHeader = BuildCookieHeader();
         }
 
-        using HttpRequestMessage crumbRequest = new(HttpMethod.Get, _options.CrumbUri);
-        using HttpResponseMessage crumbResponse = await _httpClient.SendAsync(crumbRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        using HttpResponseMessage crumbResponse = await SendSimpleGetAsync(_options.CrumbUri, cancellationToken).ConfigureAwait(false);
         if ((int)crumbResponse.StatusCode == 429)
         {
             throw new YFinanceRateLimitException("Yahoo rate-limited crumb bootstrap.", 429);
         }
+
         crumbResponse.EnsureSuccessStatusCode();
         string crumb = (await crumbResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)).Trim();
-
-        if (string.IsNullOrWhiteSpace(crumb) || crumb.Contains("Too Many Requests", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(crumb) || crumb.Contains("Too Many Requests", StringComparison.OrdinalIgnoreCase) || crumb.Contains("<html>", StringComparison.OrdinalIgnoreCase))
         {
             throw new YFinanceApiException("Yahoo crumb bootstrap returned an invalid crumb.");
         }
@@ -103,12 +127,72 @@ public sealed class YahooSessionManager : IDisposable
         return new YahooSessionState(crumb, cookieHeader, DateTimeOffset.UtcNow.Add(_options.SessionTtl));
     }
 
+    private async Task<HttpResponseMessage> SendSimpleGetAsync(Uri uri, CancellationToken cancellationToken)
+    {
+        HttpResponseMessage response = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, uri), HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        if (!IsConsentUrl(response.RequestMessage?.RequestUri))
+        {
+            return response;
+        }
+
+        try
+        {
+            return await AcceptConsentFormAsync(response, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            response.Dispose();
+        }
+    }
+
+    private async Task<HttpResponseMessage> AcceptConsentFormAsync(HttpResponseMessage consentResponse, CancellationToken cancellationToken)
+    {
+        string html = await consentResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        Match formMatch = FormRegex.Match(html);
+        if (!formMatch.Success)
+        {
+            throw new YFinanceApiException("Yahoo redirected to a consent page, but the consent form could not be parsed.");
+        }
+
+        Uri baseUri = consentResponse.RequestMessage?.RequestUri ?? _options.FinanceHomeUri;
+        Uri actionUri = new(baseUri, WebUtility.HtmlDecode(formMatch.Groups["action"].Value));
+        Dictionary<string, string> formValues = new(StringComparer.OrdinalIgnoreCase);
+        foreach (Match match in InputRegex.Matches(formMatch.Groups["body"].Value))
+        {
+            string name = WebUtility.HtmlDecode(match.Groups["name"].Value);
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            string value = WebUtility.HtmlDecode(match.Groups["value"].Value ?? string.Empty);
+            formValues[name] = value;
+        }
+
+        if (!formValues.Keys.Any(static key => key.Contains("agree", StringComparison.OrdinalIgnoreCase) || key.Contains("accept", StringComparison.OrdinalIgnoreCase)))
+        {
+            formValues["agree"] = "1";
+        }
+
+        using HttpRequestMessage request = new(HttpMethod.Post, actionUri)
+        {
+            Content = new FormUrlEncodedContent(formValues)
+        };
+        request.Headers.Referrer = baseUri;
+        return await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static bool IsConsentUrl(Uri? uri)
+        => uri is not null && uri.Host.EndsWith("consent.yahoo.com", StringComparison.OrdinalIgnoreCase);
+
     private string BuildCookieHeader()
     {
         IEnumerable<Cookie> cookies = _cookieContainer
             .GetCookies(_options.Query1BaseUri)
             .Cast<Cookie>()
+            .Concat(_cookieContainer.GetCookies(_options.Query2BaseUri).Cast<Cookie>())
             .Concat(_cookieContainer.GetCookies(_options.FinanceHomeUri).Cast<Cookie>())
+            .Where(static cookie => !cookie.Domain.Contains("consent", StringComparison.OrdinalIgnoreCase))
             .GroupBy(static cookie => cookie.Name, StringComparer.OrdinalIgnoreCase)
             .Select(static group => group.Last());
 
