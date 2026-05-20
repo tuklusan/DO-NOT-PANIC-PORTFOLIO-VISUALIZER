@@ -112,7 +112,7 @@ public partial class ScreensaverSceneControl : UserControl
         Unloaded += OnUnloaded;
         SizeChanged += OnSizeChanged;
         _clockTimer.Tick += (_, _) => UpdateClocks();
-        _refreshTimer.Tick += async (_, _) => await RefreshSceneAsync(preserveLayout: true);
+        _refreshTimer.Tick += async (_, _) => await RefreshSceneAsync(preserveLayout: true, fullAncillaryRefresh: false);
         _backgroundTimer.Tick += (_, _) => RotateBackground();
         _backgroundZoomTimer.Tick += (_, _) => StepBackgroundSlowZoom();
         _worldDataTimer.Tick += async (_, _) => await RefreshClockDataAsync(force: true);
@@ -137,7 +137,7 @@ public partial class ScreensaverSceneControl : UserControl
             _ = RefreshClockDataAsync(force: true);
             _startupWarmupCancellation = new CancellationTokenSource();
             await RunStartupWarmupAsync(_startupWarmupCancellation.Token);
-            await RefreshSceneAsync(preserveLayout: false);
+            await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);
             StartCaptureSequenceIfRequested();
             StartDemoFlashSequence();
             TraceScene("OnLoaded completed.");
@@ -170,7 +170,7 @@ public partial class ScreensaverSceneControl : UserControl
             SeedSpriteLayout(onlyMissingPositions: false);
     }
 
-    private async Task RefreshSceneAsync(bool preserveLayout)
+    private async Task RefreshSceneAsync(bool preserveLayout, bool fullAncillaryRefresh = false)
     {
         if (_isValidationPaused)
         {
@@ -185,7 +185,9 @@ public partial class ScreensaverSceneControl : UserControl
         try
         {
             int currentRotationSeed = _graphRotationSeed;
-            ScreensaverSceneState state = await _startupCoordinator.BuildSceneAsync(currentRotationSeed);
+            ScreensaverSceneState state = fullAncillaryRefresh
+                ? await _startupCoordinator.BuildSceneAsync(currentRotationSeed)
+                : await _startupCoordinator.BuildProgressiveQuoteSceneAsync(currentRotationSeed);
             if (_isValidationPaused)
             {
                 TraceScene("RefreshSceneAsync discarded fetched scene because validation pause became active.");
@@ -193,7 +195,8 @@ public partial class ScreensaverSceneControl : UserControl
             }
 
             ApplySceneState(state, preserveLayout);
-            RestartGraphWarmup(currentRotationSeed, preserveLayout);
+            if (!preserveLayout)
+                RestartGraphWarmup(currentRotationSeed, preserveLayout);
             if (preserveLayout && _settings.EnableFloatingGraphs)
                 _graphRotationSeed++;
         }
@@ -687,7 +690,7 @@ public partial class ScreensaverSceneControl : UserControl
     {
         try
         {
-            await RefreshSceneAsync(preserveLayout: true);
+            await RefreshSceneAsync(preserveLayout: true, fullAncillaryRefresh: false);
         }
         catch (Exception ex)
         {

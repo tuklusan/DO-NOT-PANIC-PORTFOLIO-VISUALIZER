@@ -32,18 +32,36 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
         if (requestedSymbols.Count == 0)
             return [];
 
+        string operationId = YFinanceRuntimeClientFactory.CreateOperationId("quotes");
         Dictionary<string, string> requestByOriginal = requestedSymbols.ToDictionary(
             symbol => symbol,
             YFinanceSymbolMapper.ToRequestSymbol,
             StringComparer.OrdinalIgnoreCase);
-        IReadOnlyDictionary<string, YFinanceQuoteSnapshot> resolved = await YFinanceRuntimeClientFactory
-            .RunSerializedAsync(
-                "quotes",
-                (client, token) => client
-                    .Tickers(requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase))
-                    .GetQuotesAsync(token),
-                cancellationToken)
-            .ConfigureAwait(false);
+        TraceLog.InfoState(
+            "YFinanceUiBridge",
+            "QuoteRequestStart",
+            [new("operation_id", operationId), new("requested_count", requestedSymbols.Count), new("symbols", requestedSymbols), new("request_symbols", requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase).ToList())]);
+        IReadOnlyDictionary<string, YFinanceQuoteSnapshot> resolved;
+        try
+        {
+            resolved = await YFinanceRuntimeClientFactory
+                .RunSerializedAsync(
+                    "quotes",
+                    operationId,
+                    (client, token) => client
+                        .Tickers(requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase))
+                        .GetQuotesAsync(token),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            TraceLog.WarnState(
+                "YFinanceUiBridge",
+                "QuoteRequestFailed",
+                [new("operation_id", operationId), new("requested_count", requestedSymbols.Count), new("symbols", requestedSymbols), new("message", ex.Message)]);
+            throw;
+        }
 
         Dictionary<string, QuoteSnapshot> results = new(StringComparer.OrdinalIgnoreCase);
         foreach ((string originalSymbol, string requestSymbol) in requestByOriginal)
@@ -61,7 +79,11 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
         TraceLog.InfoState(
             "YFinanceNetQuoteProvider",
             "QuoteBatchMapped",
-            [new("requested_count", requestedSymbols.Count), new("resolved_count", results.Count), new("symbols", requestedSymbols)]);
+            [new("operation_id", operationId), new("requested_count", requestedSymbols.Count), new("resolved_count", results.Count), new("symbols", requestedSymbols)]);
+        TraceLog.InfoState(
+            "YFinanceUiBridge",
+            "QuoteRequestComplete",
+            [new("operation_id", operationId), new("requested_count", requestedSymbols.Count), new("resolved_count", results.Count), new("resolved_symbols", results.Keys.ToList())]);
 
         if (results.Count == 0)
             throw new InvalidOperationException("YFinance.NET returned no matching quotes.");

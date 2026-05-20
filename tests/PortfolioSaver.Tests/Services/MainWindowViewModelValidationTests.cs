@@ -157,7 +157,7 @@ public sealed class MainWindowViewModelValidationTests
                     Symbol = "AAPL",
                     Last = 187.42m,
                     PreviousClose = 186.80m,
-                    FetchTimestampUtc = DateTimeOffset.UtcNow.AddHours(-6),
+                    FetchTimestampUtc = DateTimeOffset.UtcNow.AddMinutes(-6),
                     IsStale = true
                 }
             ]);

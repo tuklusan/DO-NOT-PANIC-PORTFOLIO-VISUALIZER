@@ -141,6 +141,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Get-ScrollPatternTarget", script, StringComparison.Ordinal);
         Assert.Contains("function Try-ScrollWindowContent", script, StringComparison.Ordinal);
         Assert.Contains("function Perform-KeyboardScrollPass", script, StringComparison.Ordinal);
+        Assert.Contains("function Perform-VisibleScrollSequence", script, StringComparison.Ordinal);
         Assert.Contains("function Perform-VisibleConfigActivity", script, StringComparison.Ordinal);
         Assert.Contains("function Validate-AndCloseConfigWindow", script, StringComparison.Ordinal);
         Assert.Contains("function Get-ConfigBlockingDialog", script, StringComparison.Ordinal);
@@ -166,11 +167,37 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait('%{F4}')", script, StringComparison.Ordinal);
         Assert.Contains("Capture-Screen -Path (Join-Path $results (\"config-tab-{0:D3}-{1}-scrolled.png\"", script, StringComparison.Ordinal);
         Assert.Contains("Exercise-Control -Control $control -InvokedButtons $invokedButtons", script, StringComparison.Ordinal);
-        Assert.Contains("Perform-KeyboardScrollPass -Window $Window -TabSteps 14", script, StringComparison.Ordinal);
-        Assert.Contains("Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount 2", script, StringComparison.Ordinal);
+        Assert.Contains("Perform-VisibleScrollSequence -Window $Window -TabName $TabName", script, StringComparison.Ordinal);
+        Assert.Contains("Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, $PageDownCount))", script, StringComparison.Ordinal);
         Assert.Contains("Send-KeySequence -Keys @('{PGUP}','{HOME}')", script, StringComparison.Ordinal);
         Assert.DoesNotContain("$clickedTab = Click-AutomationElementCenter -Element $tab", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Start-Process -FilePath $configExe", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GuestUxDeepExercise_ConfigInteractionWaitsStayAtOrBelowHalfSecond()
+    {
+        string script = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "Guest-UxDeepExercise.ps1"));
+
+        int start = script.IndexOf("function Perform-VisibleConfigActivity", StringComparison.Ordinal);
+        int end = script.IndexOf("function Find-ElementMetadataByProcessId", StringComparison.Ordinal);
+        Assert.True(start >= 0 && end > start, "Could not isolate config activity function block.");
+
+        string functionBlock = script[start..end];
+        foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(
+                     functionBlock,
+                     "Start-Sleep -Milliseconds (?<value>\\d+)|DelayMilliseconds (?<delay>\\d+)"))
+        {
+            string raw = match.Groups["value"].Success ? match.Groups["value"].Value : match.Groups["delay"].Value;
+            if (!int.TryParse(raw, out int milliseconds))
+                continue;
+
+            Assert.True(milliseconds <= 500, $"Found config interaction wait above 500 ms: {milliseconds}");
+        }
     }
 
     [Fact]

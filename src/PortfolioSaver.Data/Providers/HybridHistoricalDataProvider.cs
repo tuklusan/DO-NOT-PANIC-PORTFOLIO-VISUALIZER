@@ -47,6 +47,10 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
             TickerHistorySnapshot? cached = await _cacheService.LoadAsync(symbol, cancellationToken).ConfigureAwait(false);
             if (cached is not null && cached.LookbackDays == lookbackDays && cached.IsFresh(_cacheFreshness))
             {
+                TraceLog.InfoState(
+                    "YFinanceUiBridge",
+                    "HistoryRequestServedFromCache",
+                    [new("symbol", symbol), new("lookback_days", lookbackDays), new("fetch_timestamp_utc", cached.FetchTimestampUtc)]);
                 resolved[symbol] = cached;
                 continue;
             }
@@ -64,12 +68,18 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
 
             foreach (string symbol in pending)
             {
+                string operationId = YFinanceRuntimeClientFactory.CreateOperationId("history");
                 try
                 {
                     string requestSymbol = YFinanceSymbolMapper.ToRequestSymbol(symbol);
+                    TraceLog.InfoState(
+                        "YFinanceUiBridge",
+                        "HistoryRequestStart",
+                        [new("operation_id", operationId), new("symbol", symbol), new("request_symbol", requestSymbol), new("lookback_days", lookbackDays)]);
                     YFinanceHistoryResponse response = await YFinanceRuntimeClientFactory
                         .RunSerializedAsync(
                             "history",
+                            operationId,
                             (client, token) => client
                                 .Ticker(requestSymbol)
                                 .GetHistoryResponseAsync(startUtc, endUtc, ResolveInterval(lookbackDays), token),
@@ -82,9 +92,18 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
                         resolved[symbol] = snapshot;
                         await _cacheService.SaveAsync(snapshot, cancellationToken).ConfigureAwait(false);
                     }
+
+                    TraceLog.InfoState(
+                        "YFinanceUiBridge",
+                        "HistoryRequestComplete",
+                        [new("operation_id", operationId), new("symbol", symbol), new("point_count", snapshot.Points.Count), new("metadata_timezone", response.Metadata?.ExchangeTimezoneName)]);
                 }
                 catch (Exception ex)
                 {
+                    TraceLog.WarnState(
+                        "YFinanceUiBridge",
+                        "HistoryRequestFailed",
+                        [new("operation_id", operationId), new("symbol", symbol), new("lookback_days", lookbackDays), new("message", ex.Message)]);
                     TraceLog.WarnState(
                         "YFinanceNetHistoricalProvider",
                         "HistoryFetchFailed",
@@ -104,6 +123,10 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
 
             if (staleCache.TryGetValue(symbol, out TickerHistorySnapshot? cached))
             {
+                TraceLog.InfoState(
+                    "YFinanceUiBridge",
+                    "HistoryRequestFellBackToStaleCache",
+                    [new("symbol", symbol), new("lookback_days", lookbackDays), new("fetch_timestamp_utc", cached.FetchTimestampUtc)]);
                 results.Add(cached);
                 continue;
             }

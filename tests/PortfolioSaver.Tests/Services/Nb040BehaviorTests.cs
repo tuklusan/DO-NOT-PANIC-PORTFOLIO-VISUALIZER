@@ -115,4 +115,62 @@ public sealed class Nb040BehaviorTests
         Assert.Contains("AAPL", symbols, StringComparer.OrdinalIgnoreCase);
         Assert.True(symbols.ToList().FindIndex(symbol => string.Equals(symbol, "AAPL", StringComparison.OrdinalIgnoreCase)) >= macros.Count + exchanges.Count);
     }
+
+    [Fact]
+    public void StartupCoordinator_DedicatedRuntimeRequestsStaySingleSymbol()
+    {
+        string coordinatorPath = Path.Combine(
+            GetRepoRoot(),
+            "src", "PortfolioSaver.Presentation", "Services", "StartupCoordinator.cs");
+        string source = File.ReadAllText(Path.GetFullPath(coordinatorPath));
+
+        Assert.Contains(
+            ".Take(Math.Min(YahooDedicatedRuntimeBatchSymbols, dedicatedSymbols.Count))",
+            source,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "selected.Add(preferredSymbol);",
+            source,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "YahooDedicatedRuntimeBatchSymbols + (!string.IsNullOrWhiteSpace(preferredSymbol) ? 1 : 0)",
+            source,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ScreensaverRefreshTimer_UsesProgressiveQuoteOnlyPath()
+    {
+        string controlPath = Path.Combine(
+            GetRepoRoot(),
+            "src", "PortfolioSaver.Presentation", "Controls", "ScreensaverSceneControl.xaml.cs");
+        string source = File.ReadAllText(Path.GetFullPath(controlPath));
+
+        Assert.Contains(
+            "_refreshTimer.Tick += async (_, _) => await RefreshSceneAsync(preserveLayout: true, fullAncillaryRefresh: false);",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "await _startupCoordinator.BuildProgressiveQuoteSceneAsync(currentRotationSeed)",
+            source,
+            StringComparison.Ordinal);
+    }
+
+    private static string GetRepoRoot()
+    {
+        DirectoryInfo? current = new(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "PortfolioScreensaver.sln")))
+                return current.FullName;
+
+            current = current.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate repo root from test AppContext.BaseDirectory.");
+    }
 }

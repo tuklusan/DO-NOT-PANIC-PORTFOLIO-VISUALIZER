@@ -37,7 +37,6 @@ public sealed class StartupCoordinator
     private const int MaxSequentialSymbolsPerPass = 8;
     private const int MinimumTapeItemCount = 18;
     private static readonly HashSet<string> DedicatedYahooSymbols = BuildDedicatedYahooSymbolSet();
-    private static readonly HashSet<string> PreferredYahooWorldIndexSymbols = BuildPreferredYahooWorldIndexSet();
     private static readonly HashSet<string> OfficialMacroSymbols = BuildOfficialMacroSymbolSet();
     private static readonly HashSet<string> TreasuryMacroSymbols = BuildTreasuryMacroSymbolSet();
     private const string StatusFreshnessAnchorSymbol = "^SPX";
@@ -185,45 +184,47 @@ public sealed class StartupCoordinator
         IReadOnlyList<string> backgroundPaths = await backgroundsTask;
         IReadOnlyList<string> headlines = await headlinesTask;
 
-        List<TapeViewModel> tapes = BuildTapeViewModels(settings, quotes);
-        NewsFlasherViewModel news = BuildNews(headlines);
-        FloatingClockViewModel? clock = settings.EnableFloatingClock ? _floatingClockBuilder.BuildDefault() : null;
+        return BuildSceneState(settings, quotes, providerLabel, backgroundPaths, headlines, networkAvailable);
+    }
 
-        DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
-        DateTimeOffset lastUpdate = TryGetStatusFreshnessAnchorFetchUtc(quotes, out DateTimeOffset anchorQuoteFetchUtc)
-            ? anchorQuoteFetchUtc
-            : nowUtc;
-        bool showStartupLoadingStatus = ShouldShowInitialValueLoadingStatus(quotes, settings, nowUtc);
+    public async Task<ScreensaverSceneState> BuildProgressiveQuoteSceneAsync(int graphRotationSeed = 0, CancellationToken cancellationToken = default)
+    {
+        AppSettings settings = _settingsService.Load();
+        bool networkAvailable = _isNetworkAvailable();
+        IReadOnlyDictionary<string, SymbolProfile> symbolProfiles = _symbolProfileStore.Load();
 
-        StatusBarViewModel status = new()
-        {
-            MarketStatusText = "Market (New York): --",
-            ProviderText = showStartupLoadingStatus
-                ? (quotes.Count > 0 ? "Provider: Refreshing stale cache" : "Provider: Loading live data")
-                : $"Provider: {providerLabel}",
-            UpdatedText = showStartupLoadingStatus
-                ? "Loading initial values"
-                : $"Updated: {TimeFormatHelper.ToAgeString(lastUpdate)}",
-            ClockDateText = nowUtc.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
-            ClockText = $"{nowUtc:HH:mm} UTC"
-        };
+        using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
+        IQuoteCacheService quoteCacheService = new QuoteCacheService(Path.Combine(PathHelper.GetLocalDataDirectory(), "quotes-cache.json"));
+        ProviderHealthService providerHealthService = new();
+        IQuoteProvider yahooFinanceProvider = new YahooFinanceQuoteProvider(httpClient);
 
-        bool showNetworkWaitingOverlay = ShouldShowNetworkWaitingOverlay(networkAvailable, providerLabel);
+        List<string> portfolioSymbols = BuildInterleavedPortfolioSymbols(settings);
+        List<string> ancillarySymbols =
+        [
+            .. FloatingClockBuilder.GetWorldIndexSymbols(),
+            .. GetMacroIndicatorSymbols()
+        ];
 
-        return new ScreensaverSceneState
-        {
-            Settings = settings,
-            Quotes = quotes,
-            Tapes = tapes,
-            News = news,
-            Status = status,
-            Graphs = [],
-            Clock = clock,
-            BackgroundPaths = backgroundPaths,
-            ShowNetworkWaitingOverlay = showNetworkWaitingOverlay,
-            NetworkWaitingTitle = "Waiting for network",
-            NetworkWaitingDetail = $"Retrying live quotes and exchange photos every {FormatRefreshCadenceText(settings)}."
-        };
+        (Dictionary<string, QuoteSnapshot> quotes, string providerLabel) = await LoadQuotesAsync(
+            portfolioSymbols,
+            ancillarySymbols,
+            settings,
+            networkAvailable,
+            yahooFinanceProvider,
+            yahooFinanceProvider,
+            yahooFinanceProvider,
+            yahooFinanceProvider,
+            yahooFinanceProvider,
+            quoteCacheService,
+            providerHealthService,
+            symbolProfiles,
+            graphRotationSeed,
+            cancellationToken);
+
+        IReadOnlyList<string> backgroundPaths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
+        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode);
+
+        return BuildSceneState(settings, quotes, providerLabel, backgroundPaths, headlines, networkAvailable);
     }
 
     public async IAsyncEnumerable<StartupWarmupBatch> WarmStartupYahooQuotesAsync(
@@ -1276,22 +1277,9 @@ public sealed class StartupCoordinator
                 .ToList();
             if (availableDedicatedSymbols.Count > 0)
             {
-                List<string> selected = availableDedicatedSymbols
+                return availableDedicatedSymbols
                     .Take(Math.Min(YahooDedicatedRuntimeBatchSymbols, dedicatedSymbols.Count))
                     .ToList();
-                string? preferredSymbol = availableDedicatedSymbols.FirstOrDefault(ShouldPreferYahooWorldIndex);
-                int maxCount = Math.Min(
-                    YahooDedicatedRuntimeBatchSymbols + (!string.IsNullOrWhiteSpace(preferredSymbol) ? 1 : 0),
-                    dedicatedSymbols.Count);
-
-                if (!string.IsNullOrWhiteSpace(preferredSymbol) &&
-                    !selected.Contains(preferredSymbol, StringComparer.OrdinalIgnoreCase) &&
-                    selected.Count < maxCount)
-                {
-                    selected.Add(preferredSymbol);
-                }
-
-                return selected;
             }
         }
 
@@ -1557,9 +1545,6 @@ public sealed class StartupCoordinator
     private static bool IsTreasuryMacroSymbol(string symbol)
         => TreasuryMacroSymbols.Contains(SymbolProfileHeuristics.Normalize(symbol));
 
-    private static bool ShouldPreferYahooWorldIndex(string symbol)
-        => PreferredYahooWorldIndexSymbols.Contains(SymbolProfileHeuristics.Normalize(symbol));
-
     public static bool TryGetStatusFreshnessAnchorFetchUtc(
         IReadOnlyDictionary<string, QuoteSnapshot> quotes,
         out DateTimeOffset fetchUtc)
@@ -1667,9 +1652,6 @@ public sealed class StartupCoordinator
         return symbols;
     }
 
-    private static HashSet<string> BuildPreferredYahooWorldIndexSet()
-        => new(["^IXIC"], StringComparer.OrdinalIgnoreCase);
-
     private static HashSet<string> BuildOfficialMacroSymbolSet()
         => new(GetOfficialMacroSymbols().Select(SymbolProfileHeuristics.Normalize), StringComparer.OrdinalIgnoreCase);
 
@@ -1690,6 +1672,55 @@ public sealed class StartupCoordinator
         string Label,
         DataSourcePolicySettings Policy,
         IQuoteProvider Provider);
+
+    private ScreensaverSceneState BuildSceneState(
+        AppSettings settings,
+        IReadOnlyDictionary<string, QuoteSnapshot> quotes,
+        string providerLabel,
+        IReadOnlyList<string> backgroundPaths,
+        IReadOnlyList<string> headlines,
+        bool networkAvailable)
+    {
+        List<TapeViewModel> tapes = BuildTapeViewModels(settings, quotes);
+        NewsFlasherViewModel news = BuildNews(headlines);
+        FloatingClockViewModel? clock = settings.EnableFloatingClock ? _floatingClockBuilder.BuildDefault() : null;
+
+        DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
+        DateTimeOffset lastUpdate = TryGetStatusFreshnessAnchorFetchUtc(quotes, out DateTimeOffset anchorQuoteFetchUtc)
+            ? anchorQuoteFetchUtc
+            : nowUtc;
+        bool showStartupLoadingStatus = ShouldShowInitialValueLoadingStatus(quotes, settings, nowUtc);
+
+        StatusBarViewModel status = new()
+        {
+            MarketStatusText = "Market (New York): --",
+            ProviderText = showStartupLoadingStatus
+                ? (quotes.Count > 0 ? "Provider: Refreshing stale cache" : "Provider: Loading live data")
+                : $"Provider: {providerLabel}",
+            UpdatedText = showStartupLoadingStatus
+                ? "Loading initial values"
+                : $"Updated: {TimeFormatHelper.ToAgeString(lastUpdate)}",
+            ClockDateText = nowUtc.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
+            ClockText = $"{nowUtc:HH:mm} UTC"
+        };
+
+        bool showNetworkWaitingOverlay = ShouldShowNetworkWaitingOverlay(networkAvailable, providerLabel);
+
+        return new ScreensaverSceneState
+        {
+            Settings = settings,
+            Quotes = new Dictionary<string, QuoteSnapshot>(quotes, StringComparer.OrdinalIgnoreCase),
+            Tapes = tapes,
+            News = news,
+            Status = status,
+            Graphs = [],
+            Clock = clock,
+            BackgroundPaths = backgroundPaths,
+            ShowNetworkWaitingOverlay = showNetworkWaitingOverlay,
+            NetworkWaitingTitle = "Waiting for network",
+            NetworkWaitingDetail = $"Retrying live quotes and exchange photos every {FormatRefreshCadenceText(settings)}."
+        };
+    }
 }
 
 public sealed record StartupWarmupBatch(

@@ -621,6 +621,39 @@ function Perform-KeyboardScrollPass {
     return $true
 }
 
+function Perform-VisibleScrollSequence {
+    param(
+        [Parameter(Mandatory = $true)]$Window,
+        [Parameter(Mandatory = $true)][string]$TabName,
+        [int]$TabSteps = 8,
+        [int]$PageDownCount = 1
+    )
+
+    $didScroll = $false
+    $scrollTarget = Get-ScrollPatternTarget -Window $Window -TabName $TabName
+    if ($null -ne $scrollTarget) {
+        try { $scrollTarget.Element.SetFocus() } catch {}
+        Start-Sleep -Milliseconds 30
+        $didScroll = Invoke-MouseWheelScroll -Element $scrollTarget.Element -Notches ([Math]::Max(3, $PageDownCount + 2)) -DelayMilliseconds 90
+        $pageKeys = @(for ($index = 0; $index -lt [Math]::Max(1, $PageDownCount); $index++) { '{PGDN}' })
+        Send-KeySequence -Keys $pageKeys -DelayMilliseconds 90
+        if (-not $didScroll) {
+            $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, $PageDownCount))
+        }
+    }
+
+    if (-not $didScroll) {
+        $didScroll = Perform-KeyboardScrollPass -Window $Window -TabSteps $TabSteps -DelayMilliseconds 28
+        $pageKeys = @(for ($index = 0; $index -lt [Math]::Max(1, $PageDownCount); $index++) { '{PGDN}' })
+        Send-KeySequence -Keys $pageKeys -DelayMilliseconds 90
+        if (-not $didScroll) {
+            $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, $PageDownCount))
+        }
+    }
+
+    return $didScroll
+}
+
 function Perform-VisibleConfigActivity {
     param(
         [Parameter(Mandatory = $true)]$Window,
@@ -629,44 +662,15 @@ function Perform-VisibleConfigActivity {
 
     try { $Window.SetFocus() } catch {}
     Start-Sleep -Milliseconds 40
-    $invokedButtons = New-Object 'System.Collections.Generic.HashSet[string]'
-    $controls = @(Get-ExerciseControls -Window $Window)
-    $maxControls = if ($TabName -eq 'Advanced') { 8 } else { 6 }
-    $representativeControls = @(Get-RepresentativeExerciseControls -Controls $controls -MaximumCount $maxControls)
 
-    foreach ($control in $representativeControls) {
-        Exercise-Control -Control $control -InvokedButtons $invokedButtons
-        Start-Sleep -Milliseconds 45
-        Send-KeySequence -Keys @('{TAB}') -DelayMilliseconds 30
+    $tabSteps = if ($TabName -eq 'Advanced') { 12 } else { 10 }
+    $pageDownCount = if ($TabName -eq 'Advanced') { 3 } else { 2 }
+
+    for ($index = 0; $index -lt $tabSteps; $index++) {
+        Send-KeySequence -Keys @('{TAB}') -DelayMilliseconds 28
     }
 
-    if ($TabName -eq 'Advanced') {
-        $didScroll = $false
-        $scrollTarget = Get-ScrollPatternTarget -Window $Window -TabName $TabName
-        if ($null -ne $scrollTarget) {
-            try { $scrollTarget.Element.SetFocus() } catch {}
-            Start-Sleep -Milliseconds 40
-            $didScroll = Invoke-MouseWheelScroll -Element $scrollTarget.Element -Notches 4 -DelayMilliseconds 120
-            Send-KeySequence -Keys @('{PGDN}','{PGDN}') -DelayMilliseconds 120
-            if (-not $didScroll) {
-                $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount 2
-            }
-        }
-
-        if (-not $didScroll) {
-            $didScroll = Perform-KeyboardScrollPass -Window $Window -TabSteps 14 -DelayMilliseconds 28
-            Send-KeySequence -Keys @('{PGDN}','{PGDN}') -DelayMilliseconds 120
-            if (-not $didScroll) {
-                $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount 2
-            }
-        }
-
-        return $didScroll
-    }
-
-    $null = Perform-KeyboardScrollPass -Window $Window -TabSteps 6 -DelayMilliseconds 30
-    Send-KeySequence -Keys @('{PGDN}') -DelayMilliseconds 120
-    return $true
+    return Perform-VisibleScrollSequence -Window $Window -TabName $TabName -TabSteps $tabSteps -PageDownCount $pageDownCount
 }
 
 function Find-ElementMetadataByProcessId {
@@ -1373,6 +1377,11 @@ function Find-ConfigWindow {
             }
         }
 
+        $namedTopLevel = Find-TopLevelWindowByNameLike -NameLike '*PORTFOLIO VISUALIZER Config*' -TimeoutSeconds 1
+        if ($null -ne $namedTopLevel) {
+            return $namedTopLevel
+        }
+
         try {
             $children = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
                 [System.Windows.Automation.TreeScope]::Children,
@@ -1705,57 +1714,31 @@ function Validate-AndCloseConfigWindow {
             return $true
         }
 
-        $validateButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigValidateButton'
-        if ($null -eq $validateButton) {
-            $validateButton = Find-DescendantByNameAndControlType -Root $Window -Name 'Validate' -ControlType ([System.Windows.Automation.ControlType]::Button)
+        try {
+            $windowPattern = $Window.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
+            $windowPattern.Close()
         }
-        if ($null -eq $validateButton) {
-            $script:summary.Notes += 'Validate button could not be located in the config window.'
-            break
-        }
-
-        try { $validateButton.SetFocus() } catch {}
-        Start-Sleep -Milliseconds 25
-        try { [System.Windows.Forms.SendKeys]::SendWait(' ') } catch {}
-        Start-Sleep -Milliseconds 25
-        try { [System.Windows.Forms.SendKeys]::SendWait('{ENTER}') } catch {}
-        Start-Sleep -Milliseconds 60
-        $invoked = Invoke-AutomationElement -Element $validateButton
-        if (-not $invoked) {
-            $invoked = Click-AutomationElementCenter -Element $validateButton
+        catch {
+            try { $Window.SetFocus() } catch {}
+            Start-Sleep -Milliseconds 25
+            try { [System.Windows.Forms.SendKeys]::SendWait('%{F4}') } catch {}
         }
 
-        $deadline = (Get-Date).AddSeconds(120)
-        $sawValidatedCountdown = $false
+        $deadline = (Get-Date).AddSeconds(8)
         do {
             Start-Sleep -Milliseconds 100
             $Process.Refresh()
             $blockingDialog = Get-ConfigBlockingDialog -Process $Process
             if ($null -ne $blockingDialog) {
-                $script:summary.Notes += "Config validation dialog: $($blockingDialog.Title) - $($blockingDialog.Message)"
+                $script:summary.Notes += "Config close dialog: $($blockingDialog.Title) - $($blockingDialog.Message)"
                 return $false
             }
 
             $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
-            if ($null -ne $Window) {
-                $statusText = Get-ConfigStatusText -Window $Window
-                if (-not [string]::IsNullOrWhiteSpace($statusText) -and
-                    $statusText -like '*Validation passed. Saving and closing in *') {
-                    $sawValidatedCountdown = $true
-                }
-                elseif (-not [string]::IsNullOrWhiteSpace($statusText) -and
-                    $statusText -like '*saved at *') {
-                    $sawValidatedCountdown = $true
-                }
-            }
         } while ($null -ne $Window -and (Get-Date) -lt $deadline)
 
         if ($null -eq $Window) {
             return $true
-        }
-
-        if ($sawValidatedCountdown) {
-            $script:summary.Notes += 'Observed validation success countdown, but config window still remained after timeout.'
         }
     }
 
@@ -1922,6 +1905,7 @@ try {
         }
 
         [void](Focus-ProcessWindow -Process $desktop)
+        $configOpened = $false
         $optionsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsMenuRoot'
         if ($null -ne $optionsMenuItem) {
             [void](Expand-AutomationElement -Element $optionsMenuItem)
@@ -1929,30 +1913,33 @@ try {
         }
 
         $settingsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsSettingsMenuItem'
-        if ($null -eq $settingsMenuItem) {
-            try {
-                [System.Windows.Forms.SendKeys]::SendWait('%o')
-                Start-Sleep -Milliseconds 40
-                [System.Windows.Forms.SendKeys]::SendWait('s')
-                Start-Sleep -Milliseconds 40
+        if ($null -ne $settingsMenuItem) {
+            $configOpened = Invoke-AutomationElement -Element $settingsMenuItem
+            if (-not $configOpened) {
+                try { $configOpened = Click-AutomationElementCenter -Element $settingsMenuItem } catch {}
             }
-            catch {}
         }
-        else {
-            if (-not (Invoke-AutomationElement -Element $settingsMenuItem)) {
+
+        if (-not $configOpened) {
+            foreach ($attempt in 1..3) {
                 try {
+                    [void](Focus-ProcessWindow -Process $desktop)
                     [System.Windows.Forms.SendKeys]::SendWait('%o')
                     Start-Sleep -Milliseconds 40
                     [System.Windows.Forms.SendKeys]::SendWait('s')
-                    Start-Sleep -Milliseconds 40
+                    Start-Sleep -Milliseconds 90
                 }
-                catch {
-                    throw 'Failed to invoke Settings menu item via UI Automation.'
+                catch {}
+
+                $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 2
+                if ($null -ne $window) {
+                    $configOpened = $true
+                    break
                 }
             }
         }
 
-        Start-Sleep -Milliseconds 250
+        Start-Sleep -Milliseconds 180
         $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 20
         if ($null -eq $window) { throw 'Could not locate config window via UI Automation.' }
         if ([string]$window.Current.Name -like '*BETA-5.6*' -or

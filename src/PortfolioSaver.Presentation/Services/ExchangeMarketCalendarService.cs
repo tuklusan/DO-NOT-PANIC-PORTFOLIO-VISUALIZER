@@ -4,6 +4,7 @@ using System.Text.Json;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Data.Services;
+using PortfolioSaver.Shared.Diagnostics;
 using PortfolioSaver.Shared.Helpers;
 using YFinance.NET.Api;
 using YFinance.NET.Models;
@@ -59,16 +60,36 @@ public sealed class ExchangeMarketCalendarService
 
             try
             {
-                HistoryResponse response = await client
-                    .Ticker(request.ExchangeSymbol)
-                    .GetHistoryResponseAsync(startUtc, endUtc, "1d", cancellationToken)
+                string operationId = YFinanceRuntimeClientFactory.CreateOperationId("exchange-calendar");
+                TraceLog.InfoState(
+                    "YFinanceUiBridge",
+                    "ExchangeCalendarRequestStart",
+                    [new("operation_id", operationId), new("city_key", request.CityKey), new("exchange_symbol", request.ExchangeSymbol)]);
+                HistoryResponse response = await YFinanceRuntimeClientFactory
+                    .RunSerializedAsync(
+                        "exchange-calendar",
+                        operationId,
+                        (_, token) => client
+                            .Ticker(request.ExchangeSymbol)
+                            .GetHistoryResponseAsync(startUtc, endUtc, "1d", token),
+                        cancellationToken)
                     .ConfigureAwait(false);
                 ExchangeTradingCalendar? calendar = BuildFromHistoryMetadata(request, response.Metadata);
                 if (calendar is not null)
+                {
                     live.CalendarsByCityKey[calendar.CityKey] = calendar;
+                    TraceLog.InfoState(
+                        "YFinanceUiBridge",
+                        "ExchangeCalendarRequestComplete",
+                        [new("operation_id", operationId), new("city_key", request.CityKey), new("exchange_symbol", request.ExchangeSymbol), new("timezone", calendar.TimeZoneId)]);
+                }
             }
-            catch
+            catch (Exception ex)
             {
+                TraceLog.WarnState(
+                    "YFinanceUiBridge",
+                    "ExchangeCalendarRequestFailed",
+                    [new("city_key", request.CityKey), new("exchange_symbol", request.ExchangeSymbol), new("message", ex.Message)]);
             }
         }
 

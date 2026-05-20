@@ -1,7 +1,7 @@
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Core.Services;
-using YFinance.NET.Api;
+using PortfolioSaver.Shared.Diagnostics;
 using YFinanceTickerInfo = YFinance.NET.Models.TickerInfo;
 
 namespace PortfolioSaver.Data.Services;
@@ -9,11 +9,9 @@ namespace PortfolioSaver.Data.Services;
 public sealed class SymbolProfileResolverService
 {
     private readonly SymbolNormalizer _symbolNormalizer = new();
-    private readonly YFinanceClient _client;
 
     public SymbolProfileResolverService(HttpClient httpClient)
     {
-        _client = YFinanceRuntimeClientFactory.GetSharedClient();
     }
 
     public async Task<ResolvedSymbolProfile> ResolveAsync(
@@ -33,14 +31,33 @@ public sealed class SymbolProfileResolverService
         try
         {
             string requestSymbol = YFinanceSymbolMapper.ToRequestSymbol(normalizedSymbol);
-            YFinanceTickerInfo? info = await _client.Ticker(requestSymbol).GetInfoAsync(cancellationToken).ConfigureAwait(false);
+            string operationId = YFinanceRuntimeClientFactory.CreateOperationId("symbol-profile");
+            TraceLog.InfoState(
+                "YFinanceUiBridge",
+                "SymbolProfileRequestStart",
+                [new("operation_id", operationId), new("symbol", normalizedSymbol), new("request_symbol", requestSymbol)]);
+            YFinanceTickerInfo? info = await YFinanceRuntimeClientFactory
+                .RunSerializedAsync(
+                    "symbol-profile",
+                    operationId,
+                    (client, token) => client.Ticker(requestSymbol).GetInfoAsync(token),
+                    cancellationToken)
+                .ConfigureAwait(false);
             if (info is null || (info.RegularMarketPrice is null && info.RegularMarketPreviousClose is null))
             {
+                TraceLog.WarnState(
+                    "YFinanceUiBridge",
+                    "SymbolProfileRequestEmpty",
+                    [new("operation_id", operationId), new("symbol", normalizedSymbol), new("request_symbol", requestSymbol)]);
                 profile.ValidationSummary = $"'{normalizedSymbol}' could not be validated against YFinance.NET.";
                 return ResolvedSymbolProfile.Invalid(profile, profile.ValidationSummary);
             }
 
             ApplyMetadata(profile, normalizedSymbol, info);
+            TraceLog.InfoState(
+                "YFinanceUiBridge",
+                "SymbolProfileRequestComplete",
+                [new("operation_id", operationId), new("symbol", normalizedSymbol), new("display_name", profile.DisplayName), new("exchange", profile.Exchange)]);
             profile.SupportedQuoteSources = [Core.Enums.DataSourceKind.YahooFinance];
             profile.SupportedHistorySources = [Core.Enums.DataSourceKind.YahooFinance];
             profile.ValidationSummary = "Validated via YFinance.NET.";
@@ -48,6 +65,10 @@ public sealed class SymbolProfileResolverService
         }
         catch (Exception ex)
         {
+            TraceLog.WarnState(
+                "YFinanceUiBridge",
+                "SymbolProfileRequestFailed",
+                [new("symbol", normalizedSymbol), new("message", ex.Message)]);
             profile.ValidationSummary = $"Validation through YFinance.NET was inconclusive: {ex.Message}";
             return ResolvedSymbolProfile.Indeterminate(profile, profile.ValidationSummary);
         }

@@ -54,11 +54,21 @@ public sealed class YahooSymbolValidationService
                     symbol => symbol,
                     YFinanceSymbolMapper.ToRequestSymbol,
                     StringComparer.OrdinalIgnoreCase);
+                string operationId = YFinanceRuntimeClientFactory.CreateOperationId("config-validation");
+                TraceLog.InfoState(
+                    "YFinanceUiBridge",
+                    "ValidationQuoteRequestStart",
+                    [new("operation_id", operationId), new("batch_number", batchIndex + 1), new("batch_total", batches.Count), new("symbols", batch), new("request_symbols", requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase).ToList())]);
                 IReadOnlyDictionary<string, QuoteSnapshot> quotes = await LookupQuotesAsync(
+                        operationId,
                         requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                         timeoutSeconds,
                         cancellationToken)
                     .ConfigureAwait(false);
+                TraceLog.InfoState(
+                    "YFinanceUiBridge",
+                    "ValidationQuoteRequestComplete",
+                    [new("operation_id", operationId), new("batch_number", batchIndex + 1), new("resolved_count", quotes.Count)]);
 
                 foreach ((string originalSymbol, string requestSymbol) in requestByOriginal)
                 {
@@ -94,12 +104,20 @@ public sealed class YahooSymbolValidationService
             catch (Exception ex) when (IsTooManyRequests(ex))
             {
                 result.MarkRateLimitedBatch(batch, ex.Message);
+                TraceLog.WarnState(
+                    "YFinanceUiBridge",
+                    "ValidationQuoteRequestRateLimited",
+                    [new("batch_number", batchIndex + 1), new("symbols", batch), new("message", ex.Message)]);
                 foreach (string symbol in batch)
                     progress?.Report(new YahooSymbolValidationProgress(symbol, false, string.Empty, "Rate limited"));
             }
             catch (Exception ex)
             {
                 result.MarkDeferredBatch(batch, ex.Message);
+                TraceLog.WarnState(
+                    "YFinanceUiBridge",
+                    "ValidationQuoteRequestFailed",
+                    [new("batch_number", batchIndex + 1), new("symbols", batch), new("message", ex.Message)]);
                 foreach (string symbol in batch)
                     progress?.Report(new YahooSymbolValidationProgress(symbol, false, string.Empty, "Validation unavailable"));
             }
@@ -127,6 +145,7 @@ public sealed class YahooSymbolValidationService
            ex.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase);
 
     private async Task<IReadOnlyDictionary<string, QuoteSnapshot>> LookupQuotesAsync(
+        string operationId,
         IReadOnlyCollection<string> requestSymbols,
         int timeoutSeconds,
         CancellationToken cancellationToken)
@@ -135,9 +154,14 @@ public sealed class YahooSymbolValidationService
             return await _quoteLookupAsync(requestSymbols, timeoutSeconds, cancellationToken).ConfigureAwait(false);
 
         using YFinanceClient client = _clientFactory(timeoutSeconds);
-        return await client
-            .Tickers(requestSymbols)
-            .GetQuotesAsync(cancellationToken)
+        return await YFinanceRuntimeClientFactory
+            .RunSerializedAsync(
+                "config-validation",
+                operationId,
+                (_, token) => client
+                    .Tickers(requestSymbols)
+                    .GetQuotesAsync(token),
+                cancellationToken)
             .ConfigureAwait(false);
     }
 
