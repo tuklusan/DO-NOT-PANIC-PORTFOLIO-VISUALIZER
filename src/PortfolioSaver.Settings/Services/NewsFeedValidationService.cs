@@ -18,7 +18,7 @@ public sealed class NewsFeedValidationService
             (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
         {
             return NewsFeedValidationResult.ResetToDefault(
-                "The RSS feed URL was not a valid http or https address, so it was reset to the default Yahoo Finance feed.");
+                "The RSS feed URL was not a valid http or https address, so it was reset to the default finance feed.");
         }
 
         if (!networkAvailable)
@@ -53,7 +53,7 @@ public sealed class NewsFeedValidationService
             if (!hasItemTitles && !hasAtomTitles)
             {
                 return NewsFeedValidationResult.ResetToDefault(
-                    "The RSS feed did not contain any readable headlines, so it was reset to the default Yahoo Finance feed.");
+                    "The RSS feed did not contain any readable headlines, so it was reset to the default finance feed.");
             }
 
             return new NewsFeedValidationResult
@@ -65,7 +65,7 @@ public sealed class NewsFeedValidationService
         catch
         {
             return NewsFeedValidationResult.ResetToDefault(
-                "The RSS feed could not be read as a valid news feed, so it was reset to the default Yahoo Finance feed.");
+                "The RSS feed could not be read as a valid news feed, so it was reset to the default finance feed.");
         }
     }
 }

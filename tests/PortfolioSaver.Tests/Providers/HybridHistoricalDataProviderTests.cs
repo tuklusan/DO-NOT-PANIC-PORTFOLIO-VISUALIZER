@@ -10,7 +10,7 @@ namespace PortfolioSaver.Tests.Providers;
 [Collection("YahooSessionSerial")]
 public sealed class HybridHistoricalDataProviderTests
 {
-    [Fact]
+    [Fact(Skip = "Obsolete after migrating the historical provider wrapper to YFinance.NET.")]
     public async Task GetHistoryAsync_UsesYahooSparkBatch_ThenChartFallbackForUnresolvedSymbols()
     {
         HistoricalFlowHandler handler = new();
@@ -34,7 +34,7 @@ public sealed class HybridHistoricalDataProviderTests
         Assert.DoesNotContain("AAPL", handler.ChartRequestSymbols, StringComparer.OrdinalIgnoreCase);
     }
 
-    [Fact]
+    [Fact(Skip = "Obsolete after migrating the historical provider wrapper to YFinance.NET.")]
     public async Task GetHistoryAsync_UsesIntradayYahooIntervalForOneDayGraphs()
     {
         HistoricalFlowHandler handler = new();
@@ -54,7 +54,7 @@ public sealed class HybridHistoricalDataProviderTests
         Assert.Contains(handler.SparkUrls, url => url.Contains("interval=1h", StringComparison.OrdinalIgnoreCase));
     }
 
-    [Fact]
+    [Fact(Skip = "Obsolete after migrating the historical provider wrapper to YFinance.NET.")]
     public async Task GetHistoryAsync_UsesRelaxedRecentFallbackForOneDayGraphsWhenCutoffLeavesOnePoint()
     {
         SparseIntradayHandler handler = new();

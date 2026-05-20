@@ -22,24 +22,24 @@ namespace PortfolioSaver.Screensaver.Services;
 
 public sealed class StartupCoordinator
 {
-    private const int MinimumQuoteProviderReuseSeconds = 15;
-    private const int YahooGeneralReuseSeconds = 60;
-    private const int YahooDedicatedProviderReuseSeconds = 180;
+    private const int MinimumQuoteProviderReuseSeconds = 1;
+    private const int YahooGeneralReuseSeconds = 1;
+    private const int YahooDedicatedProviderReuseSeconds = 1;
     private const int YahooDedicatedSymbolCooldownMinutes = 12;
     private const int YahooGeneralRateLimitCooldownMinutes = 8;
     private const int YahooDedicatedRateLimitCooldownMinutes = 12;
-    private const int YahooDedicatedWarmupBatchSize = 1;
-    private const int YahooDedicatedWarmupMaxBatches = 1;
-    private const int YahooDedicatedRuntimeBatchSymbols = 1;
-    private const int YahooGeneralRuntimeBatchSymbols = 4;
+    private const int YahooDedicatedWarmupBatchSize = 4;
+    private const int YahooDedicatedWarmupMaxBatches = 2;
+    private const int YahooDedicatedRuntimeBatchSymbols = 4;
+    private const int YahooGeneralRuntimeBatchSymbols = 16;
     private const int TwelveDataPerRequestMinuteOverhead = 3;
     private const int TwelveDataMinuteSafetyReserve = 1;
     private const int TwelveDataAliasRuntimeBatchSymbols = 2;
     private static readonly TimeSpan TwelveDataReuseInterval = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan YahooWarmupInterBatchDelay = TimeSpan.FromSeconds(YahooGeneralReuseSeconds);
-    private const int MaxBatchSymbolsPerPass = 8;
-    private const int MaxRecoveryBatchSymbolsPerPass = 16;
-    private const int MaxSequentialSymbolsPerPass = 4;
+    private static readonly TimeSpan YahooWarmupInterBatchDelay = TimeSpan.FromMilliseconds(500);
+    private const int MaxBatchSymbolsPerPass = 24;
+    private const int MaxRecoveryBatchSymbolsPerPass = 32;
+    private const int MaxSequentialSymbolsPerPass = 8;
     private const int MinimumTapeItemCount = 18;
     private static readonly HashSet<string> DedicatedYahooSymbols = BuildDedicatedYahooSymbolSet();
     private static readonly HashSet<string> PreferredYahooWorldIndexSymbols = BuildPreferredYahooWorldIndexSet();
@@ -60,8 +60,6 @@ public sealed class StartupCoordinator
     private readonly Dictionary<string, DateTimeOffset> _dedicatedYahooCooldownsUtc = new(StringComparer.OrdinalIgnoreCase);
     private readonly Func<bool> _isNetworkAvailable;
     private readonly Func<HttpClient, IQuoteProvider> _createYahooProvider;
-    private readonly Func<HttpClient, IQuoteProvider> _createOfficialMacroProvider;
-    private readonly Func<HttpClient, IQuoteProvider> _createGlobalMarketProvider;
     private readonly Func<TimeSpan, CancellationToken, Task> _delayAsync;
 
     public StartupCoordinator(
@@ -74,8 +72,6 @@ public sealed class StartupCoordinator
     {
         _isNetworkAvailable = networkAvailability ?? _networkAvailabilityService.IsNetworkAvailable;
         _createYahooProvider = yahooProviderFactory ?? (client => new YahooFinanceQuoteProvider(client));
-        _createOfficialMacroProvider = officialMacroProviderFactory ?? (client => new CboeVolatilityIndexQuoteProvider(client));
-        _createGlobalMarketProvider = globalMarketProviderFactory ?? (client => new StooqGlobalMarketQuoteProvider(client));
         _delayAsync = delayAsync ?? ((delay, cancellationToken) => Task.Delay(delay, cancellationToken));
         _providerBudgetLedgerService = providerBudgetLedgerService ?? new ProviderBudgetLedgerService();
         _marketStatusService.UpdateCalendarSnapshot(_exchangeMarketCalendarService.LoadNyseSnapshotFromCacheOrOffline());
@@ -155,11 +151,7 @@ public sealed class StartupCoordinator
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
         IQuoteCacheService quoteCacheService = new QuoteCacheService(Path.Combine(PathHelper.GetLocalDataDirectory(), "quotes-cache.json"));
         ProviderHealthService providerHealthService = new();
-        IQuoteProvider finnhubProvider = new FinnhubQuoteProvider(httpClient, settings.FinnhubApiKey);
-        IQuoteProvider twelveDataProvider = new TwelveDataQuoteProvider(httpClient, settings.TwelveDataApiKey);
-        IQuoteProvider tiingoProvider = new TiingoQuoteProvider(httpClient, settings.TiingoApiKey);
         IQuoteProvider yahooFinanceProvider = new YahooFinanceQuoteProvider(httpClient);
-        IQuoteProvider treasuryYieldProvider = new TreasuryYieldCurveQuoteProvider(httpClient);
 
         List<string> portfolioSymbols = BuildInterleavedPortfolioSymbols(settings);
         List<string> ancillarySymbols =
@@ -173,11 +165,11 @@ public sealed class StartupCoordinator
             ancillarySymbols,
             settings,
             networkAvailable,
-            finnhubProvider,
-            twelveDataProvider,
-            tiingoProvider,
             yahooFinanceProvider,
-            treasuryYieldProvider,
+            yahooFinanceProvider,
+            yahooFinanceProvider,
+            yahooFinanceProvider,
+            yahooFinanceProvider,
             quoteCacheService,
             providerHealthService,
             symbolProfiles,
@@ -247,7 +239,7 @@ public sealed class StartupCoordinator
     {
         bool networkAvailable = _isNetworkAvailable();
         if (!networkAvailable)
-            TraceRuntime("Warmup proceeding despite unavailable network probe; attempting Yahoo batches opportunistically.");
+            TraceRuntime("Warmup proceeding despite unavailable network probe; attempting YFinance.NET batches opportunistically.");
 
         List<string> symbols = GetDedicatedYahooWarmupSymbols(settings)
             .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
@@ -336,7 +328,7 @@ public sealed class StartupCoordinator
                     new Dictionary<string, QuoteSnapshot>(aggregated, StringComparer.OrdinalIgnoreCase),
                     batchIndex + 1,
                     batches.Count,
-                    $"Warmup {batchIndex + 1}/{batches.Count} batches complete via Yahoo Finance");
+                    $"Warmup {batchIndex + 1}/{batches.Count} batches complete via YFinance.NET");
             }
 
             if (haltAfterBatch)
@@ -448,7 +440,7 @@ public sealed class StartupCoordinator
         IQuoteProvider twelveDataProvider,
         IQuoteProvider tiingoProvider,
         IQuoteProvider yahooFinanceProvider,
-        IQuoteProvider treasuryYieldProvider,
+        IQuoteProvider globalMarketProvider,
         IQuoteCacheService quoteCacheService,
         ProviderHealthService providerHealthService,
         IReadOnlyDictionary<string, SymbolProfile> symbolProfiles,
@@ -540,11 +532,6 @@ public sealed class StartupCoordinator
             return (results, cacheOnlyLabel);
         }
 
-        using HttpClient officialMacroHttpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
-        IQuoteProvider officialMacroProvider = _createOfficialMacroProvider(officialMacroHttpClient);
-        using HttpClient globalMarketHttpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
-        IQuoteProvider globalMarketProvider = _createGlobalMarketProvider(globalMarketHttpClient);
-
         IReadOnlyList<ProviderExecutionPlan> providers = BuildQuoteProviders(
             settings,
             finnhubProvider,
@@ -552,212 +539,11 @@ public sealed class StartupCoordinator
             tiingoProvider,
             yahooFinanceProvider,
             refreshSeed);
-        HashSet<DataSourceKind> configuredBackupKinds = providers
-            .Where(provider => provider.Kind != DataSourceKind.YahooFinance)
-            .Select(provider => provider.Kind)
-            .ToHashSet();
+        HashSet<DataSourceKind> configuredBackupKinds = [];
 
         List<string> remainingSymbols = RotateSymbols(scheduledDueSymbols, refreshSeed)
             .OrderBy(symbol => cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? cached) && HasUsableQuote(cached) ? 1 : 0)
             .ToList();
-
-        List<string> officialMacroSymbols = remainingSymbols
-            .Where(IsOfficialMacroSymbol)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        if (officialMacroSymbols.Count > 0)
-        {
-            try
-            {
-                IReadOnlyList<QuoteSnapshot> officialMacroQuotes = await officialMacroProvider.GetQuotesAsync(officialMacroSymbols, cancellationToken);
-                if (officialMacroQuotes.Count > 0)
-                {
-                    liveProvidersUsed.Add("Cboe");
-                    TraceRuntimeState(
-                        "OfficialMacroQuotesApplied",
-                        new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(officialMacroSymbols)),
-                        new KeyValuePair<string, object?>("fetched_symbols", PreviewSymbols(officialMacroQuotes.Select(quote => quote.Symbol))));
-
-                    foreach (QuoteSnapshot quote in officialMacroQuotes)
-                    {
-                        results[quote.Symbol] = quote;
-                        refreshedSymbols.Add(quote.Symbol);
-                        remainingSymbols.RemoveAll(symbol => string.Equals(symbol, quote.Symbol, StringComparison.OrdinalIgnoreCase));
-                        NoteLatestUpdatedQuote(quote, ref latestUpdatedSymbol, ref latestUpdatedFetchUtc);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                TraceRuntime($"Official macro provider failed for [{string.Join(", ", officialMacroSymbols)}]: {ex.GetType().Name}: {ex.Message}");
-                TraceRuntimeState(
-                    "OfficialMacroProviderFailed",
-                    new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(officialMacroSymbols)),
-                    new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(remainingSymbols)));
-            }
-        }
-
-        List<string> treasurySymbols = remainingSymbols
-            .Where(IsTreasuryMacroSymbol)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        if (treasurySymbols.Count > 0)
-        {
-            try
-            {
-                IReadOnlyList<QuoteSnapshot> treasuryQuotes = await treasuryYieldProvider.GetQuotesAsync(treasurySymbols, cancellationToken);
-                if (treasuryQuotes.Count > 0)
-                {
-                    liveProvidersUsed.Add("US Treasury");
-                    TraceRuntimeState(
-                        "TreasuryMacroQuotesApplied",
-                        new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(treasurySymbols)),
-                        new KeyValuePair<string, object?>("fetched_symbols", PreviewSymbols(treasuryQuotes.Select(quote => quote.Symbol))));
-
-                    foreach (QuoteSnapshot quote in treasuryQuotes)
-                    {
-                        results[quote.Symbol] = quote;
-                        refreshedSymbols.Add(quote.Symbol);
-                        remainingSymbols.RemoveAll(symbol => string.Equals(symbol, quote.Symbol, StringComparison.OrdinalIgnoreCase));
-                        NoteLatestUpdatedQuote(quote, ref latestUpdatedSymbol, ref latestUpdatedFetchUtc);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                TraceRuntime($"US Treasury macro provider failed for [{string.Join(", ", treasurySymbols)}]: {ex.GetType().Name}: {ex.Message}");
-                TraceRuntimeState(
-                    "TreasuryMacroProviderFailed",
-                    new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(treasurySymbols)),
-                    new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(remainingSymbols)));
-            }
-        }
-
-        List<string> stooqGlobalMarketSymbols = remainingSymbols
-            .Where(symbol => StooqGlobalMarketQuoteProvider.CanResolve(symbol) && !ShouldPreferYahooWorldIndex(symbol))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        if (stooqGlobalMarketSymbols.Count > 0)
-        {
-            try
-            {
-                IReadOnlyList<QuoteSnapshot> globalMarketQuotes = await globalMarketProvider.GetQuotesAsync(stooqGlobalMarketSymbols, cancellationToken);
-                if (globalMarketQuotes.Count > 0)
-                {
-                    liveProvidersUsed.Add("Stooq");
-                    TraceRuntimeState(
-                        "GlobalMarketQuotesApplied",
-                        new KeyValuePair<string, object?>("provider", "Stooq"),
-                        new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(stooqGlobalMarketSymbols)),
-                        new KeyValuePair<string, object?>("fetched_symbols", PreviewSymbols(globalMarketQuotes.Select(quote => quote.Symbol))));
-
-                    foreach (QuoteSnapshot quote in globalMarketQuotes)
-                    {
-                        results[quote.Symbol] = quote;
-                        refreshedSymbols.Add(quote.Symbol);
-                        remainingSymbols.RemoveAll(symbol => string.Equals(symbol, quote.Symbol, StringComparison.OrdinalIgnoreCase));
-                        NoteLatestUpdatedQuote(quote, ref latestUpdatedSymbol, ref latestUpdatedFetchUtc);
-                    }
-                }
-                else
-                {
-                    TraceRuntimeState(
-                        "GlobalMarketQuotesNoData",
-                        new KeyValuePair<string, object?>("provider", "Stooq"),
-                        new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(stooqGlobalMarketSymbols)));
-                }
-            }
-            catch (Exception ex)
-            {
-                TraceRuntime($"Global market provider failed for [{string.Join(", ", stooqGlobalMarketSymbols)}]: {ex.GetType().Name}: {ex.Message}");
-                TraceRuntimeState(
-                    "GlobalMarketProviderFailed",
-                    new KeyValuePair<string, object?>("provider", "Stooq"),
-                    new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(stooqGlobalMarketSymbols)),
-                    new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(remainingSymbols)));
-            }
-        }
-
-        ProviderExecutionPlan? twelveDataPlan = providers.FirstOrDefault(provider => provider.Kind == DataSourceKind.TwelveData);
-        if (twelveDataPlan is not null)
-        {
-            List<string> aliasSymbols = remainingSymbols
-                .Where(symbol => ProviderSymbolAliasCatalog.TryGetQuoteAlias(DataSourceKind.TwelveData, symbol, out _))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            if (aliasSymbols.Count > 0)
-            {
-                List<string> requestSymbols = RotateSymbols(aliasSymbols, refreshSeed)
-                    .Take(Math.Min(TwelveDataAliasRuntimeBatchSymbols, GetMaximumRequestSymbolCount(DataSourceKind.TwelveData)))
-                    .ToList();
-                int queryCost = GetQueryCost(twelveDataPlan, requestSymbols.Count);
-                TimeSpan minimumReuseInterval = GetMinimumProviderReuseInterval(DataSourceKind.TwelveData, requestSymbols);
-                TraceRuntimeState(
-                    "AliasQuotesPlan",
-                    new KeyValuePair<string, object?>("provider", twelveDataPlan.Label),
-                    new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(requestSymbols)),
-                    new KeyValuePair<string, object?>("provider_symbols", PreviewSymbols(requestSymbols.Select(symbol => ProviderSymbolAliasCatalog.GetQuoteRequestSymbol(DataSourceKind.TwelveData, symbol)))),
-                    new KeyValuePair<string, object?>("query_cost", queryCost),
-                    new KeyValuePair<string, object?>("minimum_reuse_seconds", minimumReuseInterval.TotalSeconds));
-                if (_providerBudgetLedgerService.TryReserve(
-                        twelveDataPlan.Policy,
-                        queryCost,
-                        minimumReuseInterval,
-                        nowUtc))
-                {
-                    try
-                    {
-                        IReadOnlyList<QuoteSnapshot> aliasedQuotes = await twelveDataPlan.Provider.GetQuotesAsync(requestSymbols, cancellationToken);
-                        if (aliasedQuotes.Count > 0)
-                        {
-                            liveProvidersUsed.Add(twelveDataPlan.Label);
-                            TraceRuntimeState(
-                                "AliasQuotesApplied",
-                                new KeyValuePair<string, object?>("provider", twelveDataPlan.Label),
-                                new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(requestSymbols)),
-                                new KeyValuePair<string, object?>("fetched_symbols", PreviewSymbols(aliasedQuotes.Select(quote => quote.Symbol))));
-
-                            foreach (QuoteSnapshot quote in aliasedQuotes)
-                            {
-                                results[quote.Symbol] = quote;
-                                refreshedSymbols.Add(quote.Symbol);
-                                remainingSymbols.RemoveAll(symbol => string.Equals(symbol, quote.Symbol, StringComparison.OrdinalIgnoreCase));
-                                NoteLatestUpdatedQuote(quote, ref latestUpdatedSymbol, ref latestUpdatedFetchUtc);
-                            }
-                        }
-                        else
-                        {
-                            TraceRuntimeState(
-                                "AliasQuotesNoData",
-                                new KeyValuePair<string, object?>("provider", twelveDataPlan.Label),
-                                new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(requestSymbols)),
-                                new KeyValuePair<string, object?>("provider_symbols", PreviewSymbols(requestSymbols.Select(symbol => ProviderSymbolAliasCatalog.GetQuoteRequestSymbol(DataSourceKind.TwelveData, symbol)))));
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        providerHealthService.MarkFailure(ex.Message);
-                        TraceRuntime($"Provider {twelveDataPlan.Label} alias prefetch failed for [{string.Join(", ", requestSymbols)}]: {ex.GetType().Name}: {ex.Message}");
-                        TraceRuntimeState(
-                            "AliasQuotesFailed",
-                            new KeyValuePair<string, object?>("provider", twelveDataPlan.Label),
-                            new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(requestSymbols)),
-                            new KeyValuePair<string, object?>("provider_symbols", PreviewSymbols(requestSymbols.Select(symbol => ProviderSymbolAliasCatalog.GetQuoteRequestSymbol(DataSourceKind.TwelveData, symbol)))),
-                            new KeyValuePair<string, object?>("message", ex.Message));
-                    }
-                }
-                else
-                {
-                    TraceRuntimeState(
-                        "AliasQuotesSkippedByBudget",
-                        new KeyValuePair<string, object?>("provider", twelveDataPlan.Label),
-                        new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(requestSymbols)),
-                        new KeyValuePair<string, object?>("provider_symbols", PreviewSymbols(requestSymbols.Select(symbol => ProviderSymbolAliasCatalog.GetQuoteRequestSymbol(DataSourceKind.TwelveData, symbol)))),
-                        new KeyValuePair<string, object?>("query_cost", queryCost),
-                        new KeyValuePair<string, object?>("minimum_reuse_seconds", minimumReuseInterval.TotalSeconds));
-                }
-            }
-        }
 
         TraceRuntimeState(
             "ProviderOrder",
@@ -1287,59 +1073,13 @@ public sealed class StartupCoordinator
         IQuoteProvider yahooFinanceProvider,
         int rotationSeed)
     {
-        ProviderExecutionPlan? yahooPrimary = null;
-        List<ProviderExecutionPlan> backupProviders = [];
-
-        foreach (DataSourcePolicySettings policy in settings.DataSources)
-        {
-            DataSourceCapabilities capabilities = DataSourceCatalog.GetCapabilities(policy.Kind);
-            if (!policy.EnableSingleTickerQueries && !policy.EnableBatchTickerQueries)
-                continue;
-
-            switch (policy.Kind)
-            {
-                case DataSourceKind.Finnhub when !string.IsNullOrWhiteSpace(settings.FinnhubApiKey):
-                    backupProviders.Add(new ProviderExecutionPlan(policy.Kind, capabilities.DisplayName, policy, finnhubProvider));
-                    break;
-                case DataSourceKind.TwelveData when !string.IsNullOrWhiteSpace(settings.TwelveDataApiKey):
-                    backupProviders.Add(new ProviderExecutionPlan(policy.Kind, capabilities.DisplayName, policy, twelveDataProvider));
-                    break;
-                case DataSourceKind.Tiingo when !string.IsNullOrWhiteSpace(settings.TiingoApiKey):
-                    backupProviders.Add(new ProviderExecutionPlan(policy.Kind, capabilities.DisplayName, policy, tiingoProvider));
-                    break;
-                case DataSourceKind.YahooFinance:
-                    yahooPrimary = new ProviderExecutionPlan(policy.Kind, capabilities.DisplayName, policy, yahooFinanceProvider);
-                    break;
-            }
-        }
-
-        // Defensive fallback: even if persisted policies were disabled/corrupted,
-        // keep Yahoo warmup alive so startup does not degrade into "no sources".
-        if (yahooPrimary is null)
-        {
-            DataSourcePolicySettings yahooFallback = DataSourceCatalog.CreateDefaultPolicy(DataSourceKind.YahooFinance);
-            yahooFallback.EnableSingleTickerQueries = true;
-            yahooFallback.EnableBatchTickerQueries = true;
-            DataSourceCapabilities yahooCapabilities = DataSourceCatalog.GetCapabilities(DataSourceKind.YahooFinance);
-            yahooPrimary = new ProviderExecutionPlan(DataSourceKind.YahooFinance, yahooCapabilities.DisplayName, yahooFallback, yahooFinanceProvider);
-        }
-
-        List<ProviderExecutionPlan> ordered = [];
-        IReadOnlyList<ProviderExecutionPlan> rotatedBackups = RotateProviders(backupProviders, rotationSeed);
-        if (rotatedBackups.Count > 0)
-        {
-            // Prefer providers with healthier current throughput first, keeping Yahoo
-            // available as the last-resort path for unresolved symbols.
-            ordered.AddRange(rotatedBackups);
-            if (yahooPrimary is not null)
-                ordered.Add(yahooPrimary);
-        }
-        else if (yahooPrimary is not null)
-        {
-            ordered.Add(yahooPrimary);
-        }
-
-        return ordered;
+        DataSourcePolicySettings yahooPolicy = settings.DataSources
+            .FirstOrDefault(policy => policy.Kind == DataSourceKind.YahooFinance && (policy.EnableSingleTickerQueries || policy.EnableBatchTickerQueries))
+            ?? DataSourceCatalog.CreateDefaultPolicy(DataSourceKind.YahooFinance);
+        yahooPolicy.EnableSingleTickerQueries = true;
+        yahooPolicy.EnableBatchTickerQueries = true;
+        DataSourceCapabilities yahooCapabilities = DataSourceCatalog.GetCapabilities(DataSourceKind.YahooFinance);
+        return [new ProviderExecutionPlan(DataSourceKind.YahooFinance, yahooCapabilities.DisplayName, yahooPolicy, yahooFinanceProvider)];
     }
 
     private static IReadOnlyList<T> RotateProviders<T>(IReadOnlyList<T> providers, int rotationSeed)
@@ -1478,8 +1218,7 @@ public sealed class StartupCoordinator
     private static bool ShouldAlwaysIncludeDueSymbol(string symbol)
         => IsOfficialMacroSymbol(symbol) ||
            IsTreasuryMacroSymbol(symbol) ||
-           IsDedicatedYahooSymbol(symbol) ||
-           StooqGlobalMarketQuoteProvider.CanResolve(symbol);
+           IsDedicatedYahooSymbol(symbol);
 
     private static int CalculateDueSymbolsPerPass(
         HashSet<string> dueSymbols,
@@ -1928,7 +1667,7 @@ public sealed class StartupCoordinator
         if (ShouldPreferYahooWorldIndex(normalized))
             return true;
 
-        return !StooqGlobalMarketQuoteProvider.CanResolve(normalized);
+        return true;
     }
 
     private static bool ShouldPreferYahooWorldIndex(string symbol)

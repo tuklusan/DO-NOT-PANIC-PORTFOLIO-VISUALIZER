@@ -5,6 +5,6 @@ DO NOT PANIC PORTFOLIO VISUALIZER Help
 - Leave a ticker name blank to let Apply auto-fill it when validation succeeds.
 - Apply validates ticker symbols when a network connection is available.
 - Invalid symbols are automatically disabled so they do not break the screensaver.
-- RSS feeds are validated during Apply. Invalid feeds fall back to the default Yahoo Finance feed.
+- RSS feeds are validated during Apply. Invalid feeds fall back to the default finance feed.
 - Advanced settings control per-provider hourly and daily request budgets.
 - Review the bundled LICENSE file or the official MIT License page for the full license text.

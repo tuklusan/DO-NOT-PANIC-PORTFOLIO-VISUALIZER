@@ -41,7 +41,7 @@ public static class DataSourceCatalog
             SupportsBatchTickerQueries: false),
         DataSourceKind.YahooFinance => new(
             kind,
-            "Yahoo Finance v8",
+            "YFinance.NET",
             HardMaxQueriesPerMinute: 0,
             HardMaxQueriesPerHour: 2000,
             HardMaxQueriesPerDay: 48000,

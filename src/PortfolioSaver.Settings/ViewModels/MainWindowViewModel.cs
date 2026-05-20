@@ -346,14 +346,14 @@ public sealed class MainWindowViewModel : BindableBase
             if (symbolValidation.WasRateLimited || symbolValidation.DeferredSymbols.Count > 0)
             {
                 string deferredList = string.Join(", ", symbolValidation.DeferredSymbols.Take(8));
-                StatusMessage = "Yahoo Finance throttled ticker validation. Nothing was disabled; try Validate again shortly.";
+                StatusMessage = "YFinance.NET throttled ticker validation. Nothing was disabled; try Validate again shortly.";
                 AppendValidationLog("TICKER VALIDATION DEFERRED BY YAHOO RATE LIMITING");
                 TraceValidation("TickerValidationDeferred",
                     ("rate_limited", symbolValidation.WasRateLimited),
                     ("deferred_count", symbolValidation.DeferredSymbols.Count),
                     ("invalid_count", symbolValidation.InvalidSymbols.Count));
                 MessageBox.Show(
-                    "Yahoo Finance temporarily throttled ticker validation." + Environment.NewLine + Environment.NewLine +
+                    "YFinance.NET temporarily throttled ticker validation." + Environment.NewLine + Environment.NewLine +
                     "No ticker entries were disabled during this pass." + Environment.NewLine +
                     "Wait a little and click Validate again." +
                     (string.IsNullOrWhiteSpace(deferredList) ? string.Empty : Environment.NewLine + Environment.NewLine + "Deferred symbols: " + deferredList),
@@ -371,7 +371,7 @@ public sealed class MainWindowViewModel : BindableBase
                     ("invalid_count", symbolValidation.InvalidSymbols.Count),
                     ("disabled_count", disabledCount));
                 MessageBox.Show(
-                    "These symbols are invalid on Yahoo Finance:" + Environment.NewLine + Environment.NewLine +
+                    "These symbols are invalid on YFinance.NET:" + Environment.NewLine + Environment.NewLine +
                     string.Join(Environment.NewLine, symbolValidation.InvalidSymbols.Select(symbol => $"- {symbol}")) +
                     Environment.NewLine + Environment.NewLine +
                     $"Disabled entries: {disabledCount}.",
@@ -468,7 +468,7 @@ public sealed class MainWindowViewModel : BindableBase
 
         if (networkSymbols.Count > 0)
         {
-            MarkSymbolStates(networkSymbols, SymbolValidationState.Checking, "Checking Yahoo Finance...");
+            MarkSymbolStates(networkSymbols, SymbolValidationState.Checking, "Checking YFinance.NET...");
 
             YahooSymbolValidationResult networkResult = await _yahooSymbolValidationService.ValidateAsync(
                 networkSymbols,
@@ -478,7 +478,7 @@ public sealed class MainWindowViewModel : BindableBase
         }
         else
         {
-            AppendValidationLog("YAHOO LOOKUP SKIPPED: ALL SYMBOLS ALREADY TRUSTED LOCALLY");
+            AppendValidationLog("YFINANCE LOOKUP SKIPPED: ALL SYMBOLS ALREADY TRUSTED LOCALLY");
         }
 
         foreach (string symbol in enabledSymbols.Distinct(StringComparer.OrdinalIgnoreCase))
@@ -487,13 +487,13 @@ public sealed class MainWindowViewModel : BindableBase
             if (aggregate.Entries.TryGetValue(normalized, out YahooSymbolValidationEntry? entry) && entry.IsValid)
             {
                 if (!trustedSymbols.Contains(normalized))
-                    MarkSymbolState(normalized, SymbolValidationState.Valid, "Validated via Yahoo Finance");
+                    MarkSymbolState(normalized, SymbolValidationState.Valid, "Validated via YFinance.NET");
                 continue;
             }
 
             if (aggregate.Entries.TryGetValue(normalized, out entry) && entry.WasChecked)
             {
-                MarkSymbolState(normalized, SymbolValidationState.Invalid, "Yahoo Finance does not recognize this symbol");
+                MarkSymbolState(normalized, SymbolValidationState.Invalid, "YFinance.NET does not recognize this symbol");
                 continue;
             }
 
@@ -528,7 +528,7 @@ public sealed class MainWindowViewModel : BindableBase
 
             ticker.Enabled = false;
             ticker.ValidationState = SymbolValidationState.Invalid;
-            ticker.ValidationMessage = "Disabled because Yahoo Finance validation failed";
+            ticker.ValidationMessage = "Disabled because YFinance.NET validation failed";
             disabled++;
         }
 

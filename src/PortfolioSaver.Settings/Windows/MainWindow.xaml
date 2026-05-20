@@ -330,7 +330,7 @@
                                                     </Grid>
 
                                                     <TextBlock Text="Tickers" Foreground="White" FontSize="15" Margin="0,4,0,4" />
-                                                    <TextBlock Text="Edit the symbol only. Name fills in during Validate using Yahoo Finance symbol metadata." Style="{StaticResource SectionNoteStyle}" Margin="0,0,0,8" />
+                                                    <TextBlock Text="Edit the symbol only. Name fills in during Validate using YFinance.NET symbol metadata." Style="{StaticResource SectionNoteStyle}" Margin="0,0,0,8" />
                                                     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
                                                         <ItemsControl ItemsSource="{Binding Tickers}">
                                                             <ItemsControl.ItemTemplate>
@@ -351,7 +351,7 @@
                                                                                  IsReadOnly="True"
                                                                                  Background="#1A1A1A"
                                                                                  Foreground="#C8D6E3"
-                                                                                 ToolTip="Filled automatically during Validate from Yahoo Finance metadata." />
+                                                                                 ToolTip="Filled automatically during Validate from YFinance.NET metadata." />
                                                                         <CheckBox Grid.Column="2" IsChecked="{Binding Enabled}" Foreground="#DDDDDD" Margin="4,0,4,0" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                                         <TextBlock Grid.Column="3"
                                                                                    Text="{Binding ValidationBadgeText}"
@@ -417,7 +417,7 @@
                                 <DockPanel Margin="0,0,0,10">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="News Scroller" Foreground="White" FontSize="20" />
-                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Summarized Financial News uses the DeepSeek API key from the config screen, protected local secret storage, or environment overrides and refreshes no more often than every 15 minutes. RSS Feed keeps the Yahoo Finance default unless you supply a different readable feed URL.">
+                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Summarized Financial News uses the DeepSeek API key from the config screen, protected local secret storage, or environment overrides and refreshes no more often than every 15 minutes. RSS Feed keeps the default finance feed unless you supply a different readable feed URL.">
                                             <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
                                         </Border>
                                     </StackPanel>
@@ -485,7 +485,7 @@
                                     <TextBlock Grid.Column="2" Margin="12,0,0,0" Foreground="#F3D57F" VerticalAlignment="Center" Text="{Binding ElementName=NewsRefreshSlider, Path=Value, StringFormat={}{0:0}m}" />
                                 </Grid>
                                 <TextBlock Text="Summarized mode sends curated live global financial headlines to DeepSeek for style-only rewriting, then plays the results back one bulletin at a time in a teleprinter-style band with uppercase courier text, typed character by character, paused, cleared, and only scrolled when the item is too long. The DeepSeek key follows the same protected storage and environment override rules as the market-data provider keys, the writing style can be switched between Douglas Adams and William Shakespeare, and the app adds a separate fixed verifiable closing quotation for the selected writer instead of letting the model improvise one." Style="{StaticResource SectionNoteStyle}" />
-                                <TextBlock Text="RSS mode validates the feed during Apply and falls back to the Yahoo Finance default when needed." Style="{StaticResource SectionNoteStyle}" />
+                                <TextBlock Text="RSS mode validates the feed during Apply and falls back to the default finance feed when needed." Style="{StaticResource SectionNoteStyle}" />
                             </StackPanel>
                         </Border>
                         <Border Grid.Row="2" Style="{StaticResource SectionCardStyle}">

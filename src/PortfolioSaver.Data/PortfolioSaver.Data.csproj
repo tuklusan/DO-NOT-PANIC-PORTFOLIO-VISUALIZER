@@ -10,5 +10,6 @@
   <ItemGroup>
     <ProjectReference Include="..\PortfolioSaver.Core\PortfolioSaver.Core.csproj" />
     <ProjectReference Include="..\PortfolioSaver.Shared\PortfolioSaver.Shared.csproj" />
+    <ProjectReference Include="..\..\YFinance.net\YFinance.NET\YFinance.NET.csproj" />
   </ItemGroup>
 </Project>

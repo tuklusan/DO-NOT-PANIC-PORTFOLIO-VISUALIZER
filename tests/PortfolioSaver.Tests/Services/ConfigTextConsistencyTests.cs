@@ -56,8 +56,8 @@ public sealed class ConfigTextConsistencyTests
     {
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
-        Assert.Contains("Name fills in during Validate using Yahoo Finance symbol metadata.", xaml, StringComparison.Ordinal);
-        Assert.Contains("Filled automatically during Validate from Yahoo Finance metadata.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Name fills in during Validate using YFinance.NET symbol metadata.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Filled automatically during Validate from YFinance.NET metadata.", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding Quantity}\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding CostBasis}\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding Currency, UpdateSourceTrigger=PropertyChanged}\"", xaml, StringComparison.Ordinal);

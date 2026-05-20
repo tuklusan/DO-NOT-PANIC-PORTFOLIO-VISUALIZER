@@ -363,7 +363,7 @@ public partial class ScreensaverSceneControl : UserControl
 
                 if (_statusViewModel is not null)
                 {
-                    _statusViewModel.ProviderText = "Provider: Yahoo Finance warmup";
+                    _statusViewModel.ProviderText = "Provider: YFinance.NET warmup";
                     UpdateStatusFreshnessText(batch.StatusMessage);
                     DateTimeOffset referenceUtc = GetReferenceUtcNow();
                     _statusViewModel.ClockDateText = FormatStatusClockDate(referenceUtc);

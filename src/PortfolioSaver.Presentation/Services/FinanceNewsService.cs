@@ -323,7 +323,7 @@ public sealed class FinanceNewsService
         => cached.Count > 0
             ? cached
             : mode == NewsScrollerMode.RssFeed
-                ? ["Waiting for Yahoo Finance headlines..."]
+                ? ["Waiting for default finance headlines..."]
                 : ["Waiting for summarized financial news..."];
 
     private async Task<NewsHeadlineCache> LoadCacheAsync(CancellationToken cancellationToken)
