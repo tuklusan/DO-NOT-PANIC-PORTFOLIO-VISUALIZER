@@ -822,12 +822,13 @@
       "priority": 1,
       "area": "architecture_refactor",
       "title": "Extract a clean service-ready data engine boundary between retrieval/orchestration and UI rendering",
-      "status": "deferred-next-major-release",
+      "status": "superseded",
       "source": "user_followup",
       "evidence": [
         "User requested a major refactor to cleanly separate data retrieval from UI rendering so the architecture can later support a Windows service and more controlled provider parallelism."
       ],
       "notes": [
+        "Superseded in Beta 5.6 by NB-031, which replaces the earlier in-process DataEngine / optional Windows service direction with a cleaner client-server architecture centered on an external YFinance.NET server process and a thinner UI client.",
         "Manual code-review validation summary: the core diagnosis remains correct, but the ticket must explicitly account for three seams that are easy to underestimate. First, StartupCoordinator is not just long; it directly constructs concrete infrastructure such as QuoteCacheService, multiple provider implementations, ProviderHealthService, FinanceNewsService, ScreensaverSettingsService, SymbolProfileStore, and ExchangePhotoCacheService. Second, settings, secrets, traces, and caches are still user-profile rooted through PathHelper and ProviderSecretStoreService, which means a future service-ready engine needs explicit settings/secrets abstractions rather than assuming those concerns can stay ambient. Third, several orchestration types still live under the PortfolioSaver.Screensaver.Services namespace even though the product is desktop-first, so namespace and composition cleanup should be treated as part of the refactor rather than deferred as mere polish.",
         "Current diagnosis: the repository already has a meaningful provider layer under src/PortfolioSaver.Data and domain models under src/PortfolioSaver.Core, but the main runtime orchestration still lives in src/PortfolioSaver.Presentation/Services/StartupCoordinator.cs. StartupCoordinator is approximately 1800 lines and currently owns quote scheduling, provider fallback ordering, startup warmup policy, graph warmup, news refresh orchestration, cache usage, freshness logic, tracing, and scene-shaping decisions. ScreensaverSceneControl is over 2100 lines and still depends on some of that orchestration behavior directly. FinanceNewsService and ScreensaverSettingsService also sit in the same runtime namespace, reinforcing that the retrieval/runtime layer is not yet cleanly separated from the product surface.",
         "The goal of this ticket is not merely to prepare for a future Windows service. The deeper goal is to establish a stable architectural seam that improves concurrency, testability, startup behavior, scheduling clarity, and future maintainability while keeping the existing desktop product working throughout the migration.",
@@ -1079,6 +1080,56 @@
         "Standalone VM proofs now cover: a fresh top-20 discovery run with history warmup and a clean quote cycle, a cached top-50 run with a wider quote cycle, and a full top-100 acceptance run with 20 warmed history lanes plus 5 quote cycles at 5-minute spacing, all without Yahoo 429s.",
         "The standalone YFinance.NET port is now VM-proven, integrated into Portfolio Visualizer as the sole market-data runtime, and the legacy multi-provider paths/config surfaces have been removed from the active product lane.",
         "The final Beta 5.6 proof point for NB-029 is a clean build plus a fully passing 160-test suite after switching the app, config UI, harness secrets, and reference spot-check path to YFinance.NET-only behavior, with the YFinance.NET soak already proven separately in the 25-cycle VM log."
+      ]
+    },
+    {
+      "id": "NB-030",
+      "tracking_number": "NB-030",
+      "priority": 2,
+      "area": "symbol_sets",
+      "title": "Align global exchange and macro gauge symbol sets to the new Yahoo/YFinance canonical lists",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User supplied the desired 19-symbol Yahoo Finance global exchange list and the desired 8-symbol Yahoo Finance macro gauge list, with explicit guidance to drop the duplicate India exchange lane and share ^IXIC retrieval between the macro and global displays."
+      ],
+      "notes": [
+        "Update the global exchange symbol set to this 19-symbol list: ^IXIC, ^NYA, 000001.SS, ^N225, ^STOXX50E, 399001.SZ, ^HSI, ^NSEI, ^GSPTSE, ^KS11, ^TWII, ^FTSE, ^GDAXI, ^SSMI, ^AXJO, ^TASI.SR, ^BVSP, ^J200.JO, ^OMXN40.",
+        "Do not include ^BSESN in the active global exchange list because the India lane should be represented once through ^NSEI.",
+        "Update the macro gauge symbol set to this 8-symbol list: ^VIX, ^IXIC, ^TNX, ^IRX, GC=F, BZ=F, DX-Y.NYB, BTC-USD.",
+        "Treat ^IXIC as one shared retrieval with two presentation uses so the macro panel and the global exchange panel reuse the same fetched quote rather than issuing duplicate requests.",
+        "Preserve explicit normalization notes for Treasury yield series: Yahoo returns ^TNX scaled by 10, and ^IRX should be validated for the same scaling behavior before spread calculations are finalized.",
+        "After wiring the lists, run a live YFinance.NET validation pass for all 19 exchange symbols and all 8 macro symbols so we can capture any Yahoo quirks or fallback notes for symbols such as ^TASI.SR, ^J200.JO, and 399001.SZ."
+      ]
+    },
+    {
+      "id": "NB-031",
+      "tracking_number": "NB-031",
+      "priority": 1,
+      "area": "client_server_refactor",
+      "title": "Replace the in-process YFinance runtime with a standalone YFinance.NET client-server architecture",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested replacing the old service-ready DataEngine concept with a pure client-server architecture where YFinance.NET runs as its own process and the UI becomes a sequential client."
+      ],
+      "notes": [
+        "This ticket completely replaces NB-023 as the active architecture program.",
+        "Separate YFinance.NET fully into its own process with its own circular log file and runtime lifecycle.",
+        "The YFinance.NET server must listen on TCP port 14870 and accept client connections from any IP address.",
+        "The server must support multiple client connections with a maximum of 1024 concurrent clients.",
+        "Design the server so it can run on a completely separate machine from the UI client in the future.",
+        "Long-range portability target: keep the architecture and protocol clean enough that the YFinance.NET server can later be reimplemented or migrated to cross-platform standard C++ for Linux/Unix/Windows/Windows-XP/macOS Intel/macOS ARM/Raspberry Pi and related platforms.",
+        "Define a network protocol between the UI and the YFinance.NET server, ideally echoing the clarity of Yahoo v7-style request/response semantics, while remaining our own stable product protocol.",
+        "Protocol responses must include explicit exception scenarios the UI can handle cleanly, such as Network Lost, Upstream Server Not Responding, upstream throttled, invalid symbol, and cache miss or stale-result states where relevant.",
+        "Preserve upstream-sync friendliness: the clean-room YFinance.NET port must remain easy to keep in sync with future changes from the user's upstream Python fork, and the new client-server split must not destroy that maintainability goal.",
+        "YFinance.NET server behavior for single or batch ticker requests: first check cache, return cached values when they are newer than the 10-minute freshness ceiling, otherwise fetch from Yahoo, return the fresh data, and store it back in cache.",
+        "Nothing served from cache should be older than 10 minutes unless the protocol intentionally marks it as stale under a future degraded-mode extension.",
+        "Any client identifier sent upstream to Yahoo must be a unique random hash derived from the requesting machine identity and must not include the author name, organization name, or other human-identifying product branding.",
+        "Once the caching YFinance.NET server is functional, the UI should no longer carry throttling responsibility. The UI should request macros one by one during warmup, then global exchanges one by one, then continue sequential retrieval from YFinance.NET with approximately 500 milliseconds (0.5 seconds) spacing after each UI update so visual update flares remain continuous while CPU load stays controlled.",
+        "No parallel connections from the same UI client to YFinance.NET. Multi-client server support exists so one shared server can eventually support many desktop UIs across a network, not so a single UI floods the server with parallel requests.",
+        "This is a major refactor and includes test script updates, harness updates, starting and stopping YFinance.NET alongside the UI for now, documentation updates, and forensic code-review cleanup revealed during the transition.",
+        "Acceptance should include a clean end-to-end UI proof with the standalone YFinance.NET server process, updated harness lifecycle management, updated docs, and removal of obsolete in-process retrieval assumptions from the active code path."
       ]
     }
   ]
