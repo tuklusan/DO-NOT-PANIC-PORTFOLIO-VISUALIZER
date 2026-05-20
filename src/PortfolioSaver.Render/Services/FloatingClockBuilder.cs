@@ -7,17 +7,25 @@ public sealed class FloatingClockBuilder
 {
     private static readonly IReadOnlyList<ExchangeEntry> ExchangeEntries =
     [
-        new("NewYork", "New York", "S&P 500", "^SPX", "NYSE", "Eastern Standard Time", "America/New_York", "US", 40.7128, -74.0060),
-        new("London", "London", "FTSE 100", "^FTSE", "LSE", "GMT Standard Time", "Europe/London", "GB", 51.5072, -0.1276),
+        new("NewYorkNasdaq", "New York", "Nasdaq Composite", "^IXIC", "NYSE", "Eastern Standard Time", "America/New_York", "US", 40.7128, -74.0060),
+        new("NewYorkNyse", "New York", "NYSE Composite", "^NYA", "NYSE", "Eastern Standard Time", "America/New_York", "US", 40.7128, -74.0060),
+        new("Shanghai", "Shanghai", "SSE Composite", "000001.SS", "SSE", "China Standard Time", "Asia/Shanghai", "CN", 31.2304, 121.4737),
         new("Tokyo", "Tokyo", "Nikkei 225", "^N225", "TSE", "Tokyo Standard Time", "Asia/Tokyo", "JP", 35.6762, 139.6503),
-        new("Shanghai", "Shanghai", "SSE Composite", "^SSEC", "SSE", "China Standard Time", "Asia/Shanghai", "CN", 31.2304, 121.4737),
+        new("Euronext", "Paris", "Euro Stoxx 50", "^STOXX50E", "EPA", "Romance Standard Time", "Europe/Paris", "FR", 48.8566, 2.3522),
+        new("Shenzhen", "Shenzhen", "SZSE Component", "399001.SZ", "SSE", "China Standard Time", "Asia/Shanghai", "CN", 22.5431, 114.0579),
         new("HongKong", "Hong Kong", "Hang Seng", "^HSI", "HKEX", "China Standard Time", "Asia/Hong_Kong", "HK", 22.3193, 114.1694),
-        new("Mumbai", "Mumbai", "India 50 ETF", "INDY.US", "NSE", "India Standard Time", "Asia/Kolkata", "IN", 19.0760, 72.8777),
-        new("Frankfurt", "Frankfurt", "DAX", "^GDAXI", "XETRA", "W. Europe Standard Time", "Europe/Berlin", "DE", 50.1109, 8.6821),
-        new("Paris", "Paris", "CAC 40", "^FCHI", "EPA", "Romance Standard Time", "Europe/Paris", "FR", 48.8566, 2.3522),
+        new("Mumbai", "Mumbai", "Nifty 50", "^NSEI", "NSE", "India Standard Time", "Asia/Kolkata", "IN", 19.0760, 72.8777),
         new("Toronto", "Toronto", "S&P/TSX", "^GSPTSE", "TSX", "Eastern Standard Time", "America/Toronto", "CA", 43.6532, -79.3832),
         new("Seoul", "Seoul", "KOSPI", "^KS11", "KRX", "Korea Standard Time", "Asia/Seoul", "KR", 37.5665, 126.9780),
-        new("Sydney", "Sydney", "MSCI Australia ETF", "EWA.US", "ASX", "AUS Eastern Standard Time", "Australia/Sydney", "AU", -33.8688, 151.2093)
+        new("Taipei", "Taipei", "TSEC Weighted", "^TWII", "TSE", "Taipei Standard Time", "Asia/Taipei", "TW", 25.0330, 121.5654),
+        new("London", "London", "FTSE 100", "^FTSE", "LSE", "GMT Standard Time", "Europe/London", "GB", 51.5072, -0.1276),
+        new("Frankfurt", "Frankfurt", "DAX", "^GDAXI", "XETRA", "W. Europe Standard Time", "Europe/Berlin", "DE", 50.1109, 8.6821),
+        new("Zurich", "Zurich", "Swiss Market", "^SSMI", "SIX", "W. Europe Standard Time", "Europe/Zurich", "CH", 47.3769, 8.5417),
+        new("Sydney", "Sydney", "S&P/ASX 200", "^AXJO", "ASX", "AUS Eastern Standard Time", "Australia/Sydney", "AU", -33.8688, 151.2093),
+        new("Riyadh", "Riyadh", "Tadawul All Share", "^TASI.SR", "TADAWUL", "Arab Standard Time", "Asia/Riyadh", "SA", 24.7136, 46.6753),
+        new("SaoPaulo", "Sao Paulo", "Ibovespa", "^BVSP", "BVMF", "E. South America Standard Time", "America/Sao_Paulo", "BR", -23.5505, -46.6333),
+        new("Johannesburg", "Johannesburg", "JSE Top 40", "^J200.JO", "JSE", "South Africa Standard Time", "Africa/Johannesburg", "ZA", -26.2041, 28.0473),
+        new("Nordic", "Stockholm", "OMX Nordic 40", "^OMXN40", "OMX", "W. Europe Standard Time", "Europe/Stockholm", "SE", 59.3293, 18.0686)
     ];
 
     public static IReadOnlyList<string> GetWorldIndexSymbols()

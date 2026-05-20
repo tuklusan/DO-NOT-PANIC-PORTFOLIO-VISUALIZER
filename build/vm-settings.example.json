@@ -276,7 +276,7 @@
                                            "Enabled":  true
                                        },
                                        {
-                                           "Symbol":  "DXY",
+                                           "Symbol":  "DX-Y.NYB",
                                            "DisplayName":  "U.S. Dollar Index",
                                            "Quantity":  null,
                                            "CostBasis":  null,
@@ -284,7 +284,7 @@
                                            "Enabled":  true
                                        },
                                        {
-                                           "Symbol":  "TNX",
+                                           "Symbol":  "^TNX",
                                            "DisplayName":  "CBOE 10-Year Treasury Yield Index",
                                            "Quantity":  null,
                                            "CostBasis":  null,
@@ -292,7 +292,7 @@
                                            "Enabled":  true
                                        },
                                        {
-                                           "Symbol":  "VIX",
+                                           "Symbol":  "^VIX",
                                            "DisplayName":  "CBOE Volatility Index",
                                            "Quantity":  null,
                                            "CostBasis":  null,

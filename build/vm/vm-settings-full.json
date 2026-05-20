@@ -211,19 +211,19 @@
                                            "enabled":  true
                                        },
                                        {
-                                           "symbol":  "DXY",
+                                           "symbol":  "DX-Y.NYB",
                                            "displayName":  "DXY",
                                            "currency":  "USD",
                                            "enabled":  true
                                        },
                                        {
-                                           "symbol":  "TNX",
+                                           "symbol":  "^TNX",
                                            "displayName":  "TNX",
                                            "currency":  "USD",
                                            "enabled":  true
                                        },
                                        {
-                                           "symbol":  "VIX",
+                                           "symbol":  "^VIX",
                                            "displayName":  "VIX",
                                            "currency":  "USD",
                                            "enabled":  true

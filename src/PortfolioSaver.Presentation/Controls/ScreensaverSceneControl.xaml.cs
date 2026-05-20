@@ -1121,6 +1121,8 @@ public partial class ScreensaverSceneControl : UserControl
     private void UpdateStatusMacroMeters(bool force)
     {
         const decimal treasuryYieldMeterMax = 6m;
+        const decimal nasdaqMeterMax = 25000m;
+        const decimal bitcoinMeterMax = 200000m;
 
         if (_statusViewModel is null)
             return;
@@ -1132,12 +1134,13 @@ public partial class ScreensaverSceneControl : UserControl
         EnsureMacroMetersInitialized();
         bool loadingInitialValues = StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow());
         UpdateQuoteMeter(_statusViewModel.MacroMeters[0], "VIX", "^VIX", 60m, loadingInitialValues, invertRiskColors: true);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[1], "GOLD", "GC=F", 4000m, loadingInitialValues);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[2], "UST2M", "US2M", treasuryYieldMeterMax, loadingInitialValues);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[3], "UST10Y", "US10Y", treasuryYieldMeterMax, loadingInitialValues);
-        UpdateYieldSpreadMeter(_statusViewModel.MacroMeters[4], loadingInitialValues);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[5], "DXY", "DX-Y.NYB", 120m, loadingInitialValues, invertRiskColors: true);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[6], "CRUDE", "BZ=F", 160m, loadingInitialValues);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[1], "NASDAQ", "^IXIC", nasdaqMeterMax, loadingInitialValues);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[2], "UST10Y", "^TNX", treasuryYieldMeterMax, loadingInitialValues);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[3], "UST3M", "^IRX", treasuryYieldMeterMax, loadingInitialValues);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[4], "GOLD", "GC=F", 4000m, loadingInitialValues);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[5], "CRUDE", "BZ=F", 160m, loadingInitialValues);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[6], "DXY", "DX-Y.NYB", 120m, loadingInitialValues, invertRiskColors: true);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[7], "BTC", "BTC-USD", bitcoinMeterMax, loadingInitialValues);
 
         _lastMacroMeterRefreshUtc = nowUtc;
         TraceMacroSnapshot(force);
@@ -1148,7 +1151,7 @@ public partial class ScreensaverSceneControl : UserControl
         if (_statusViewModel is null)
             return;
 
-        string[] labels = ["VIX", "GOLD", "UST2M", "UST10Y", "YLD SPRD", "DXY", "CRUDE"];
+        string[] labels = ["VIX", "NASDAQ", "UST10Y", "UST3M", "GOLD", "CRUDE", "DXY", "BTC"];
         while (_statusViewModel.MacroMeters.Count > labels.Length)
             _statusViewModel.MacroMeters.RemoveAt(_statusViewModel.MacroMeters.Count - 1);
 
@@ -1161,53 +1164,13 @@ public partial class ScreensaverSceneControl : UserControl
                     Label = labels[index],
                     AccentBrush = Brushes.SlateGray,
                     ValueText = "--",
-                    ChangeText = index == 4 ? "pts" : string.Empty
+                    ChangeText = string.Empty
                 });
                 continue;
             }
 
             _statusViewModel.MacroMeters[index].Label = labels[index];
         }
-    }
-
-    private void UpdateYieldSpreadMeter(MacroMeterViewModel meter, bool loadingInitialValues)
-    {
-        meter.Label = "YLD SPRD";
-        if (loadingInitialValues)
-        {
-            ApplyWaitingMacroMeter(meter, keepPointsSuffix: true);
-            return;
-        }
-
-        meter.AccentBrush = Brushes.SlateGray;
-        meter.ValueText = "--";
-        meter.ChangeText = "pts";
-
-        if (!_latestQuotes.TryGetValue("US10Y", out QuoteSnapshot? tenYear) ||
-            !_latestQuotes.TryGetValue("US2M", out QuoteSnapshot? twoMonth))
-        {
-            meter.SetFill(0d);
-            return;
-        }
-
-        decimal? tenYearLast = tenYear.Last ?? tenYear.PreviousClose;
-        decimal? twoMonthLast = twoMonth.Last ?? twoMonth.PreviousClose;
-        if (tenYearLast is null || twoMonthLast is null)
-        {
-            meter.SetFill(0d);
-            return;
-        }
-
-        decimal spread = tenYearLast.Value - twoMonthLast.Value;
-        meter.ValueText = $"{spread:+0.00;-0.00;0.00}";
-        meter.ChangeText = "pts";
-        meter.AccentBrush = spread switch
-        {
-            > 0m => Brushes.LimeGreen,
-            < 0m => Brushes.OrangeRed,
-            _ => Brushes.Gainsboro
-        };
-        meter.SetFill((double)Math.Clamp((spread + 2m) / 4m, 0m, 1m));
     }
 
     private void UpdateQuoteMeter(

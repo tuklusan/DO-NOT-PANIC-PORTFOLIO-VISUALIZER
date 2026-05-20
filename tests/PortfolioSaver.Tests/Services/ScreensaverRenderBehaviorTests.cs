@@ -1075,11 +1075,15 @@ public sealed class ScreensaverRenderBehaviorTests
 
         Assert.Contains("EnsureMacroMetersInitialized();", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("_statusViewModel.MacroMeters.Clear();", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("\"US2M\"", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"^IXIC\"", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"^IRX\"", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"^TNX\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"BZ=F\"", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"BTC-USD\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"GC=F\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"GOLD\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"CRUDE\"", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"YLD SPRD\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Brushes.Goldenrod", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("bool loadingInitialValues = StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow());", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ApplyWaitingMacroMeter(meter);", sceneCodeBehind, StringComparison.Ordinal);
@@ -1289,50 +1293,6 @@ public sealed class ScreensaverRenderBehaviorTests
 
             Assert.Same(Brushes.LimeGreen, meter.AccentBrush);
             Assert.Equal("-0.3%", meter.ChangeText);
-        });
-    }
-
-    [Fact]
-    public void UpdateYieldSpreadMeter_UsesSpreadSignNotDirectionSemantics()
-    {
-        RunOnSta(() =>
-        {
-            ScreensaverSceneControl control = new();
-            MacroMeterViewModel meter = new();
-
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
-                "_latestQuotes",
-                BindingFlags.NonPublic | BindingFlags.Instance)
-                ?? throw new InvalidOperationException("_latestQuotes field not found.");
-
-            latestQuotesField.SetValue(
-                control,
-                new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase)
-                {
-                    ["US10Y"] = new QuoteSnapshot
-                    {
-                        Symbol = "US10Y",
-                        Last = 4.30m,
-                        FetchTimestampUtc = DateTimeOffset.UtcNow
-                    },
-                    ["US2M"] = new QuoteSnapshot
-                    {
-                        Symbol = "US2M",
-                        Last = 3.70m,
-                        FetchTimestampUtc = DateTimeOffset.UtcNow
-                    }
-                });
-
-            MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
-                "UpdateYieldSpreadMeter",
-                BindingFlags.NonPublic | BindingFlags.Instance)
-                ?? throw new InvalidOperationException("UpdateYieldSpreadMeter method not found.");
-
-            method.Invoke(control, [meter, false]);
-
-            Assert.Same(Brushes.LimeGreen, meter.AccentBrush);
-            Assert.Equal("+0.60", meter.ValueText);
-            Assert.Equal("pts", meter.ChangeText);
         });
     }
 

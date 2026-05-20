@@ -319,7 +319,7 @@ internal static partial class Program
                         break;
                     case "--symbols" when !string.IsNullOrWhiteSpace(value):
                         symbolOverrides = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                                              .Select(static symbol => symbol.Replace('.', '-').ToUpperInvariant())
+                                              .Select(static symbol => symbol.ToUpperInvariant())
                                               .Distinct(StringComparer.OrdinalIgnoreCase)
                                               .ToList();
                         index++;

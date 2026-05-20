@@ -805,7 +805,7 @@ public sealed class StartupCoordinator
     }
 
     public static IReadOnlyList<string> GetMacroIndicatorSymbols()
-        => ["^VIX", "GC=F", "US2M", "US10Y", "DX-Y.NYB", "BZ=F"];
+        => ["^VIX", "^IXIC", "^TNX", "^IRX", "GC=F", "BZ=F", "DX-Y.NYB", "BTC-USD"];
 
     private List<TapeViewModel> BuildTapeViewModels(AppSettings settings, IReadOnlyDictionary<string, QuoteSnapshot> quotes)
     {
@@ -1663,7 +1663,7 @@ public sealed class StartupCoordinator
     }
 
     private static HashSet<string> BuildPreferredYahooWorldIndexSet()
-        => new(["^SPX"], StringComparer.OrdinalIgnoreCase);
+        => new(["^IXIC", "^NYA"], StringComparer.OrdinalIgnoreCase);
 
     private static HashSet<string> BuildOfficialMacroSymbolSet()
         => new(GetOfficialMacroSymbols().Select(SymbolProfileHeuristics.Normalize), StringComparer.OrdinalIgnoreCase);
@@ -1672,13 +1672,13 @@ public sealed class StartupCoordinator
         => new(GetTreasuryMacroSymbols().Select(SymbolProfileHeuristics.Normalize), StringComparer.OrdinalIgnoreCase);
 
     private static IReadOnlyList<string> GetYahooDedicatedMacroSymbols()
-        => ["DX-Y.NYB"];
+        => GetMacroIndicatorSymbols();
 
     private static IReadOnlyList<string> GetOfficialMacroSymbols()
-        => ["^VIX"];
+        => ["^VIX", "^IXIC", "GC=F", "BZ=F", "DX-Y.NYB", "BTC-USD"];
 
     private static IReadOnlyList<string> GetTreasuryMacroSymbols()
-        => ["US2M", "US10Y"];
+        => ["^IRX", "^TNX"];
 
     private sealed record ProviderExecutionPlan(
         DataSourceKind Kind,

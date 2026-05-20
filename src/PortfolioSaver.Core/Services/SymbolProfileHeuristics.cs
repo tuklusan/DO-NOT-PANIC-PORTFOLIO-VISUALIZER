@@ -9,9 +9,12 @@ public static partial class SymbolProfileHeuristics
     {
         "DXY",
         "TNX",
+        "^TNX",
+        "^IRX",
         "US2M",
         "US10Y",
         "VIX",
+        "^VIX",
         "DX-Y.NYB"
     };
 

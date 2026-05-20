@@ -137,9 +137,9 @@ function Write-TestSettings {
                 Enabled = $true
                 Tickers = @(
                     @{ Symbol = "^GSPC"; DisplayName = "S&P 500 Index"; Enabled = $true },
-                    @{ Symbol = "VIX"; DisplayName = "Volatility Index"; Enabled = $true },
-                    @{ Symbol = "TNX"; DisplayName = "CBOE 10-Year Treasury Yield Index"; Enabled = $true },
-                    @{ Symbol = "DXY"; DisplayName = "U.S. Dollar Index"; Enabled = $true },
+                    @{ Symbol = "^VIX"; DisplayName = "Volatility Index"; Enabled = $true },
+                    @{ Symbol = "^TNX"; DisplayName = "CBOE 10-Year Treasury Yield Index"; Enabled = $true },
+                    @{ Symbol = "DX-Y.NYB"; DisplayName = "U.S. Dollar Index"; Enabled = $true },
                     @{ Symbol = "VNQ"; DisplayName = "Vanguard Real Estate ETF"; Enabled = $true },
                     @{ Symbol = "XLRE"; DisplayName = "Real Estate Select Sector SPDR Fund"; Enabled = $true }
                 )

@@ -6,12 +6,12 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class FloatingClockBuilderTests
 {
     [Fact]
-    public void BuildDefault_CreatesLocalSummaryPlusElevenExchangeCards()
+    public void BuildDefault_CreatesLocalSummaryPlusNineteenExchangeCards()
     {
         FloatingClockBuilder builder = new();
         var clock = builder.BuildDefault();
 
-        Assert.Equal(12, clock.Cities.Count);
+        Assert.Equal(20, clock.Cities.Count);
         Assert.Equal("Global Markets", clock.Title);
         Assert.Equal(string.Empty, clock.Subtitle);
         Assert.Equal(940, clock.Width);
@@ -23,7 +23,7 @@ public sealed class FloatingClockBuilderTests
         Assert.True(local.SupportsWeather);
 
         var exchanges = clock.Cities.Skip(1).ToList();
-        Assert.Equal(11, exchanges.Count);
+        Assert.Equal(19, exchanges.Count);
         Assert.All(exchanges, city =>
         {
             Assert.False(city.IsLocalSummary);
@@ -46,35 +46,38 @@ public sealed class FloatingClockBuilderTests
             .Select(city => city.ExchangeSymbol)
             .ToList();
 
-        Assert.Equal(11, symbols.Count);
+        Assert.Equal(19, symbols.Count);
         Assert.Equal(symbols, cardSymbols);
         Assert.Equal(symbols.Count, symbols.Distinct(StringComparer.OrdinalIgnoreCase).Count());
-        Assert.Contains("^SPX", symbols);
-        Assert.Contains("INDY.US", symbols);
-        Assert.Contains("EWA.US", symbols);
-        Assert.DoesNotContain("^NYA", symbols);
-        Assert.DoesNotContain("^NSEI", symbols);
-        Assert.DoesNotContain("^AXJO", symbols);
+        Assert.Contains("^IXIC", symbols);
+        Assert.Contains("^NYA", symbols);
+        Assert.Contains("^NSEI", symbols);
+        Assert.Contains("^AXJO", symbols);
+        Assert.Contains("000001.SS", symbols);
+        Assert.Contains("399001.SZ", symbols);
     }
 
     [Fact]
-    public void BuildDefault_UsesTransparentSubstitutesForUnsupportedExactIndexFeeds()
+    public void BuildDefault_UsesCanonicalYahooGlobalExchangeBenchmarks()
     {
         FloatingClockBuilder builder = new();
         var clock = builder.BuildDefault();
 
-        var newYork = clock.Cities.Single(city => city.Key == "NewYork");
+        var nasdaq = clock.Cities.Single(city => city.Key == "NewYorkNasdaq");
+        var nyse = clock.Cities.Single(city => city.Key == "NewYorkNyse");
         var mumbai = clock.Cities.Single(city => city.Key == "Mumbai");
         var sydney = clock.Cities.Single(city => city.Key == "Sydney");
 
-        Assert.Equal("S&P 500", newYork.ExchangeName);
-        Assert.Equal("^SPX", newYork.ExchangeSymbol);
-        Assert.Equal("US", newYork.FlagCode);
-        Assert.Equal("India 50 ETF", mumbai.ExchangeName);
-        Assert.Equal("INDY.US", mumbai.ExchangeSymbol);
+        Assert.Equal("Nasdaq Composite", nasdaq.ExchangeName);
+        Assert.Equal("^IXIC", nasdaq.ExchangeSymbol);
+        Assert.Equal("US", nasdaq.FlagCode);
+        Assert.Equal("NYSE Composite", nyse.ExchangeName);
+        Assert.Equal("^NYA", nyse.ExchangeSymbol);
+        Assert.Equal("Nifty 50", mumbai.ExchangeName);
+        Assert.Equal("^NSEI", mumbai.ExchangeSymbol);
         Assert.Equal("IN", mumbai.FlagCode);
-        Assert.Equal("MSCI Australia ETF", sydney.ExchangeName);
-        Assert.Equal("EWA.US", sydney.ExchangeSymbol);
+        Assert.Equal("S&P/ASX 200", sydney.ExchangeName);
+        Assert.Equal("^AXJO", sydney.ExchangeSymbol);
         Assert.Equal("AU", sydney.FlagCode);
     }
 }
