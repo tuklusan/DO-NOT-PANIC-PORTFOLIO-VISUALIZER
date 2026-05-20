@@ -47,8 +47,8 @@ public sealed class MainWindowViewModel : BindableBase
     private int _validationCloseCountdownSeconds;
     private AppSettings? _pendingValidatedSettings;
     private string _validationLogText = string.Empty;
-    private static readonly TimeSpan CachedProfileTrustWindow = TimeSpan.FromDays(30);
-    private static readonly TimeSpan CachedQuoteTrustWindow = TimeSpan.FromDays(14);
+    private static readonly TimeSpan CachedProfileTrustWindow = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan CachedQuoteTrustWindow = TimeSpan.FromMinutes(10);
 
     public MainWindowViewModel()
         : this(connectivityService: null)

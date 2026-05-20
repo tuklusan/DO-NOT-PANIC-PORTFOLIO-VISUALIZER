@@ -8,7 +8,7 @@ The first proving target is a VM-run console exerciser that:
 1. determines the top 100 S&P 500 symbols by market cap with caching,
 2. refreshes them every 5 minutes,
 3. repeats for 5 total cycles,
-4. keeps one-by-one symbol work paced at 0.5 seconds where batching is not used,
+4. keeps one-by-one symbol work paced at 1 second where batching is not used,
 5. completes without Yahoo 429s.
 
 ## Upstream-Alignment Rule
@@ -238,7 +238,7 @@ The first proving cycle should happen on the VM, not just locally:
 1. restore/build the standalone `YFinance.net` solution,
 2. run the exerciser on the VM,
 3. verify cache warmup behavior,
-4. verify 0.5-second pacing for one-by-one work,
+4. verify 1-second pacing for one-by-one work,
 5. verify 5-minute interval loop,
 6. verify 5 cycles total,
 7. verify no 429s.

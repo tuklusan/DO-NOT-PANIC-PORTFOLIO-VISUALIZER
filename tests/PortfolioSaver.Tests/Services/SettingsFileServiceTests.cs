@@ -7,6 +7,7 @@ using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
 
+[Collection("EnvironmentSerial")]
 public sealed class SettingsFileServiceTests
 {
     private static void DeleteDirectoryWithRetry(string path)

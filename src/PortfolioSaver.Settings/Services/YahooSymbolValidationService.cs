@@ -144,11 +144,11 @@ public sealed class YahooSymbolValidationService
     private static YFinanceClient CreateClient(int timeoutSeconds)
         => new(new YFinanceOptions
         {
-            MinimumRequestSpacing = TimeSpan.FromMilliseconds(500),
+            MinimumRequestSpacing = TimeSpan.FromSeconds(1),
             MaxRetries = 3,
             DefaultCacheTtl = TimeSpan.FromMinutes(10),
-            SummaryCacheTtl = TimeSpan.FromHours(6),
-            PersistentMetadataCacheTtl = TimeSpan.FromHours(12),
+            SummaryCacheTtl = TimeSpan.FromMinutes(10),
+            PersistentMetadataCacheTtl = TimeSpan.FromMinutes(10),
             MaxSymbolsPerQuoteRequest = MaxBatchSymbols,
             TraceSink = new ValidationTraceSink()
         });

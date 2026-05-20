@@ -19,6 +19,7 @@ using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
 
+[Collection("EnvironmentSerial")]
 public sealed class StartupCoordinatorAdvancedTests
 {
     [Fact(Skip = "Obsolete under the YFinance.NET-only runtime; Stooq-based warmup suppression was removed.")]

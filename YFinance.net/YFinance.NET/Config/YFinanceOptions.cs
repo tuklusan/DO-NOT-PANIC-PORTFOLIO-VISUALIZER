@@ -12,11 +12,11 @@ public sealed class YFinanceOptions
     public Uri Query1BaseUri { get; init; } = new("https://query1.finance.yahoo.com");
     public Uri Query2BaseUri { get; init; } = new("https://query2.finance.yahoo.com");
     public TimeSpan SessionTtl { get; init; } = TimeSpan.FromMinutes(45);
-    public TimeSpan MinimumRequestSpacing { get; init; } = TimeSpan.FromMilliseconds(500);
+    public TimeSpan MinimumRequestSpacing { get; init; } = TimeSpan.FromSeconds(1);
     public int MaxRetries { get; init; } = 3;
-    public TimeSpan DefaultCacheTtl { get; init; } = TimeSpan.FromMinutes(30);
-    public TimeSpan SummaryCacheTtl { get; init; } = TimeSpan.FromHours(6);
-    public TimeSpan PersistentMetadataCacheTtl { get; init; } = TimeSpan.FromHours(12);
+    public TimeSpan DefaultCacheTtl { get; init; } = TimeSpan.FromMinutes(10);
+    public TimeSpan SummaryCacheTtl { get; init; } = TimeSpan.FromMinutes(10);
+    public TimeSpan PersistentMetadataCacheTtl { get; init; } = TimeSpan.FromMinutes(10);
     public int MaxSymbolsPerQuoteRequest { get; init; } = 25;
     public string UserAgent { get; init; } = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0 Safari/537.36";
     public IYFinanceTraceSink TraceSink { get; init; } = NullYFinanceTraceSink.Instance;

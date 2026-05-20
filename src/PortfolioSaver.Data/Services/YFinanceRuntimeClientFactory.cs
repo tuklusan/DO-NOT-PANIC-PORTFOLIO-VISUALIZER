@@ -15,11 +15,11 @@ public static class YFinanceRuntimeClientFactory
         {
             _sharedClient ??= new YFinanceClient(new YFinanceOptions
             {
-                MinimumRequestSpacing = TimeSpan.FromMilliseconds(500),
+                MinimumRequestSpacing = TimeSpan.FromSeconds(1),
                 MaxRetries = 3,
                 DefaultCacheTtl = TimeSpan.FromMinutes(10),
-                SummaryCacheTtl = TimeSpan.FromHours(6),
-                PersistentMetadataCacheTtl = TimeSpan.FromHours(12),
+                SummaryCacheTtl = TimeSpan.FromMinutes(10),
+                PersistentMetadataCacheTtl = TimeSpan.FromMinutes(10),
                 MaxSymbolsPerQuoteRequest = 25,
                 TraceSink = PortfolioSaverYFinanceTraceSink.Instance,
                 PersistentCacheRootPath = Path.Combine(PathHelper.GetLocalDataDirectory(), "YFinance.NET", "cache")

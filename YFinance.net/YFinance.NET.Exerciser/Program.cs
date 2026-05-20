@@ -13,13 +13,13 @@ internal static partial class Program
 {
     private const string WikipediaUrl = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies";
     private const string CacheFileName = "sp500-top100-cache.json";
-    private const int DefaultCacheTtlHours = 6;
+    private const int DefaultCacheTtlMinutes = 10;
     private const int DefaultTotalCycles = 5;
     private const int DefaultTopCount = 100;
     private const int DefaultHistoryWarmupCount = 12;
     private const int DefaultHistoryLookbackDays = 5;
     private static readonly TimeSpan DefaultRefreshInterval = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan DefaultPerTickerDelay = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan DefaultPerTickerDelay = TimeSpan.FromSeconds(1);
 
     private static async Task Main(string[] args)
     {
@@ -28,9 +28,9 @@ internal static partial class Program
         {
             MinimumRequestSpacing = runnerOptions.PerTickerDelay,
             MaxRetries = 3,
-            DefaultCacheTtl = TimeSpan.FromMinutes(30),
-            SummaryCacheTtl = TimeSpan.FromHours(6),
-            PersistentMetadataCacheTtl = TimeSpan.FromHours(Math.Max(1, runnerOptions.CacheTtlHours)),
+            DefaultCacheTtl = TimeSpan.FromMinutes(10),
+            SummaryCacheTtl = TimeSpan.FromMinutes(10),
+            PersistentMetadataCacheTtl = TimeSpan.FromMinutes(Math.Max(1, runnerOptions.CacheTtlMinutes)),
             MaxSymbolsPerQuoteRequest = 25,
             TraceSink = new PortfolioSaverTraceSink()
         };
@@ -81,7 +81,7 @@ internal static partial class Program
     private static async Task<List<string>> GetTopTickersAsync(YFinanceClient client, string cachePath, RunnerOptions runnerOptions, CancellationToken cancellationToken)
     {
         CacheEnvelope? cache = await LoadCacheAsync(cachePath, cancellationToken);
-        if (cache is not null && DateTimeOffset.UtcNow - cache.TimestampUtc < TimeSpan.FromHours(runnerOptions.CacheTtlHours))
+        if (cache is not null && DateTimeOffset.UtcNow - cache.TimestampUtc < TimeSpan.FromMinutes(runnerOptions.CacheTtlMinutes))
         {
             TraceLog.InfoState("YFinance.Exerciser", "TickerResolutionCacheHit", [new("cache_path", cachePath), new("cached_count", cache.Items.Count)]);
             return cache.Items.OrderByDescending(static item => item.MarketCap)
@@ -258,7 +258,7 @@ internal static partial class Program
         int TotalCycles,
         TimeSpan RefreshInterval,
         TimeSpan PerTickerDelay,
-        int CacheTtlHours,
+        int CacheTtlMinutes,
         int HistoryWarmupCount,
         int HistoryLookbackDays,
         IReadOnlyList<string> SymbolOverrides)
@@ -269,7 +269,7 @@ internal static partial class Program
             int totalCycles = DefaultTotalCycles;
             TimeSpan refreshInterval = DefaultRefreshInterval;
             TimeSpan perTickerDelay = DefaultPerTickerDelay;
-            int cacheTtlHours = DefaultCacheTtlHours;
+            int cacheTtlMinutes = DefaultCacheTtlMinutes;
             int historyWarmupCount = DefaultHistoryWarmupCount;
             int historyLookbackDays = DefaultHistoryLookbackDays;
             List<string> symbolOverrides = new();
@@ -301,8 +301,12 @@ internal static partial class Program
                         perTickerDelay = TimeSpan.FromMilliseconds(delayMs);
                         index++;
                         break;
+                    case "--cache-ttl-minutes" when int.TryParse(value, out int parsedCacheTtlMinutes):
+                        cacheTtlMinutes = parsedCacheTtlMinutes;
+                        index++;
+                        break;
                     case "--cache-ttl-hours" when int.TryParse(value, out int parsedCacheTtlHours):
-                        cacheTtlHours = parsedCacheTtlHours;
+                        cacheTtlMinutes = parsedCacheTtlHours * 60;
                         index++;
                         break;
                     case "--history-warmup-count" when int.TryParse(value, out int parsedWarmupCount):
@@ -323,7 +327,7 @@ internal static partial class Program
                 }
             }
 
-            return new RunnerOptions(topCount, totalCycles, refreshInterval, perTickerDelay, cacheTtlHours, historyWarmupCount, historyLookbackDays, symbolOverrides);
+            return new RunnerOptions(topCount, totalCycles, refreshInterval, perTickerDelay, cacheTtlMinutes, historyWarmupCount, historyLookbackDays, symbolOverrides);
         }
     }
 

@@ -6,6 +6,7 @@ using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
 
+[Collection("EnvironmentSerial")]
 public sealed class TraceLogTests
 {
     [Fact]
