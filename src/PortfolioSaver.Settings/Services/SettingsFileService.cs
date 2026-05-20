@@ -47,11 +47,6 @@ public sealed class SettingsFileService
             JsonSerializer.Serialize(settings),
             JsonOptions) ?? Defaults.CreateSettings();
 
-        copy.FinnhubApiKey = string.Empty;
-        copy.TwelveDataApiKey = string.Empty;
-        copy.TiingoApiKey = string.Empty;
-        copy.FinancialModelingPrepApiKey = string.Empty;
-        copy.EodhdApiKey = string.Empty;
         copy.DeepSeekApiKey = string.Empty;
 
         return copy;

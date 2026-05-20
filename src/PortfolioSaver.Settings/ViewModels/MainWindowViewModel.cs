@@ -27,14 +27,12 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly NewsFeedValidationService _newsFeedValidationService;
     private readonly IConnectivityService _connectivityService;
     private readonly YahooSymbolValidationService _yahooSymbolValidationService;
-    private readonly ApiKeyValidationService _apiKeyValidationService;
     private readonly SymbolProfileStore _symbolProfileStore;
     private readonly QuoteCacheService _quoteCacheService;
     private readonly DispatcherTimer _stateTimer;
     private readonly DispatcherTimer _validatedCloseTimer;
     private readonly HashSet<TickerGroupEditorViewModel> _trackedGroups = [];
     private readonly HashSet<TickerItemEditorViewModel> _trackedTickers = [];
-    private readonly HashSet<DataSourcePolicyEditorViewModel> _trackedDataSources = [];
 
     private AppSettings _settings;
     private string _statusMessage = $"{PortfolioVersion.DisplayName} ready";
@@ -62,15 +60,12 @@ public sealed class MainWindowViewModel : BindableBase
         _newsFeedValidationService = new NewsFeedValidationService();
         _connectivityService = connectivityService ?? new ConfigConnectivityService();
         _yahooSymbolValidationService = new YahooSymbolValidationService();
-        _apiKeyValidationService = new ApiKeyValidationService();
         _symbolProfileStore = new SymbolProfileStore(Path.Combine(PathHelper.GetLocalDataDirectory(), "symbol-profiles.json"));
         _quoteCacheService = new QuoteCacheService(Path.Combine(PathHelper.GetLocalDataDirectory(), "quotes-cache.json"));
 
         _settings = _settingsFileService.Load();
         Groups = new ObservableCollection<TickerGroupEditorViewModel>(
             _settings.Groups.Select(group => new TickerGroupEditorViewModel(group, RemoveGroup)));
-        DataSources = new ObservableCollection<DataSourcePolicyEditorViewModel>(
-            _settings.DataSources.Select(policy => new DataSourcePolicyEditorViewModel(policy)));
         ValidationLogText = string.Empty;
 
         PrimaryCommand = new RelayCommand(() => _ = ExecutePrimaryAsync(), () => !_isApplying && !_isValidationClosePending);
@@ -216,8 +211,6 @@ public sealed class MainWindowViewModel : BindableBase
     }
 
     public ObservableCollection<TickerGroupEditorViewModel> Groups { get; }
-    public ObservableCollection<DataSourcePolicyEditorViewModel> DataSources { get; }
-
     public RelayCommand PrimaryCommand { get; }
     public RelayCommand RetryNetworkCommand { get; }
     public RelayCommand AddGroupCommand { get; }
@@ -280,7 +273,7 @@ public sealed class MainWindowViewModel : BindableBase
         {
             StatusMessage = "Internet connection is required before validation can run.";
             MessageBox.Show(
-                "Internet connection is required to validate tickers and API keys.",
+                "Internet connection is required to validate tickers and refresh the news-source checks.",
                 "Internet Required",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -296,7 +289,6 @@ public sealed class MainWindowViewModel : BindableBase
         try
         {
             AppSettings candidate = BuildCandidateSettings();
-            ApplyNormalizedAdvancedSettings(candidate);
             Settings = candidate;
             AppendValidationLog("VALIDATION STARTED");
 
@@ -385,22 +377,7 @@ public sealed class MainWindowViewModel : BindableBase
                 ? $"DISPLAY NAMES UPDATED: {autoNamedCount}"
                 : "DISPLAY NAMES UNCHANGED");
 
-            AppendValidationLog("API KEY VALIDATION...");
-            ApiKeyValidationResult apiKeyValidation = await _apiKeyValidationService.ValidateAsync(
-                candidate,
-                new Progress<ApiKeyValidationProgress>(ReportApiKeyProgress));
-            if (!apiKeyValidation.IsValid)
-            {
-                StatusMessage = "API key validation failed. Update keys and validate again.";
-                AppendValidationLog("API KEY VALIDATION FAILED");
-                TraceValidation("ApiValidationFailed", ("error_count", apiKeyValidation.Errors.Count));
-                MessageBox.Show(
-                    string.Join(Environment.NewLine, apiKeyValidation.Errors),
-                    "API Key Validation Failed",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
+            AppendValidationLog("YFINANCE.NET-ONLY MODE: NO ADDITIONAL MARKET-DATA API KEY VALIDATION");
 
             Settings = candidate;
             IsValidated = true;
@@ -669,9 +646,6 @@ public sealed class MainWindowViewModel : BindableBase
     {
         AppSettings candidate = AppSettingsNormalizer.Normalize(Settings);
         candidate.Groups = Groups.Select(group => group.ToModel()).ToList();
-        candidate.DataSources = DataSources
-            .Select(policy => policy.ToModel())
-            .ToList();
         return AppSettingsNormalizer.Normalize(candidate);
     }
 
@@ -772,7 +746,7 @@ public sealed class MainWindowViewModel : BindableBase
         IsNetworkAvailable = connected;
         if (!connected)
         {
-            InvalidateValidationState("Internet connection is required for ticker and key validation.");
+            InvalidateValidationState("Internet connection is required for ticker validation.");
             ResetAllSymbolValidationStates("Internet required");
             return;
         }
@@ -827,9 +801,6 @@ public sealed class MainWindowViewModel : BindableBase
     {
         foreach (TickerGroupEditorViewModel group in Groups)
             HookGroup(group);
-
-        foreach (DataSourcePolicyEditorViewModel dataSource in DataSources)
-            HookDataSource(dataSource);
     }
 
     private void HookGroup(TickerGroupEditorViewModel group)
@@ -868,14 +839,6 @@ public sealed class MainWindowViewModel : BindableBase
             return;
 
         ticker.PropertyChanged -= OnEditorChanged;
-    }
-
-    private void HookDataSource(DataSourcePolicyEditorViewModel dataSource)
-    {
-        if (!_trackedDataSources.Add(dataSource))
-            return;
-
-        dataSource.PropertyChanged += OnEditorChanged;
     }
 
     private void OnGroupTickersChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -1005,34 +968,11 @@ public sealed class MainWindowViewModel : BindableBase
             ("resolved_name", progress.ResolvedName));
     }
 
-    private void ReportApiKeyProgress(ApiKeyValidationProgress progress)
-    {
-        AppendValidationLog($"{progress.Provider.ToUpperInvariant()} -> {(progress.IsValid ? "VALIDATED" : progress.Message.ToUpperInvariant())}");
-        TraceValidation("ApiValidationProgress",
-            ("provider", progress.Provider),
-            ("is_valid", progress.IsValid),
-            ("message", progress.Message));
-    }
-
     private static void TraceValidation(string eventName, params (string Key, object? Value)[] fields)
         => TraceLog.InfoState(
             "Config.Validation",
             eventName,
             fields.Select(field => new KeyValuePair<string, object?>(field.Key, field.Value)).ToArray());
-
-    private void ApplyNormalizedAdvancedSettings(AppSettings candidate)
-    {
-        IReadOnlyList<DataSourcePolicySettings> normalizedPolicies = DataSourceCatalog.NormalizePolicies(candidate.DataSources);
-        candidate.DataSources = [.. normalizedPolicies];
-
-        Dictionary<DataSourceKind, DataSourcePolicySettings> policiesByKind = normalizedPolicies
-            .ToDictionary(policy => policy.Kind, policy => policy);
-        foreach (DataSourcePolicyEditorViewModel editor in DataSources)
-        {
-            if (policiesByKind.TryGetValue(editor.Kind, out DataSourcePolicySettings? policy))
-                editor.ApplyModel(policy);
-        }
-    }
 
     private sealed record TrustedValidationEvidence(
         string Symbol,

@@ -232,8 +232,6 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("reference-spot-check-comparisons.jsonl", script, StringComparison.Ordinal);
         Assert.Contains("function Write-ReferenceSpotCheck", script, StringComparison.Ordinal);
         Assert.Contains("function Get-ReferenceSpotCheckResults", script, StringComparison.Ordinal);
-        Assert.Contains("function Get-TwelveDataReferenceResults", script, StringComparison.Ordinal);
-        Assert.Contains("PORTFOLIOSAVER_TWELVEDATA_API_KEY", script, StringComparison.Ordinal);
         Assert.Contains("function Get-LatestDisplayedTapeSample", script, StringComparison.Ordinal);
         Assert.Contains("function Get-PreferredDisplayedTapeSample", script, StringComparison.Ordinal);
         Assert.Contains("function Test-IsDisplayedSampleFullyLive", script, StringComparison.Ordinal);
@@ -244,6 +242,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[System.IO.Path]::ChangeExtension($Path, '.idx')", script, StringComparison.Ordinal);
         Assert.Contains("[System.IO.File]::ReadAllBytes($Path)", script, StringComparison.Ordinal);
         Assert.Contains("$displayedSample = @(Get-PreferredDisplayedTapeSample)", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("function Get-TwelveDataReferenceResults", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("PORTFOLIOSAVER_TWELVEDATA_API_KEY", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -296,6 +296,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Remove-Item -LiteralPath $target -Recurse -Force", helper, StringComparison.Ordinal);
         Assert.Contains("build\\vm\\test-secrets.json", push, StringComparison.Ordinal);
         Assert.Contains("DEEPSEEK_API_KEY", applySecrets, StringComparison.Ordinal);
+        Assert.DoesNotContain("PORTFOLIOSAVER_FINNHUB_API_KEY", applySecrets, StringComparison.Ordinal);
+        Assert.DoesNotContain("PORTFOLIOSAVER_TWELVEDATA_API_KEY", applySecrets, StringComparison.Ordinal);
+        Assert.DoesNotContain("PORTFOLIOSAVER_TIINGO_API_KEY", applySecrets, StringComparison.Ordinal);
         Assert.DoesNotContain("VBoxManage", push, StringComparison.Ordinal);
         Assert.DoesNotContain("VBoxManage", invoke, StringComparison.Ordinal);
         Assert.DoesNotContain("VBOXSVR", push, StringComparison.Ordinal);

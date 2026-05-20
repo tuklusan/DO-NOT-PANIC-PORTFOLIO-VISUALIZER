@@ -1807,71 +1807,7 @@ function Get-ReferenceSpotCheckResults {
         [Parameter(Mandatory = $true)][string[]]$Symbols
     )
 
-    $twelveDataEnv = Get-Item env:PORTFOLIOSAVER_TWELVEDATA_API_KEY -ErrorAction SilentlyContinue
-    $twelveDataApiKey = ''
-    if ($null -ne $twelveDataEnv -and $null -ne $twelveDataEnv.Value) {
-        $twelveDataApiKey = [string]$twelveDataEnv.Value
-    }
-    $twelveDataApiKey = $twelveDataApiKey.Trim()
-    if (-not [string]::IsNullOrWhiteSpace($twelveDataApiKey)) {
-        return Get-TwelveDataReferenceResults -Symbols $Symbols -ApiKey $twelveDataApiKey
-    }
-
     return Get-YahooReferenceResults -Symbols $Symbols
-}
-
-function Get-TwelveDataReferenceResults {
-    param(
-        [Parameter(Mandatory = $true)][string[]]$Symbols,
-        [Parameter(Mandatory = $true)][string]$ApiKey
-    )
-
-    $results = @()
-    $errors = @()
-
-    foreach ($symbol in $Symbols) {
-        try {
-            $encodedSymbol = [Uri]::EscapeDataString($symbol)
-            $url = "https://api.twelvedata.com/quote?symbol=$encodedSymbol&apikey=$ApiKey"
-            $quote = Invoke-RestMethod -Uri $url -TimeoutSec 20 -Headers @{ 'User-Agent' = 'PortfolioSaverVmHarness/1.0' }
-            if ($null -ne $quote.code) {
-                $message = $quote.code
-                if ($null -ne $quote.message -and -not [string]::IsNullOrWhiteSpace([string]$quote.message)) {
-                    $message = $quote.message
-                }
-                $errors += ([string]$message)
-                continue
-            }
-
-            $lastText = $quote.price
-            if ($null -ne $quote.close -and -not [string]::IsNullOrWhiteSpace([string]$quote.close)) {
-                $lastText = $quote.close
-            }
-            $last = Try-ParseInvariantDecimal -Text ([string]$lastText)
-            if ($null -eq $last) {
-                $errors += "No parseable last value for $symbol from Twelve Data."
-                continue
-            }
-
-            $changePercent = Try-ParseInvariantDecimal -Text ([string]$quote.percent_change)
-            $results += [pscustomobject]@{
-                Symbol = [string]$symbol
-                Last = $last
-                ChangePercent = $changePercent
-                MarketTime = [string]$quote.datetime
-                Currency = [string]$quote.currency
-            }
-        }
-        catch {
-            $errors += ([string]$_.Exception.Message)
-        }
-    }
-
-    return [pscustomobject]@{
-        Source = 'TwelveDataQuote'
-        Results = @($results)
-        Error = if ($errors.Count -gt 0 -and $results.Count -eq 0) { ($errors -join ' | ') } else { $null }
-    }
 }
 
 function Get-YahooReferenceResults {

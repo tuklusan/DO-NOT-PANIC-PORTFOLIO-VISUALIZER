@@ -25,11 +25,6 @@ public sealed class ProviderSecretStoreService
     public void OverlaySecrets(AppSettings settings)
     {
         ProviderSecretsDto dto = LoadSecretsDto();
-        ApplySecret(settings, dto.FinnhubApiKey, static s => s.FinnhubApiKey, static (s, v) => s.FinnhubApiKey = v);
-        ApplySecret(settings, dto.TwelveDataApiKey, static s => s.TwelveDataApiKey, static (s, v) => s.TwelveDataApiKey = v);
-        ApplySecret(settings, dto.TiingoApiKey, static s => s.TiingoApiKey, static (s, v) => s.TiingoApiKey = v);
-        ApplySecret(settings, dto.FinancialModelingPrepApiKey, static s => s.FinancialModelingPrepApiKey, static (s, v) => s.FinancialModelingPrepApiKey = v);
-        ApplySecret(settings, dto.EodhdApiKey, static s => s.EodhdApiKey, static (s, v) => s.EodhdApiKey = v);
         ApplySecret(settings, dto.DeepSeekApiKey, static s => s.DeepSeekApiKey, static (s, v) => s.DeepSeekApiKey = v);
     }
 
@@ -37,11 +32,6 @@ public sealed class ProviderSecretStoreService
     {
         ProviderSecretsDto dto = LoadSecretsDto();
 
-        dto.FinnhubApiKey = ResolvePersistedProtectedValue(settings.FinnhubApiKey, "PORTFOLIOSAVER_FINNHUB_API_KEY", dto.FinnhubApiKey);
-        dto.TwelveDataApiKey = ResolvePersistedProtectedValue(settings.TwelveDataApiKey, "PORTFOLIOSAVER_TWELVEDATA_API_KEY", dto.TwelveDataApiKey);
-        dto.TiingoApiKey = ResolvePersistedProtectedValue(settings.TiingoApiKey, "PORTFOLIOSAVER_TIINGO_API_KEY", dto.TiingoApiKey);
-        dto.FinancialModelingPrepApiKey = ResolvePersistedProtectedValue(settings.FinancialModelingPrepApiKey, "PORTFOLIOSAVER_FMP_API_KEY", dto.FinancialModelingPrepApiKey);
-        dto.EodhdApiKey = ResolvePersistedProtectedValue(settings.EodhdApiKey, "PORTFOLIOSAVER_EODHD_API_KEY", dto.EodhdApiKey);
         dto.DeepSeekApiKey = ResolvePersistedProtectedValue(settings.DeepSeekApiKey, new[] { "DEEPSEEK_API_KEY", "PORTFOLIOSAVER_DEEPSEEK_API_KEY" }, dto.DeepSeekApiKey);
 
         if (!dto.HasAnySecrets())
@@ -139,19 +129,9 @@ public sealed class ProviderSecretStoreService
 
     private sealed class ProviderSecretsDto
     {
-        public string FinnhubApiKey { get; set; } = string.Empty;
-        public string TwelveDataApiKey { get; set; } = string.Empty;
-        public string TiingoApiKey { get; set; } = string.Empty;
-        public string FinancialModelingPrepApiKey { get; set; } = string.Empty;
-        public string EodhdApiKey { get; set; } = string.Empty;
         public string DeepSeekApiKey { get; set; } = string.Empty;
 
         public bool HasAnySecrets()
-            => !string.IsNullOrWhiteSpace(FinnhubApiKey) ||
-               !string.IsNullOrWhiteSpace(TwelveDataApiKey) ||
-               !string.IsNullOrWhiteSpace(TiingoApiKey) ||
-               !string.IsNullOrWhiteSpace(FinancialModelingPrepApiKey) ||
-               !string.IsNullOrWhiteSpace(EodhdApiKey) ||
-               !string.IsNullOrWhiteSpace(DeepSeekApiKey);
+            => !string.IsNullOrWhiteSpace(DeepSeekApiKey);
     }
 }

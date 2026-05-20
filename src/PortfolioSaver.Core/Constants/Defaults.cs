@@ -38,17 +38,10 @@ public static class Defaults
 
     public static AppSettings CreateSettings() => new()
     {
-        FinnhubApiKey = string.Empty,
-        TwelveDataApiKey = string.Empty,
-        TiingoApiKey = string.Empty,
-        FinancialModelingPrepApiKey = string.Empty,
-        EodhdApiKey = string.Empty,
         DeepSeekApiKey = string.Empty,
         MarketCalendarRefreshHours = 12,
         RefreshSecondsPortfolio = DefaultDesktopRefreshSeconds,
         RefreshSecondsOffHours = DefaultDesktopRefreshSeconds,
-        MinFinnhubRequestSpacingSeconds = 2,
-        MinTwelveDataRequestSpacingSeconds = 15,
         NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
         DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
         NewsFeedUrl = DefaultNewsFeedUrl,
@@ -65,7 +58,6 @@ public static class Defaults
         BackgroundChangeSeconds = 7200,
         DimOpacity = 0.55,
         LayoutPreset = LayoutPreset.UltrawideDefault,
-        DataSources = [.. DataSourceCatalog.CreateDefaultPolicies()],
         Groups =
         [
             new TickerGroup

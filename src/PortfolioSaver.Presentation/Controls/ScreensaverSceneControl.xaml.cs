@@ -2516,8 +2516,6 @@ public partial class ScreensaverSceneControl : UserControl
 
         compact = compact
             .Replace("Yahoo Finance v8", "Yahoo", StringComparison.OrdinalIgnoreCase)
-            .Replace("Twelve Data", "Twelve", StringComparison.OrdinalIgnoreCase)
-            .Replace("Financial Modeling Prep", "FMP", StringComparison.OrdinalIgnoreCase)
             .Replace(" source cooldown", " cooldown", StringComparison.OrdinalIgnoreCase);
 
         if (isPartial && !compact.Contains("Partial", StringComparison.OrdinalIgnoreCase))

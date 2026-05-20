@@ -122,20 +122,20 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
-    public void Normalize_ApiKeys_PreferEnvironmentVariables_OverPersistedValues()
+    public void Normalize_DeepSeekApiKey_PrefersEnvironmentVariable_OverPersistedValue()
     {
-        const string environmentName = "PORTFOLIOSAVER_FINNHUB_API_KEY";
+        const string environmentName = "DEEPSEEK_API_KEY";
         string? previous = Environment.GetEnvironmentVariable(environmentName);
-        Environment.SetEnvironmentVariable(environmentName, "env-finnhub-key");
+        Environment.SetEnvironmentVariable(environmentName, "env-deepseek-key");
 
         try
         {
             AppSettings settings = Defaults.CreateSettings();
-            settings.FinnhubApiKey = "persisted-finnhub-key";
+            settings.DeepSeekApiKey = "persisted-deepseek-key";
 
             AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
-            Assert.Equal("env-finnhub-key", normalized.FinnhubApiKey);
+            Assert.Equal("env-deepseek-key", normalized.DeepSeekApiKey);
         }
         finally
         {
@@ -144,20 +144,20 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
-    public void Normalize_ApiKeyPlaceholders_DoNotBlockEnvironmentVariableUsage()
+    public void Normalize_DeepSeekPlaceholder_DoNotBlockEnvironmentVariableUsage()
     {
-        const string environmentName = "PORTFOLIOSAVER_TWELVEDATA_API_KEY";
+        const string environmentName = "DEEPSEEK_API_KEY";
         string? previous = Environment.GetEnvironmentVariable(environmentName);
         Environment.SetEnvironmentVariable(environmentName, null);
 
         try
         {
             AppSettings settings = Defaults.CreateSettings();
-            settings.TwelveDataApiKey = "abcdefghijklmnopqrstuvwxyz012345";
+            settings.DeepSeekApiKey = "abcdefghijklmnopqrstuvwxyz012345";
 
             AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
-            Assert.True(string.IsNullOrWhiteSpace(normalized.TwelveDataApiKey));
+            Assert.True(string.IsNullOrWhiteSpace(normalized.DeepSeekApiKey));
         }
         finally
         {
@@ -211,27 +211,5 @@ public sealed class AppSettingsNormalizerTests
         AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
         Assert.Equal(DeepSeekWritingStyle.DouglasAdams, normalized.DeepSeekWritingStyle);
-    }
-
-    [Fact]
-    public void Normalize_DeepSeekApiKey_PrefersEnvironmentVariable_OverPersistedValue()
-    {
-        const string environmentName = "DEEPSEEK_API_KEY";
-        string? previous = Environment.GetEnvironmentVariable(environmentName);
-        Environment.SetEnvironmentVariable(environmentName, "env-deepseek-key");
-
-        try
-        {
-            AppSettings settings = Defaults.CreateSettings();
-            settings.DeepSeekApiKey = "persisted-deepseek-key";
-
-            AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
-
-            Assert.Equal("env-deepseek-key", normalized.DeepSeekApiKey);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable(environmentName, previous);
-        }
     }
 }

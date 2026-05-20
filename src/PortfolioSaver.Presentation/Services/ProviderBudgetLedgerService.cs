@@ -9,7 +9,6 @@ namespace PortfolioSaver.Screensaver.Services;
 
 public sealed class ProviderBudgetLedgerService
 {
-    private const int TwelveDataMinuteSafetyReserve = 1;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true
@@ -106,10 +105,7 @@ public sealed class ProviderBudgetLedgerService
         if (hardMaxQueriesPerMinute <= 0)
             return 0;
 
-        if (kind != DataSourceKind.TwelveData)
-            return hardMaxQueriesPerMinute;
-
-        return Math.Max(1, hardMaxQueriesPerMinute - TwelveDataMinuteSafetyReserve);
+        return hardMaxQueriesPerMinute;
     }
 
     private ProviderBudgetLedger LoadLedger()

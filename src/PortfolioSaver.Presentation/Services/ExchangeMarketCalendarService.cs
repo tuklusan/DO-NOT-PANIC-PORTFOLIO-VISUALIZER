@@ -1,11 +1,8 @@
 using System.Globalization;
 using System.IO;
-using System.Net.Http;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Core.Services;
-using PortfolioSaver.Data.Services;
 using PortfolioSaver.Shared.Helpers;
 
 namespace PortfolioSaver.Screensaver.Services;
@@ -35,12 +32,10 @@ public sealed class ExchangeMarketCalendarService
         };
 
     private readonly string _cachePath;
-    private readonly Func<TimeSpan, HttpClient> _httpClientFactory;
 
-    public ExchangeMarketCalendarService(string? cachePath = null, Func<TimeSpan, HttpClient>? httpClientFactory = null)
+    public ExchangeMarketCalendarService(string? cachePath = null)
     {
         _cachePath = cachePath ?? Path.Combine(PathHelper.GetLocalDataDirectory(), "market-calendars.json");
-        _httpClientFactory = httpClientFactory ?? HttpClientFactory.Create;
     }
 
     public NyseTradingCalendarSnapshot LoadNyseSnapshotFromCacheOrOffline()
@@ -70,32 +65,6 @@ public sealed class ExchangeMarketCalendarService
         ExchangeCalendarSet merged = BuildFallbackSet(requests);
         ExchangeCalendarSet? cachedSet = TryLoadCachedSet();
         merged.Overlay(cachedSet);
-
-        if (!networkAvailable || requests.Count == 0)
-            return merged;
-
-        TimeSpan refreshWindow = TimeSpan.FromHours(Math.Max(1, settings.MarketCalendarRefreshHours));
-        if (cachedSet is not null && DateTimeOffset.UtcNow - cachedSet.GeneratedUtc < refreshWindow)
-            return merged;
-
-        using HttpClient client = _httpClientFactory(TimeSpan.FromSeconds(Math.Max(4, settings.HttpTimeoutSeconds)));
-        ExchangeCalendarSet liveSet = BuildFallbackSet(requests);
-        liveSet.Source = "Live calendar sync";
-        liveSet.GeneratedUtc = DateTimeOffset.UtcNow;
-
-        bool hasLiveData = false;
-        if (!string.IsNullOrWhiteSpace(settings.FinancialModelingPrepApiKey))
-            hasLiveData |= await TryPopulateFromFmpAsync(client, settings.FinancialModelingPrepApiKey.Trim(), requests, liveSet, cancellationToken);
-
-        if (!string.IsNullOrWhiteSpace(settings.EodhdApiKey))
-            hasLiveData |= await TryPopulateFromEodhdAsync(client, settings.EodhdApiKey.Trim(), requests, liveSet, cancellationToken);
-
-        if (hasLiveData)
-        {
-            merged.Overlay(liveSet);
-            await SaveCacheAsync(merged, cancellationToken);
-        }
-
         return merged;
     }
 
@@ -290,436 +259,13 @@ public sealed class ExchangeMarketCalendarService
         }
     }
 
-    private async Task<bool> TryPopulateFromFmpAsync(
-        HttpClient client,
-        string apiKey,
-        IReadOnlyList<ExchangeCalendarRequest> requests,
-        ExchangeCalendarSet target,
-        CancellationToken cancellationToken)
-    {
-        bool hasLiveData = false;
-        JsonDocument? marketHoursDoc = await GetJsonAsync(
-            client,
-            $"https://financialmodelingprep.com/stable/all-exchange-market-hours?apikey={Uri.EscapeDataString(apiKey)}",
-            cancellationToken);
-
-        IReadOnlyList<JsonElement> marketHourItems = marketHoursDoc is null
-            ? []
-            : EnumerateObjects(marketHoursDoc.RootElement).ToList();
-
-        foreach (ExchangeCalendarRequest request in requests)
-        {
-            ExchangeTradingCalendar? calendar = target.TryGetByCityKey(request.CityKey);
-            if (calendar is null)
-                continue;
-
-            JsonElement? matchingHours = marketHourItems.FirstOrDefault(item => MatchesExchange(request, item));
-            if (matchingHours.HasValue)
-            {
-                JsonElement item = matchingHours.Value;
-                if (TryReadTimeWindow(item, out TimeOnly open, out TimeOnly close))
-                {
-                    calendar.RegularOpenLocal = open;
-                    calendar.RegularCloseLocal = close;
-                    hasLiveData = true;
-                }
-
-                if (TryReadString(item, out string? timezone, "timezone", "timeZone", "tz") &&
-                    !string.IsNullOrWhiteSpace(timezone))
-                {
-                    calendar.AlternateTimeZoneId = timezone.Trim();
-                    hasLiveData = true;
-                }
-
-                calendar.Source = "Financial Modeling Prep";
-            }
-
-            JsonDocument? holidayDoc = await GetJsonAsync(
-                client,
-                $"https://financialmodelingprep.com/stable/holidays-by-exchange?exchange={Uri.EscapeDataString(request.ExchangeCode)}&apikey={Uri.EscapeDataString(apiKey)}",
-                cancellationToken);
-
-            if (holidayDoc is null)
-                continue;
-
-            bool holidayChanged = ApplyHolidayPayload(holidayDoc.RootElement, calendar);
-            hasLiveData |= holidayChanged;
-            if (holidayChanged)
-                calendar.Source = "Financial Modeling Prep";
-        }
-
-        return hasLiveData;
-    }
-
-    private async Task<bool> TryPopulateFromEodhdAsync(
-        HttpClient client,
-        string apiKey,
-        IReadOnlyList<ExchangeCalendarRequest> requests,
-        ExchangeCalendarSet target,
-        CancellationToken cancellationToken)
-    {
-        bool hasLiveData = false;
-        foreach (ExchangeCalendarRequest request in requests)
-        {
-            ExchangeTradingCalendar? calendar = target.TryGetByCityKey(request.CityKey);
-            if (calendar is null)
-                continue;
-
-            JsonDocument? detailDoc = await GetJsonAsync(
-                client,
-                $"https://eodhd.com/api/exchange-details/{Uri.EscapeDataString(request.ExchangeCode)}?api_token={Uri.EscapeDataString(apiKey)}&fmt=json",
-                cancellationToken);
-            if (detailDoc is null)
-                continue;
-
-            JsonElement root = detailDoc.RootElement;
-            bool changed = false;
-            if (TryReadTradingHoursFromEod(root, out TimeOnly open, out TimeOnly close))
-            {
-                calendar.RegularOpenLocal = open;
-                calendar.RegularCloseLocal = close;
-                changed = true;
-            }
-
-            if (TryReadString(root, out string? timezone, "Timezone", "timezone", "TimeZone", "TimezoneName", "timezoneName") &&
-                !string.IsNullOrWhiteSpace(timezone))
-            {
-                calendar.AlternateTimeZoneId = timezone.Trim();
-                changed = true;
-            }
-
-            changed |= ApplyEodHolidayPayload(root, calendar);
-            if (!changed)
-                continue;
-
-            calendar.Source = "EOD Historical Data";
-            hasLiveData = true;
-        }
-
-        return hasLiveData;
-    }
-
-    private static bool ApplyHolidayPayload(JsonElement root, ExchangeTradingCalendar calendar)
-    {
-        bool changed = false;
-        foreach (JsonElement item in EnumerateObjects(root))
-        {
-            if (!TryReadDate(item, out DateOnly date))
-                continue;
-
-            bool appearsClosed = IsClosedHoliday(item);
-            if (appearsClosed)
-            {
-                changed |= calendar.ClosedDates.Add(date);
-                continue;
-            }
-
-            if (TryReadTime(item, out TimeOnly earlyClose, "close", "closeTime", "earlyClose", "sessionClose"))
-            {
-                calendar.EarlyCloseTimes[date] = earlyClose;
-                changed = true;
-            }
-        }
-
-        return changed;
-    }
-
-    private static bool ApplyEodHolidayPayload(JsonElement root, ExchangeTradingCalendar calendar)
-    {
-        if (!TryGetPropertyIgnoreCase(root, "ExchangeHolidays", out JsonElement holidaysElement))
-            return false;
-
-        bool changed = false;
-        foreach ((DateOnly? keyedDate, JsonElement item) in EnumerateHolidayObjects(holidaysElement))
-        {
-            DateOnly? date = keyedDate;
-            if (!date.HasValue && TryReadDate(item, out DateOnly parsed))
-                date = parsed;
-
-            if (!date.HasValue)
-                continue;
-
-            if (IsClosedHoliday(item))
-            {
-                changed |= calendar.ClosedDates.Add(date.Value);
-                continue;
-            }
-
-            if (TryReadTime(item, out TimeOnly earlyClose, "Close", "close", "closeTime", "earlyClose"))
-            {
-                calendar.EarlyCloseTimes[date.Value] = earlyClose;
-                changed = true;
-            }
-        }
-
-        return changed;
-    }
-
-    private static IEnumerable<(DateOnly? KeyedDate, JsonElement Item)> EnumerateHolidayObjects(JsonElement holidaysElement)
-    {
-        if (holidaysElement.ValueKind == JsonValueKind.Array)
-        {
-            foreach (JsonElement item in holidaysElement.EnumerateArray())
-            {
-                if (item.ValueKind == JsonValueKind.Object)
-                    yield return (null, item);
-            }
-
-            yield break;
-        }
-
-        if (holidaysElement.ValueKind != JsonValueKind.Object)
-            yield break;
-
-        foreach (JsonProperty property in holidaysElement.EnumerateObject())
-        {
-            DateOnly? keyedDate = null;
-            if (DateOnly.TryParse(property.Name, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly parsed))
-                keyedDate = parsed;
-
-            if (property.Value.ValueKind == JsonValueKind.Object)
-                yield return (keyedDate, property.Value);
-        }
-    }
-
-    private static bool IsClosedHoliday(JsonElement item)
-    {
-        if (TryReadString(item, out string? status, "status", "type", "session", "isOpen", "open") &&
-            !string.IsNullOrWhiteSpace(status))
-        {
-            string normalized = status.Replace(" ", string.Empty, StringComparison.OrdinalIgnoreCase);
-            if (normalized.Equals("false", StringComparison.OrdinalIgnoreCase) ||
-                normalized.Equals("0", StringComparison.OrdinalIgnoreCase) ||
-                normalized.Contains("closed", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        if (TryReadString(item, out string? name, "name", "holiday", "description") &&
-            !string.IsNullOrWhiteSpace(name) &&
-            name.Contains("closed", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        // Ambiguous payloads should not be treated as full-day closures.
-        return false;
-    }
-
-    private static bool TryReadTradingHoursFromEod(JsonElement root, out TimeOnly open, out TimeOnly close)
-    {
-        open = default;
-        close = default;
-        if (!TryGetPropertyIgnoreCase(root, "TradingHours", out JsonElement tradingHours))
-            return false;
-
-        return TryReadTimeWindow(tradingHours, out open, out close);
-    }
-
-    private static bool TryReadTimeWindow(JsonElement item, out TimeOnly open, out TimeOnly close)
-    {
-        open = default;
-        close = default;
-
-        if (TryReadTime(item, out TimeOnly openCandidate, "open", "Open", "openTime", "openingHour", "openingTime", "marketOpen", "regularMarketOpen", "from") &&
-            TryReadTime(item, out TimeOnly closeCandidate, "close", "Close", "closeTime", "closingHour", "closingTime", "marketClose", "regularMarketClose", "to"))
-        {
-            open = openCandidate;
-            close = closeCandidate;
-            return true;
-        }
-
-        if (!TryReadString(item, out string? tradingWindow, "TradingHours", "tradingHours", "workingHours", "WorkingHours"))
-            return false;
-
-        Match match = Regex.Match(tradingWindow!, @"(?<open>\d{1,2}:\d{2})(?::\d{2})?\s*[-]\s*(?<close>\d{1,2}:\d{2})(?::\d{2})?");
-        if (!match.Success)
-            return false;
-
-        if (!TryParseTimeOnly(match.Groups["open"].Value, out open))
-            return false;
-        if (!TryParseTimeOnly(match.Groups["close"].Value, out close))
-            return false;
-
-        return true;
-    }
-
-    private static bool TryReadDate(JsonElement item, out DateOnly date)
-    {
-        date = default;
-        if (!TryReadString(item, out string? value, "date", "Date", "holidayDate", "observedDate", "closeDate", "holiday_date"))
-            return false;
-
-        return DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
-    }
-
-    private static bool TryReadTime(JsonElement item, out TimeOnly time, params string[] propertyNames)
-    {
-        time = default;
-        if (!TryReadString(item, out string? value, propertyNames))
-            return false;
-
-        return TryParseTimeOnly(value, out time);
-    }
-
-    private static bool TryReadString(JsonElement item, out string? value, params string[] propertyNames)
-    {
-        value = null;
-        foreach (string propertyName in propertyNames)
-        {
-            if (!TryGetPropertyIgnoreCase(item, propertyName, out JsonElement property))
-                continue;
-
-            value = property.ValueKind switch
-            {
-                JsonValueKind.String => property.GetString(),
-                JsonValueKind.Number => property.ToString(),
-                JsonValueKind.True => "true",
-                JsonValueKind.False => "false",
-                _ => null
-            };
-
-            if (!string.IsNullOrWhiteSpace(value))
-                return true;
-        }
-
-        return false;
-    }
-
-    private static bool TryGetPropertyIgnoreCase(JsonElement item, string propertyName, out JsonElement value)
-    {
-        value = default;
-        if (item.ValueKind != JsonValueKind.Object)
-            return false;
-
-        foreach (JsonProperty property in item.EnumerateObject())
-        {
-            if (!string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            value = property.Value;
-            return true;
-        }
-
-        return false;
-    }
-
-    private static bool TryParseTimeOnly(string? value, out TimeOnly time)
-    {
-        time = default;
-        if (string.IsNullOrWhiteSpace(value))
-            return false;
-
-        string normalized = value.Trim();
-        string[] formats =
-        [
-            "HH:mm",
-            "H:mm",
-            "HH:mm:ss",
-            "H:mm:ss",
-            "h:mm tt",
-            "hh:mm tt",
-            "h:mm:ss tt",
-            "hh:mm:ss tt"
-        ];
-
-        return TimeOnly.TryParseExact(normalized, formats, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out time) ||
-               TimeOnly.TryParse(normalized, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out time);
-    }
-
-    private static IEnumerable<JsonElement> EnumerateObjects(JsonElement root)
-    {
-        if (root.ValueKind == JsonValueKind.Array)
-        {
-            foreach (JsonElement item in root.EnumerateArray())
-            {
-                if (item.ValueKind == JsonValueKind.Object)
-                    yield return item;
-            }
-
-            yield break;
-        }
-
-        if (root.ValueKind == JsonValueKind.Object)
-        {
-            yield return root;
-            foreach (JsonProperty property in root.EnumerateObject())
-            {
-                if (property.Value.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (JsonElement item in property.Value.EnumerateArray())
-                    {
-                        if (item.ValueKind == JsonValueKind.Object)
-                            yield return item;
-                    }
-                }
-            }
-        }
-    }
-
-    private static bool MatchesExchange(ExchangeCalendarRequest request, JsonElement item)
-    {
-        string requestCode = NormalizeToken(request.ExchangeCode);
-        string requestName = NormalizeToken(request.ExchangeName);
-        string requestCity = NormalizeToken(request.CityKey);
-
-        string candidateCode = NormalizeToken(ReadCandidate(item, "exchange", "exchangeCode", "code", "symbol", "mic", "market"));
-        string candidateName = NormalizeToken(ReadCandidate(item, "name", "exchangeName", "exchange", "market", "description"));
-
-        if (!string.IsNullOrWhiteSpace(requestCode) && requestCode == candidateCode)
-            return true;
-
-        if (!string.IsNullOrWhiteSpace(requestCode) && candidateName.Contains(requestCode, StringComparison.Ordinal))
-            return true;
-
-        if (!string.IsNullOrWhiteSpace(requestName) && candidateName.Contains(requestName, StringComparison.Ordinal))
-            return true;
-
-        if (!string.IsNullOrWhiteSpace(requestCity) && candidateName.Contains(requestCity, StringComparison.Ordinal))
-            return true;
-
-        return false;
-    }
-
-    private static string ReadCandidate(JsonElement item, params string[] names)
-    {
-        foreach (string name in names)
-        {
-            if (!TryGetPropertyIgnoreCase(item, name, out JsonElement property))
-                continue;
-
-            string? value = property.ValueKind switch
-            {
-                JsonValueKind.String => property.GetString(),
-                JsonValueKind.Number => property.ToString(),
-                _ => null
-            };
-
-            if (!string.IsNullOrWhiteSpace(value))
-                return value.Trim();
-        }
-
-        return string.Empty;
-    }
-
-    private static string NormalizeToken(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return string.Empty;
-
-        return new string(value
-            .ToUpperInvariant()
-            .Where(char.IsLetterOrDigit)
-            .ToArray());
-    }
-
     private static TimeSpan GetCountdownToOpen(ExchangeTradingCalendar calendar, DateTimeOffset localNow, TimeZoneInfo zone)
     {
         DateOnly candidateDate = DateOnly.FromDateTime(localNow.Date);
-        DateTimeOffset openToday = BuildLocalDateTimeOffset(candidateDate, calendar.RegularOpenLocal, zone);
+        DateTimeOffset open = BuildLocalDateTimeOffset(candidateDate, calendar.RegularOpenLocal, zone);
+
         if (localNow.TimeOfDay < calendar.RegularOpenLocal.ToTimeSpan() && calendar.IsTradingDay(candidateDate))
-            return MaxZero(openToday - localNow);
+            return MaxZero(open - localNow);
 
         do
         {
@@ -736,6 +282,14 @@ public sealed class ExchangeMarketCalendarService
         DateTime localDateTime = new(date.Year, date.Month, date.Day, time.Hour, time.Minute, 0, DateTimeKind.Unspecified);
         TimeSpan offset = zone.GetUtcOffset(localDateTime);
         return new DateTimeOffset(localDateTime, offset);
+    }
+
+    private static bool TryParseTimeOnly(string? value, out TimeOnly time)
+    {
+        if (TimeOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out time))
+            return true;
+
+        return TimeOnly.TryParse(value, out time);
     }
 
     private static TimeSpan MaxZero(TimeSpan value)
@@ -776,32 +330,6 @@ public sealed class ExchangeMarketCalendarService
         }
 
         return TimeZoneInfo.Local;
-    }
-
-    private static async Task<JsonDocument?> GetJsonAsync(HttpClient client, string uri, CancellationToken cancellationToken)
-    {
-        try
-        {
-            using HttpResponseMessage response = await client.GetAsync(uri, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            string payload = await response.Content.ReadAsStringAsync(cancellationToken);
-            if (string.IsNullOrWhiteSpace(payload))
-                return null;
-
-            if (payload.Contains("Invalid API KEY", StringComparison.OrdinalIgnoreCase) ||
-                payload.Contains("\"error\"", StringComparison.OrdinalIgnoreCase) && payload.Contains("access_key", StringComparison.OrdinalIgnoreCase))
-            {
-                return null;
-            }
-
-            return JsonDocument.Parse(payload);
-        }
-        catch
-        {
-            return null;
-        }
     }
 
     private sealed class ExchangeCalendarCacheDto
@@ -953,3 +481,4 @@ public enum ExchangeCountdownTarget
     Open,
     Close
 }
+

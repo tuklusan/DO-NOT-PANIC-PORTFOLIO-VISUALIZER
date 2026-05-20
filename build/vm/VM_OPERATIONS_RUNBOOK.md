@@ -1,6 +1,6 @@
-﻿# Remote Windows Validation Runbook
+# Remote Windows Validation Runbook
 
-This runbook documents the supported Beta 5.5 remote-validation architecture:
+This runbook documents the supported Beta 5.6 remote-validation architecture:
 
 - host transport: `SSH + SFTP`
 - remote workspace: `C:\vmharness\portfolio-saver`
@@ -106,13 +106,9 @@ If you want the remote Windows target to use live API credentials during validat
 
 Supported fields:
 
-- `FinnhubApiKey`
-- `TwelveDataApiKey`
-- `TiingoApiKey`
-- `FinancialModelingPrepApiKey`
-- `EodhdApiKey`
 - `DeepSeekApiKey`
 
+The VM harness no longer expects separate market-data provider credentials because the runtime is now YFinance.NET-only.
 The harness applies them to the remote user environment before the remote build/UX cycle starts. DeepSeek is written to both:
 
 - `DEEPSEEK_API_KEY`
@@ -188,7 +184,7 @@ This is the key behavior that finally worked reliably.
 5. The host waits for the agent heartbeat file.
 6. The host writes a UX command JSON into the remote command queue.
 7. The agent launches the desktop app first, opens the Settings window from the desktop menu path, drives a minimal keyboard-first config smoke path, waits for Validate to succeed and the window to close naturally, then continues the same desktop-session run into the fullscreen/windowed validation flow.
-   During Validate, the config app is expected to disable the Validate button, show a small Validation Progress window, and trust recent local quote/profile evidence before falling back to Yahoo Finance.
+   During Validate, the config app is expected to disable the Validate button, show a small Validation Progress window, and trust recent local quote/profile evidence before falling back to YFinance.NET network lookups.
 8. Guest-UxDeepExercise.ps1 captures screenshots, explicitly focuses the desktop window, prefers keyboard navigation over coordinate clicks for config interaction, validates true fullscreen by comparing the live window bounds to the virtual screen, validates ESC return-to-windowed behavior, copies trace files into the result bundle, and writes:
    - `ux-deep-summary.json`
    - `vm-ux-summary.json`
@@ -196,6 +192,9 @@ This is the key behavior that finally worked reliably.
 10. The host pulls the complete result bundle back over SFTP.
 
 ## Current known-good proof markers
+
+Standalone YFinance.NET proof marker:
+- `build/vm/artifacts/host-runs/yfinance-vm-stage5-top100-25x300-soak.log` records a full 25-cycle top-100 soak with 20 warmed history lanes, 1-second one-by-one pacing, 10-minute cache ceilings, and no `429`, `RateLimit`, `FAIL`, or `missing` lines.
 
 The first fully re-proven clean agent run after the fullscreen and config-discovery fixes is:
 
@@ -341,4 +340,6 @@ This is a debugging convenience only. The canonical harness path is still the ho
    - verify actual capture dimensions before claiming multi-resolution pass behavior
 6. Keep all long-running host commands bounded by explicit timeouts.
 7. The current harness allows up to `10080` minutes per desktop phase, so multi-day soak runs remain within the supported validation range.
+
+
 

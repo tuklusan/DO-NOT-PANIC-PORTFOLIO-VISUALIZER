@@ -23,20 +23,15 @@ This suite exercises every user-configurable surface in the configuration UI and
 
 ## Checklist
 
-### General tab: provider keys
+### General tab: runtime summary
 
-1. `Finnhub API key`
-2. `Twelve Data API key`
-3. `Tiingo API key`
-4. `Financial Modeling Prep API key`
-5. `EODHD API key`
-6. `DeepSeek API key`
+1. `Market data source` summary line
+2. `DeepSeek API key` is no longer present on General and should only appear on Advanced
 
 Checks:
-- field is present and editable
-- blank value behavior is understood
-- installer/sample placeholder behavior is understood
-- validation failure messaging is explicit
+- runtime summary explicitly says YFinance.NET-only
+- no legacy provider API key fields remain on General
+- no per-provider budget controls remain on General
 
 ### General tab: refresh sliders
 
@@ -97,24 +92,22 @@ Checks:
 - RSS textbox is enabled only in RSS mode
 - invalid RSS URL behavior is explicit
 
-### Advanced tab: data source policy grid
+### Advanced tab: market data runtime
 
-Per provider row:
-1. hourly budget
-2. daily budget
-3. single-query toggle
-4. multi-query toggle
+1. `Market data runtime` informational card
 
 Checks:
-- out-of-range values are normalized or rejected
-- unsupported toggles are rejected
+- card explicitly says runtime is YFinance.NET-only
+- 1-second one-by-one pacing is described
+- 10-minute cache/metadata freshness ceiling is described
+- no editable provider grid remains
 
 ### Global resilience checks
 
 1. validation happens only when `Validate` is clicked
 2. internet unavailable state locks config editing and shows retry path
-3. blank API keys produce explicit validation failure
-4. installer/sample API keys produce explicit validation failure
+3. blank DeepSeek key is acceptable unless summarized news is selected and validation actually needs it
+4. no retired market-data provider key validation remains in the UI
 5. invalid RSS URL resets to default in RSS mode
 6. summarized mode does not require a valid RSS URL
 7. invalid ticker symbols are disabled and called out
@@ -122,7 +115,7 @@ Checks:
 9. `Validate` is disabled while validation is running
 10. a transient validation-progress window opens during validation, logs symbol/provider progress, and closes when validation ends
 11. the desktop scene is paused for the config session and resumes afterward
-12. ticker validation trusts recent local quote/profile evidence before falling back to Yahoo Finance
+12. ticker validation trusts recent local quote/profile evidence before falling back to YFinance.NET network lookups
 
 ## Definition of done
 
@@ -134,3 +127,6 @@ The suite is complete when:
 - the focused validation test set passes
 - the trace confirms config validation progress and natural close behavior
 - the execution results are written down in a dated results document
+
+
+

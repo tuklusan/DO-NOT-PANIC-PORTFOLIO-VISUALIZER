@@ -16,11 +16,7 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
     public HybridHistoricalDataProvider(
         IHistoricalCacheService cacheService,
         HttpClient? httpClient = null,
-        string? finnhubApiKey = null,
-        string? twelveDataApiKey = null,
         TimeSpan? cacheFreshness = null,
-        TimeSpan? minFinnhubSpacing = null,
-        TimeSpan? minTwelveDataSpacing = null,
         int rotationSeed = 0,
         IReadOnlyDictionary<string, SymbolProfile>? symbolProfiles = null)
     {

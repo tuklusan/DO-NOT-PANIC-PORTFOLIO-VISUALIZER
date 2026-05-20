@@ -99,25 +99,21 @@ public sealed class ConfigTextConsistencyTests
     }
 
     [Fact]
-    public void AdvancedDataSourceGrid_UsesReadableDarkHeadersWithoutUnusedLimitColumn()
+    public void AdvancedTab_RetiresOldDataSourceGridAndExplainsFixedYFinanceRuntime()
     {
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
-        Assert.Contains("x:Key=\"DarkDataGridColumnHeaderStyle\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("ColumnHeaderStyle=\"{StaticResource DarkDataGridColumnHeaderStyle}\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("CellStyle=\"{StaticResource DarkDataGridCellStyle}\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("HorizontalScrollBarVisibility=\"Disabled\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("ColumnWidth=\"*\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("HorizontalContentAlignment\" Value=\"Center\"", xaml, StringComparison.Ordinal);
         Assert.Contains("<Grid Margin=\"16\">", xaml, StringComparison.Ordinal);
         Assert.Contains("<Grid.RowDefinitions>", xaml, StringComparison.Ordinal);
-        Assert.Contains("Header=\"Service\" Binding=\"{Binding DisplayName}\" IsReadOnly=\"True\" Width=\"2.45*\" MinWidth=\"236\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Header=\"Per Hour\" Width=\"1.2*\" MinWidth=\"132\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Header=\"Per Day\" Width=\"1.2*\" MinWidth=\"132\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Header=\"Single\" Width=\"0.95*\" MinWidth=\"108\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Header=\"Multiple\" Width=\"1.05*\" MinWidth=\"118\"", xaml, StringComparison.Ordinal);
-        Assert.DoesNotContain("Header=\"Known Limit\"", xaml, StringComparison.Ordinal);
-        Assert.DoesNotContain("KnownLimitText", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Advanced Runtime and News\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Market data runtime\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Portfolio, macro, and graph retrieval now run exclusively through YFinance.NET.", xaml, StringComparison.Ordinal);
+        Assert.Contains("The old per-provider API key and policy grid has been intentionally retired from the config surface.", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Header=\"Service\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Header=\"Per Hour\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Header=\"Per Day\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Header=\"Single\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Header=\"Multiple\"", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -130,11 +126,11 @@ public sealed class ConfigTextConsistencyTests
 
         Assert.Equal(5, helpBadgeCount);
         Assert.True(tooltipCount >= 5, "Expected every visible help badge to carry a tooltip.");
-        Assert.Contains("API keys are optional until you want live access to that provider.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Market data now runs through YFinance.NET only.", xaml, StringComparison.Ordinal);
         Assert.Contains("Summarized Financial News uses the DeepSeek API key from the config screen, protected local secret storage, or environment overrides", xaml, StringComparison.Ordinal);
         Assert.Contains("Managed exchange photos are cached under AppData.", xaml, StringComparison.Ordinal);
         Assert.Contains("Ticker names auto-fill during Apply when validation can resolve them.", xaml, StringComparison.Ordinal);
-        Assert.Contains("These budgets cap how often the screensaver is allowed to hit each cloud source.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Advanced settings now cover the news scroller and the fixed YFinance.NET runtime profile.", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -178,13 +174,6 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("<TabItem Header=\"Advanced\">", xaml, StringComparison.Ordinal);
         Assert.Contains("<ScrollViewer HorizontalScrollBarVisibility=\"Disabled\" VerticalScrollBarVisibility=\"Auto\" Background=\"#171717\">", xaml, StringComparison.Ordinal);
         Assert.Contains("<RowDefinition Height=\"*\" />", xaml, StringComparison.Ordinal);
-        Assert.Contains("HorizontalAlignment=\"Stretch\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("ColumnWidth=\"*\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("MinColumnWidth=\"100\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Width=\"2.45*\" MinWidth=\"236\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Width=\"1.2*\" MinWidth=\"132\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Width=\"0.95*\" MinWidth=\"108\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Width=\"1.05*\" MinWidth=\"118\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"News Scroller\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"Summarized Financial News\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"RSS Feed\"", xaml, StringComparison.Ordinal);
@@ -194,9 +183,11 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("IsEnabled=\"{Binding IsSummarizedFinancialNewsSelected}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("IsEnabled=\"{Binding IsRssFeedSelected}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("DeepSeek API key:", xaml, StringComparison.Ordinal);
-        Assert.Contains("writing style can be switched between Douglas Adams and William Shakespeare", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Market data runtime\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("One-by-one work is paced at 1 second when batching is not available, and live cache/metadata freshness is capped at 10 minutes.", xaml, StringComparison.Ordinal);
+        Assert.Contains("The old per-provider API key and policy grid has been intentionally retired from the config surface.", xaml, StringComparison.Ordinal);
         Assert.Contains("teleprinter-style band with uppercase courier text, typed character by character, paused, cleared, and only scrolled when the item is too long", xaml, StringComparison.Ordinal);
-        Assert.Contains("app adds a separate fixed verifiable closing quotation for the selected writer", xaml, StringComparison.Ordinal);
+        Assert.Contains("style-only rewriting", xaml, StringComparison.Ordinal);
     }
 
     private static string GetRepoRoot()

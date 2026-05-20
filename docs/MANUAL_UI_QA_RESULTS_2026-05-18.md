@@ -17,29 +17,23 @@
 
 Executed locally:
 
-- `ApiKeyValidationServiceTests`
 - `MainWindowViewModelValidationTests`
 - `NewsFeedValidationServiceTests`
 - `SettingsValidatorTests`
-- `DataSourcePolicyValidationTests`
 - `DesktopShellMigrationTests`
 - `VmHarnessScriptTests`
 
 ## Results by area
 
-### Provider key fields
+### Runtime and key surfaces
 
-- `Finnhub API key`: pass
-- `Twelve Data API key`: pass
-- `Tiingo API key`: pass
-- `Financial Modeling Prep API key`: pass
-- `EODHD API key`: pass
+- `Market data source` summary: pass
 - `DeepSeek API key`: pass
 
 Observed behavior:
-- blank provider keys fail validation with explicit `API key is required` messages
-- installer/sample placeholder keys fail validation with explicit replacement messaging
-- DeepSeek key is configured in UI but is not part of provider-key validation service gating
+- market data is now described as a fixed YFinance.NET-only runtime lane
+- no retired provider-key editing remains in the General tab
+- DeepSeek remains the only configurable external key surface
 
 ### Refresh sliders
 
@@ -87,21 +81,18 @@ Observed behavior:
 - summarized mode does not require a valid RSS URL
 - RSS mode resets invalid/unreachable URLs to the default feed
 
-### Data source policy grid
+### Market data runtime card
 
-- hourly budget fields: pass
-- daily budget fields: pass
-- single/multi query toggles: pass
+- fixed YFinance.NET runtime messaging: pass
 
 Observed behavior:
-- unsupported combinations are rejected by validation
-- out-of-range values are clamped in the editor model and rejected by validation when necessary
+- advanced tab documents the YFinance.NET runtime profile instead of editable provider budgets
 
 ### Global resilience checks
 
 - validate-only workflow: pass
 - offline lock/retry path: pass
-- blank API key behavior: pass
+- blank DeepSeek key behavior: pass
 - placeholder API key behavior: pass
 - invalid RSS URL behavior: pass
 - invalid ticker auto-disable: pass
@@ -114,3 +105,5 @@ None beyond the already-tracked backlog during this pass.
 ## Closing note
 
 This pass establishes a documented QA workbook plus a concrete execution record tied to the desktop-first canonical harness flow.
+
+

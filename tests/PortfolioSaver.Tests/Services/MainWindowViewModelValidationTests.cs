@@ -95,7 +95,7 @@ public sealed class MainWindowViewModelValidationTests
     {
         FakeConnectivityService connectivity = new(initiallyAvailable: true);
         MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
-        vm.StatusMessage = "Internet connection is required for ticker and key validation.";
+        vm.StatusMessage = "Internet connection is required for ticker validation.";
         SetPrivateField(vm, "_isNetworkAvailable", false);
 
         InvokePrivate<object?>(vm, "UpdateConnectivityState", []);

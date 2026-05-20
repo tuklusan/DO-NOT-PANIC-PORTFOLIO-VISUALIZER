@@ -87,8 +87,7 @@ public sealed class FinanceNewsServiceTests
             DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
             NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
             NewsRefreshMinutes = 5,
-            DeepSeekApiKey = "test-deepseek-key",
-            EodhdApiKey = "test-eodhd-key"
+            DeepSeekApiKey = "test-deepseek-key"
         };
 
         IReadOnlyList<string> first = await service.GetHeadlinesAsync(
@@ -164,8 +163,7 @@ public sealed class FinanceNewsServiceTests
             DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
             NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
             NewsRefreshMinutes = 15,
-            DeepSeekApiKey = string.Empty,
-            EodhdApiKey = string.Empty
+            DeepSeekApiKey = string.Empty
         };
 
         IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(
@@ -244,8 +242,7 @@ public sealed class FinanceNewsServiceTests
             DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
             NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
             NewsRefreshMinutes = 15,
-            DeepSeekApiKey = string.Empty,
-            EodhdApiKey = string.Empty
+            DeepSeekApiKey = string.Empty
         };
 
         IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(

@@ -806,7 +806,7 @@
       "priority": 2,
       "area": "display_compatibility",
       "title": "Validate the product across a range of monitor sizes and aspect ratios supported by the VM",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested testing from small laptop-like displays through large and ultra-wide layouts as much as the VM supports."
@@ -854,7 +854,7 @@
       "priority": 3,
       "area": "branding",
       "title": "Create and wire an app-specific icon to replace the current generic icon",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested an icon appropriate for the product instead of the current generic application icon."
@@ -1041,7 +1041,7 @@
       "priority": 2,
       "area": "status_band",
       "title": "After warmup, show the latest updated ticker symbols after 'Updated:' and before the time counter",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested that the Updated line show the latest updated ticker symbols from the most recent batch update after startup warmup."
@@ -1059,7 +1059,7 @@
       "priority": 3,
       "area": "yahoo_data_provider",
       "title": "Evaluate and port the core yfinance-style Yahoo retrieval stack into a native .NET provider framework",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested a ticket to migrate Yahoo Finance retrieval around a yfinance-style framework with cookie and crumb management, rate limiting, caching, chart/history access, quoteSummary fundamentals, optional batching, and websocket streaming concepts."
@@ -1077,8 +1077,10 @@
         "The first proving target is VM-based: fetch the top 100 S&P 500 symbols every 5 minutes for 5 cycles with 0.5-second pacing between one-by-one work, while avoiding 429s.",
         "Future integration with the portfolio app should happen only after the standalone YFinance.net library and exerciser are stable and VM-proven.",
         "Standalone VM proofs now cover: a fresh top-20 discovery run with history warmup and a clean quote cycle, a cached top-50 run with a wider quote cycle, and a full top-100 acceptance run with 20 warmed history lanes plus 5 quote cycles at 5-minute spacing, all without Yahoo 429s.",
-        "The current request pattern is now judged ready for integration planning for the practical-minimum subset, while NB-029 remains open until the library is actually wired into Portfolio Visualizer and validated there."
+        "The standalone YFinance.NET port is now VM-proven, integrated into Portfolio Visualizer as the sole market-data runtime, and the legacy multi-provider paths/config surfaces have been removed from the active product lane.",
+        "The final Beta 5.6 proof point for NB-029 is a clean build plus a fully passing 160-test suite after switching the app, config UI, harness secrets, and reference spot-check path to YFinance.NET-only behavior, with the YFinance.NET soak already proven separately in the 25-cycle VM log."
       ]
     }
   ]
 }
+

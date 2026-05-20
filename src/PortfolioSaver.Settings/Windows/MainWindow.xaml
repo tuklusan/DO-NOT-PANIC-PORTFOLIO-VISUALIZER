@@ -155,9 +155,9 @@
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,10">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="Data" Foreground="White" FontSize="20" />
+                                        <TextBlock Text="Runtime" Foreground="White" FontSize="20" />
                                         <Border Style="{StaticResource HelpBadgeStyle}"
-                                                ToolTip="API keys are optional until you want live access to that provider. Refresh sliders are centered by default and can be slowed down or sped up later.">
+                                                ToolTip="Market data now runs through YFinance.NET only. DeepSeek remains configurable on the Advanced tab for summarized news.">
                                             <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
                                         </Border>
                                     </StackPanel>
@@ -168,28 +168,13 @@
                                         <ColumnDefinition Width="Auto" MinWidth="156" SharedSizeGroup="GeneralLabelCol" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-                                    <TextBlock Text="Finnhub API key:" Style="{StaticResource FieldLabelStyle}" />
-                                    <PasswordBox Grid.Column="1" MinWidth="120" infra:BindablePasswordBox.BoundPassword="{Binding Settings.FinnhubApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Grid.Row="1" Text="Twelve Data API key:" Style="{StaticResource FieldLabelStyle}" Margin="0,8,12,0" />
-                                    <PasswordBox Grid.Row="1" Grid.Column="1" MinWidth="120" Margin="0,8,0,0" infra:BindablePasswordBox.BoundPassword="{Binding Settings.TwelveDataApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Grid.Row="2" Text="Tiingo API key:" Style="{StaticResource FieldLabelStyle}" Margin="0,8,12,0" />
-                                    <PasswordBox Grid.Row="2" Grid.Column="1" MinWidth="120" Margin="0,8,0,0" infra:BindablePasswordBox.BoundPassword="{Binding Settings.TiingoApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Grid.Row="3" Text="Financial Modeling Prep API key:" Style="{StaticResource FieldLabelStyle}" Margin="0,8,12,0" />
-                                    <PasswordBox Grid.Row="3" Grid.Column="1" MinWidth="120" Margin="0,8,0,0" infra:BindablePasswordBox.BoundPassword="{Binding Settings.FinancialModelingPrepApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Grid.Row="4" Text="EODHD API key:" Style="{StaticResource FieldLabelStyle}" Margin="0,8,12,0" />
-                                    <PasswordBox Grid.Row="4" Grid.Column="1" MinWidth="120" Margin="0,8,0,0" infra:BindablePasswordBox.BoundPassword="{Binding Settings.EodhdApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Grid.Row="5" Text="DeepSeek API key:" Style="{StaticResource FieldLabelStyle}" Margin="0,8,12,0" />
-                                    <PasswordBox Grid.Row="5" Grid.Column="1" MinWidth="120" Margin="0,8,0,0" infra:BindablePasswordBox.BoundPassword="{Binding Settings.DeepSeekApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Text="Market data source:" Style="{StaticResource FieldLabelStyle}" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="YFinance.NET (Yahoo-backed, 1-second paced, 10-minute cache ceiling)"
+                                               Foreground="#EAF3FA"
+                                               TextWrapping="Wrap" />
                                 </Grid>
-                                <TextBlock Text="On first launch these fields show sample key formats only. Replace all sample values with your real provider keys before relying on live data. Saved keys are kept out of settings.json and restored from protected local storage, while environment variables still override them when present." Style="{StaticResource SectionNoteStyle}" />
+                                <TextBlock Text="The desktop runtime now uses YFinance.NET as the single market-data path. There are no separate quote-provider API keys or per-provider budgeting controls in Beta 5.6." Style="{StaticResource SectionNoteStyle}" />
 
                                 <Grid Margin="0,8,0,0">
                                     <Grid.ColumnDefinitions>
@@ -406,8 +391,8 @@
                         </Grid.RowDefinitions>
                         <DockPanel Margin="0,0,0,20">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Advanced Data Source Policy" Foreground="White" FontSize="28" FontWeight="Bold" />
-                                <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="These budgets cap how often the screensaver is allowed to hit each cloud source. Lower values are safer and can be useful for testing.">
+                                <TextBlock Text="Advanced Runtime and News" Foreground="White" FontSize="28" FontWeight="Bold" />
+                                <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Advanced settings now cover the news scroller and the fixed YFinance.NET runtime profile. Separate market-data provider budgeting has been retired.">
                                     <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
                                 </Border>
                             </StackPanel>
@@ -484,66 +469,25 @@
                                             Value="{Binding Settings.NewsRefreshMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <TextBlock Grid.Column="2" Margin="12,0,0,0" Foreground="#F3D57F" VerticalAlignment="Center" Text="{Binding ElementName=NewsRefreshSlider, Path=Value, StringFormat={}{0:0}m}" />
                                 </Grid>
-                                <TextBlock Text="Summarized mode sends curated live global financial headlines to DeepSeek for style-only rewriting, then plays the results back one bulletin at a time in a teleprinter-style band with uppercase courier text, typed character by character, paused, cleared, and only scrolled when the item is too long. The DeepSeek key follows the same protected storage and environment override rules as the market-data provider keys, the writing style can be switched between Douglas Adams and William Shakespeare, and the app adds a separate fixed verifiable closing quotation for the selected writer instead of letting the model improvise one." Style="{StaticResource SectionNoteStyle}" />
+                                <Grid Margin="0,4,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" MinWidth="156" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="DeepSeek API key:" Style="{StaticResource FieldLabelStyle}" />
+                                    <PasswordBox Grid.Column="1"
+                                                 MinWidth="128"
+                                                 infra:BindablePasswordBox.BoundPassword="{Binding Settings.DeepSeekApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </Grid>
+                                <TextBlock Text="Summarized mode sends curated live global financial headlines to DeepSeek for style-only rewriting, then plays the results back one bulletin at a time in a teleprinter-style band with uppercase courier text, typed character by character, paused, cleared, and only scrolled when the item is too long. The DeepSeek key is kept out of settings.json, restored from protected local storage when saved locally, and still respects environment overrides when present." Style="{StaticResource SectionNoteStyle}" />
                                 <TextBlock Text="RSS mode validates the feed during Apply and falls back to the default finance feed when needed." Style="{StaticResource SectionNoteStyle}" />
                             </StackPanel>
                         </Border>
                         <Border Grid.Row="2" Style="{StaticResource SectionCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Data Sources" Foreground="White" FontSize="20" Margin="0,0,0,8" />
-                                <TextBlock Text="Single means one symbol per request. Multiple means batched symbols when that provider supports them. Hard limits are enforced at the service maximums." Style="{StaticResource SectionNoteStyle}" Margin="0,0,0,12" />
-                                <DataGrid ItemsSource="{Binding DataSources}"
-                                          AutoGenerateColumns="False"
-                                          CanUserAddRows="False"
-                                          CanUserDeleteRows="False"
-                                          HeadersVisibility="Column"
-                                          GridLinesVisibility="Horizontal"
-                                          RowBackground="#20262D"
-                                          AlternatingRowBackground="#1B2026"
-                                          Foreground="White"
-                                          Background="#161A1F"
-                                          BorderBrush="#3A4753"
-                                          BorderThickness="1"
-                                          ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}"
-                                          CellStyle="{StaticResource DarkDataGridCellStyle}"
-                                          MinRowHeight="34"
-                                          HorizontalScrollBarVisibility="Disabled"
-                                          ColumnWidth="*"
-                                          MinColumnWidth="100"
-                                          CanUserResizeColumns="False"
-                                          HorizontalAlignment="Stretch">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Service" Binding="{Binding DisplayName}" IsReadOnly="True" Width="2.45*" MinWidth="236" ElementStyle="{StaticResource DarkDataGridTextStyle}" />
-                                        <DataGridTemplateColumn Header="Per Hour" Width="1.2*" MinWidth="132">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <TextBox Text="{Binding MaxQueriesPerHour, UpdateSourceTrigger=PropertyChanged}" />
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                        <DataGridTemplateColumn Header="Per Day" Width="1.2*" MinWidth="132">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <TextBox Text="{Binding MaxQueriesPerDay, UpdateSourceTrigger=PropertyChanged}" />
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                        <DataGridTemplateColumn Header="Single" Width="0.95*" MinWidth="108">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <CheckBox IsChecked="{Binding EnableSingleTickerQueries}" IsEnabled="{Binding CanUseSingleTickerQueries}" HorizontalAlignment="Center" />
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                        <DataGridTemplateColumn Header="Multiple" Width="1.05*" MinWidth="118">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <CheckBox IsChecked="{Binding EnableBatchTickerQueries}" IsEnabled="{Binding CanUseBatchTickerQueries}" HorizontalAlignment="Center" />
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                    </DataGrid.Columns>
-                                </DataGrid>
+                                <TextBlock Text="Market data runtime" Foreground="White" FontSize="20" Margin="0,0,0,8" />
+                                <TextBlock Text="Portfolio, macro, and graph retrieval now run exclusively through YFinance.NET. One-by-one work is paced at 1 second when batching is not available, and live cache/metadata freshness is capped at 10 minutes." Style="{StaticResource SectionNoteStyle}" Margin="0,0,0,4" />
+                                <TextBlock Text="The old per-provider API key and policy grid has been intentionally retired from the config surface." Style="{StaticResource SectionNoteStyle}" />
                             </StackPanel>
                         </Border>
                     </Grid>

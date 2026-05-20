@@ -16,8 +16,7 @@ public sealed class SettingsValidatorTests
         SettingsValidator validator = new();
         var errors = validator.Validate(settings);
         Assert.Empty(errors);
-        Assert.True(string.IsNullOrWhiteSpace(settings.FinnhubApiKey));
-        Assert.True(string.IsNullOrWhiteSpace(settings.TwelveDataApiKey));
+        Assert.True(string.IsNullOrWhiteSpace(settings.DeepSeekApiKey));
         Assert.False(string.IsNullOrWhiteSpace(settings.BackgroundImageFolder));
         Assert.StartsWith(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

@@ -7,9 +7,10 @@ The first proving target is a VM-run console exerciser that:
 
 1. determines the top 100 S&P 500 symbols by market cap with caching,
 2. refreshes them every 5 minutes,
-3. repeats for 5 total cycles,
+3. repeats for at least 5 total cycles,
 4. keeps one-by-one symbol work paced at 1 second where batching is not used,
-5. completes without Yahoo 429s.
+5. keeps no live cache or metadata older than 10 minutes,
+6. completes without Yahoo 429s.
 
 ## Upstream-Alignment Rule
 This port should be structured so future syncs from the user's fork of `tuklusan/yfinance` can be rolled into `YFinance.NET` deliberately.
@@ -233,15 +234,21 @@ These should not block the first delivery:
 
 ## VM Validation Plan
 
-The first proving cycle should happen on the VM, not just locally:
+The proving cycle happens on the VM, not just locally:
 
 1. restore/build the standalone `YFinance.net` solution,
 2. run the exerciser on the VM,
 3. verify cache warmup behavior,
 4. verify 1-second pacing for one-by-one work,
-5. verify 5-minute interval loop,
-6. verify 5 cycles total,
+5. verify 5-minute interval loops,
+6. verify at least 5 cycles total for acceptance, then longer soak cycles for confidence,
 7. verify no 429s.
 
-## Immediate Next Step
-Scaffold the standalone `YFinance.NET` library and `YFinance.NET.Exerciser` console app around this responsibility map before implementing the first transport/session classes.
+## Current Status
+
+- The standalone `YFinance.NET` library and `YFinance.NET.Exerciser` are implemented and build cleanly.
+- The runtime integration lane in `PortfolioSaver.Data` now uses `YFinance.NET` for quotes, history, and symbol metadata.
+- VM proofs completed at top 20, top 50, top 100 short-cycle, top 100 five-cycle, and top 100 twenty-five-cycle scales.
+- The longest proof is a 25-cycle, 5-minute, top-100 VM soak with 20 warmed history lanes, 1-second one-by-one pacing, 10-minute cache ceilings, and no `429`, `RateLimit`, `FAIL`, or `missing` log entries.
+- Remaining follow-on work is ordinary runtime evolution and future upstream-sync maintenance, not first-proof uncertainty.
+

@@ -7,38 +7,11 @@ public static class DataSourceCatalog
 {
     public static IReadOnlyList<DataSourceKind> OrderedKinds { get; } =
     [
-        DataSourceKind.YahooFinance,
-        DataSourceKind.Finnhub,
-        DataSourceKind.TwelveData,
-        DataSourceKind.Tiingo
+        DataSourceKind.YahooFinance
     ];
 
     public static DataSourceCapabilities GetCapabilities(DataSourceKind kind) => kind switch
     {
-        DataSourceKind.Finnhub => new(
-            kind,
-            "Finnhub",
-            HardMaxQueriesPerMinute: 0,
-            HardMaxQueriesPerHour: 3600,
-            HardMaxQueriesPerDay: 86400,
-            SupportsSingleTickerQueries: true,
-            SupportsBatchTickerQueries: false),
-        DataSourceKind.TwelveData => new(
-            kind,
-            "Twelve Data",
-            HardMaxQueriesPerMinute: 8,
-            HardMaxQueriesPerHour: 480,
-            HardMaxQueriesPerDay: 800,
-            SupportsSingleTickerQueries: true,
-            SupportsBatchTickerQueries: true),
-        DataSourceKind.Tiingo => new(
-            kind,
-            "Tiingo",
-            HardMaxQueriesPerMinute: 0,
-            HardMaxQueriesPerHour: 50,
-            HardMaxQueriesPerDay: 1000,
-            SupportsSingleTickerQueries: true,
-            SupportsBatchTickerQueries: false),
         DataSourceKind.YahooFinance => new(
             kind,
             "YFinance.NET",

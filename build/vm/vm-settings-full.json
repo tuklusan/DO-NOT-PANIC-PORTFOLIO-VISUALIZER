@@ -1,18 +1,8 @@
-﻿{
-    "provider":  "Finnhub",
-    "apiKeyProtected":  false,
-    "FinnhubApiKey": "REPLACE_WITH_FINNHUB_API_KEY",
-    "TwelveDataApiKey": "REPLACE_WITH_TWELVEDATA_API_KEY",
+{
     "refreshSecondsPortfolio":  5,
     "refreshSecondsBenchmarks":  5,
     "refreshSecondsOffHours":  5,
     "httpTimeoutSeconds":  10,
-    "minFinnhubRequestSpacingSeconds":  2,
-    "minTwelveDataRequestSpacingSeconds":  15,
-    "maxFinnhubRequestsPerMinuteSafe":  30,
-    "maxTwelveDataCreditsPerMinuteSafe":  4,
-    "maxTwelveDataCreditsPerDaySafe":  400,
-    "enableProviderFailover":  true,
     "backgroundImageFolder":  "C:\\Users\\User\\Pictures\\ExchangeBackgrounds",
     "backgroundChangeSeconds":  60,
     "shuffleBackgrounds":  true,
@@ -342,8 +332,10 @@
     "clockRefreshSeconds":  1,
     "backgroundIncludeSubfolders":  false,
     "protectedApiKey":  "",
-    "TiingoApiKey": "REPLACE_WITH_TIINGO_API_KEY",
     "newsRefreshMinutes":  5,
     "newsFeedUrl":  "https://finance.yahoo.com/news/rss"
 }
+
+
+
 

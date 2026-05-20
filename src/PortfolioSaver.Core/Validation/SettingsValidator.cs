@@ -59,22 +59,6 @@ public sealed class SettingsValidator
             }
         }
 
-        foreach (DataSourcePolicySettings dataSource in settings.DataSources)
-        {
-            DataSourceCapabilities capabilities = DataSourceCatalog.GetCapabilities(dataSource.Kind);
-            if (dataSource.MaxQueriesPerHour < 1 || dataSource.MaxQueriesPerHour > capabilities.HardMaxQueriesPerHour)
-                errors.Add($"{capabilities.DisplayName} hourly budget must be between 1 and {capabilities.HardMaxQueriesPerHour}.");
-
-            if (dataSource.MaxQueriesPerDay < 1 || dataSource.MaxQueriesPerDay > capabilities.HardMaxQueriesPerDay)
-                errors.Add($"{capabilities.DisplayName} daily budget must be between 1 and {capabilities.HardMaxQueriesPerDay}.");
-
-            if (dataSource.EnableBatchTickerQueries && !capabilities.SupportsBatchTickerQueries)
-                errors.Add($"{capabilities.DisplayName} does not support multi-ticker queries in the current policy.");
-
-            if (dataSource.EnableSingleTickerQueries && !capabilities.SupportsSingleTickerQueries)
-                errors.Add($"{capabilities.DisplayName} does not support single-ticker queries in the current policy.");
-        }
-
         return errors;
     }
 }

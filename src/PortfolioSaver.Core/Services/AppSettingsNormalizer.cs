@@ -14,7 +14,6 @@ public static class AppSettingsNormalizer
         ApplyLegacyDesktopRefreshMigration(normalized);
 
         normalized.Groups ??= [];
-        normalized.DataSources = [.. DataSourceCatalog.NormalizePolicies(normalized.DataSources)];
         normalized.Groups = normalized.Groups
             .Take(Defaults.MaxTapeCount)
             .Select((group, index) => NormalizeGroup(group, index))
@@ -41,26 +40,6 @@ public static class AppSettingsNormalizer
         normalized.CustomBackgroundImageFolder = NormalizePath(
             normalized.CustomBackgroundImageFolder,
             string.Empty);
-
-        normalized.FinnhubApiKey = NormalizeApiKey(
-            normalized.FinnhubApiKey,
-            "PORTFOLIOSAVER_FINNHUB_API_KEY");
-
-        normalized.TwelveDataApiKey = NormalizeApiKey(
-            normalized.TwelveDataApiKey,
-            "PORTFOLIOSAVER_TWELVEDATA_API_KEY");
-
-        normalized.TiingoApiKey = NormalizeApiKey(
-            normalized.TiingoApiKey,
-            "PORTFOLIOSAVER_TIINGO_API_KEY");
-
-        normalized.FinancialModelingPrepApiKey = NormalizeApiKey(
-            normalized.FinancialModelingPrepApiKey,
-            "PORTFOLIOSAVER_FMP_API_KEY");
-
-        normalized.EodhdApiKey = NormalizeApiKey(
-            normalized.EodhdApiKey,
-            "PORTFOLIOSAVER_EODHD_API_KEY");
 
         normalized.DeepSeekApiKey = NormalizeApiKey(
             normalized.DeepSeekApiKey,

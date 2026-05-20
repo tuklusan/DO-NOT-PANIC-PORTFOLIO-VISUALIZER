@@ -20,18 +20,10 @@ public sealed class AppSettings
     public double DimOpacity { get; set; } = 0.55;
     public LayoutPreset LayoutPreset { get; set; } = LayoutPreset.UltrawideDefault;
 
-    // Runtime settings can still be overlaid from protected local storage or environment variables.
-    // These properties remain on the model so the UI and runtime can share one settings shape.
-    public string FinnhubApiKey { get; set; } = string.Empty;
-    public string TwelveDataApiKey { get; set; } = string.Empty;
-    public string TiingoApiKey { get; set; } = string.Empty;
-    public string FinancialModelingPrepApiKey { get; set; } = string.Empty;
-    public string EodhdApiKey { get; set; } = string.Empty;
+    // DeepSeek remains user-configurable for summarized news and can still be overlaid from
+    // protected local storage or environment variables.
     public string DeepSeekApiKey { get; set; } = string.Empty;
     public int MarketCalendarRefreshHours { get; set; } = 12;
-
-    public int MinFinnhubRequestSpacingSeconds { get; set; } = 2;
-    public int MinTwelveDataRequestSpacingSeconds { get; set; } = 15;
 
     public bool EnableFloatingGraphs { get; set; } = true;
     public int HistoricalLookbackDays { get; set; } = 14;
@@ -46,6 +38,5 @@ public sealed class AppSettings
     public int ClockRefreshSeconds { get; set; } = 1;
 
     public bool BackgroundIncludeSubfolders { get; set; }
-    public List<DataSourcePolicySettings> DataSources { get; set; } = [];
     public List<TickerGroup> Groups { get; set; } = [];
 }

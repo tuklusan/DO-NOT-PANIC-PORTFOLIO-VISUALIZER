@@ -67,8 +67,8 @@ For legacy parser/config routing checks:
 - Background image fallback works even if image folder is empty.
 
 ### Data and throttles
-- Quotes load from the current provider ladder.
-- Conservative spacing and hour/day provider caps are respected.
+- Quotes load from the current YFinance.NET-backed Yahoo runtime lane.
+- One-by-one YFinance.NET work respects the 1-second pacing floor, and live caches/metadata should not stay older than 10 minutes.
 - History fetch does not run on every live quote refresh.
 - `%LocalAppData%\PortfolioSaver\Caches\History` exists and purges files older than 14 days.
 - Summarized news uses DeepSeek no more often than every 15 minutes and falls back cleanly when the key is unavailable.
@@ -105,14 +105,24 @@ For live remote validation against the SSH-first Windows target, place optional 
 
 Supported fields:
 
-- `FinnhubApiKey`
-- `TwelveDataApiKey`
-- `TiingoApiKey`
-- `FinancialModelingPrepApiKey`
-- `EodhdApiKey`
 - `DeepSeekApiKey`
 
+Market-data validation no longer needs separate provider secrets because the runtime is now YFinance.NET-only.
 The remote harness uploads this ignored file when present, applies the values to the remote user environment, and clears stale remote test-secret overlays when the local file is absent.
+
+## Standalone YFinance.NET proof path
+
+Use the standalone exerciser before deeper runtime changes:
+
+1. `build\vm\Push-VmWorkspace.ps1`
+2. Remote build: `dotnet build .\YFinance.net\YFinance.NET.slnx -c Release --nologo`
+3. Remote exerciser: `dotnet run --project .\YFinance.net\YFinance.NET.Exerciser\YFinance.NET.Exerciser.csproj -c Release -- --top-count 100 --cycles 25 --refresh-seconds 300 --history-warmup-count 20 --history-lookback-days 5 --cache-ttl-minutes 10 --per-ticker-delay-ms 1000`
+
+Acceptance for the current YFinance.NET lane:
+- top 100 S&P 500 symbols resolve from the cached market-cap list
+- history warmup succeeds for the warmed subset
+- 25 five-minute quote cycles complete on the VM
+- no `429`, `RateLimit`, `FAIL`, or `missing` entries appear in the pulled proof log
 
 ## Deploy
 
@@ -178,3 +188,5 @@ powershell -ExecutionPolicy Bypass -File "C:\ProgramData\PortfolioSaverScreensav
 
 This repository should remain **Visual Studio first**.
 Do not optimize the project around a different IDE at the cost of breaking clean Visual Studio build/debug flow.
+
+

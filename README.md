@@ -1,4 +1,4 @@
-﻿# DO NOT PANIC PORTFOLIO VISUALIZER
+# DO NOT PANIC PORTFOLIO VISUALIZER
 
 Market-aware Windows desktop visualizer and configuration suite by **SANYALnet Labs**, written by **Supratim Sanyal**.
 
@@ -21,17 +21,16 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
 - Slow, continuous free-roaming motion for graph cards and other floating overlay elements
 - News headline scroller with configurable RSS mode or DeepSeek-based summarized-financial-news mode
 - Dynamic background image system with managed exchange photos or user custom folders
-- Provider-aware quote retrieval with budget/rate-limit policy controls
+- YFinance.NET-backed Yahoo retrieval with 1-second one-by-one pacing, batch quote refreshes, and observable rate-limit controls
 - Offline-aware UI behavior and network gating for validation workflows
 
 ## Configuration App (WPF)
 
 - Rich settings UI for:
-  - Data providers and API keys
+  - YFinance.NET runtime status and refresh controls
   - DeepSeek API key for summarized financial news
   - Ticker tapes and graph overlays
   - Refresh intervals (portfolio, off-hours, news, backgrounds)
-  - Data source policy budgets (hour/day + single/batch query controls)
 - Real-time and apply-time symbol validation flow
 - Auto-name support for symbols when provider metadata resolves display names
 - Bundled help/about/license reference content shipped with the config app assets
@@ -52,12 +51,13 @@ Official MIT reference:
 ## Data, Caching, and Runtime Paths
 
 - Settings file: `%AppData%\PortfolioSaver\settings.json`
-- Protected provider/news secret store: `%AppData%\PortfolioSaver\provider-secrets.json`
+- Protected secret store: `%AppData%\PortfolioSaver\provider-secrets.json`
 - Quote cache: `%LocalAppData%\PortfolioSaver\quotes-cache.json`
 - News cache: `%LocalAppData%\PortfolioSaver\finance-news-cache.json`
 - Historical cache: `%LocalAppData%\PortfolioSaver\Caches\History`
 - Cache policy:
-  - Per-symbol JSON files
+  - Runtime YFinance.NET memory and metadata caches are capped at 10 minutes
+  - Per-symbol JSON history files
   - Automatic purge of history files older than 14 days
 
 ## Desktop App Modes
@@ -76,10 +76,11 @@ Official MIT reference:
 - `src/PortfolioSaver.Presentation` - reusable scene host and runtime presentation services
 - `src/PortfolioSaver.VmAgent` - remote desktop-session agent for Windows target UX automation
 - `src/PortfolioSaver.Render` - WPF visual controls and scene rendering
-- `src/PortfolioSaver.Data` - provider clients, cache, and scheduling services
+- `src/PortfolioSaver.Data` - runtime YFinance.NET integration, caches, and scheduling services
 - `src/PortfolioSaver.Core` - domain models, constants, validation rules
 - `src/PortfolioSaver.Media` - background image and transition services
 - `src/PortfolioSaver.Shared` - shared helpers, identity/version, licensing utilities
+- `YFinance.net` - standalone sync-friendly .NET port of `tuklusan/yfinance` plus the VM-proven exerciser
 - `src/PortfolioSaver.Installer` - standalone installer bootstrap app
 - `tests/PortfolioSaver.Tests` - automated unit tests
 
@@ -126,6 +127,7 @@ The active documentation set has been intentionally reduced to a small core:
 - `BUILD_AND_DEPLOY.md` - Visual Studio build, run, publish, and installer-sandbox workflow
 - `docs/BETA56_AUDIT_STATE.json` - single canonical machine-maintained audit, test, and release-gate state
 - `build/vm/VM_OPERATIONS_RUNBOOK.md` - repeatable SSH-first remote Windows UX validation workflow using PortfolioSaver.VmAgent and WinAppDriver in the interactive session
+- `YFinance.net/PORTING_PLAN.md` - upstream sync rules, responsibility map, and standalone YFinance.NET proof plan
 - `build/vm/test-secrets.json` - ignored local-only remote-test secret overlay for API keys, including DeepSeek, when you need live remote validation
 
 ## Remote Harness Policy
@@ -147,7 +149,7 @@ The current known-good clean proof path is:
 - session-1 `PortfolioSaver.VmAgent`
 - `Guest-UxDeepExercise.ps1` launched by the agent inside the interactive desktop
 - config window discovery by process-bound UI Automation with keyboard-first tab traversal and Validate
-- config validation now trusts recent local quote/profile evidence before falling back to Yahoo Finance, so harness Validate runs avoid re-triggering full-symbol 429 storms
+- config validation now trusts recent local quote/profile evidence before falling back to YFinance.NET network lookups, so harness Validate runs avoid re-triggering full-symbol 429 storms
 - desktop fullscreen entry triggered through the `ViewFullScreenMenuItem` automation hook
 - fullscreen validation by comparing live window bounds against the virtual screen
 - result bundle pullback from `build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-154444`
@@ -164,6 +166,7 @@ This project is licensed under the **MIT LICENSE**.
 
 - Bundled full text: [LICENSE](LICENSE)
 - Official text: [https://opensource.org/license/mit/](https://opensource.org/license/mit/)
+
 
 
 

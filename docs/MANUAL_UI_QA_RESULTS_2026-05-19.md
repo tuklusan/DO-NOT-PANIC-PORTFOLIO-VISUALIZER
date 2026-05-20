@@ -17,12 +17,10 @@
 
 Executed locally:
 
-- `ApiKeyValidationServiceTests`
 - `YahooSymbolValidationServiceTests`
 - `MainWindowViewModelValidationTests`
 - `NewsFeedValidationServiceTests`
 - `SettingsValidatorTests`
-- `DataSourcePolicyValidationTests`
 - `DesktopShellMigrationTests`
 - `VmHarnessScriptTests`
 - `ConfigTextConsistencyTests`
@@ -30,24 +28,20 @@ Executed locally:
 
 Result:
 
-- `255 / 255` passing
+- `160 / 160` passing after the retired multi-provider tests were removed from the active beta lane
 
 ## Results by area
 
-### Provider key fields
+### Runtime and key surfaces
 
-- `Finnhub API key`: pass
-- `Twelve Data API key`: pass
-- `Tiingo API key`: pass
-- `Financial Modeling Prep API key`: pass
-- `EODHD API key`: pass
+- `Market data source` summary: pass
 - `DeepSeek API key`: pass
 
 Observed behavior:
 
-- blank provider keys fail validation with explicit `API key is required` messaging
-- installer/sample placeholder keys fail validation with explicit replacement messaging
-- during validation, provider progress is logged in the transient validation-progress window
+- market data is now explicitly presented as YFinance.NET-only
+- no retired provider-key validation remains in the General tab
+- during validation, symbol progress is logged in the transient validation-progress window
 
 ### Refresh sliders
 
@@ -86,7 +80,7 @@ Observed behavior:
 
 - validation badges remain pending until `Validate`
 - no background symbol-validation churn occurs during idle edits
-- symbol existence is now trusted from recent local quote/profile evidence when available, avoiding unnecessary Yahoo validation bursts
+- symbol existence is now trusted from recent local quote/profile evidence when available, avoiding unnecessary YFinance.NET validation bursts
 
 ### News scroller controls
 
@@ -100,23 +94,21 @@ Observed behavior:
 - summarized mode does not require a valid RSS URL
 - RSS mode resets invalid/unreachable URLs to the default feed
 
-### Data source policy grid
+### Market data runtime card
 
-- hourly budget fields: pass
-- daily budget fields: pass
-- single/multi query toggles: pass
+- fixed YFinance.NET runtime messaging: pass
 
 Observed behavior:
 
-- unsupported combinations are rejected by validation
-- out-of-range values are normalized or rejected by validation rules
+- advanced tab now documents the fixed YFinance.NET runtime profile instead of exposing provider budgets
+- 1-second pacing and 10-minute freshness ceiling are explained in the UI
 
 ### Global resilience checks
 
 - validate-only workflow: pass
 - offline lock/retry path: pass
-- blank API key behavior: pass
-- placeholder API key behavior: pass
+- blank DeepSeek key behavior: pass
+- retired market-data provider key gating removed: pass
 - invalid RSS URL behavior: pass
 - invalid ticker auto-disable: pass
 - validated save/close sequence: pass
@@ -148,3 +140,6 @@ None during this pass.
 ## Closing note
 
 This rerun upgrades the earlier QA workbook closure to the current stabilized config-validation flow and confirms that the project is ready to begin broader UI QA execution from the desktop-first canonical harness.
+
+
+

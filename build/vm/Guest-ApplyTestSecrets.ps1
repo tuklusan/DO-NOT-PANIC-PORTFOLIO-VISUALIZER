@@ -30,11 +30,6 @@ $report = [ordered]@{
     SecretsPath = $SecretsPath
     Applied = $false
     Keys = [ordered]@{
-        PORTFOLIOSAVER_FINNHUB_API_KEY = $false
-        PORTFOLIOSAVER_TWELVEDATA_API_KEY = $false
-        PORTFOLIOSAVER_TIINGO_API_KEY = $false
-        PORTFOLIOSAVER_FMP_API_KEY = $false
-        PORTFOLIOSAVER_EODHD_API_KEY = $false
         DEEPSEEK_API_KEY = $false
         PORTFOLIOSAVER_DEEPSEEK_API_KEY = $false
     }
@@ -43,12 +38,6 @@ $report = [ordered]@{
 if (Test-Path $SecretsPath) {
     $secrets = Get-Content -LiteralPath $SecretsPath -Raw | ConvertFrom-Json
 
-    $report.Keys.PORTFOLIOSAVER_FINNHUB_API_KEY = Set-UserEnvironmentValue 'PORTFOLIOSAVER_FINNHUB_API_KEY' ([string]$secrets.FinnhubApiKey)
-    $report.Keys.PORTFOLIOSAVER_TWELVEDATA_API_KEY = Set-UserEnvironmentValue 'PORTFOLIOSAVER_TWELVEDATA_API_KEY' ([string]$secrets.TwelveDataApiKey)
-    $report.Keys.PORTFOLIOSAVER_TIINGO_API_KEY = Set-UserEnvironmentValue 'PORTFOLIOSAVER_TIINGO_API_KEY' ([string]$secrets.TiingoApiKey)
-    $report.Keys.PORTFOLIOSAVER_FMP_API_KEY = Set-UserEnvironmentValue 'PORTFOLIOSAVER_FMP_API_KEY' ([string]$secrets.FinancialModelingPrepApiKey)
-    $report.Keys.PORTFOLIOSAVER_EODHD_API_KEY = Set-UserEnvironmentValue 'PORTFOLIOSAVER_EODHD_API_KEY' ([string]$secrets.EodhdApiKey)
-
     $deepSeekValue = [string]$secrets.DeepSeekApiKey
     $report.Keys.DEEPSEEK_API_KEY = Set-UserEnvironmentValue 'DEEPSEEK_API_KEY' $deepSeekValue
     $report.Keys.PORTFOLIOSAVER_DEEPSEEK_API_KEY = Set-UserEnvironmentValue 'PORTFOLIOSAVER_DEEPSEEK_API_KEY' $deepSeekValue
@@ -56,11 +45,6 @@ if (Test-Path $SecretsPath) {
 }
 else {
     foreach ($name in @(
-        'PORTFOLIOSAVER_FINNHUB_API_KEY',
-        'PORTFOLIOSAVER_TWELVEDATA_API_KEY',
-        'PORTFOLIOSAVER_TIINGO_API_KEY',
-        'PORTFOLIOSAVER_FMP_API_KEY',
-        'PORTFOLIOSAVER_EODHD_API_KEY',
         'DEEPSEEK_API_KEY',
         'PORTFOLIOSAVER_DEEPSEEK_API_KEY'))
     {

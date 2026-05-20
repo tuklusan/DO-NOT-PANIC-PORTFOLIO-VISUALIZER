@@ -63,26 +63,6 @@ function Import-TestSecrets {
     }
 
     $secrets = Get-Content -LiteralPath $secretsPath -Raw | ConvertFrom-Json
-    if (-not [string]::IsNullOrWhiteSpace($secrets.FinnhubApiKey)) {
-        [Environment]::SetEnvironmentVariable("PORTFOLIOSAVER_FINNHUB_API_KEY", [string]$secrets.FinnhubApiKey, "Process")
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($secrets.TwelveDataApiKey)) {
-        [Environment]::SetEnvironmentVariable("PORTFOLIOSAVER_TWELVEDATA_API_KEY", [string]$secrets.TwelveDataApiKey, "Process")
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($secrets.TiingoApiKey)) {
-        [Environment]::SetEnvironmentVariable("PORTFOLIOSAVER_TIINGO_API_KEY", [string]$secrets.TiingoApiKey, "Process")
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($secrets.FinancialModelingPrepApiKey)) {
-        [Environment]::SetEnvironmentVariable("PORTFOLIOSAVER_FMP_API_KEY", [string]$secrets.FinancialModelingPrepApiKey, "Process")
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($secrets.EodhdApiKey)) {
-        [Environment]::SetEnvironmentVariable("PORTFOLIOSAVER_EODHD_API_KEY", [string]$secrets.EodhdApiKey, "Process")
-    }
-
     if (-not [string]::IsNullOrWhiteSpace($secrets.DeepSeekApiKey)) {
         [Environment]::SetEnvironmentVariable("DEEPSEEK_API_KEY", [string]$secrets.DeepSeekApiKey, "Process")
         [Environment]::SetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY", [string]$secrets.DeepSeekApiKey, "Process")
@@ -94,8 +74,7 @@ function Import-TestSecrets {
 function Write-TestSettings {
     param(
         [bool]$UseCustomBackgroundFolder,
-        [string]$CustomBackgroundFolder = "",
-        [object[]]$DataSourceOverrides = $null
+        [string]$CustomBackgroundFolder = ""
     )
 
     New-Item -ItemType Directory -Force -Path $settingsRoot | Out-Null
@@ -111,20 +90,7 @@ function Write-TestSettings {
         BackgroundChangeSeconds = 10
         ShuffleBackgrounds = $true
         DimOpacity = 0.55
-        FinnhubApiKey = ""
-        TwelveDataApiKey = ""
-        TiingoApiKey = ""
-        FinancialModelingPrepApiKey = ""
-        EodhdApiKey = ""
         DeepSeekApiKey = ""
-        MinFinnhubRequestSpacingSeconds = 2
-        MinTwelveDataRequestSpacingSeconds = 15
-        DataSources = @(
-            @{ Kind = 0; MaxQueriesPerHour = 3600; MaxQueriesPerDay = 86400; EnableSingleTickerQueries = $true; EnableBatchTickerQueries = $false },
-            @{ Kind = 1; MaxQueriesPerHour = 480; MaxQueriesPerDay = 800; EnableSingleTickerQueries = $true; EnableBatchTickerQueries = $true },
-            @{ Kind = 2; MaxQueriesPerHour = 50; MaxQueriesPerDay = 1000; EnableSingleTickerQueries = $true; EnableBatchTickerQueries = $false },
-            @{ Kind = 3; MaxQueriesPerHour = 2000; MaxQueriesPerDay = 48000; EnableSingleTickerQueries = $true; EnableBatchTickerQueries = $false }
-        )
         EnableFloatingGraphs = $true
         HistoricalLookbackDays = 14
         HistoricalRefreshHours = 1
@@ -171,7 +137,7 @@ function Write-TestSettings {
                 Enabled = $true
                 Tickers = @(
                     @{ Symbol = "^GSPC"; DisplayName = "S&P 500 Index"; Enabled = $true },
-                    @{ Symbol = "VIX"; DisplayName = "Cboe Volatility Index"; Enabled = $true },
+                    @{ Symbol = "VIX"; DisplayName = "Volatility Index"; Enabled = $true },
                     @{ Symbol = "TNX"; DisplayName = "CBOE 10-Year Treasury Yield Index"; Enabled = $true },
                     @{ Symbol = "DXY"; DisplayName = "U.S. Dollar Index"; Enabled = $true },
                     @{ Symbol = "VNQ"; DisplayName = "Vanguard Real Estate ETF"; Enabled = $true },
@@ -198,10 +164,6 @@ function Write-TestSettings {
             @{ Symbol = "BTC-USD"; DisplayName = "Bitcoin"; Enabled = $true },
             @{ Symbol = "ES=F"; DisplayName = "E-mini S&P 500 Futures"; Enabled = $true }
         )
-    }
-
-    if ($null -ne $DataSourceOverrides -and $DataSourceOverrides.Count -gt 0) {
-        $settings.DataSources = @($DataSourceOverrides)
     }
 
     $settings | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $settingsPath -Encoding UTF8
@@ -948,7 +910,6 @@ $summary = [ordered]@{
     OnlineAdvancedScreenshot = $null
     OnlinePreviewScreenshot = $null
     OnlineManagedScreenshots = @()
-    OnlineTiingoScreenshots = @()
     OnlineCustomScreenshot = $null
     OfflineScreenshot = $null
     ManagedCacheBeforeUninstall = $null
@@ -1006,17 +967,6 @@ try {
 
         $summary.ManagedCacheBeforeUninstall = Get-ManagedCacheSnapshot
         Write-Log "Managed cache files: $((@($summary.ManagedCacheBeforeUninstall.Files)).Count)"
-
-        $tiingoOnlyPolicies = @(
-            @{ Kind = 0; MaxQueriesPerHour = 3600; MaxQueriesPerDay = 86400; EnableSingleTickerQueries = $false; EnableBatchTickerQueries = $false },
-            @{ Kind = 1; MaxQueriesPerHour = 480; MaxQueriesPerDay = 800; EnableSingleTickerQueries = $false; EnableBatchTickerQueries = $false },
-            @{ Kind = 2; MaxQueriesPerHour = 50; MaxQueriesPerDay = 1000; EnableSingleTickerQueries = $true; EnableBatchTickerQueries = $false },
-            @{ Kind = 3; MaxQueriesPerHour = 2000; MaxQueriesPerDay = 48000; EnableSingleTickerQueries = $false; EnableBatchTickerQueries = $false }
-        )
-        Reset-ProviderBudgetLedger
-        Write-TestSettings -UseCustomBackgroundFolder $false -DataSourceOverrides $tiingoOnlyPolicies
-        $tiingoCapture = Start-And-CaptureSequence -FilePath $screensaverPath -ArgumentList @("/s") -ScreenshotBaseName "tiingo-online" -CaptureSeconds @(16, 40)
-        $summary.OnlineTiingoScreenshots = @($tiingoCapture.ScreenshotPaths)
 
         $customFolder = New-CustomBackgrounds
         Reset-ProviderBudgetLedger

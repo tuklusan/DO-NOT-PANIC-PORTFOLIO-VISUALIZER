@@ -32,10 +32,6 @@ public sealed class StartupCoordinator
     private const int YahooDedicatedWarmupMaxBatches = 2;
     private const int YahooDedicatedRuntimeBatchSymbols = 4;
     private const int YahooGeneralRuntimeBatchSymbols = 16;
-    private const int TwelveDataPerRequestMinuteOverhead = 3;
-    private const int TwelveDataMinuteSafetyReserve = 1;
-    private const int TwelveDataAliasRuntimeBatchSymbols = 2;
-    private static readonly TimeSpan TwelveDataReuseInterval = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan YahooWarmupInterBatchDelay = TimeSpan.FromMilliseconds(500);
     private const int MaxBatchSymbolsPerPass = 24;
     private const int MaxRecoveryBatchSymbolsPerPass = 32;
@@ -356,11 +352,7 @@ public sealed class StartupCoordinator
         IHistoricalDataProvider historicalProvider = new HybridHistoricalDataProvider(
             cacheService,
             httpClient,
-            settings.FinnhubApiKey,
-            settings.TwelveDataApiKey,
             TimeSpan.FromHours(Math.Max(1, settings.HistoricalRefreshHours)),
-            TimeSpan.FromSeconds(Math.Max(1, settings.MinFinnhubRequestSpacingSeconds)),
-            TimeSpan.FromSeconds(Math.Max(1, settings.MinTwelveDataRequestSpacingSeconds)),
             graphRotationSeed,
             symbolProfiles);
 
@@ -539,8 +531,6 @@ public sealed class StartupCoordinator
             tiingoProvider,
             yahooFinanceProvider,
             refreshSeed);
-        HashSet<DataSourceKind> configuredBackupKinds = [];
-
         List<string> remainingSymbols = RotateSymbols(scheduledDueSymbols, refreshSeed)
             .OrderBy(symbol => cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? cached) && HasUsableQuote(cached) ? 1 : 0)
             .ToList();
@@ -557,32 +547,6 @@ public sealed class StartupCoordinator
             List<string> requestSymbols = TakeRequestSymbols(remainingSymbols, providerPlan, symbolProfiles, refreshSeed, nowUtc);
             if (requestSymbols.Count == 0)
                 continue;
-
-            if (providerPlan.Kind == DataSourceKind.YahooFinance &&
-                liveProvidersUsed.Count > 0)
-            {
-                List<string> deferredSymbols = requestSymbols
-                    .Where(symbol => ShouldDeferGeneralYahooSymbol(symbol, configuredBackupKinds, symbolProfiles))
-                    .ToList();
-                if (deferredSymbols.Count == requestSymbols.Count)
-                {
-                    TraceRuntimeState(
-                        "YahooDeferredToBackupProviders",
-                        new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(requestSymbols)),
-                        new KeyValuePair<string, object?>("backup_kinds", configuredBackupKinds),
-                        new KeyValuePair<string, object?>("live_providers_used", liveProvidersUsed.OrderBy(label => label, StringComparer.OrdinalIgnoreCase)));
-                    continue;
-                }
-
-                if (deferredSymbols.Count > 0)
-                {
-                    requestSymbols = requestSymbols
-                        .Except(deferredSymbols, StringComparer.OrdinalIgnoreCase)
-                        .ToList();
-                    if (requestSymbols.Count == 0)
-                        continue;
-                }
-            }
 
             int queryCost = GetQueryCost(providerPlan, requestSymbols.Count);
             TraceRuntime($"Trying provider {providerPlan.Label} for {requestSymbols.Count} symbols [{string.Join(", ", requestSymbols)}] cost={queryCost}");
@@ -808,28 +772,7 @@ public sealed class StartupCoordinator
         AppSettings settings,
         IReadOnlyDictionary<string, SymbolProfile> symbolProfiles)
     {
-        foreach (DataSourcePolicySettings policy in settings.DataSources)
-        {
-            if (!policy.EnableSingleTickerQueries && !policy.EnableBatchTickerQueries)
-                continue;
-
-            bool configured = policy.Kind switch
-            {
-                DataSourceKind.Finnhub => !string.IsNullOrWhiteSpace(settings.FinnhubApiKey),
-                DataSourceKind.TwelveData => !string.IsNullOrWhiteSpace(settings.TwelveDataApiKey),
-                DataSourceKind.Tiingo => false,
-                DataSourceKind.YahooFinance => true,
-                _ => false
-            };
-
-            if (!configured)
-                continue;
-
-            if (DataSourceSymbolEligibility.IsHistoryEligible(policy.Kind, symbol, symbolProfiles))
-                return true;
-        }
-
-        return false;
+        return DataSourceSymbolEligibility.IsHistoryEligible(DataSourceKind.YahooFinance, symbol, symbolProfiles);
     }
 
     private static List<string> BuildInterleavedPortfolioSymbols(AppSettings settings)
@@ -1073,9 +1016,7 @@ public sealed class StartupCoordinator
         IQuoteProvider yahooFinanceProvider,
         int rotationSeed)
     {
-        DataSourcePolicySettings yahooPolicy = settings.DataSources
-            .FirstOrDefault(policy => policy.Kind == DataSourceKind.YahooFinance && (policy.EnableSingleTickerQueries || policy.EnableBatchTickerQueries))
-            ?? DataSourceCatalog.CreateDefaultPolicy(DataSourceKind.YahooFinance);
+        DataSourcePolicySettings yahooPolicy = DataSourceCatalog.CreateDefaultPolicy(DataSourceKind.YahooFinance);
         yahooPolicy.EnableSingleTickerQueries = true;
         yahooPolicy.EnableBatchTickerQueries = true;
         DataSourceCapabilities yahooCapabilities = DataSourceCatalog.GetCapabilities(DataSourceKind.YahooFinance);
@@ -1322,65 +1263,43 @@ public sealed class StartupCoordinator
         if (eligibleSymbols.Count == 0)
             return [];
 
-        if (providerPlan.Kind != DataSourceKind.YahooFinance)
-            eligibleSymbols = eligibleSymbols.Where(symbol => !IsDedicatedYahooSymbol(symbol)).ToList();
-
-        if (eligibleSymbols.Count == 0)
-            return [];
-
-        if (providerPlan.Kind == DataSourceKind.YahooFinance)
+        List<string> dedicatedSymbols = eligibleSymbols
+            .Where(IsDedicatedYahooSymbol)
+            .ToList();
+        if (dedicatedSymbols.Count > 0)
         {
-            List<string> dedicatedSymbols = eligibleSymbols
-                .Where(IsDedicatedYahooSymbol)
+            List<string> availableDedicatedSymbols = RotateSymbols(OrderDedicatedYahooSymbols(dedicatedSymbols), refreshSeed)
+                .Where(symbol => !IsDedicatedYahooSymbolCoolingDown(symbol, nowUtc))
                 .ToList();
-            if (dedicatedSymbols.Count > 0)
+            if (availableDedicatedSymbols.Count > 0)
             {
-                List<string> availableDedicatedSymbols = RotateSymbols(OrderDedicatedYahooSymbols(dedicatedSymbols), refreshSeed)
-                    .Where(symbol => !IsDedicatedYahooSymbolCoolingDown(symbol, nowUtc))
+                List<string> selected = availableDedicatedSymbols
+                    .Take(Math.Min(YahooDedicatedRuntimeBatchSymbols, dedicatedSymbols.Count))
                     .ToList();
-                if (availableDedicatedSymbols.Count > 0)
+                string? preferredSymbol = availableDedicatedSymbols.FirstOrDefault(ShouldPreferYahooWorldIndex);
+                int maxCount = Math.Min(
+                    YahooDedicatedRuntimeBatchSymbols + (!string.IsNullOrWhiteSpace(preferredSymbol) ? 1 : 0),
+                    dedicatedSymbols.Count);
+
+                if (!string.IsNullOrWhiteSpace(preferredSymbol) &&
+                    !selected.Contains(preferredSymbol, StringComparer.OrdinalIgnoreCase) &&
+                    selected.Count < maxCount)
                 {
-                    List<string> selected = availableDedicatedSymbols
-                        .Take(Math.Min(YahooDedicatedRuntimeBatchSymbols, dedicatedSymbols.Count))
-                        .ToList();
-                    string? preferredSymbol = availableDedicatedSymbols.FirstOrDefault(ShouldPreferYahooWorldIndex);
-                    int maxCount = Math.Min(
-                        YahooDedicatedRuntimeBatchSymbols + (!string.IsNullOrWhiteSpace(preferredSymbol) ? 1 : 0),
-                        dedicatedSymbols.Count);
-
-                    if (!string.IsNullOrWhiteSpace(preferredSymbol) &&
-                        !selected.Contains(preferredSymbol, StringComparer.OrdinalIgnoreCase) &&
-                        selected.Count < maxCount)
-                    {
-                        selected.Add(preferredSymbol);
-                    }
-
-                    return selected;
+                    selected.Add(preferredSymbol);
                 }
-            }
 
-            return eligibleSymbols
-                .Where(symbol => !IsDedicatedYahooSymbol(symbol))
-                .Take(Math.Min(YahooGeneralRuntimeBatchSymbols, eligibleSymbols.Count))
-                .ToList();
+                return selected;
+            }
         }
 
-        int count = providerPlan.Policy.EnableBatchTickerQueries && DataSourceCatalog.GetCapabilities(providerPlan.Kind).SupportsBatchTickerQueries
-            ? Math.Min(MaxBatchSymbolsPerPass, eligibleSymbols.Count)
-            : Math.Min(MaxSequentialSymbolsPerPass, eligibleSymbols.Count);
-        count = Math.Min(count, GetMaximumRequestSymbolCount(providerPlan.Kind));
-
-        return eligibleSymbols.Take(count).ToList();
+        return eligibleSymbols
+            .Where(symbol => !IsDedicatedYahooSymbol(symbol))
+            .Take(Math.Min(YahooGeneralRuntimeBatchSymbols, eligibleSymbols.Count))
+            .ToList();
     }
 
     private static TimeSpan GetMinimumProviderReuseInterval(DataSourceKind kind, IReadOnlyList<string> requestSymbols)
     {
-        if (kind == DataSourceKind.TwelveData)
-            return TwelveDataReuseInterval;
-
-        if (kind != DataSourceKind.YahooFinance)
-            return TimeSpan.FromSeconds(MinimumQuoteProviderReuseSeconds);
-
         return requestSymbols.Any(IsDedicatedYahooSymbol)
             ? TimeSpan.FromSeconds(YahooDedicatedProviderReuseSeconds)
             : TimeSpan.FromSeconds(YahooGeneralReuseSeconds);
@@ -1391,24 +1310,9 @@ public sealed class StartupCoordinator
         if (requestedSymbolCount <= 0)
             return 0;
 
-        if (providerPlan.Kind == DataSourceKind.TwelveData)
-            return TwelveDataPerRequestMinuteOverhead + requestedSymbolCount;
-
         return providerPlan.Policy.EnableBatchTickerQueries && DataSourceCatalog.GetCapabilities(providerPlan.Kind).SupportsBatchTickerQueries
             ? 1
             : requestedSymbolCount;
-    }
-
-    private static int GetMaximumRequestSymbolCount(DataSourceKind kind)
-    {
-        if (kind != DataSourceKind.TwelveData)
-            return int.MaxValue;
-
-        int minuteBudget = DataSourceCatalog.GetCapabilities(kind).HardMaxQueriesPerMinute - TwelveDataMinuteSafetyReserve;
-        if (minuteBudget <= TwelveDataPerRequestMinuteOverhead)
-            return 1;
-
-        return Math.Max(1, minuteBudget - TwelveDataPerRequestMinuteOverhead);
     }
 
     private static bool IsRateLimited(Exception ex)
@@ -1432,8 +1336,6 @@ public sealed class StartupCoordinator
 
     private static TimeSpan GetRateLimitCooldown(DataSourceKind kind, IReadOnlyList<string>? requestSymbols = null) => kind switch
     {
-        DataSourceKind.Finnhub => TimeSpan.FromMinutes(1),
-        DataSourceKind.TwelveData => TimeSpan.FromMinutes(2),
         DataSourceKind.YahooFinance when requestSymbols is not null && requestSymbols.Any(IsDedicatedYahooSymbol) => TimeSpan.FromMinutes(YahooDedicatedRateLimitCooldownMinutes),
         DataSourceKind.YahooFinance => TimeSpan.FromMinutes(YahooGeneralRateLimitCooldownMinutes),
         _ => TimeSpan.FromMinutes(15)
@@ -1634,26 +1536,6 @@ public sealed class StartupCoordinator
 
     private static bool IsTreasuryMacroSymbol(string symbol)
         => TreasuryMacroSymbols.Contains(SymbolProfileHeuristics.Normalize(symbol));
-
-    private static bool ShouldDeferGeneralYahooSymbol(
-        string symbol,
-        IReadOnlyCollection<DataSourceKind> configuredBackupKinds,
-        IReadOnlyDictionary<string, SymbolProfile> symbolProfiles)
-    {
-        if (configuredBackupKinds.Count == 0)
-            return false;
-
-        string normalized = SymbolProfileHeuristics.Normalize(symbol);
-        if (string.IsNullOrWhiteSpace(normalized))
-            return false;
-
-        if (IsDedicatedYahooSymbol(normalized) || IsOfficialMacroSymbol(normalized) || IsTreasuryMacroSymbol(normalized))
-            return false;
-
-        return configuredBackupKinds.Any(kind =>
-            DataSourceSymbolEligibility.IsEligible(kind, normalized, symbolProfiles) ||
-            DataSourceSymbolEligibility.IsEligible(kind, normalized));
-    }
 
     private static bool RequiresDedicatedYahooWarmup(string symbol)
     {

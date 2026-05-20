@@ -718,7 +718,7 @@ public sealed class ScreensaverRenderBehaviorTests
 
         string compact = Assert.IsType<string>(method.Invoke(null,
         [
-            "Provider: Cboe + Finnhub + Stooq + Tiingo + Twelve Data + Cache (Partial), AAPL Updated 6s ago"
+            "Provider: YFinance.NET + Cache (Partial), AAPL Updated 6s ago"
         ]));
 
         Assert.Equal("Provider: Live+Cache (Partial)", compact);
@@ -730,7 +730,7 @@ public sealed class ScreensaverRenderBehaviorTests
         RunOnSta(() =>
         {
             ScreensaverSceneControl control = new();
-            StatusBarViewModel status = new() { ProviderText = "Provider: Cboe + Finnhub + Cache, ^SPX Updated 0s ago" };
+            StatusBarViewModel status = new() { ProviderText = "Provider: YFinance.NET + Cache, ^SPX Updated 0s ago" };
 
             FieldInfo statusField = typeof(ScreensaverSceneControl).GetField(
                 "_statusViewModel",
