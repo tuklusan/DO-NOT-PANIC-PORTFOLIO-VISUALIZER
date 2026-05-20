@@ -429,15 +429,18 @@
       "priority": 2,
       "area": "top_left_typography",
       "title": "Use the same clock font for the top-left text block",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
-        "User requested that the text at top left use the same nice font already used by the clock at top right."
+        "User requested that the text at top left use the same nice font already used by the clock at top right.",
+        "StatusBarControl now applies StableClockFont to both the MarketStatusText and UpdatedText blocks at top left.",
+        "Validated by a clean Release build and focused render-behavior tests."
       ],
       "notes": [
         "Audit the current font family/styling for the top-right clock and the top-left text block.",
         "Reuse the same font family for the top-left text in a way that preserves readability and layout fit.",
-        "Validate the result in the live desktop UI and VM proof path so the two text zones feel visually consistent."
+        "Validate the result in the live desktop UI and VM proof path so the two text zones feel visually consistent.",
+        "Completed in BETA-5.6 by reusing the existing StableClockFont resource already used by the top-right clock."
       ]
     },
     {

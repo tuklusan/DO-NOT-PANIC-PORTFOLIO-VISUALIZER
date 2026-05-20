@@ -25,6 +25,7 @@
                         VerticalAlignment="Center">
                 <TextBlock Text="{Binding MarketStatusText}"
                            Foreground="White"
+                           FontFamily="{StaticResource StableClockFont}"
                            HorizontalAlignment="Left"
                            TextWrapping="Wrap"
                            TextTrimming="CharacterEllipsis"
@@ -32,6 +33,7 @@
                            LineHeight="15" />
                 <TextBlock Text="{Binding UpdatedText}"
                            Foreground="#D2DFEB"
+                           FontFamily="{StaticResource StableClockFont}"
                            Margin="0,2,0,0"
                            TextWrapping="NoWrap"
                            TextTrimming="CharacterEllipsis"

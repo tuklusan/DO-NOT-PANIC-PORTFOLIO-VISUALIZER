@@ -1127,6 +1127,8 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("MaxWidth=\"208\"", statusBarXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("MaxWidth=\"700\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("LineHeight=\"15\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Matches(new Regex("Text=\\\"\\{Binding MarketStatusText\\}\\\"[\\s\\S]*FontFamily=\\\"\\{StaticResource StableClockFont\\}\\\"", RegexOptions.CultureInvariant), statusBarXaml);
+        Assert.Matches(new Regex("Text=\\\"\\{Binding UpdatedText\\}\\\"[\\s\\S]*FontFamily=\\\"\\{StaticResource StableClockFont\\}\\\"", RegexOptions.CultureInvariant), statusBarXaml);
         Assert.Contains("treasuryYieldMeterMax = 6m", sceneCodeBehind, StringComparison.Ordinal);
     }
 
