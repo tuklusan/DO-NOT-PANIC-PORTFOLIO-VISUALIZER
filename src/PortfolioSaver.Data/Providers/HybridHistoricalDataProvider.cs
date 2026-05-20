@@ -2,7 +2,6 @@ using PortfolioSaver.Core.Models;
 using PortfolioSaver.Data.Interfaces;
 using PortfolioSaver.Data.Services;
 using PortfolioSaver.Shared.Diagnostics;
-using YFinance.NET.Api;
 using YFinanceHistoryResponse = YFinance.NET.Models.HistoryResponse;
 
 namespace PortfolioSaver.Data.Providers;
@@ -11,7 +10,6 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
 {
     private readonly IHistoricalCacheService _cacheService;
     private readonly TimeSpan _cacheFreshness;
-    private readonly YFinanceClient _client;
 
     public HybridHistoricalDataProvider(
         IHistoricalCacheService cacheService,
@@ -22,7 +20,6 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
     {
         _cacheService = cacheService;
         _cacheFreshness = cacheFreshness ?? TimeSpan.FromHours(12);
-        _client = YFinanceRuntimeClientFactory.GetSharedClient();
     }
 
     public async Task<IReadOnlyList<TickerHistorySnapshot>> GetHistoryAsync(
@@ -70,8 +67,13 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
                 try
                 {
                     string requestSymbol = YFinanceSymbolMapper.ToRequestSymbol(symbol);
-                    YFinanceHistoryResponse response = await _client.Ticker(requestSymbol)
-                        .GetHistoryResponseAsync(startUtc, endUtc, ResolveInterval(lookbackDays), cancellationToken)
+                    YFinanceHistoryResponse response = await YFinanceRuntimeClientFactory
+                        .RunSerializedAsync(
+                            "history",
+                            (client, token) => client
+                                .Ticker(requestSymbol)
+                                .GetHistoryResponseAsync(startUtc, endUtc, ResolveInterval(lookbackDays), token),
+                            cancellationToken)
                         .ConfigureAwait(false);
 
                     TickerHistorySnapshot snapshot = MapHistory(symbol, lookbackDays, response);

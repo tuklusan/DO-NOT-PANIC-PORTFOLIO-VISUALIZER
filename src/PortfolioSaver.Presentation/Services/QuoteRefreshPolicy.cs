@@ -6,37 +6,19 @@ namespace PortfolioSaver.Screensaver.Services;
 
 internal static class QuoteRefreshPolicy
 {
-    internal const int RecoveryRefreshSeconds = 60;
-    internal const int MinimumSteadyStateRefreshSeconds = 300;
-    internal const int MaximumPollingSeconds = 60;
+    internal const double RecoveryRefreshSeconds = 0.5d;
+    private static readonly TimeSpan UiSequentialCadence = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan MinimumHardStaleThreshold = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan HardStaleGrace = TimeSpan.FromMinutes(2);
 
     public static TimeSpan GetConfiguredRefreshWindow(AppSettings settings, DateTimeOffset nowUtc)
-    {
-        MarketSession session = new MarketSessionResolver().Resolve(nowUtc);
-        int seconds = session == MarketSession.Regular
-            ? Math.Max(5, settings.RefreshSecondsPortfolio)
-            : Math.Max(5, settings.RefreshSecondsOffHours);
-
-        return TimeSpan.FromSeconds(seconds);
-    }
+        => UiSequentialCadence;
 
     public static TimeSpan GetEffectiveRefreshWindow(AppSettings settings, DateTimeOffset nowUtc)
-    {
-        TimeSpan configured = GetConfiguredRefreshWindow(settings, nowUtc);
-        return configured < TimeSpan.FromSeconds(MinimumSteadyStateRefreshSeconds)
-            ? TimeSpan.FromSeconds(MinimumSteadyStateRefreshSeconds)
-            : configured;
-    }
+        => UiSequentialCadence;
 
     public static TimeSpan GetRefreshPollingInterval(AppSettings settings, DateTimeOffset nowUtc)
-    {
-        TimeSpan effective = GetEffectiveRefreshWindow(settings, nowUtc);
-        return effective <= TimeSpan.FromSeconds(MaximumPollingSeconds)
-            ? effective
-            : TimeSpan.FromSeconds(MaximumPollingSeconds);
-    }
+        => UiSequentialCadence;
 
     public static TimeSpan GetHardStaleThreshold(AppSettings settings, DateTimeOffset nowUtc)
     {

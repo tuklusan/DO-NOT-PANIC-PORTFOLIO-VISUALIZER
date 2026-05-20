@@ -36,9 +36,13 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
             symbol => symbol,
             YFinanceSymbolMapper.ToRequestSymbol,
             StringComparer.OrdinalIgnoreCase);
-        IReadOnlyDictionary<string, YFinanceQuoteSnapshot> resolved = await _client
-            .Tickers(requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase))
-            .GetQuotesAsync(cancellationToken)
+        IReadOnlyDictionary<string, YFinanceQuoteSnapshot> resolved = await YFinanceRuntimeClientFactory
+            .RunSerializedAsync(
+                "quotes",
+                (client, token) => client
+                    .Tickers(requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase))
+                    .GetQuotesAsync(token),
+                cancellationToken)
             .ConfigureAwait(false);
 
         Dictionary<string, QuoteSnapshot> results = new(StringComparer.OrdinalIgnoreCase);

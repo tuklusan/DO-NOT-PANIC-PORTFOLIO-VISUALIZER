@@ -593,7 +593,7 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void GetRefreshSeconds_WhenActiveSymbolsAreStillMissing_UsesRecoveryInterval()
+    public void GetRefreshSeconds_WhenActiveSymbolsAreStillMissing_UsesHalfSecondRecoveryInterval()
     {
         RunOnSta(() =>
         {
@@ -644,12 +644,12 @@ public sealed class ScreensaverRenderBehaviorTests
                 ?? throw new InvalidOperationException("GetRefreshSeconds method not found.");
 
             double refreshSeconds = Assert.IsType<double>(method.Invoke(control, []));
-            Assert.Equal(60d, refreshSeconds);
+            Assert.Equal(0.5d, refreshSeconds);
         });
     }
 
     [Fact]
-    public void GetRefreshSeconds_WhenAllTrackedSymbolsAreFresh_PollsOncePerMinute()
+    public void GetRefreshSeconds_WhenAllTrackedSymbolsAreFresh_PollsTwicePerSecond()
     {
         RunOnSta(() =>
         {
@@ -704,7 +704,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 ?? throw new InvalidOperationException("GetRefreshSeconds method not found.");
 
             double refreshSeconds = Assert.IsType<double>(method.Invoke(control, []));
-            Assert.Equal(60d, refreshSeconds);
+            Assert.Equal(0.5d, refreshSeconds);
         });
     }
 

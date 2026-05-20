@@ -41,13 +41,14 @@ public sealed class QuoteService
         foreach (string[] batch in Chunk(normalized, Math.Max(1, _options.MaxSymbolsPerQuoteRequest)))
         {
             _trace.InfoState("YFinance.Quotes", "QuoteBatchRequest", ("symbols", batch), ("batch_size", batch.Length));
-            JsonDocument json = await _httpClient.GetJsonAsync(
+            JsonDocument json = await _httpClient.GetCachedJsonAsync(
                 "/v7/finance/quote",
                 new Dictionary<string, string?>
                 {
                     ["symbols"] = string.Join(',', batch),
                     ["formatted"] = "false"
                 },
+                _options.DefaultCacheTtl,
                 cancellationToken).ConfigureAwait(false);
 
             JsonElement root = json.RootElement;

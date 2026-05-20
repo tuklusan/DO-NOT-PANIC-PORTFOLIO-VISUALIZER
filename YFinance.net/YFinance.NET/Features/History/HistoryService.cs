@@ -10,11 +10,13 @@ namespace YFinance.NET.Features.History;
 public sealed class HistoryService
 {
     private readonly YahooFinanceHttpClient _httpClient;
+    private readonly TimeSpan _cacheTtl;
     private readonly YFinanceTrace _trace;
 
-    public HistoryService(YahooFinanceHttpClient httpClient, YFinanceTrace? trace = null)
+    public HistoryService(YahooFinanceHttpClient httpClient, TimeSpan cacheTtl, YFinanceTrace? trace = null)
     {
         _httpClient = httpClient;
+        _cacheTtl = cacheTtl;
         _trace = trace ?? new YFinanceTrace();
     }
 
@@ -25,7 +27,7 @@ public sealed class HistoryService
     {
         string normalized = symbol.Trim().ToUpperInvariant();
         _trace.InfoState("YFinance.History", "HistoryRequestStart", ("symbol", normalized), ("start_utc", startUtc), ("end_utc", endUtc), ("interval", interval));
-        JsonDocument json = await _httpClient.GetJsonAsync(
+        JsonDocument json = await _httpClient.GetCachedJsonAsync(
             $"/v8/finance/chart/{Uri.EscapeDataString(normalized)}",
             new Dictionary<string, string?>
             {
@@ -35,6 +37,7 @@ public sealed class HistoryService
                 ["events"] = "div,splits,capitalGains",
                 ["includePrePost"] = "false"
             },
+            _cacheTtl,
             cancellationToken).ConfigureAwait(false);
 
         HistoryResponse response = ParseHistoryResponse(normalized, endUtc, json.RootElement);

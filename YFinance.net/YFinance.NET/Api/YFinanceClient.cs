@@ -25,7 +25,7 @@ public sealed class YFinanceClient : IDisposable
         _quoteService = new QuoteService(_httpClient, resolvedOptions, _trace);
         _quoteSummaryService = new QuoteSummaryService(_httpClient, resolvedOptions, _trace);
         _tickerInfoService = new TickerInfoService(_quoteService, _quoteSummaryService, resolvedOptions, _trace);
-        _historyService = new HistoryService(_httpClient, _trace);
+        _historyService = new HistoryService(_httpClient, resolvedOptions.DefaultCacheTtl, _trace);
     }
 
     public Ticker Ticker(string symbol) => new(symbol, _quoteService, _quoteSummaryService, _tickerInfoService, _historyService);

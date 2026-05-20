@@ -446,17 +446,41 @@
       "priority": 1,
       "area": "yfinance_runtime_contract",
       "title": "Validate cache-first YFinance behavior and sequential UI polling behavior",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
-        "User requested a ticket to validate or implement a strict cache-first YFinance.NET request contract plus a sequential single-client UI polling contract."
+        "User requested a ticket to validate or implement a strict cache-first YFinance.NET request contract plus a sequential single-client UI polling contract.",
+        "Quote and history requests now use cache-first YFinance.NET transport calls with a 10-minute TTL.",
+        "The runtime YFinance client now serializes quote and history lanes so the UI client cannot open parallel YFinance connections.",
+        "Warmup now orders macros first, then global exchanges, then portfolio symbols, and the scene refresh cadence is fixed at 500 ms.",
+        "Validated by a clean Release build and 165/165 passing tests, including new NB-040-specific behavioral coverage."
       ],
       "notes": [
         "Validate or implement this YFinance.NET behavior for single and batch requests: first check cache, return cached values when they are newer than 10 minutes, otherwise fetch from Yahoo and store fresh results back into cache before returning them.",
         "Validate or implement that any client identifiers sent upstream to Yahoo do not include the app name, author name, or organization name.",
         "Validate or implement this UI behavior once caching is in place: warm macros one by one first, then global exchanges one by one, then continue sequential requests from YFinance.NET with about 500 milliseconds (0.5 seconds) spacing after each UI update.",
         "Validate or implement that the UI does not open parallel connections to YFinance.NET from the same client session.",
-        "Document the tested contract clearly in code comments, harness expectations, and project documentation once the behavior is proven."
+        "Document the tested contract clearly in code comments, harness expectations, and project documentation once the behavior is proven.",
+        "Completed in BETA-5.6 by moving quote/history retrieval to cache-first transport calls, locking the scene to a 500 ms sequential cadence, and adding client-side YFinance serialization."
+      ]
+    },
+    {
+      "id": "NB-041",
+      "tracking_number": "NB-041",
+      "priority": 2,
+      "area": "vm_config_ui_exerciser",
+      "title": "Make VM config-tab exercise fast and visibly scrolling during input activity",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested that the VM harness execution of the configuration screen tabs minimize waits and visibly scroll the configuration UI while inputs are being provided or widgets are manipulated."
+      ],
+      "notes": [
+        "Audit the current Guest-UxDeepExercise config-tab traversal and identify all unnecessary gaps between keyboard and mouse actions.",
+        "Keep simulated user-action spacing at or below 500 milliseconds during config exercise unless a modal/system wait genuinely requires more time.",
+        "Make Advanced and other long config tabs visibly scroll while the harness is exercising controls so the UI activity is apparent in screenshots and live observation.",
+        "Prefer human-like keyboard and mouse interaction over brittle deep UIAutomation crawling where possible, while keeping the Validate-and-close flow reliable.",
+        "Close the ticket only after the canonical VM proof shows visible config-tab activity with scrolling captures and no regression in Validate/close behavior."
       ]
     }
   ],

@@ -28,10 +28,9 @@ public sealed class StartupCoordinator
     private const int YahooDedicatedSymbolCooldownMinutes = 12;
     private const int YahooGeneralRateLimitCooldownMinutes = 8;
     private const int YahooDedicatedRateLimitCooldownMinutes = 12;
-    private const int YahooDedicatedWarmupBatchSize = 25;
-    private const int YahooDedicatedWarmupMaxBatches = 4;
-    private const int YahooDedicatedRuntimeBatchSymbols = 25;
-    private const int YahooGeneralRuntimeBatchSymbols = 25;
+    private const int YahooDedicatedWarmupBatchSize = 1;
+    private const int YahooDedicatedRuntimeBatchSymbols = 1;
+    private const int YahooGeneralRuntimeBatchSymbols = 1;
     private static readonly TimeSpan YahooWarmupInterBatchDelay = TimeSpan.FromMilliseconds(500);
     private const int MaxBatchSymbolsPerPass = 24;
     private const int MaxRecoveryBatchSymbolsPerPass = 32;
@@ -129,7 +128,7 @@ public sealed class StartupCoordinator
                 ? (showStartupLoadingStatus
                     ? "Refreshing stale cached quotes before showing the live scene..."
                     : "Fetching live quotes, history, and exchange photos...")
-                : $"Retrying live quotes and exchange photos every {Math.Max(5, (int)GetRefreshSeconds(settings))} seconds."
+                : $"Retrying live quotes and exchange photos every {FormatRefreshCadenceText(settings)}."
         };
     }
 
@@ -223,7 +222,7 @@ public sealed class StartupCoordinator
             BackgroundPaths = backgroundPaths,
             ShowNetworkWaitingOverlay = showNetworkWaitingOverlay,
             NetworkWaitingTitle = "Waiting for network",
-            NetworkWaitingDetail = $"Retrying live quotes and exchange photos every {Math.Max(5, (int)GetRefreshSeconds(settings))} seconds."
+            NetworkWaitingDetail = $"Retrying live quotes and exchange photos every {FormatRefreshCadenceText(settings)}."
         };
     }
 
@@ -246,9 +245,7 @@ public sealed class StartupCoordinator
         IQuoteProvider yahooProvider = _createYahooProvider(httpClient);
         IQuoteCacheService quoteCacheService = new QuoteCacheService(Path.Combine(PathHelper.GetLocalDataDirectory(), "quotes-cache.json"));
         Dictionary<string, QuoteSnapshot> aggregated = new(StringComparer.OrdinalIgnoreCase);
-        IReadOnlyList<List<string>> batches = ChunkSymbols(symbols, YahooDedicatedWarmupBatchSize)
-            .Take(YahooDedicatedWarmupMaxBatches)
-            .ToList();
+        IReadOnlyList<List<string>> batches = ChunkSymbols(symbols, YahooDedicatedWarmupBatchSize).ToList();
 
         TraceRuntimeState(
             "WarmupPlan",
@@ -1041,6 +1038,14 @@ public sealed class StartupCoordinator
     private static double GetRefreshSeconds(AppSettings settings)
         => QuoteRefreshPolicy.GetConfiguredRefreshWindow(settings, DateTimeOffset.UtcNow).TotalSeconds;
 
+    private static string FormatRefreshCadenceText(AppSettings settings)
+    {
+        TimeSpan cadence = QuoteRefreshPolicy.GetRefreshPollingInterval(settings, DateTimeOffset.UtcNow);
+        return cadence < TimeSpan.FromSeconds(1)
+            ? $"{cadence.TotalMilliseconds:0} ms"
+            : $"{cadence.TotalSeconds:0.##} seconds";
+    }
+
     private static Dictionary<string, TimeSpan> BuildRefreshWindows(
         AppSettings settings,
         IReadOnlyList<string> portfolioSymbols,
@@ -1454,10 +1459,14 @@ public sealed class StartupCoordinator
 
     private static IReadOnlyList<string> GetDedicatedYahooWarmupSymbols(AppSettings settings)
     {
-        List<string> dedicatedSymbols = OrderDedicatedYahooSymbols(
-            GetYahooDedicatedMacroSymbols()
-                .Concat(FloatingClockBuilder.GetWorldIndexSymbols()))
+        List<string> macroSymbols = GetYahooDedicatedMacroSymbols()
             .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        List<string> globalExchangeSymbols = FloatingClockBuilder.GetWorldIndexSymbols()
+            .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         List<string> portfolioSymbols = BuildInterleavedPortfolioSymbols(settings)
@@ -1467,8 +1476,11 @@ public sealed class StartupCoordinator
 
         return
         [
-            .. dedicatedSymbols,
-            .. portfolioSymbols.Where(symbol => !dedicatedSymbols.Contains(symbol, StringComparer.OrdinalIgnoreCase))
+            .. macroSymbols,
+            .. globalExchangeSymbols.Where(symbol => !macroSymbols.Contains(symbol, StringComparer.OrdinalIgnoreCase)),
+            .. portfolioSymbols.Where(symbol =>
+                !macroSymbols.Contains(symbol, StringComparer.OrdinalIgnoreCase) &&
+                !globalExchangeSymbols.Contains(symbol, StringComparer.OrdinalIgnoreCase))
         ];
     }
 
