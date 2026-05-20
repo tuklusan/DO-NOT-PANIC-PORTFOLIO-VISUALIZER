@@ -1075,7 +1075,9 @@
         "Immediate execution focus is locked to these six items: multi-symbol quote batching, stronger quote-model normalization, chart/history hardening, consent-page handling, lightweight persistent metadata cache, and VM-proof loops against the standalone exerciser.",
         "Document the legal and operational risk clearly: this is an unofficial Yahoo path, subject to breakage or throttling, so it must remain budgeted, observable, and easy to disable or fall back from.",
         "The first proving target is VM-based: fetch the top 100 S&P 500 symbols every 5 minutes for 5 cycles with 0.5-second pacing between one-by-one work, while avoiding 429s.",
-        "Future integration with the portfolio app should happen only after the standalone YFinance.net library and exerciser are stable and VM-proven."
+        "Future integration with the portfolio app should happen only after the standalone YFinance.net library and exerciser are stable and VM-proven.",
+        "Standalone VM proofs now cover: a fresh top-20 discovery run with history warmup and a clean quote cycle, a cached top-50 run with a wider quote cycle, and a full top-100 acceptance run with 20 warmed history lanes plus 5 quote cycles at 5-minute spacing, all without Yahoo 429s.",
+        "The current request pattern is now judged ready for integration planning for the practical-minimum subset, while NB-029 remains open until the library is actually wired into Portfolio Visualizer and validated there."
       ]
     }
   ]
