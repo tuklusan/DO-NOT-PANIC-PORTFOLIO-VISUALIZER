@@ -65,7 +65,7 @@ Official MIT reference:
 - `PortfolioSaver.Desktop` is the primary app host
 - fullscreen toggle from `View -> Full Screen`
 - `Esc` exits fullscreen back to windowed mode
-- legacy screensaver `/s`, `/c`, and `/p <HWND>` paths remain for compatibility during Beta 5.5
+- legacy screensaver `/s`, `/c`, and `/p <HWND>` paths remain for compatibility during Beta 5.6
 
 ## Project Structure
 
@@ -113,7 +113,7 @@ Use the scripts under `build/` for publish and packaging workflows, especially:
 ## Current Baseline
 
 - Remote Git history has been intentionally rebased to start at the `BETA-5.4` baseline
-- Current development/version lane is `BETA-5.5`
+- Current development/version lane is `BETA-5.6`
 - Product identity:
   - Application: **DO NOT PANIC PORTFOLIO VISUALIZER**
   - Publisher: **SANYALnet Labs**
@@ -124,7 +124,7 @@ Use the scripts under `build/` for publish and packaging workflows, especially:
 The active documentation set has been intentionally reduced to a small core:
 
 - `BUILD_AND_DEPLOY.md` - Visual Studio build, run, publish, and installer-sandbox workflow
-- `docs/BETA55_AUDIT_STATE.json` - single canonical machine-maintained audit, test, and release-gate state
+- `docs/BETA56_AUDIT_STATE.json` - single canonical machine-maintained audit, test, and release-gate state
 - `build/vm/VM_OPERATIONS_RUNBOOK.md` - repeatable SSH-first remote Windows UX validation workflow using PortfolioSaver.VmAgent and WinAppDriver in the interactive session
 - `build/vm/test-secrets.json` - ignored local-only remote-test secret overlay for API keys, including DeepSeek, when you need live remote validation
 

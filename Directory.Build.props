@@ -1,7 +1,7 @@
 ﻿<Project>
   <PropertyGroup>
-    <PortfolioSaverVersion>0.9.0-beta5.5</PortfolioSaverVersion>
-    <PortfolioSaverBaselineLabel>BETA-5.5</PortfolioSaverBaselineLabel>
+    <PortfolioSaverVersion>0.9.0-beta5.6</PortfolioSaverVersion>
+    <PortfolioSaverBaselineLabel>BETA-5.6</PortfolioSaverBaselineLabel>
     <Version Condition="'$(Version)' == ''">$(PortfolioSaverVersion)</Version>
     <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">0.9.0.0</AssemblyVersion>
     <FileVersion Condition="'$(FileVersion)' == ''">0.9.0.0</FileVersion>

@@ -13,7 +13,7 @@ public sealed class VmHarnessScriptTests
             "vm",
             "Run-VmUxValidation.ps1"));
 
-        Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-5.5", script, StringComparison.Ordinal);
+        Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-5.6", script, StringComparison.Ordinal);
         Assert.Contains("Select-Tab -Window $window -Name 'Advanced'", script, StringComparison.Ordinal);
         Assert.Contains("Select-Tab -Window $window -Name 'General'", script, StringComparison.Ordinal);
         Assert.Contains("function Capture-WindowByScreenCrop", script, StringComparison.Ordinal);

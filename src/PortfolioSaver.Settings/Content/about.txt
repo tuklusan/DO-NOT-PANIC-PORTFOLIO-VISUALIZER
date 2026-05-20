@@ -1,6 +1,6 @@
 ﻿DO NOT PANIC PORTFOLIO VISUALIZER
 
-BETA-5.5 baseline.
+BETA-5.6 baseline.
 
 Publisher: SANYALnet Labs
 Author: Supratim Sanyal

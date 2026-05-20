@@ -8,9 +8,9 @@ public sealed class ConfigTextConsistencyTests
     [Fact]
     public void PortfolioVersion_UsesBeta54Labeling()
     {
-        Assert.Equal("BETA-5.5", PortfolioVersion.BaselineLabel);
+        Assert.Equal("BETA-5.6", PortfolioVersion.BaselineLabel);
         Assert.Contains("beta5", PortfolioVersion.SemanticVersion, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("BETA-5.5", PortfolioVersion.DisplayName, StringComparison.Ordinal);
+        Assert.Contains("BETA-5.6", PortfolioVersion.DisplayName, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -18,7 +18,7 @@ public sealed class ConfigTextConsistencyTests
     {
         string aboutText = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Content", "about.txt"));
 
-        Assert.Contains("BETA-5.5 baseline", aboutText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("BETA-5.6 baseline", aboutText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Publisher: SANYALnet Labs", aboutText, StringComparison.Ordinal);
         Assert.Contains("Author: Supratim Sanyal", aboutText, StringComparison.Ordinal);
         Assert.Contains("License: MIT License", aboutText, StringComparison.Ordinal);
@@ -29,7 +29,7 @@ public sealed class ConfigTextConsistencyTests
     {
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
-        Assert.Contains("Title=\"DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-5.5\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Title=\"DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-5.6\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Floating benchmark cards", xaml, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Benchmark refresh", xaml, StringComparison.OrdinalIgnoreCase);
     }
