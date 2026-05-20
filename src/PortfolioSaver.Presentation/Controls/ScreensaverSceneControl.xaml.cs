@@ -27,13 +27,13 @@ public partial class ScreensaverSceneControl : UserControl
 {
     private static readonly bool EnableMarketCritters = false;
     private const string GlobalMarketsWaitingGlyph = "🕒";
+    private const string PinnedNycExchangeKey = "NewYorkNasdaq";
     private const int MaxVisibleGraphCards = 12;
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly ObservableCollection<MarketSpriteViewModel> _marketSprites = [];
     private readonly ObservableCollection<TapeViewModel> _tapes = [];
     private readonly StartupCoordinator _startupCoordinator = new();
     private readonly FloatingSpriteMotionController _motionController = new();
-    private readonly NewYorkMarketStatusService _marketStatusService = new();
     private readonly ExchangeMarketCalendarService _exchangeMarketCalendarService = new();
     private readonly DispatcherTimer _clockTimer = new();
     private readonly DispatcherTimer _refreshTimer = new();
@@ -96,7 +96,6 @@ public partial class ScreensaverSceneControl : UserControl
             AutomationProperties.SetName(VersionWatermark, $"Version {PortfolioVersion.SemanticVersion}");
             AutomationProperties.SetHelpText(VersionWatermark, PortfolioVersion.SemanticVersion);
         }
-        _marketStatusService.UpdateCalendarSnapshot(_exchangeMarketCalendarService.LoadNyseSnapshotFromCacheOrOffline());
         TapeItemsControl.ItemsSource = _tapes;
         NewsFlasherHost.Content = _newsViewModel;
         if (EnableMarketCritters)
@@ -1111,7 +1110,7 @@ public partial class ScreensaverSceneControl : UserControl
             UpdateStatusFreshnessText(_statusViewModel.UpdatedText);
             if (refreshStatusAncillary)
             {
-                _statusViewModel.MarketStatusText = FormatStatusBandText(_marketStatusService.FormatStatusLine(referenceUtc));
+                _statusViewModel.MarketStatusText = BuildPinnedNewYorkStatusBandText(referenceUtc);
                 UpdateStatusMacroMeters(force: true);
                 _lastStatusAncillaryRefreshUtc = referenceUtc;
             }
@@ -1284,7 +1283,6 @@ public partial class ScreensaverSceneControl : UserControl
                 _settings,
                 requests,
                 networkAvailable);
-            _marketStatusService.UpdateCalendarSnapshot(_exchangeCalendars.BuildNyseSnapshot());
             _lastMarketCalendarRefreshUtc = utcNow;
         }
 
@@ -1315,7 +1313,6 @@ public partial class ScreensaverSceneControl : UserControl
 
             DateTimeOffset cityTime = TimeZoneInfo.ConvertTime(referenceUtc, zone);
             city.TimeText = FormatClockTimeWithZone(cityTime, zone);
-            ApplyExchangeCardMarketStatus(city, referenceUtc);
             if (refreshAncillary || string.IsNullOrWhiteSpace(city.ZoneText))
             {
                 city.ZoneText = BuildClockFooterWithMarketStatus(city, zone, cityTime, referenceUtc);
@@ -1332,7 +1329,8 @@ public partial class ScreensaverSceneControl : UserControl
         List<string> missingSymbols = [];
         List<string> loadingSymbols = [];
         int populatedCount = 0;
-        bool loadingInitialValues = StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow());
+        DateTimeOffset referenceUtc = GetReferenceUtcNow();
+        bool loadingInitialValues = StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, referenceUtc);
         foreach (ClockCityViewModel city in _clockViewModel.Cities.Where(city => city.ShowExchangeDetails))
         {
             if (string.IsNullOrWhiteSpace(city.ExchangeSymbol))
@@ -1340,9 +1338,12 @@ public partial class ScreensaverSceneControl : UserControl
 
             if (!_latestQuotes.TryGetValue(city.ExchangeSymbol, out QuoteSnapshot? quote))
             {
+                ApplyExchangeCardMarketStatus(city, null, referenceUtc);
                 missingSymbols.Add(city.ExchangeSymbol);
                 continue;
             }
+
+            ApplyExchangeCardMarketStatus(city, quote, referenceUtc);
 
             if (loadingInitialValues)
             {
@@ -1515,11 +1516,43 @@ public partial class ScreensaverSceneControl : UserControl
             ? "Market (New York): --"
             : statusLine.Replace(" | ", Environment.NewLine, StringComparison.Ordinal);
 
-    private static string FormatExchangeCardStatusText(ExchangeCalendarStatus status)
-        => status.IsOpen ? "OPEN" : "CLOSED";
+    private static string FormatExchangeCardStatusText(QuoteSnapshot? quote, ExchangeCalendarStatus? fallbackStatus)
+    {
+        return quote?.MarketSession switch
+        {
+            MarketSession.Regular => "OPEN",
+            MarketSession.PreMarket => "PRE",
+            MarketSession.AfterHours => "POST",
+            MarketSession.Closed => "CLOSED",
+            _ => fallbackStatus?.IsOpen == true ? "OPEN" : fallbackStatus is not null ? "CLOSED" : "--"
+        };
+    }
 
     private static string GetClockFooter(ClockCityViewModel city, TimeZoneInfo zone, DateTimeOffset pointInTime)
         => GetTimeZoneAbbreviation(zone, pointInTime);
+
+    private static string FormatHoursAndMinutes(TimeSpan timeSpan)
+    {
+        if (timeSpan < TimeSpan.Zero)
+            timeSpan = TimeSpan.Zero;
+
+        int totalHours = (int)Math.Floor(timeSpan.TotalHours);
+        return $"{totalHours:00}:{timeSpan.Minutes:00}";
+    }
+
+    private static string FormatDaysHoursAndMinutes(TimeSpan timeSpan)
+    {
+        if (timeSpan < TimeSpan.Zero)
+            timeSpan = TimeSpan.Zero;
+
+        int totalHours = (int)Math.Floor(timeSpan.TotalHours);
+        int days = totalHours / 24;
+        int hours = totalHours % 24;
+        if (days <= 0)
+            return $"{hours:00}h{timeSpan.Minutes:00}m";
+
+        return $"{days:00}d{hours:00}h{timeSpan.Minutes:00}m";
+    }
 
     private string BuildClockFooterWithMarketStatus(
         ClockCityViewModel city,
@@ -1543,7 +1576,7 @@ public partial class ScreensaverSceneControl : UserControl
         return $"{zoneFooter} | {statusText}";
     }
 
-    private void ApplyExchangeCardMarketStatus(ClockCityViewModel city, DateTimeOffset referenceUtc)
+    private void ApplyExchangeCardMarketStatus(ClockCityViewModel city, QuoteSnapshot? quote, DateTimeOffset referenceUtc)
     {
         if (!city.ShowExchangeDetails)
         {
@@ -1555,15 +1588,65 @@ public partial class ScreensaverSceneControl : UserControl
         ExchangeTradingCalendar? calendar = _exchangeCalendars.TryGetByCityKey(city.Key);
         if (calendar is null)
         {
-            city.MarketStatusText = "--";
-            city.MarketStatusForeground = Brushes.Gainsboro;
+            city.MarketStatusText = FormatExchangeCardStatusText(quote, null);
+            city.MarketStatusForeground = ResolveMarketStatusBrush(quote?.MarketSession, null);
             return;
         }
 
         ExchangeCalendarStatus status = _exchangeMarketCalendarService.ResolveStatus(calendar, referenceUtc);
-        city.MarketStatusText = FormatExchangeCardStatusText(status);
-        city.MarketStatusForeground = status.IsOpen ? Brushes.LimeGreen : Brushes.OrangeRed;
+        city.MarketStatusText = FormatExchangeCardStatusText(quote, status);
+        city.MarketStatusForeground = ResolveMarketStatusBrush(quote?.MarketSession, status);
     }
+
+    private string BuildPinnedNewYorkStatusBandText(DateTimeOffset referenceUtc)
+    {
+        if (_clockViewModel is null)
+            return "Market (New York): --";
+
+        ClockCityViewModel? city = _clockViewModel.Cities.FirstOrDefault(candidate =>
+            candidate.ShowExchangeDetails &&
+            string.Equals(candidate.Key, PinnedNycExchangeKey, StringComparison.OrdinalIgnoreCase));
+        if (city is null)
+            return "Market (New York): --";
+
+        _latestQuotes.TryGetValue(city.ExchangeSymbol, out QuoteSnapshot? quote);
+        ExchangeTradingCalendar? calendar = _exchangeCalendars.TryGetByCityKey(city.Key);
+        if (quote is null || calendar is null)
+            return "Market (New York): --";
+
+        ExchangeCalendarStatus calendarStatus = _exchangeMarketCalendarService.ResolveStatus(calendar, referenceUtc);
+        string sessionText = quote.MarketSession switch
+        {
+            MarketSession.Regular => "Regular",
+            MarketSession.PreMarket => "Pre-Market",
+            MarketSession.AfterHours => "After Hours",
+            MarketSession.Closed => "Closed",
+            _ => calendarStatus.IsOpen ? "Regular" : "Closed"
+        };
+
+        string countdownText = quote.MarketSession switch
+        {
+            MarketSession.Regular => $"Closing in {FormatHoursAndMinutes(calendarStatus.Countdown)}",
+            MarketSession.PreMarket => $"Opening in {FormatDaysHoursAndMinutes(calendarStatus.Countdown)}",
+            MarketSession.AfterHours => $"Opening in {FormatDaysHoursAndMinutes(calendarStatus.Countdown)}",
+            MarketSession.Closed => $"Opening in {FormatDaysHoursAndMinutes(calendarStatus.Countdown)}",
+            _ => calendarStatus.IsOpen
+                ? $"Closing in {FormatHoursAndMinutes(calendarStatus.Countdown)}"
+                : $"Opening in {FormatDaysHoursAndMinutes(calendarStatus.Countdown)}"
+        };
+
+        return FormatStatusBandText($"Market (New York): {sessionText} | {countdownText}");
+    }
+
+    private static Brush ResolveMarketStatusBrush(MarketSession? session, ExchangeCalendarStatus? fallbackStatus)
+        => session switch
+        {
+            MarketSession.Regular => Brushes.LimeGreen,
+            MarketSession.PreMarket => Brushes.Goldenrod,
+            MarketSession.AfterHours => Brushes.SandyBrown,
+            MarketSession.Closed => Brushes.OrangeRed,
+            _ => fallbackStatus?.IsOpen == true ? Brushes.LimeGreen : fallbackStatus is not null ? Brushes.OrangeRed : Brushes.Gainsboro
+        };
 
     private IReadOnlyList<ExchangeCalendarRequest> BuildCalendarRequests()
     {

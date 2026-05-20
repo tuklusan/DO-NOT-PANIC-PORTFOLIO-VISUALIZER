@@ -296,12 +296,14 @@ public sealed class YahooSymbolValidationEntry
 
 internal sealed class ValidationTraceSink : IYFinanceTraceSink
 {
+    private static readonly IYFinanceTraceSink Sink = YFinanceCircularTraceSink.Instance;
+
     public void InfoState(string source, string eventName, IEnumerable<KeyValuePair<string, object?>> fields)
-        => TraceLog.InfoState(source, eventName, fields);
+        => Sink.InfoState(source, eventName, fields);
 
     public void WarnState(string source, string eventName, IEnumerable<KeyValuePair<string, object?>> fields)
-        => TraceLog.WarnState(source, eventName, fields);
+        => Sink.WarnState(source, eventName, fields);
 
     public void ErrorState(string source, string eventName, IEnumerable<KeyValuePair<string, object?>> fields, Exception? exception = null)
-        => TraceLog.ErrorState(source, eventName, fields, exception);
+        => Sink.ErrorState(source, eventName, fields, exception);
 }

@@ -2118,7 +2118,7 @@ finally {
         $localTraceTarget = Join-Path $results 'trace'
         if (Test-Path $traceRoot) {
             New-Item -ItemType Directory -Force -Path $localTraceTarget | Out-Null
-            foreach ($traceName in @("trace.circular.log", "trace.circular.idx")) {
+            foreach ($traceName in @("trace.circular.log", "trace.circular.idx", "yfinance.circular.log", "yfinance.circular.idx")) {
                 $tracePath = Join-Path $traceRoot $traceName
                 if (Test-Path $tracePath) {
                     Copy-Item -LiteralPath $tracePath -Destination (Join-Path $localTraceTarget $traceName) -Force

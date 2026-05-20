@@ -10,6 +10,7 @@
     <ProjectReference Include="..\..\src\PortfolioSaver.Config\PortfolioSaver.Config.csproj" />
     <ProjectReference Include="..\..\src\PortfolioSaver.Data\PortfolioSaver.Data.csproj" />
     <ProjectReference Include="..\..\src\PortfolioSaver.Screensaver\PortfolioSaver.Screensaver.csproj" />
+    <ProjectReference Include="..\..\YFinance.net\YFinance.NET\YFinance.NET.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />

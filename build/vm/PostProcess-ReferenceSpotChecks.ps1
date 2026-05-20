@@ -234,10 +234,14 @@ function Build-ComparisonEntries {
 $traceRoot = Join-Path $ResultRoot 'trace'
 $tracePath = Join-Path $traceRoot 'trace.circular.log'
 $indexPath = Join-Path $traceRoot 'trace.circular.idx'
+$yfinanceTracePath = Join-Path $traceRoot 'yfinance.circular.log'
+$yfinanceIndexPath = Join-Path $traceRoot 'yfinance.circular.idx'
 $spotCheckPath = Join-Path $ResultRoot 'reference-spot-checks.jsonl'
 $comparisonPath = Join-Path $ResultRoot 'reference-spot-check-comparisons.jsonl'
+$combinedTracePath = Join-Path $ResultRoot 'combined-trace-tail.txt'
 
 $traceText = Read-CircularTraceText -LogPath $tracePath -IndexPath $indexPath
+$yfinanceTraceText = Read-CircularTraceText -LogPath $yfinanceTracePath -IndexPath $yfinanceIndexPath
 $samples = Parse-DisplayedTapeSamples -TraceText $traceText
 
 $sampleRecords = @()
@@ -269,3 +273,10 @@ foreach ($sample in @($preferredSample)) {
 
 $sampleRecords | ForEach-Object { $_ | ConvertTo-Json -Compress -Depth 6 } | Set-Content -LiteralPath $spotCheckPath -Encoding UTF8
 $comparisonRecords | ForEach-Object { $_ | ConvertTo-Json -Compress -Depth 6 } | Set-Content -LiteralPath $comparisonPath -Encoding UTF8
+@(
+    "===== UI TRACE =====",
+    $traceText,
+    "",
+    "===== YFINANCE TRACE =====",
+    $yfinanceTraceText
+) | Set-Content -LiteralPath $combinedTracePath -Encoding UTF8

@@ -957,7 +957,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("Text=\"{Binding Title}\"", globalTapeXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"PinnedCardHost\"", globalTapeXaml, StringComparison.Ordinal);
         Assert.Contains("TapeAnimationController", globalTapeCode, StringComparison.Ordinal);
-        Assert.Contains("PinnedExchangeKey = \"NewYork\"", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("PinnedExchangeKey = \"NewYorkNasdaq\"", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("GetScrollingExchangeCities", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("RefreshPinnedCard", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("IndexValueText", globalTapeCode, StringComparison.Ordinal);

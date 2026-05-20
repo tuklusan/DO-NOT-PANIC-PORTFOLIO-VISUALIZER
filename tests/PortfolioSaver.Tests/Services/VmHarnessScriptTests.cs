@@ -191,6 +191,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$root = $RootPath", script, StringComparison.Ordinal);
         Assert.Contains("$summary.ExportMode = 'LocalWorkspace'", script, StringComparison.Ordinal);
         Assert.Contains("$localTraceTarget = Join-Path $results 'trace'", script, StringComparison.Ordinal);
+        Assert.Contains("yfinance.circular.log", script, StringComparison.Ordinal);
+        Assert.Contains("yfinance.circular.idx", script, StringComparison.Ordinal);
         Assert.Contains("function Reset-PortfolioTraceRoot", script, StringComparison.Ordinal);
         Assert.Contains("function Try-ApplyDisplayResolution", script, StringComparison.Ordinal);
         Assert.Contains("function Get-AvailableDisplayModes", script, StringComparison.Ordinal);
@@ -262,6 +264,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Get-ReferenceResults", script, StringComparison.Ordinal);
         Assert.Contains("DisplayedVsReferenceFeed", script, StringComparison.Ordinal);
         Assert.Contains("reference-spot-check-comparisons.jsonl", script, StringComparison.Ordinal);
+        Assert.Contains("combined-trace-tail.txt", script, StringComparison.Ordinal);
+        Assert.Contains("yfinance.circular.log", script, StringComparison.Ordinal);
         Assert.Contains("SampleSelection", script, StringComparison.Ordinal);
         Assert.Contains("latest-fully-live", script, StringComparison.Ordinal);
         Assert.Contains("[decimal]::Zero", script, StringComparison.Ordinal);

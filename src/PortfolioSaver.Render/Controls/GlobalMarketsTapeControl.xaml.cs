@@ -17,7 +17,7 @@ namespace PortfolioSaver.Render.Controls;
 
 public partial class GlobalMarketsTapeControl : UserControl
 {
-    private const string PinnedExchangeKey = "NewYork";
+    private const string PinnedExchangeKey = "NewYorkNasdaq";
     private const double CardWidth = 164d;
     private const double PinnedCardWidth = 150d;
     private const double CardHeight = 54d;

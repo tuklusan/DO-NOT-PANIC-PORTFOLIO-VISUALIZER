@@ -46,7 +46,6 @@ public sealed class StartupCoordinator
     private readonly ScreensaverSettingsService _settingsService = new();
     private readonly ExchangePhotoCacheService _exchangePhotoCacheService = new();
     private readonly NetworkAvailabilityService _networkAvailabilityService = new();
-    private readonly NewYorkMarketStatusService _marketStatusService = new();
     private readonly ExchangeMarketCalendarService _exchangeMarketCalendarService = new();
     private readonly HistoricalGraphBuilder _historicalGraphBuilder = new();
     private readonly FloatingClockBuilder _floatingClockBuilder = new();
@@ -70,7 +69,6 @@ public sealed class StartupCoordinator
         _createYahooProvider = yahooProviderFactory ?? (client => new YahooFinanceQuoteProvider(client));
         _delayAsync = delayAsync ?? ((delay, cancellationToken) => Task.Delay(delay, cancellationToken));
         _providerBudgetLedgerService = providerBudgetLedgerService ?? new ProviderBudgetLedgerService();
-        _marketStatusService.UpdateCalendarSnapshot(_exchangeMarketCalendarService.LoadNyseSnapshotFromCacheOrOffline());
     }
 
     public ScreensaverSceneState BuildBootstrapScene()
@@ -106,7 +104,7 @@ public sealed class StartupCoordinator
             News = BuildNews(headlines),
             Status = new StatusBarViewModel
             {
-                MarketStatusText = FormatStatusBandText(_marketStatusService.FormatStatusLine(DateTimeOffset.UtcNow)),
+                MarketStatusText = "Market (New York): --",
                 ProviderText = networkAvailable
                     ? (showStartupLoadingStatus
                         ? (cachedQuotes.Count > 0 ? "Provider: Refreshing stale cache" : "Provider: Loading live data")
@@ -200,7 +198,7 @@ public sealed class StartupCoordinator
 
         StatusBarViewModel status = new()
         {
-            MarketStatusText = FormatStatusBandText(_marketStatusService.FormatStatusLine(nowUtc)),
+            MarketStatusText = "Market (New York): --",
             ProviderText = showStartupLoadingStatus
                 ? (quotes.Count > 0 ? "Provider: Refreshing stale cache" : "Provider: Loading live data")
                 : $"Provider: {providerLabel}",
