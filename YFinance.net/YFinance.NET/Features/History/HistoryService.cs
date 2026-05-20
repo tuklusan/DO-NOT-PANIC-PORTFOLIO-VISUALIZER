@@ -97,10 +97,43 @@ public sealed class HistoryService
             InstrumentType: QuoteService.GetString(meta, "instrumentType"),
             DataGranularity: QuoteService.GetString(meta, "dataGranularity"),
             RegularMarketPrice: QuoteService.GetDecimal(meta, "regularMarketPrice"),
+            RegularMarketTimeUtc: GetUnixDateTimeOffset(meta, "regularMarketTime"),
             PriceHint: (int?)QuoteService.GetLong(meta, "priceHint"),
             GmtOffsetSeconds: QuoteService.GetLong(meta, "gmtoffset"),
+            CurrentTradingPeriod: ParseCurrentTradingPeriods(meta),
             ValidRanges: validRanges,
             RawFields: fields);
+    }
+
+    private static CurrentTradingPeriods? ParseCurrentTradingPeriods(JsonElement meta)
+    {
+        if (!meta.TryGetProperty("currentTradingPeriod", out JsonElement periods) || periods.ValueKind != JsonValueKind.Object)
+            return null;
+
+        TradingPeriodWindow? pre = ParseTradingPeriod(periods, "pre");
+        TradingPeriodWindow? regular = ParseTradingPeriod(periods, "regular");
+        TradingPeriodWindow? post = ParseTradingPeriod(periods, "post");
+        if (pre is null && regular is null && post is null)
+            return null;
+
+        return new CurrentTradingPeriods(pre, regular, post);
+    }
+
+    private static TradingPeriodWindow? ParseTradingPeriod(JsonElement periods, string propertyName)
+    {
+        if (!periods.TryGetProperty(propertyName, out JsonElement period) || period.ValueKind != JsonValueKind.Object)
+            return null;
+
+        long? start = QuoteService.GetLong(period, "start");
+        long? end = QuoteService.GetLong(period, "end");
+        if (!start.HasValue || !end.HasValue)
+            return null;
+
+        return new TradingPeriodWindow(
+            StartUtc: DateTimeOffset.FromUnixTimeSeconds(start.Value),
+            EndUtc: DateTimeOffset.FromUnixTimeSeconds(end.Value),
+            Timezone: QuoteService.GetString(period, "timezone"),
+            GmtOffsetSeconds: QuoteService.GetLong(period, "gmtoffset"));
     }
 
     private static IReadOnlyList<HistoricalBar> ParseBars(JsonElement result, DateTimeOffset? endUtc)
@@ -178,4 +211,10 @@ public sealed class HistoryService
             JsonValueKind.Object => value.EnumerateObject().ToDictionary(static property => property.Name, static property => ConvertScalar(property.Value), StringComparer.OrdinalIgnoreCase),
             _ => null
         };
+
+    private static DateTimeOffset? GetUnixDateTimeOffset(JsonElement item, string propertyName)
+    {
+        long? value = QuoteService.GetLong(item, propertyName);
+        return value.HasValue ? DateTimeOffset.FromUnixTimeSeconds(value.Value) : null;
+    }
 }

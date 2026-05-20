@@ -1518,7 +1518,13 @@ public partial class ScreensaverSceneControl : UserControl
 
     private static string FormatExchangeCardStatusText(QuoteSnapshot? quote, ExchangeCalendarStatus? fallbackStatus)
     {
-        return quote?.MarketSession switch
+        MarketSession effectiveSession = quote?.MarketSession switch
+        {
+            MarketSession.Unknown or null => fallbackStatus?.Session ?? MarketSession.Unknown,
+            _ => quote.MarketSession
+        };
+
+        return effectiveSession switch
         {
             MarketSession.Regular => "OPEN",
             MarketSession.PreMarket => "PRE",
@@ -1615,7 +1621,10 @@ public partial class ScreensaverSceneControl : UserControl
             return "Market (New York): --";
 
         ExchangeCalendarStatus calendarStatus = _exchangeMarketCalendarService.ResolveStatus(calendar, referenceUtc);
-        string sessionText = quote.MarketSession switch
+        MarketSession effectiveSession = quote.MarketSession == MarketSession.Unknown
+            ? calendarStatus.Session
+            : quote.MarketSession;
+        string sessionText = effectiveSession switch
         {
             MarketSession.Regular => "Regular",
             MarketSession.PreMarket => "Pre-Market",
@@ -1624,22 +1633,28 @@ public partial class ScreensaverSceneControl : UserControl
             _ => calendarStatus.IsOpen ? "Regular" : "Closed"
         };
 
-        string countdownText = quote.MarketSession switch
-        {
-            MarketSession.Regular => $"Closing in {FormatHoursAndMinutes(calendarStatus.Countdown)}",
-            MarketSession.PreMarket => $"Opening in {FormatDaysHoursAndMinutes(calendarStatus.Countdown)}",
-            MarketSession.AfterHours => $"Opening in {FormatDaysHoursAndMinutes(calendarStatus.Countdown)}",
-            MarketSession.Closed => $"Opening in {FormatDaysHoursAndMinutes(calendarStatus.Countdown)}",
-            _ => calendarStatus.IsOpen
-                ? $"Closing in {FormatHoursAndMinutes(calendarStatus.Countdown)}"
-                : $"Opening in {FormatDaysHoursAndMinutes(calendarStatus.Countdown)}"
-        };
+        string countdownText = FormatPinnedStatusCountdown(effectiveSession, calendarStatus);
 
         return FormatStatusBandText($"Market (New York): {sessionText} | {countdownText}");
     }
 
+    private static string FormatPinnedStatusCountdown(MarketSession session, ExchangeCalendarStatus status)
+    {
+        if (!status.HasCountdown)
+            return "Timing unavailable";
+
+        return status.CountdownTo switch
+        {
+            ExchangeCountdownTarget.Close => $"Closing in {FormatHoursAndMinutes(status.Countdown)}",
+            ExchangeCountdownTarget.SessionEnd when session == MarketSession.AfterHours => $"After-hours ends in {FormatHoursAndMinutes(status.Countdown)}",
+            ExchangeCountdownTarget.SessionEnd => $"Session ends in {FormatHoursAndMinutes(status.Countdown)}",
+            ExchangeCountdownTarget.Open => $"Opening in {FormatDaysHoursAndMinutes(status.Countdown)}",
+            _ => "Timing unavailable"
+        };
+    }
+
     private static Brush ResolveMarketStatusBrush(MarketSession? session, ExchangeCalendarStatus? fallbackStatus)
-        => session switch
+        => (session is null or MarketSession.Unknown ? fallbackStatus?.Session : session) switch
         {
             MarketSession.Regular => Brushes.LimeGreen,
             MarketSession.PreMarket => Brushes.Goldenrod,
@@ -1660,6 +1675,7 @@ public partial class ScreensaverSceneControl : UserControl
                 CityKey = city.Key,
                 ExchangeCode = city.CalendarExchangeCode,
                 ExchangeName = city.ExchangeName,
+                ExchangeSymbol = city.ExchangeSymbol,
                 TimeZoneId = city.PrimaryTimeZoneId,
                 AlternateTimeZoneId = city.SecondaryTimeZoneId
             })

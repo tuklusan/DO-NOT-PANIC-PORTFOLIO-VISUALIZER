@@ -1159,6 +1159,25 @@
                                                        "Resolved on 2026-05-20 by deriving Global Exchanges card market status from YFinance.NET quote MarketSession with exchange-calendar fallback, reusing the pinned NewYorkNasdaq card update path for the top-left NYC market band, and removing the obsolete standalone NewYorkMarketStatusService path.",
                                                        "Validation: dotnet build PortfolioScreensaver.sln -c Release succeeded; dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --no-build passed 156/156 after adding dedicated yfinance.circular.log coverage and VM harness assertions for dual-trace artifact export."
                                                    ]
+                                     },
+                                     {
+                                         "id":  "NB-033",
+                                         "tracking_number":  "NB-033",
+                                         "priority":  2,
+                                         "area":  "market_status",
+                                         "title":  "Drive all open-close state and time indicators from YFinance itself",
+                                         "status":  "resolved",
+                                         "source":  "user_followup",
+                                         "evidence":  [
+                                                          "User requested a stricter follow-up requirement: all exchange open/close state and countdown indicators must come from YFinance itself rather than from local exchange calendar rules."
+                                                      ],
+                                         "notes":  [
+                                                       "Replace the remaining local exchange-calendar timing path with YFinance-derived trading-period metadata so the Global Exchanges ribbon and top-left NYC market band both use Yahoo-provided session windows rather than offline exchange-hour assumptions.",
+                                                       "Use YFinance chart metadata currentTradingPeriod plus marketState/session fields to derive open, pre-market, after-hours, closed, and countdown timing behaviors.",
+                                                       "Cached market-timing state may be retained only if it was originally sourced from YFinance; no independent API or hardcoded exchange-hour source should remain in the active timing path.",
+                                                       "Resolved on 2026-05-20 by extending YFinance.NET HistoryMetadata to parse currentTradingPeriod and regularMarketTime, replacing ExchangeMarketCalendarService fallback hour logic with YFinance-derived session windows and cached YFinance timing data, and updating the UI countdown text so after-hours uses Yahoo session-end timing instead of local next-open math.",
+                                                       "Validation: dotnet build PortfolioScreensaver.sln -c Release succeeded and dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --no-build passed 160/160, including focused ExchangeMarketCalendarServiceTests covering Yahoo-driven regular, pre-market, after-hours, and next-window countdown behavior."
+                                                   ]
                                      }
                                  ]
 }

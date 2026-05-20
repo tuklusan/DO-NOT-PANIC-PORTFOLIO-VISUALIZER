@@ -1,59 +1,31 @@
 using System.Globalization;
 using System.IO;
 using System.Text.Json;
+using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
-using PortfolioSaver.Core.Services;
+using PortfolioSaver.Data.Services;
 using PortfolioSaver.Shared.Helpers;
+using YFinance.NET.Api;
+using YFinance.NET.Models;
 
 namespace PortfolioSaver.Screensaver.Services;
 
 public sealed class ExchangeMarketCalendarService
 {
+    private const string YFinanceCalendarSource = "YFinance.NET chart metadata";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         WriteIndented = true
     };
 
-    private static readonly IReadOnlyDictionary<string, (TimeOnly Open, TimeOnly Close)> DefaultHoursByExchangeCode =
-        new Dictionary<string, (TimeOnly Open, TimeOnly Close)>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["NYSE"] = (new TimeOnly(9, 30), new TimeOnly(16, 0)),
-            ["LSE"] = (new TimeOnly(8, 0), new TimeOnly(16, 30)),
-            ["TSE"] = (new TimeOnly(9, 0), new TimeOnly(15, 0)),
-            ["SSE"] = (new TimeOnly(9, 30), new TimeOnly(15, 0)),
-            ["HKEX"] = (new TimeOnly(9, 30), new TimeOnly(16, 0)),
-            ["NSE"] = (new TimeOnly(9, 15), new TimeOnly(15, 30)),
-            ["XETRA"] = (new TimeOnly(9, 0), new TimeOnly(17, 30)),
-            ["EPA"] = (new TimeOnly(9, 0), new TimeOnly(17, 30)),
-            ["TSX"] = (new TimeOnly(9, 30), new TimeOnly(16, 0)),
-            ["KRX"] = (new TimeOnly(9, 0), new TimeOnly(15, 30)),
-            ["ASX"] = (new TimeOnly(10, 0), new TimeOnly(16, 0))
-        };
-
     private readonly string _cachePath;
+    private readonly Func<YFinanceClient> _clientFactory;
 
-    public ExchangeMarketCalendarService(string? cachePath = null)
+    public ExchangeMarketCalendarService(string? cachePath = null, Func<YFinanceClient>? clientFactory = null)
     {
         _cachePath = cachePath ?? Path.Combine(PathHelper.GetLocalDataDirectory(), "market-calendars.json");
-    }
-
-    public NyseTradingCalendarSnapshot LoadNyseSnapshotFromCacheOrOffline()
-    {
-        int year = DateTimeOffset.UtcNow.Year;
-        ExchangeCalendarSet merged = BuildFallbackSet(
-        [
-            new ExchangeCalendarRequest
-            {
-                CityKey = "NewYork",
-                ExchangeCode = "NYSE",
-                ExchangeName = "NYSE",
-                TimeZoneId = "Eastern Standard Time",
-                AlternateTimeZoneId = "America/New_York"
-            }
-        ]);
-        merged.Overlay(TryLoadCachedSet());
-        return merged.BuildNyseSnapshot();
+        _clientFactory = clientFactory ?? YFinanceRuntimeClientFactory.GetSharedClient;
     }
 
     public async Task<ExchangeCalendarSet> GetCalendarSetAsync(
@@ -62,96 +34,167 @@ public sealed class ExchangeMarketCalendarService
         bool networkAvailable,
         CancellationToken cancellationToken = default)
     {
-        ExchangeCalendarSet merged = BuildFallbackSet(requests);
-        ExchangeCalendarSet? cachedSet = TryLoadCachedSet();
-        merged.Overlay(cachedSet);
+        ExchangeCalendarSet merged = TryLoadCachedSet() ?? new ExchangeCalendarSet
+        {
+            GeneratedUtc = DateTimeOffset.MinValue,
+            Source = "YFinance cache"
+        };
+
+        if (!networkAvailable || requests.Count == 0)
+            return merged;
+
+        ExchangeCalendarSet live = new()
+        {
+            GeneratedUtc = DateTimeOffset.UtcNow,
+            Source = YFinanceCalendarSource
+        };
+
+        DateTimeOffset endUtc = DateTimeOffset.UtcNow.AddDays(5);
+        DateTimeOffset startUtc = endUtc.AddDays(-10);
+        YFinanceClient client = _clientFactory();
+        foreach (ExchangeCalendarRequest request in requests)
+        {
+            if (string.IsNullOrWhiteSpace(request.ExchangeSymbol))
+                continue;
+
+            try
+            {
+                HistoryResponse response = await client
+                    .Ticker(request.ExchangeSymbol)
+                    .GetHistoryResponseAsync(startUtc, endUtc, "1d", cancellationToken)
+                    .ConfigureAwait(false);
+                ExchangeTradingCalendar? calendar = BuildFromHistoryMetadata(request, response.Metadata);
+                if (calendar is not null)
+                    live.CalendarsByCityKey[calendar.CityKey] = calendar;
+            }
+            catch
+            {
+            }
+        }
+
+        if (live.CalendarsByCityKey.Count > 0)
+        {
+            merged.Overlay(live);
+            await SaveCacheAsync(merged, cancellationToken).ConfigureAwait(false);
+        }
+
         return merged;
     }
 
     public ExchangeCalendarStatus ResolveStatus(ExchangeTradingCalendar calendar, DateTimeOffset utcNow)
     {
-        TimeZoneInfo zone = ResolveTimeZone(calendar.TimeZoneId, calendar.AlternateTimeZoneId);
-        DateTimeOffset localNow = TimeZoneInfo.ConvertTime(utcNow, zone);
-        DateOnly localDate = DateOnly.FromDateTime(localNow.Date);
-        TimeOnly localTime = TimeOnly.FromDateTime(localNow.DateTime);
-        TimeOnly close = calendar.ResolveRegularClose(localDate);
-
-        if (calendar.IsTradingDay(localDate) &&
-            localTime >= calendar.RegularOpenLocal &&
-            localTime < close)
+        CurrentTradingPeriods? periods = calendar.CurrentTradingPeriod;
+        if (periods is null)
         {
-            DateTimeOffset closeAt = BuildLocalDateTimeOffset(localDate, close, zone);
             return new ExchangeCalendarStatus
             {
-                IsOpen = true,
-                Countdown = MaxZero(closeAt - localNow),
-                CountdownTo = ExchangeCountdownTarget.Close
+                Session = MarketSession.Unknown,
+                IsOpen = false,
+                Countdown = TimeSpan.Zero,
+                CountdownTo = ExchangeCountdownTarget.Unknown,
+                HasCountdown = false
             };
         }
 
-        TimeSpan untilOpen = GetCountdownToOpen(calendar, localNow, zone);
+        if (IsActive(periods.Regular, utcNow))
+        {
+            return new ExchangeCalendarStatus
+            {
+                Session = MarketSession.Regular,
+                IsOpen = true,
+                Countdown = MaxZero(periods.Regular!.EndUtc - utcNow),
+                CountdownTo = ExchangeCountdownTarget.Close,
+                HasCountdown = true
+            };
+        }
+
+        if (IsActive(periods.Pre, utcNow))
+        {
+            DateTimeOffset target = periods.Regular?.StartUtc ?? periods.Pre!.EndUtc;
+            return new ExchangeCalendarStatus
+            {
+                Session = MarketSession.PreMarket,
+                IsOpen = false,
+                Countdown = MaxZero(target - utcNow),
+                CountdownTo = ExchangeCountdownTarget.Open,
+                HasCountdown = true
+            };
+        }
+
+        if (IsActive(periods.Post, utcNow))
+        {
+            return new ExchangeCalendarStatus
+            {
+                Session = MarketSession.AfterHours,
+                IsOpen = false,
+                Countdown = MaxZero(periods.Post!.EndUtc - utcNow),
+                CountdownTo = ExchangeCountdownTarget.SessionEnd,
+                HasCountdown = true
+            };
+        }
+
+        TradingPeriodWindow? nextPeriod = GetNextPeriod(periods, utcNow);
+        if (nextPeriod is not null)
+        {
+            return new ExchangeCalendarStatus
+            {
+                Session = MarketSession.Closed,
+                IsOpen = false,
+                Countdown = MaxZero(nextPeriod.StartUtc - utcNow),
+                CountdownTo = ExchangeCountdownTarget.Open,
+                HasCountdown = true
+            };
+        }
+
         return new ExchangeCalendarStatus
         {
+            Session = MarketSession.Closed,
             IsOpen = false,
-            Countdown = untilOpen,
-            CountdownTo = ExchangeCountdownTarget.Open
+            Countdown = TimeSpan.Zero,
+            CountdownTo = ExchangeCountdownTarget.Unknown,
+            HasCountdown = false
         };
     }
 
     public string FormatCompactStatus(ExchangeCalendarStatus status)
     {
-        if (status.IsOpen)
-            return $"OPEN {FormatHoursAndMinutes(status.Countdown)}";
-
-        return $"CLOSED {FormatDaysHoursAndMinutes(status.Countdown)}";
-    }
-
-    private ExchangeCalendarSet BuildFallbackSet(IReadOnlyList<ExchangeCalendarRequest> requests)
-    {
-        int year = DateTimeOffset.UtcNow.Year;
-        NyseTradingCalendarSnapshot nyseOffline = NyseTradingCalendarSnapshot.CreateOfflineFallback(year - 1, year + 2);
-
-        ExchangeCalendarSet set = new()
-        {
-            GeneratedUtc = DateTimeOffset.UtcNow,
-            Source = "Offline fallback rules"
-        };
-
-        foreach (ExchangeCalendarRequest request in requests)
-        {
-            (TimeOnly open, TimeOnly close) = ResolveDefaultHours(request.ExchangeCode);
-            ExchangeTradingCalendar calendar = new()
+        if (!status.HasCountdown)
+            return status.Session switch
             {
-                CityKey = request.CityKey,
-                ExchangeCode = request.ExchangeCode,
-                ExchangeName = request.ExchangeName,
-                TimeZoneId = request.TimeZoneId,
-                AlternateTimeZoneId = request.AlternateTimeZoneId,
-                RegularOpenLocal = open,
-                RegularCloseLocal = close,
-                Source = "Offline fallback rules"
+                MarketSession.PreMarket => "PRE --",
+                MarketSession.AfterHours => "POST --",
+                MarketSession.Regular => "OPEN --",
+                MarketSession.Closed => "CLOSED --",
+                _ => "--"
             };
 
-            if (string.Equals(request.ExchangeCode, "NYSE", StringComparison.OrdinalIgnoreCase))
-            {
-                foreach (DateOnly date in nyseOffline.ClosedDates)
-                    calendar.ClosedDates.Add(date);
-                foreach ((DateOnly date, TimeOnly earlyClose) in nyseOffline.EarlyCloseTimes)
-                    calendar.EarlyCloseTimes[date] = earlyClose;
-            }
-
-            set.CalendarsByCityKey[calendar.CityKey] = calendar;
-        }
-
-        return set;
+        return status.Session switch
+        {
+            MarketSession.PreMarket => $"PRE {FormatHoursAndMinutes(status.Countdown)}",
+            MarketSession.AfterHours => $"POST {FormatHoursAndMinutes(status.Countdown)}",
+            MarketSession.Regular => $"OPEN {FormatHoursAndMinutes(status.Countdown)}",
+            MarketSession.Closed => $"CLOSED {FormatDaysHoursAndMinutes(status.Countdown)}",
+            _ => $"-- {FormatHoursAndMinutes(status.Countdown)}"
+        };
     }
 
-    private static (TimeOnly Open, TimeOnly Close) ResolveDefaultHours(string exchangeCode)
+    private static ExchangeTradingCalendar? BuildFromHistoryMetadata(ExchangeCalendarRequest request, HistoryMetadata? metadata)
     {
-        if (DefaultHoursByExchangeCode.TryGetValue(exchangeCode, out (TimeOnly Open, TimeOnly Close) hours))
-            return hours;
+        if (metadata?.CurrentTradingPeriod is null)
+            return null;
 
-        return (new TimeOnly(9, 30), new TimeOnly(16, 0));
+        return new ExchangeTradingCalendar
+        {
+            CityKey = request.CityKey,
+            ExchangeCode = request.ExchangeCode,
+            ExchangeName = request.ExchangeName,
+            ExchangeSymbol = request.ExchangeSymbol,
+            TimeZoneId = string.IsNullOrWhiteSpace(metadata.ExchangeTimezoneName) ? request.TimeZoneId : metadata.ExchangeTimezoneName,
+            AlternateTimeZoneId = request.AlternateTimeZoneId,
+            Source = YFinanceCalendarSource,
+            RegularMarketTimeUtc = metadata.RegularMarketTimeUtc,
+            CurrentTradingPeriod = metadata.CurrentTradingPeriod
+        };
     }
 
     private ExchangeCalendarSet? TryLoadCachedSet()
@@ -167,7 +210,7 @@ public sealed class ExchangeMarketCalendarService
 
             ExchangeCalendarSet set = new()
             {
-                Source = string.IsNullOrWhiteSpace(cache.Source) ? "Cache" : cache.Source,
+                Source = string.IsNullOrWhiteSpace(cache.Source) ? "YFinance cache" : cache.Source,
                 GeneratedUtc = cache.GeneratedUtc
             };
 
@@ -176,41 +219,21 @@ public sealed class ExchangeMarketCalendarService
                 if (string.IsNullOrWhiteSpace(dto.CityKey))
                     continue;
 
-                ExchangeTradingCalendar calendar = new()
+                set.CalendarsByCityKey[dto.CityKey.Trim()] = new ExchangeTradingCalendar
                 {
                     CityKey = dto.CityKey.Trim(),
                     ExchangeCode = (dto.ExchangeCode ?? string.Empty).Trim(),
                     ExchangeName = (dto.ExchangeName ?? string.Empty).Trim(),
+                    ExchangeSymbol = (dto.ExchangeSymbol ?? string.Empty).Trim(),
                     TimeZoneId = (dto.TimeZoneId ?? string.Empty).Trim(),
                     AlternateTimeZoneId = (dto.AlternateTimeZoneId ?? string.Empty).Trim(),
-                    Source = string.IsNullOrWhiteSpace(dto.Source) ? "Cache" : dto.Source
+                    Source = string.IsNullOrWhiteSpace(dto.Source) ? "YFinance cache" : dto.Source,
+                    RegularMarketTimeUtc = dto.RegularMarketTimeUtc,
+                    CurrentTradingPeriod = new CurrentTradingPeriods(
+                        ParseTradingPeriodWindow(dto.PrePeriod),
+                        ParseTradingPeriodWindow(dto.RegularPeriod),
+                        ParseTradingPeriodWindow(dto.PostPeriod))
                 };
-
-                if (TryParseTimeOnly(dto.RegularOpen, out TimeOnly open))
-                    calendar.RegularOpenLocal = open;
-                if (TryParseTimeOnly(dto.RegularClose, out TimeOnly close))
-                    calendar.RegularCloseLocal = close;
-
-                foreach (string dateText in dto.ClosedDates ?? [])
-                {
-                    if (DateOnly.TryParse(dateText, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly date))
-                        calendar.ClosedDates.Add(date);
-                }
-
-                if (dto.EarlyCloseTimes is not null)
-                {
-                    foreach ((string dateText, string closeText) in dto.EarlyCloseTimes)
-                    {
-                        if (!DateOnly.TryParse(dateText, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly date))
-                            continue;
-                        if (!TryParseTimeOnly(closeText, out TimeOnly earlyClose))
-                            continue;
-
-                        calendar.EarlyCloseTimes[date] = earlyClose;
-                    }
-                }
-
-                set.CalendarsByCityKey[calendar.CityKey] = calendar;
             }
 
             return set;
@@ -234,16 +257,14 @@ public sealed class ExchangeMarketCalendarService
                     CityKey = calendar.CityKey,
                     ExchangeCode = calendar.ExchangeCode,
                     ExchangeName = calendar.ExchangeName,
+                    ExchangeSymbol = calendar.ExchangeSymbol,
                     TimeZoneId = calendar.TimeZoneId,
                     AlternateTimeZoneId = calendar.AlternateTimeZoneId,
-                    RegularOpen = calendar.RegularOpenLocal.ToString("HH:mm", CultureInfo.InvariantCulture),
-                    RegularClose = calendar.RegularCloseLocal.ToString("HH:mm", CultureInfo.InvariantCulture),
-                    ClosedDates = calendar.ClosedDates.Select(date => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)).OrderBy(text => text, StringComparer.Ordinal).ToList(),
-                    EarlyCloseTimes = calendar.EarlyCloseTimes.ToDictionary(
-                        pair => pair.Key.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                        pair => pair.Value.ToString("HH:mm", CultureInfo.InvariantCulture),
-                        StringComparer.Ordinal),
-                    Source = calendar.Source
+                    Source = calendar.Source,
+                    RegularMarketTimeUtc = calendar.RegularMarketTimeUtc,
+                    PrePeriod = ToDto(calendar.CurrentTradingPeriod?.Pre),
+                    RegularPeriod = ToDto(calendar.CurrentTradingPeriod?.Regular),
+                    PostPeriod = ToDto(calendar.CurrentTradingPeriod?.Post)
                 }).ToList()
             };
 
@@ -252,45 +273,42 @@ public sealed class ExchangeMarketCalendarService
             if (!string.IsNullOrWhiteSpace(directory))
                 Directory.CreateDirectory(directory);
 
-            await File.WriteAllTextAsync(_cachePath, json, cancellationToken);
+            await File.WriteAllTextAsync(_cachePath, json, cancellationToken).ConfigureAwait(false);
         }
         catch
         {
         }
     }
 
-    private static TimeSpan GetCountdownToOpen(ExchangeTradingCalendar calendar, DateTimeOffset localNow, TimeZoneInfo zone)
+    private static TradingPeriodWindow? ParseTradingPeriodWindow(TradingPeriodWindowDto? dto)
     {
-        DateOnly candidateDate = DateOnly.FromDateTime(localNow.Date);
-        DateTimeOffset open = BuildLocalDateTimeOffset(candidateDate, calendar.RegularOpenLocal, zone);
+        if (dto is null || dto.StartUtc == DateTimeOffset.MinValue || dto.EndUtc == DateTimeOffset.MinValue)
+            return null;
 
-        if (localNow.TimeOfDay < calendar.RegularOpenLocal.ToTimeSpan() && calendar.IsTradingDay(candidateDate))
-            return MaxZero(open - localNow);
-
-        do
-        {
-            candidateDate = candidateDate.AddDays(1);
-        }
-        while (!calendar.IsTradingDay(candidateDate));
-
-        DateTimeOffset nextOpen = BuildLocalDateTimeOffset(candidateDate, calendar.RegularOpenLocal, zone);
-        return MaxZero(nextOpen - localNow);
+        return new TradingPeriodWindow(dto.StartUtc, dto.EndUtc, dto.Timezone, dto.GmtOffsetSeconds);
     }
 
-    private static DateTimeOffset BuildLocalDateTimeOffset(DateOnly date, TimeOnly time, TimeZoneInfo zone)
-    {
-        DateTime localDateTime = new(date.Year, date.Month, date.Day, time.Hour, time.Minute, 0, DateTimeKind.Unspecified);
-        TimeSpan offset = zone.GetUtcOffset(localDateTime);
-        return new DateTimeOffset(localDateTime, offset);
-    }
+    private static TradingPeriodWindowDto? ToDto(TradingPeriodWindow? window)
+        => window is null
+            ? null
+            : new TradingPeriodWindowDto
+            {
+                StartUtc = window.StartUtc,
+                EndUtc = window.EndUtc,
+                Timezone = window.Timezone ?? string.Empty,
+                GmtOffsetSeconds = window.GmtOffsetSeconds
+            };
 
-    private static bool TryParseTimeOnly(string? value, out TimeOnly time)
-    {
-        if (TimeOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out time))
-            return true;
+    private static bool IsActive(TradingPeriodWindow? window, DateTimeOffset utcNow)
+        => window is not null && utcNow >= window.StartUtc && utcNow < window.EndUtc;
 
-        return TimeOnly.TryParse(value, out time);
-    }
+    private static TradingPeriodWindow? GetNextPeriod(CurrentTradingPeriods periods, DateTimeOffset utcNow)
+        => new[] { periods.Pre, periods.Regular, periods.Post }
+            .Where(static period => period is not null)
+            .Select(static period => period!)
+            .Where(period => period.StartUtc > utcNow)
+            .OrderBy(period => period.StartUtc)
+            .FirstOrDefault();
 
     private static TimeSpan MaxZero(TimeSpan value)
         => value < TimeSpan.Zero ? TimeSpan.Zero : value;
@@ -310,28 +328,6 @@ public sealed class ExchangeMarketCalendarService
         return $"{days:00}:{hours:00}:{safe.Minutes:00}";
     }
 
-    private static TimeZoneInfo ResolveTimeZone(string? primaryId, string? secondaryId)
-    {
-        foreach (string? candidate in new[] { primaryId, secondaryId })
-        {
-            if (string.IsNullOrWhiteSpace(candidate))
-                continue;
-
-            try
-            {
-                return TimeZoneInfo.FindSystemTimeZoneById(candidate);
-            }
-            catch (TimeZoneNotFoundException)
-            {
-            }
-            catch (InvalidTimeZoneException)
-            {
-            }
-        }
-
-        return TimeZoneInfo.Local;
-    }
-
     private sealed class ExchangeCalendarCacheDto
     {
         public DateTimeOffset GeneratedUtc { get; set; } = DateTimeOffset.UtcNow;
@@ -344,13 +340,22 @@ public sealed class ExchangeMarketCalendarService
         public string CityKey { get; set; } = string.Empty;
         public string ExchangeCode { get; set; } = string.Empty;
         public string ExchangeName { get; set; } = string.Empty;
+        public string ExchangeSymbol { get; set; } = string.Empty;
         public string TimeZoneId { get; set; } = string.Empty;
         public string AlternateTimeZoneId { get; set; } = string.Empty;
-        public string RegularOpen { get; set; } = "09:30";
-        public string RegularClose { get; set; } = "16:00";
-        public List<string> ClosedDates { get; set; } = [];
-        public Dictionary<string, string> EarlyCloseTimes { get; set; } = new(StringComparer.Ordinal);
         public string Source { get; set; } = string.Empty;
+        public DateTimeOffset? RegularMarketTimeUtc { get; set; }
+        public TradingPeriodWindowDto? PrePeriod { get; set; }
+        public TradingPeriodWindowDto? RegularPeriod { get; set; }
+        public TradingPeriodWindowDto? PostPeriod { get; set; }
+    }
+
+    private sealed class TradingPeriodWindowDto
+    {
+        public DateTimeOffset StartUtc { get; set; }
+        public DateTimeOffset EndUtc { get; set; }
+        public string Timezone { get; set; } = string.Empty;
+        public long? GmtOffsetSeconds { get; set; }
     }
 }
 
@@ -359,6 +364,7 @@ public sealed class ExchangeCalendarRequest
     public string CityKey { get; set; } = string.Empty;
     public string ExchangeCode { get; set; } = string.Empty;
     public string ExchangeName { get; set; } = string.Empty;
+    public string ExchangeSymbol { get; set; } = string.Empty;
     public string TimeZoneId { get; set; } = string.Empty;
     public string AlternateTimeZoneId { get; set; } = string.Empty;
 }
@@ -366,7 +372,7 @@ public sealed class ExchangeCalendarRequest
 public sealed class ExchangeCalendarSet
 {
     public DateTimeOffset GeneratedUtc { get; set; } = DateTimeOffset.MinValue;
-    public string Source { get; set; } = "Offline";
+    public string Source { get; set; } = "YFinance";
     public Dictionary<string, ExchangeTradingCalendar> CalendarsByCityKey { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     public void Overlay(ExchangeCalendarSet? overlay)
@@ -375,25 +381,7 @@ public sealed class ExchangeCalendarSet
             return;
 
         foreach ((string cityKey, ExchangeTradingCalendar incoming) in overlay.CalendarsByCityKey)
-        {
-            if (!CalendarsByCityKey.TryGetValue(cityKey, out ExchangeTradingCalendar? current))
-            {
-                CalendarsByCityKey[cityKey] = incoming.Clone();
-                continue;
-            }
-
-            current.RegularOpenLocal = incoming.RegularOpenLocal;
-            current.RegularCloseLocal = incoming.RegularCloseLocal;
-            current.TimeZoneId = string.IsNullOrWhiteSpace(incoming.TimeZoneId) ? current.TimeZoneId : incoming.TimeZoneId;
-            current.AlternateTimeZoneId = string.IsNullOrWhiteSpace(incoming.AlternateTimeZoneId) ? current.AlternateTimeZoneId : incoming.AlternateTimeZoneId;
-            current.ExchangeCode = string.IsNullOrWhiteSpace(incoming.ExchangeCode) ? current.ExchangeCode : incoming.ExchangeCode;
-            current.ExchangeName = string.IsNullOrWhiteSpace(incoming.ExchangeName) ? current.ExchangeName : incoming.ExchangeName;
-            foreach (DateOnly date in incoming.ClosedDates)
-                current.ClosedDates.Add(date);
-            foreach ((DateOnly date, TimeOnly close) in incoming.EarlyCloseTimes)
-                current.EarlyCloseTimes[date] = close;
-            current.Source = string.IsNullOrWhiteSpace(incoming.Source) ? current.Source : incoming.Source;
-        }
+            CalendarsByCityKey[cityKey] = incoming.Clone();
 
         if (overlay.GeneratedUtc > GeneratedUtc)
             GeneratedUtc = overlay.GeneratedUtc;
@@ -403,28 +391,6 @@ public sealed class ExchangeCalendarSet
 
     public ExchangeTradingCalendar? TryGetByCityKey(string cityKey)
         => CalendarsByCityKey.TryGetValue(cityKey, out ExchangeTradingCalendar? calendar) ? calendar : null;
-
-    public NyseTradingCalendarSnapshot BuildNyseSnapshot()
-    {
-        int year = DateTimeOffset.UtcNow.Year;
-        NyseTradingCalendarSnapshot nyse = NyseTradingCalendarSnapshot.CreateOfflineFallback(year - 1, year + 2);
-        ExchangeTradingCalendar? source = CalendarsByCityKey.Values.FirstOrDefault(calendar =>
-            string.Equals(calendar.ExchangeCode, "NYSE", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(calendar.CityKey, "NewYork", StringComparison.OrdinalIgnoreCase));
-
-        if (source is null)
-            return nyse;
-
-        nyse.Source = source.Source;
-        nyse.GeneratedUtc = GeneratedUtc == DateTimeOffset.MinValue ? DateTimeOffset.UtcNow : GeneratedUtc;
-        nyse.ClosedDates.Clear();
-        nyse.EarlyCloseTimes.Clear();
-        foreach (DateOnly date in source.ClosedDates)
-            nyse.ClosedDates.Add(date);
-        foreach ((DateOnly date, TimeOnly close) in source.EarlyCloseTimes)
-            nyse.EarlyCloseTimes[date] = close;
-        return nyse;
-    }
 }
 
 public sealed class ExchangeTradingCalendar
@@ -432,53 +398,46 @@ public sealed class ExchangeTradingCalendar
     public string CityKey { get; set; } = string.Empty;
     public string ExchangeCode { get; set; } = string.Empty;
     public string ExchangeName { get; set; } = string.Empty;
+    public string ExchangeSymbol { get; set; } = string.Empty;
     public string TimeZoneId { get; set; } = string.Empty;
     public string AlternateTimeZoneId { get; set; } = string.Empty;
-    public TimeOnly RegularOpenLocal { get; set; } = new(9, 30);
-    public TimeOnly RegularCloseLocal { get; set; } = new(16, 0);
-    public HashSet<DateOnly> ClosedDates { get; } = [];
-    public Dictionary<DateOnly, TimeOnly> EarlyCloseTimes { get; } = [];
-    public string Source { get; set; } = "Offline";
-
-    public bool IsTradingDay(DateOnly date)
-        => date.DayOfWeek is not DayOfWeek.Saturday and not DayOfWeek.Sunday &&
-           !ClosedDates.Contains(date);
-
-    public TimeOnly ResolveRegularClose(DateOnly date)
-        => EarlyCloseTimes.TryGetValue(date, out TimeOnly earlyClose) ? earlyClose : RegularCloseLocal;
+    public string Source { get; set; } = "YFinance";
+    public DateTimeOffset? RegularMarketTimeUtc { get; set; }
+    public CurrentTradingPeriods? CurrentTradingPeriod { get; set; }
 
     public ExchangeTradingCalendar Clone()
-    {
-        ExchangeTradingCalendar copy = new()
+        => new()
         {
             CityKey = CityKey,
             ExchangeCode = ExchangeCode,
             ExchangeName = ExchangeName,
+            ExchangeSymbol = ExchangeSymbol,
             TimeZoneId = TimeZoneId,
             AlternateTimeZoneId = AlternateTimeZoneId,
-            RegularOpenLocal = RegularOpenLocal,
-            RegularCloseLocal = RegularCloseLocal,
-            Source = Source
+            Source = Source,
+            RegularMarketTimeUtc = RegularMarketTimeUtc,
+            CurrentTradingPeriod = CurrentTradingPeriod is null
+                ? null
+                : new CurrentTradingPeriods(
+                    CurrentTradingPeriod.Pre,
+                    CurrentTradingPeriod.Regular,
+                    CurrentTradingPeriod.Post)
         };
-
-        foreach (DateOnly date in ClosedDates)
-            copy.ClosedDates.Add(date);
-        foreach ((DateOnly date, TimeOnly time) in EarlyCloseTimes)
-            copy.EarlyCloseTimes[date] = time;
-        return copy;
-    }
 }
 
 public sealed class ExchangeCalendarStatus
 {
+    public MarketSession Session { get; set; } = MarketSession.Unknown;
     public bool IsOpen { get; set; }
     public TimeSpan Countdown { get; set; }
-    public ExchangeCountdownTarget CountdownTo { get; set; }
+    public ExchangeCountdownTarget CountdownTo { get; set; } = ExchangeCountdownTarget.Unknown;
+    public bool HasCountdown { get; set; }
 }
 
 public enum ExchangeCountdownTarget
 {
+    Unknown,
     Open,
-    Close
+    Close,
+    SessionEnd
 }
-
