@@ -1131,6 +1131,27 @@
         "This is a major refactor and includes test script updates, harness updates, starting and stopping YFinance.NET alongside the UI for now, documentation updates, and forensic code-review cleanup revealed during the transition.",
         "Acceptance should include a clean end-to-end UI proof with the standalone YFinance.NET server process, updated harness lifecycle management, updated docs, and removal of obsolete in-process retrieval assumptions from the active code path."
       ]
+    },
+    {
+      "id": "NB-032",
+      "tracking_number": "NB-032",
+      "priority": 2,
+      "area": "market_status",
+      "title": "Unify global exchange open-closed status with the top-left NYC market status display",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested that Global Exchanges ribbon cards and the top-left NYC market-status display share a consistent YFinance.NET-backed market open/closed/calendar model, with NYC status reused from the pinned NYC exchange card rather than queried separately."
+      ],
+      "notes": [
+        "Analyze the current implementation first to determine what is already wired for exchange open/closed/calendar state, what is duplicated, and what is missing.",
+        "In the Global Exchanges ribbon, NYC remains pinned while the remaining exchanges scroll, and all exchange cards should expose current open/closed status sourced from YFinance.NET.",
+        "For the top-left NYC display, do not issue a separate market-status query. Reuse the status already available from the NYC pinned Global Exchanges card update path.",
+        "Audit whether the current top-left display is still using separate exchange-calendar logic, inferred schedule logic, or independently refreshed state, and consolidate it into the same canonical exchange-status source used by the ribbon.",
+        "Preserve or improve useful calendar-related behavior such as open/closed state, opening-soon messaging, and next-open/next-close countdowns where those semantics are already part of the top-left display.",
+        "Use the supplied Yahoo suffix and benchmark mapping background as reference context for future exchange-level symbol work, including suffix behavior such as BT-A.L for symbols that contain local dots.",
+        "Implementation should include code review, test/debug passes, and harness-visible validation so the ticket can be closed with confidence."
+      ]
     }
   ]
 }
