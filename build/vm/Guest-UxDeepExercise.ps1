@@ -41,6 +41,7 @@ using System.Runtime.InteropServices;
 public static class NativeMouseInput {
     public const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
     public const uint MOUSEEVENTF_LEFTUP = 0x0004;
+    public const uint MOUSEEVENTF_WHEEL = 0x0800;
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool SetCursorPos(int x, int y);
@@ -569,6 +570,36 @@ function Try-ScrollWindowContent {
     return $true
 }
 
+function Invoke-MouseWheelScroll {
+    param(
+        [Parameter(Mandatory = $true)]$Element,
+        [int]$Notches = 3,
+        [int]$DelayMilliseconds = 120
+    )
+
+    try {
+        $rect = $Element.Current.BoundingRectangle
+        if ($rect.Width -le 0 -or $rect.Height -le 0) {
+            return $false
+        }
+
+        $x = [int]([Math]::Round($rect.Left + ($rect.Width / 2.0)))
+        $y = [int]([Math]::Round($rect.Top + ($rect.Height / 2.0)))
+        [void][NativeMouseInput]::SetCursorPos($x, $y)
+        Start-Sleep -Milliseconds 40
+
+        for ($index = 0; $index -lt [Math]::Max(1, $Notches); $index++) {
+            [NativeMouseInput]::mouse_event([NativeMouseInput]::MOUSEEVENTF_WHEEL, 0, 0, [uint32](-120), [UIntPtr]::Zero)
+            Start-Sleep -Milliseconds $DelayMilliseconds
+        }
+
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
 function Perform-KeyboardScrollPass {
     param(
         [Parameter(Mandatory = $true)]$Window,
@@ -610,18 +641,32 @@ function Perform-VisibleConfigActivity {
     }
 
     if ($TabName -eq 'Advanced') {
-        $didScroll = Perform-KeyboardScrollPass -Window $Window -TabSteps 14 -DelayMilliseconds 28
+        $didScroll = $false
+        $scrollTarget = Get-ScrollPatternTarget -Window $Window -TabName $TabName
+        if ($null -ne $scrollTarget) {
+            try { $scrollTarget.Element.SetFocus() } catch {}
+            Start-Sleep -Milliseconds 40
+            $didScroll = Invoke-MouseWheelScroll -Element $scrollTarget.Element -Notches 4 -DelayMilliseconds 120
+            Send-KeySequence -Keys @('{PGDN}','{PGDN}') -DelayMilliseconds 120
+            if (-not $didScroll) {
+                $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount 2
+            }
+        }
+
         if (-not $didScroll) {
-            $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount 2
+            $didScroll = Perform-KeyboardScrollPass -Window $Window -TabSteps 14 -DelayMilliseconds 28
+            Send-KeySequence -Keys @('{PGDN}','{PGDN}') -DelayMilliseconds 120
+            if (-not $didScroll) {
+                $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount 2
+            }
         }
-        else {
-            $null = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount 1
-        }
-        return $true
+
+        return $didScroll
     }
 
     $null = Perform-KeyboardScrollPass -Window $Window -TabSteps 6 -DelayMilliseconds 30
-    return $false
+    Send-KeySequence -Keys @('{PGDN}') -DelayMilliseconds 120
+    return $true
 }
 
 function Find-ElementMetadataByProcessId {
@@ -1870,7 +1915,7 @@ try {
 
     try {
         $desktop = Start-Process -FilePath $desktopExe -PassThru
-        Start-Sleep -Milliseconds 900
+        Start-Sleep -Milliseconds 400
         $desktopWindow = Get-ProcessWindowElement -Process $desktop -TimeoutSeconds 15
         if ($null -eq $desktopWindow) {
             throw 'Could not locate desktop shell window via UI Automation.'

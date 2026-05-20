@@ -71,12 +71,22 @@ Copy-Item -LiteralPath (Join-Path $repoRoot "Directory.Build.props") -Destinatio
 if (Test-Path (Join-Path $repoRoot "NuGet.Config")) {
     Copy-Item -LiteralPath (Join-Path $repoRoot "NuGet.Config") -Destination $tempRoot -Force
 }
+if (Test-Path (Join-Path $repoRoot "global.json")) {
+    Copy-Item -LiteralPath (Join-Path $repoRoot "global.json") -Destination $tempRoot -Force
+}
 
 $srcTarget = Join-Path $tempRoot "src"
 $null = robocopy (Join-Path $repoRoot "src") $srcTarget /E /XD bin obj
 $srcCopyExit = $LASTEXITCODE
 if ($srcCopyExit -gt 7) {
     throw "Workspace mirror failed. robocopy exit: src=$srcCopyExit"
+}
+
+$yfinanceTarget = Join-Path $tempRoot "YFinance.net"
+$null = robocopy (Join-Path $repoRoot "YFinance.net") $yfinanceTarget /E /XD bin obj
+$yfinanceCopyExit = $LASTEXITCODE
+if ($yfinanceCopyExit -gt 7) {
+    throw "Workspace mirror failed. robocopy exit: yfinance=$yfinanceCopyExit"
 }
 
 Write-Step "Seeding local obj restore assets"
@@ -88,7 +98,10 @@ $assetPatterns = @(
     "*.nuget.g.targets"
 )
 
-$assetFiles = Get-ChildItem -Path (Join-Path $repoRoot "src") -Recurse -File | Where-Object {
+$assetFiles = Get-ChildItem -Path @(
+    (Join-Path $repoRoot "src"),
+    (Join-Path $repoRoot "YFinance.net")
+) -Recurse -File | Where-Object {
     $name = $_.Name
     foreach ($pattern in $assetPatterns) {
         if ($name -like $pattern) { return $true }

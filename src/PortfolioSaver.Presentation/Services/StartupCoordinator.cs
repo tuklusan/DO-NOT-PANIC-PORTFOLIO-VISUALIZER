@@ -28,10 +28,10 @@ public sealed class StartupCoordinator
     private const int YahooDedicatedSymbolCooldownMinutes = 12;
     private const int YahooGeneralRateLimitCooldownMinutes = 8;
     private const int YahooDedicatedRateLimitCooldownMinutes = 12;
-    private const int YahooDedicatedWarmupBatchSize = 4;
-    private const int YahooDedicatedWarmupMaxBatches = 2;
-    private const int YahooDedicatedRuntimeBatchSymbols = 4;
-    private const int YahooGeneralRuntimeBatchSymbols = 16;
+    private const int YahooDedicatedWarmupBatchSize = 25;
+    private const int YahooDedicatedWarmupMaxBatches = 4;
+    private const int YahooDedicatedRuntimeBatchSymbols = 25;
+    private const int YahooGeneralRuntimeBatchSymbols = 25;
     private static readonly TimeSpan YahooWarmupInterBatchDelay = TimeSpan.FromMilliseconds(500);
     private const int MaxBatchSymbolsPerPass = 24;
     private const int MaxRecoveryBatchSymbolsPerPass = 32;
@@ -1454,12 +1454,22 @@ public sealed class StartupCoordinator
 
     private static IReadOnlyList<string> GetDedicatedYahooWarmupSymbols(AppSettings settings)
     {
-        IEnumerable<string> symbols = GetYahooDedicatedMacroSymbols();
-
-        return OrderDedicatedYahooSymbols(symbols)
-            .Where(RequiresDedicatedYahooWarmup)
+        List<string> dedicatedSymbols = OrderDedicatedYahooSymbols(
+            GetYahooDedicatedMacroSymbols()
+                .Concat(FloatingClockBuilder.GetWorldIndexSymbols()))
             .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
             .ToList();
+
+        List<string> portfolioSymbols = BuildInterleavedPortfolioSymbols(settings)
+            .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return
+        [
+            .. dedicatedSymbols,
+            .. portfolioSymbols.Where(symbol => !dedicatedSymbols.Contains(symbol, StringComparer.OrdinalIgnoreCase))
+        ];
     }
 
     private static IReadOnlyList<string> OrderDedicatedYahooSymbols(IEnumerable<string> symbols)
@@ -1534,21 +1544,6 @@ public sealed class StartupCoordinator
 
     private static bool IsTreasuryMacroSymbol(string symbol)
         => TreasuryMacroSymbols.Contains(SymbolProfileHeuristics.Normalize(symbol));
-
-    private static bool RequiresDedicatedYahooWarmup(string symbol)
-    {
-        string normalized = SymbolProfileHeuristics.Normalize(symbol);
-        if (string.IsNullOrWhiteSpace(normalized))
-            return false;
-
-        if (IsOfficialMacroSymbol(normalized) || IsTreasuryMacroSymbol(normalized))
-            return false;
-
-        if (ShouldPreferYahooWorldIndex(normalized))
-            return true;
-
-        return true;
-    }
 
     private static bool ShouldPreferYahooWorldIndex(string symbol)
         => PreferredYahooWorldIndexSymbols.Contains(SymbolProfileHeuristics.Normalize(symbol));
@@ -1661,7 +1656,7 @@ public sealed class StartupCoordinator
     }
 
     private static HashSet<string> BuildPreferredYahooWorldIndexSet()
-        => new(["^IXIC", "^NYA"], StringComparer.OrdinalIgnoreCase);
+        => new(["^IXIC"], StringComparer.OrdinalIgnoreCase);
 
     private static HashSet<string> BuildOfficialMacroSymbolSet()
         => new(GetOfficialMacroSymbols().Select(SymbolProfileHeuristics.Normalize), StringComparer.OrdinalIgnoreCase);

@@ -8,7 +8,6 @@ public sealed class FloatingClockBuilder
     private static readonly IReadOnlyList<ExchangeEntry> ExchangeEntries =
     [
         new("NewYorkNasdaq", "New York", "Nasdaq Composite", "^IXIC", "NYSE", "Eastern Standard Time", "America/New_York", "US", 40.7128, -74.0060),
-        new("NewYorkNyse", "New York", "NYSE Composite", "^NYA", "NYSE", "Eastern Standard Time", "America/New_York", "US", 40.7128, -74.0060),
         new("Shanghai", "Shanghai", "SSE Composite", "000001.SS", "SSE", "China Standard Time", "Asia/Shanghai", "CN", 31.2304, 121.4737),
         new("Tokyo", "Tokyo", "Nikkei 225", "^N225", "TSE", "Tokyo Standard Time", "Asia/Tokyo", "JP", 35.6762, 139.6503),
         new("Euronext", "Paris", "Euro Stoxx 50", "^STOXX50E", "EPA", "Romance Standard Time", "Europe/Paris", "FR", 48.8566, 2.3522),

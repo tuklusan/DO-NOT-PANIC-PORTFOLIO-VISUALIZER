@@ -1,0 +1,9 @@
+Global Markets country flags are bundled from Wikimedia Commons thumbnail renders.
+
+Added for the Beta 5.6 Global Markets roster completion:
+- tw.png | Flag of the Republic of China (Taiwan) | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Flag_of_the_Republic_of_China.svg
+- ch.png | Flag of Switzerland | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Flag_of_Switzerland.svg
+- sa.png | Flag of Saudi Arabia | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Flag_of_Saudi_Arabia.svg
+- br.png | Flag of Brazil | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Flag_of_Brazil.svg
+- za.png | Flag of South Africa | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Flag_of_South_Africa.svg
+- se.png | Flag of Sweden | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Flag_of_Sweden.svg

@@ -146,9 +146,12 @@ public sealed class AppSettingsNormalizerTests
     [Fact]
     public void Normalize_DeepSeekPlaceholder_DoNotBlockEnvironmentVariableUsage()
     {
-        const string environmentName = "DEEPSEEK_API_KEY";
-        string? previous = Environment.GetEnvironmentVariable(environmentName);
-        Environment.SetEnvironmentVariable(environmentName, null);
+        const string primaryEnvironmentName = "DEEPSEEK_API_KEY";
+        const string secondaryEnvironmentName = "PORTFOLIOSAVER_DEEPSEEK_API_KEY";
+        string? previousPrimary = Environment.GetEnvironmentVariable(primaryEnvironmentName);
+        string? previousSecondary = Environment.GetEnvironmentVariable(secondaryEnvironmentName);
+        Environment.SetEnvironmentVariable(primaryEnvironmentName, null);
+        Environment.SetEnvironmentVariable(secondaryEnvironmentName, null);
 
         try
         {
@@ -161,7 +164,8 @@ public sealed class AppSettingsNormalizerTests
         }
         finally
         {
-            Environment.SetEnvironmentVariable(environmentName, previous);
+            Environment.SetEnvironmentVariable(primaryEnvironmentName, previousPrimary);
+            Environment.SetEnvironmentVariable(secondaryEnvironmentName, previousSecondary);
         }
     }
 
