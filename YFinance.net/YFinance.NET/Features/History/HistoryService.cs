@@ -1,4 +1,5 @@
 using System.Text.Json;
+using YFinance.NET.Diagnostics;
 using YFinance.NET.Exceptions;
 using YFinance.NET.Features.Quotes;
 using YFinance.NET.Models;
@@ -9,10 +10,12 @@ namespace YFinance.NET.Features.History;
 public sealed class HistoryService
 {
     private readonly YahooFinanceHttpClient _httpClient;
+    private readonly YFinanceTrace _trace;
 
-    public HistoryService(YahooFinanceHttpClient httpClient)
+    public HistoryService(YahooFinanceHttpClient httpClient, YFinanceTrace? trace = null)
     {
         _httpClient = httpClient;
+        _trace = trace ?? new YFinanceTrace();
     }
 
     public async Task<IReadOnlyList<HistoricalBar>> GetHistoryAsync(string symbol, DateTimeOffset startUtc, DateTimeOffset endUtc, string interval = "1d", CancellationToken cancellationToken = default)
@@ -21,6 +24,7 @@ public sealed class HistoryService
     public async Task<HistoryResponse> GetHistoryResponseAsync(string symbol, DateTimeOffset startUtc, DateTimeOffset endUtc, string interval = "1d", CancellationToken cancellationToken = default)
     {
         string normalized = symbol.Trim().ToUpperInvariant();
+        _trace.InfoState("YFinance.History", "HistoryRequestStart", ("symbol", normalized), ("start_utc", startUtc), ("end_utc", endUtc), ("interval", interval));
         JsonDocument json = await _httpClient.GetJsonAsync(
             $"/v8/finance/chart/{Uri.EscapeDataString(normalized)}",
             new Dictionary<string, string?>
@@ -33,7 +37,9 @@ public sealed class HistoryService
             },
             cancellationToken).ConfigureAwait(false);
 
-        return ParseHistoryResponse(normalized, endUtc, json.RootElement);
+        HistoryResponse response = ParseHistoryResponse(normalized, endUtc, json.RootElement);
+        _trace.InfoState("YFinance.History", "HistoryRequestComplete", ("symbol", normalized), ("bar_count", response.Bars.Count), ("timezone", response.Metadata?.ExchangeTimezoneName ?? "n/a"), ("granularity", response.Metadata?.DataGranularity ?? "n/a"));
+        return response;
     }
 
     private static HistoryResponse ParseHistoryResponse(string symbol, DateTimeOffset? endUtc, JsonElement root)

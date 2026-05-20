@@ -1,5 +1,6 @@
 using System.Text.Json;
 using YFinance.NET.Config;
+using YFinance.NET.Diagnostics;
 using YFinance.NET.Models;
 using YFinance.NET.Transport;
 
@@ -9,11 +10,13 @@ public sealed class QuoteSummaryService
 {
     private readonly YahooFinanceHttpClient _httpClient;
     private readonly YFinanceOptions _options;
+    private readonly YFinanceTrace _trace;
 
-    public QuoteSummaryService(YahooFinanceHttpClient httpClient, YFinanceOptions options)
+    public QuoteSummaryService(YahooFinanceHttpClient httpClient, YFinanceOptions options, YFinanceTrace? trace = null)
     {
         _httpClient = httpClient;
         _options = options;
+        _trace = trace ?? new YFinanceTrace(options.TraceSink);
     }
 
     public async Task<QuoteSummaryResult?> GetSummaryAsync(string symbol, IEnumerable<string> modules, CancellationToken cancellationToken = default)
@@ -28,6 +31,7 @@ public sealed class QuoteSummaryService
         }
 
         string normalizedSymbol = symbol.Trim().ToUpperInvariant();
+        _trace.InfoState("YFinance.Summary", "SummaryRequestStart", ("symbol", normalizedSymbol), ("modules", moduleList), ("module_count", moduleList.Length));
         JsonDocument json = await _httpClient.GetCachedJsonAsync(
             $"/v10/finance/quoteSummary/{Uri.EscapeDataString(normalizedSymbol)}",
             new Dictionary<string, string?>
@@ -46,6 +50,7 @@ public sealed class QuoteSummaryService
             resultArray.ValueKind != JsonValueKind.Array ||
             resultArray.GetArrayLength() == 0)
         {
+            _trace.WarnState("YFinance.Summary", "SummaryRequestEmpty", ("symbol", normalizedSymbol), ("modules", moduleList));
             return null;
         }
 
@@ -56,6 +61,7 @@ public sealed class QuoteSummaryService
             mapped[property.Name] = property.Value.Clone();
         }
 
+        _trace.InfoState("YFinance.Summary", "SummaryRequestComplete", ("symbol", normalizedSymbol), ("module_count", mapped.Count));
         return new QuoteSummaryResult(normalizedSymbol, mapped, JsonDocument.Parse(json.RootElement.GetRawText()));
     }
 }

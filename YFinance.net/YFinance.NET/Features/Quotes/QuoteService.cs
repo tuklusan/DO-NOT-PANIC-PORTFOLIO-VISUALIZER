@@ -1,5 +1,6 @@
 using System.Text.Json;
 using YFinance.NET.Config;
+using YFinance.NET.Diagnostics;
 using YFinance.NET.Models;
 using YFinance.NET.Transport;
 
@@ -9,11 +10,13 @@ public sealed class QuoteService
 {
     private readonly YahooFinanceHttpClient _httpClient;
     private readonly YFinanceOptions _options;
+    private readonly YFinanceTrace _trace;
 
-    public QuoteService(YahooFinanceHttpClient httpClient, YFinanceOptions options)
+    public QuoteService(YahooFinanceHttpClient httpClient, YFinanceOptions options, YFinanceTrace? trace = null)
     {
         _httpClient = httpClient;
         _options = options;
+        _trace = trace ?? new YFinanceTrace(options.TraceSink);
     }
 
     public async Task<QuoteSnapshot?> GetQuoteAsync(string symbol, CancellationToken cancellationToken = default)
@@ -34,8 +37,10 @@ public sealed class QuoteService
         }
 
         Dictionary<string, QuoteSnapshot> results = new(StringComparer.OrdinalIgnoreCase);
+        _trace.InfoState("YFinance.Quotes", "QuoteBatchStart", ("symbol_count", normalized.Length), ("max_symbols_per_request", _options.MaxSymbolsPerQuoteRequest));
         foreach (string[] batch in Chunk(normalized, Math.Max(1, _options.MaxSymbolsPerQuoteRequest)))
         {
+            _trace.InfoState("YFinance.Quotes", "QuoteBatchRequest", ("symbols", batch), ("batch_size", batch.Length));
             JsonDocument json = await _httpClient.GetJsonAsync(
                 "/v7/finance/quote",
                 new Dictionary<string, string?>
@@ -64,6 +69,7 @@ public sealed class QuoteService
             }
         }
 
+        _trace.InfoState("YFinance.Quotes", "QuoteBatchComplete", ("requested_count", normalized.Length), ("resolved_count", results.Count));
         return results;
     }
 

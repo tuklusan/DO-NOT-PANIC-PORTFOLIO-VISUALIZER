@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using YFinance.NET.Caching;
 using YFinance.NET.Config;
+using YFinance.NET.Diagnostics;
 using YFinance.NET.Exceptions;
 
 namespace YFinance.NET.Transport;
@@ -14,11 +15,13 @@ public sealed class YahooFinanceHttpClient : IDisposable
     private readonly YahooSessionManager _sessionManager;
     private readonly RequestThrottle _throttle;
     private readonly MemoryTtlCache<JsonDocument> _cache;
+    private readonly YFinanceTrace _trace;
 
-    public YahooFinanceHttpClient(YFinanceOptions? options = null)
+    public YahooFinanceHttpClient(YFinanceOptions? options = null, YFinanceTrace? trace = null)
     {
         _options = options ?? new YFinanceOptions();
-        _sessionManager = new YahooSessionManager(_options);
+        _trace = trace ?? new YFinanceTrace(_options.TraceSink);
+        _sessionManager = new YahooSessionManager(_options, _trace);
         _throttle = new RequestThrottle(_options.MinimumRequestSpacing);
         _cache = new MemoryTtlCache<JsonDocument>();
     }
@@ -31,11 +34,13 @@ public sealed class YahooFinanceHttpClient : IDisposable
         string cacheKey = MemoryTtlCache<JsonDocument>.BuildKey(relativeOrAbsoluteUrl, BuildQueryKey(query));
         if (_cache.TryGet(cacheKey, out JsonDocument? cached) && cached is not null)
         {
+            _trace.InfoState("YFinance.Http", "CachedJsonHit", ("path", relativeOrAbsoluteUrl), ("cache_key", cacheKey));
             return JsonDocument.Parse(cached.RootElement.GetRawText());
         }
 
         JsonDocument json = await SendJsonAsync(relativeOrAbsoluteUrl, query, cancellationToken).ConfigureAwait(false);
         _cache.Set(cacheKey, JsonDocument.Parse(json.RootElement.GetRawText()), ttl ?? _options.DefaultCacheTtl);
+        _trace.InfoState("YFinance.Http", "CachedJsonStore", ("path", relativeOrAbsoluteUrl), ("cache_key", cacheKey), ("ttl_seconds", (ttl ?? _options.DefaultCacheTtl).TotalSeconds));
         return json;
     }
 
@@ -47,10 +52,12 @@ public sealed class YahooFinanceHttpClient : IDisposable
             YahooSessionState session = await _sessionManager.GetSessionAsync(attempt > 0, cancellationToken).ConfigureAwait(false);
             Uri requestUri = BuildUri(relativeOrAbsoluteUrl, query, session.Crumb);
             Func<HttpRequestMessage> requestFactory = () => BuildRequest(requestUri, session);
+            _trace.InfoState("YFinance.Http", "RequestStart", ("path", relativeOrAbsoluteUrl), ("attempt", attempt + 1), ("uri", requestUri.ToString()));
 
             using HttpResponseMessage response = await _sessionManager.SendAsync(requestFactory, cancellationToken).ConfigureAwait(false);
             if (response.StatusCode == HttpStatusCode.TooManyRequests)
             {
+                _trace.WarnState("YFinance.Http", "RequestRateLimited", ("path", relativeOrAbsoluteUrl), ("attempt", attempt + 1), ("status_code", 429));
                 if (attempt >= _options.MaxRetries)
                 {
                     throw new YFinanceRateLimitException("Yahoo returned HTTP 429 Too Many Requests.", 429);
@@ -65,6 +72,7 @@ public sealed class YahooFinanceHttpClient : IDisposable
             {
                 if (ShouldRefreshSession(content, response.StatusCode))
                 {
+                    _trace.WarnState("YFinance.Http", "SessionRefreshRequested", ("path", relativeOrAbsoluteUrl), ("status_code", (int)response.StatusCode), ("attempt", attempt + 1));
                     _sessionManager.Invalidate();
                     continue;
                 }
@@ -74,10 +82,12 @@ public sealed class YahooFinanceHttpClient : IDisposable
 
             if (LooksLikeConsentPayload(response, content))
             {
+                _trace.WarnState("YFinance.Http", "ConsentPayloadDetected", ("path", relativeOrAbsoluteUrl), ("attempt", attempt + 1));
                 _sessionManager.Invalidate();
                 continue;
             }
 
+            _trace.InfoState("YFinance.Http", "RequestComplete", ("path", relativeOrAbsoluteUrl), ("attempt", attempt + 1), ("status_code", (int)response.StatusCode), ("content_length", content.Length));
             return JsonDocument.Parse(content);
         }
 

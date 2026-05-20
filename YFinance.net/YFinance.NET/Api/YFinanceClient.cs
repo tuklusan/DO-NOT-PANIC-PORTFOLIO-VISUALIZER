@@ -1,4 +1,5 @@
 using YFinance.NET.Config;
+using YFinance.NET.Diagnostics;
 using YFinance.NET.Features.History;
 using YFinance.NET.Features.Quotes;
 using YFinance.NET.Transport;
@@ -14,15 +15,17 @@ public sealed class YFinanceClient : IDisposable
     private readonly QuoteSummaryService _quoteSummaryService;
     private readonly TickerInfoService _tickerInfoService;
     private readonly HistoryService _historyService;
+    private readonly YFinanceTrace _trace;
 
     public YFinanceClient(YFinanceOptions? options = null)
     {
         YFinanceOptions resolvedOptions = options ?? new YFinanceOptions();
-        _httpClient = new YahooFinanceHttpClient(resolvedOptions);
-        _quoteService = new QuoteService(_httpClient, resolvedOptions);
-        _quoteSummaryService = new QuoteSummaryService(_httpClient, resolvedOptions);
-        _tickerInfoService = new TickerInfoService(_quoteService, _quoteSummaryService, resolvedOptions);
-        _historyService = new HistoryService(_httpClient);
+        _trace = new YFinanceTrace(resolvedOptions.TraceSink);
+        _httpClient = new YahooFinanceHttpClient(resolvedOptions, _trace);
+        _quoteService = new QuoteService(_httpClient, resolvedOptions, _trace);
+        _quoteSummaryService = new QuoteSummaryService(_httpClient, resolvedOptions, _trace);
+        _tickerInfoService = new TickerInfoService(_quoteService, _quoteSummaryService, resolvedOptions, _trace);
+        _historyService = new HistoryService(_httpClient, _trace);
     }
 
     public Ticker Ticker(string symbol) => new(symbol, _quoteService, _quoteSummaryService, _tickerInfoService, _historyService);

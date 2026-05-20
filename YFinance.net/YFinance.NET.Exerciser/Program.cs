@@ -3,7 +3,9 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using YFinance.NET.Api;
 using YFinance.NET.Config;
+using YFinance.NET.Diagnostics;
 using YFinance.NET.Models;
+using PortfolioSaver.Shared.Diagnostics;
 
 namespace YFinance.NET.Exerciser;
 
@@ -29,21 +31,32 @@ internal static partial class Program
             DefaultCacheTtl = TimeSpan.FromMinutes(30),
             SummaryCacheTtl = TimeSpan.FromHours(6),
             PersistentMetadataCacheTtl = TimeSpan.FromHours(Math.Max(1, runnerOptions.CacheTtlHours)),
-            MaxSymbolsPerQuoteRequest = 25
+            MaxSymbolsPerQuoteRequest = 25,
+            TraceSink = new PortfolioSaverTraceSink()
         };
 
+        TraceLog.InfoState("YFinance.Exerciser", "ExerciserStart",
+            [new("top_count", runnerOptions.TopCount),
+             new("total_cycles", runnerOptions.TotalCycles),
+             new("refresh_interval", runnerOptions.RefreshInterval),
+             new("per_ticker_delay", runnerOptions.PerTickerDelay),
+             new("history_warmup_count", runnerOptions.HistoryWarmupCount),
+             new("symbol_override_count", runnerOptions.SymbolOverrides.Count)]);
         using YFinanceClient client = new(options);
         string cachePath = Path.Combine(AppContext.BaseDirectory, CacheFileName);
         List<string> tickers = await ResolveTickersAsync(client, cachePath, runnerOptions, CancellationToken.None);
         Console.WriteLine($"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz} Loaded top {tickers.Count} S&P 500 symbols.");
+        TraceLog.InfoState("YFinance.Exerciser", "TickerResolutionComplete", [new("ticker_count", tickers.Count), new("cache_path", cachePath)]);
         await WarmHistoryAsync(client, tickers, runnerOptions, CancellationToken.None);
 
         for (int cycle = 1; cycle <= runnerOptions.TotalCycles; cycle++)
         {
             Console.WriteLine();
             Console.WriteLine($"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz} Cycle {cycle}/{runnerOptions.TotalCycles} starting.");
+            TraceLog.InfoState("YFinance.Exerciser", "CycleStart", [new("cycle", cycle), new("ticker_count", tickers.Count)]);
             IReadOnlyList<QuoteSnapshot> quotes = await FetchQuotesByBatchAsync(client, tickers, CancellationToken.None);
             PrintSummary(quotes, cycle);
+            TraceLog.InfoState("YFinance.Exerciser", "CycleComplete", [new("cycle", cycle), new("quote_count", quotes.Count)]);
 
             if (cycle < runnerOptions.TotalCycles)
             {
@@ -51,12 +64,14 @@ internal static partial class Program
                 await Task.Delay(runnerOptions.RefreshInterval, CancellationToken.None);
             }
         }
+        TraceLog.InfoState("YFinance.Exerciser", "ExerciserComplete", [new("cycles", runnerOptions.TotalCycles), new("ticker_count", tickers.Count)]);
     }
 
     private static async Task<List<string>> ResolveTickersAsync(YFinanceClient client, string cachePath, RunnerOptions runnerOptions, CancellationToken cancellationToken)
     {
         if (runnerOptions.SymbolOverrides.Count > 0)
         {
+            TraceLog.InfoState("YFinance.Exerciser", "TickerResolutionOverride", [new("symbols", runnerOptions.SymbolOverrides)]);
             return runnerOptions.SymbolOverrides.ToList();
         }
 
@@ -68,11 +83,13 @@ internal static partial class Program
         CacheEnvelope? cache = await LoadCacheAsync(cachePath, cancellationToken);
         if (cache is not null && DateTimeOffset.UtcNow - cache.TimestampUtc < TimeSpan.FromHours(runnerOptions.CacheTtlHours))
         {
+            TraceLog.InfoState("YFinance.Exerciser", "TickerResolutionCacheHit", [new("cache_path", cachePath), new("cached_count", cache.Items.Count)]);
             return cache.Items.OrderByDescending(static item => item.MarketCap)
                               .Take(runnerOptions.TopCount)
                               .Select(static item => item.Symbol)
                               .ToList();
         }
+        TraceLog.InfoState("YFinance.Exerciser", "TickerResolutionCacheMiss", [new("cache_path", cachePath)]);
 
         List<string> symbols = await GetSp500SymbolsAsync(cancellationToken);
         List<CacheItem> items = new();
@@ -86,10 +103,12 @@ internal static partial class Program
                     items.Add(new CacheItem(symbol, info.MarketCap.Value));
                 }
                 Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} MCAP {symbol,-8} {(info?.MarketCap?.ToString() ?? "n/a")}");
+                TraceLog.InfoState("YFinance.Exerciser", "MarketCapProbe", [new("symbol", symbol), new("market_cap", info?.MarketCap), new("resolved", info is not null)]);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} MCAP {symbol,-8} FAIL {ex.GetType().Name}: {ex.Message}");
+                TraceLog.ErrorState("YFinance.Exerciser", "MarketCapProbeFailed", [new("symbol", symbol)], ex);
             }
 
             await Task.Delay(runnerOptions.PerTickerDelay, cancellationToken);
@@ -97,6 +116,7 @@ internal static partial class Program
 
         CacheEnvelope fresh = new(DateTimeOffset.UtcNow, items);
         await SaveCacheAsync(cachePath, fresh, cancellationToken);
+        TraceLog.InfoState("YFinance.Exerciser", "TickerResolutionCacheStore", [new("cache_path", cachePath), new("resolved_count", items.Count)]);
         return items.OrderByDescending(static item => item.MarketCap)
                     .Take(runnerOptions.TopCount)
                     .Select(static item => item.Symbol)
@@ -114,6 +134,7 @@ internal static partial class Program
         DateTimeOffset endUtc = DateTimeOffset.UtcNow;
         DateTimeOffset startUtc = endUtc.AddDays(-runnerOptions.HistoryLookbackDays);
         Console.WriteLine($"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz} Warming {warmCount} history lanes over the last {runnerOptions.HistoryLookbackDays} days.");
+        TraceLog.InfoState("YFinance.Exerciser", "HistoryWarmupStart", [new("warm_count", warmCount), new("lookback_days", runnerOptions.HistoryLookbackDays)]);
         for (int index = 0; index < warmCount; index++)
         {
             string symbol = symbols[index];
@@ -121,12 +142,15 @@ internal static partial class Program
             {
                 HistoryResponse history = await client.Ticker(symbol).GetHistoryResponseAsync(startUtc, endUtc, "1d", cancellationToken).ConfigureAwait(false);
                 Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} HISTORY {symbol,-8} bars={history.Bars.Count} tz={history.Metadata?.ExchangeTimezoneName ?? "n/a"}");
+                TraceLog.InfoState("YFinance.Exerciser", "HistoryWarmupItem", [new("symbol", symbol), new("bar_count", history.Bars.Count), new("timezone", history.Metadata?.ExchangeTimezoneName ?? "n/a")]);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} HISTORY {symbol,-8} FAIL {ex.GetType().Name}: {ex.Message}");
+                TraceLog.ErrorState("YFinance.Exerciser", "HistoryWarmupFailed", [new("symbol", symbol)], ex);
             }
         }
+        TraceLog.InfoState("YFinance.Exerciser", "HistoryWarmupComplete", [new("warm_count", warmCount)]);
     }
 
     private static async Task<IReadOnlyList<QuoteSnapshot>> FetchQuotesByBatchAsync(YFinanceClient client, IReadOnlyList<string> symbols, CancellationToken cancellationToken)
@@ -139,10 +163,12 @@ internal static partial class Program
             {
                 ordered.Add(quote);
                 Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} QUOTE {symbol,-8} price={quote.RegularMarketPrice} change={quote.ComputedChangePercent:+0.00;-0.00;0.00}%");
+                TraceLog.InfoState("YFinance.Exerciser", "QuoteObserved", [new("symbol", symbol), new("price", quote.RegularMarketPrice), new("change_percent", quote.ComputedChangePercent)]);
             }
             else
             {
                 Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} QUOTE {symbol,-8} missing");
+                TraceLog.WarnState("YFinance.Exerciser", "QuoteMissing", [new("symbol", symbol)]);
             }
         }
 
@@ -299,5 +325,17 @@ internal static partial class Program
 
             return new RunnerOptions(topCount, totalCycles, refreshInterval, perTickerDelay, cacheTtlHours, historyWarmupCount, historyLookbackDays, symbolOverrides);
         }
+    }
+
+    private sealed class PortfolioSaverTraceSink : IYFinanceTraceSink
+    {
+        public void InfoState(string source, string eventName, IEnumerable<KeyValuePair<string, object?>> fields)
+            => TraceLog.InfoState(source, eventName, fields);
+
+        public void WarnState(string source, string eventName, IEnumerable<KeyValuePair<string, object?>> fields)
+            => TraceLog.WarnState(source, eventName, fields);
+
+        public void ErrorState(string source, string eventName, IEnumerable<KeyValuePair<string, object?>> fields, Exception? exception = null)
+            => TraceLog.ErrorState(source, eventName, fields, exception);
     }
 }

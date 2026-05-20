@@ -1,6 +1,7 @@
 using System.Text.Json;
 using YFinance.NET.Caching;
 using YFinance.NET.Config;
+using YFinance.NET.Diagnostics;
 using YFinance.NET.Models;
 
 namespace YFinance.NET.Features.Quotes;
@@ -15,13 +16,15 @@ public sealed class TickerInfoService
     private readonly QuoteSummaryService _quoteSummaryService;
     private readonly PersistentTtlCache<TickerInfo> _persistentCache;
     private readonly YFinanceOptions _options;
+    private readonly YFinanceTrace _trace;
 
-    public TickerInfoService(QuoteService quoteService, QuoteSummaryService quoteSummaryService, YFinanceOptions options)
+    public TickerInfoService(QuoteService quoteService, QuoteSummaryService quoteSummaryService, YFinanceOptions options, YFinanceTrace? trace = null)
     {
         _quoteService = quoteService;
         _quoteSummaryService = quoteSummaryService;
         _options = options;
         _persistentCache = new PersistentTtlCache<TickerInfo>(options.MetadataCacheDirectoryPath);
+        _trace = trace ?? new YFinanceTrace(options.TraceSink);
     }
 
     public async Task<TickerInfo?> GetInfoAsync(string symbol, CancellationToken cancellationToken = default)
@@ -31,8 +34,10 @@ public sealed class TickerInfoService
         TickerInfo? cached = await _persistentCache.GetAsync(cacheKey, cancellationToken).ConfigureAwait(false);
         if (cached is not null)
         {
+            _trace.InfoState("YFinance.Info", "PersistentInfoCacheHit", ("symbol", normalized), ("cache_key", cacheKey));
             return cached;
         }
+        _trace.InfoState("YFinance.Info", "PersistentInfoCacheMiss", ("symbol", normalized), ("cache_key", cacheKey));
 
         QuoteSnapshot? quote = await _quoteService.GetQuoteAsync(normalized, cancellationToken).ConfigureAwait(false);
         QuoteSummaryResult? summary = await _quoteSummaryService.GetSummaryAsync(normalized, DefaultInfoModules, cancellationToken).ConfigureAwait(false);
@@ -40,7 +45,9 @@ public sealed class TickerInfoService
         if (info is not null)
         {
             await _persistentCache.SetAsync(cacheKey, info, _options.PersistentMetadataCacheTtl, cancellationToken).ConfigureAwait(false);
+            _trace.InfoState("YFinance.Info", "PersistentInfoCacheStore", ("symbol", normalized), ("cache_key", cacheKey), ("ttl_hours", _options.PersistentMetadataCacheTtl.TotalHours));
         }
+        _trace.InfoState("YFinance.Info", "InfoNormalizeComplete", ("symbol", normalized), ("has_quote", quote is not null), ("has_summary", summary is not null), ("resolved", info is not null));
 
         return info;
     }
@@ -65,9 +72,11 @@ public sealed class TickerInfoService
             if (cached is not null)
             {
                 results[symbol] = cached;
+                _trace.InfoState("YFinance.Info", "PersistentInfoCacheHit", ("symbol", symbol), ("cache_key", cacheKey));
             }
             else
             {
+                _trace.InfoState("YFinance.Info", "PersistentInfoCacheMiss", ("symbol", symbol), ("cache_key", cacheKey));
                 unresolved.Add(symbol);
             }
         }
@@ -88,7 +97,9 @@ public sealed class TickerInfoService
             {
                 string cacheKey = PersistentTtlCache<TickerInfo>.BuildKey(CacheBuckets.Metadata, symbol, "info");
                 await _persistentCache.SetAsync(cacheKey, info, _options.PersistentMetadataCacheTtl, cancellationToken).ConfigureAwait(false);
+                _trace.InfoState("YFinance.Info", "PersistentInfoCacheStore", ("symbol", symbol), ("cache_key", cacheKey), ("ttl_hours", _options.PersistentMetadataCacheTtl.TotalHours));
             }
+            _trace.InfoState("YFinance.Info", "InfoNormalizeComplete", ("symbol", symbol), ("has_quote", quote is not null), ("has_summary", summary is not null), ("resolved", info is not null));
         }
 
         return results;

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using YFinance.NET.Config;
+using YFinance.NET.Diagnostics;
 using YFinance.NET.Exceptions;
 
 namespace YFinance.NET.Transport;
@@ -18,11 +19,13 @@ public sealed class YahooSessionManager : IDisposable
     private readonly HttpClientHandler _handler;
     private readonly HttpClient _httpClient;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
+    private readonly YFinanceTrace _trace;
     private YahooSessionState? _cachedSession;
 
-    public YahooSessionManager(YFinanceOptions? options = null)
+    public YahooSessionManager(YFinanceOptions? options = null, YFinanceTrace? trace = null)
     {
         _options = options ?? new YFinanceOptions();
+        _trace = trace ?? new YFinanceTrace(_options.TraceSink);
         _handler = new HttpClientHandler
         {
             CookieContainer = _cookieContainer,
@@ -54,8 +57,10 @@ public sealed class YahooSessionManager : IDisposable
                 return cached;
             }
 
+            _trace.InfoState("YFinance.Session", "SessionRefreshStart", ("forced", forceRefresh));
             YahooSessionState refreshed = await RefreshAsync(cancellationToken).ConfigureAwait(false);
             _cachedSession = refreshed;
+            _trace.InfoState("YFinance.Session", "SessionRefreshComplete", ("expires_utc", refreshed.ExpiresUtc), ("cookie_length", refreshed.CookieHeader.Length));
             return refreshed;
         }
         finally
@@ -77,9 +82,11 @@ public sealed class YahooSessionManager : IDisposable
             return response;
         }
 
+        _trace.WarnState("YFinance.Session", "ConsentRedirectDetected", ("request_uri", response.RequestMessage?.RequestUri?.ToString() ?? string.Empty));
         using (response)
         {
             using HttpResponseMessage consentResult = await AcceptConsentFormAsync(response, cancellationToken).ConfigureAwait(false);
+            _trace.InfoState("YFinance.Session", "ConsentAcceptedReplay", ("status_code", (int)consentResult.StatusCode));
         }
 
         return await _httpClient.SendAsync(requestFactory(), completionOption, cancellationToken).ConfigureAwait(false);
@@ -90,6 +97,7 @@ public sealed class YahooSessionManager : IDisposable
         using HttpResponseMessage cookieResponse = await SendSimpleGetAsync(_options.CookieBootstrapUri, cancellationToken).ConfigureAwait(false);
         if ((int)cookieResponse.StatusCode == 429)
         {
+            _trace.WarnState("YFinance.Session", "CookieBootstrapRateLimited", ("uri", _options.CookieBootstrapUri.ToString()), ("status_code", 429));
             throw new YFinanceRateLimitException("Yahoo rate-limited cookie bootstrap.", 429);
         }
 
@@ -99,6 +107,7 @@ public sealed class YahooSessionManager : IDisposable
             using HttpResponseMessage homeResponse = await SendSimpleGetAsync(_options.FinanceHomeUri, cancellationToken).ConfigureAwait(false);
             if ((int)homeResponse.StatusCode == 429)
             {
+                _trace.WarnState("YFinance.Session", "FinanceHomeBootstrapRateLimited", ("uri", _options.FinanceHomeUri.ToString()), ("status_code", 429));
                 throw new YFinanceRateLimitException("Yahoo rate-limited finance home bootstrap.", 429);
             }
 
@@ -108,6 +117,7 @@ public sealed class YahooSessionManager : IDisposable
         using HttpResponseMessage crumbResponse = await SendSimpleGetAsync(_options.CrumbUri, cancellationToken).ConfigureAwait(false);
         if ((int)crumbResponse.StatusCode == 429)
         {
+            _trace.WarnState("YFinance.Session", "CrumbBootstrapRateLimited", ("uri", _options.CrumbUri.ToString()), ("status_code", 429));
             throw new YFinanceRateLimitException("Yahoo rate-limited crumb bootstrap.", 429);
         }
 
@@ -115,6 +125,7 @@ public sealed class YahooSessionManager : IDisposable
         string crumb = (await crumbResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)).Trim();
         if (string.IsNullOrWhiteSpace(crumb) || crumb.Contains("Too Many Requests", StringComparison.OrdinalIgnoreCase) || crumb.Contains("<html>", StringComparison.OrdinalIgnoreCase))
         {
+            _trace.ErrorState("YFinance.Session", "InvalidCrumb", null, ("crumb_preview", crumb));
             throw new YFinanceApiException("Yahoo crumb bootstrap returned an invalid crumb.");
         }
 
@@ -151,6 +162,7 @@ public sealed class YahooSessionManager : IDisposable
         Match formMatch = FormRegex.Match(html);
         if (!formMatch.Success)
         {
+            _trace.ErrorState("YFinance.Session", "ConsentFormMissing", null, ("request_uri", consentResponse.RequestMessage?.RequestUri?.ToString() ?? string.Empty));
             throw new YFinanceApiException("Yahoo redirected to a consent page, but the consent form could not be parsed.");
         }
 
@@ -179,6 +191,7 @@ public sealed class YahooSessionManager : IDisposable
             Content = new FormUrlEncodedContent(formValues)
         };
         request.Headers.Referrer = baseUri;
+        _trace.InfoState("YFinance.Session", "ConsentSubmit", ("action_uri", actionUri.ToString()), ("field_count", formValues.Count));
         return await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
     }
 
