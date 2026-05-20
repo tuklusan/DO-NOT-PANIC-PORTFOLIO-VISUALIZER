@@ -10,6 +10,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Windows.Automation;
+using PortfolioSaver.Data.Services;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Core.Services;
@@ -34,7 +35,7 @@ public partial class ScreensaverSceneControl : UserControl
     private readonly ObservableCollection<TapeViewModel> _tapes = [];
     private readonly StartupCoordinator _startupCoordinator = new();
     private readonly FloatingSpriteMotionController _motionController = new();
-    private readonly ExchangeMarketCalendarService _exchangeMarketCalendarService = new();
+    private readonly YFinanceExchangeTimingService _exchangeMarketCalendarService = new();
     private readonly DispatcherTimer _clockTimer = new();
     private readonly DispatcherTimer _refreshTimer = new();
     private readonly DispatcherTimer _backgroundTimer = new();
@@ -1283,7 +1284,6 @@ public partial class ScreensaverSceneControl : UserControl
         {
             IReadOnlyList<ExchangeCalendarRequest> requests = BuildCalendarRequests();
             _exchangeCalendars = await _exchangeMarketCalendarService.GetCalendarSetAsync(
-                _settings,
                 requests,
                 networkAvailable);
             _lastMarketCalendarRefreshUtc = utcNow;

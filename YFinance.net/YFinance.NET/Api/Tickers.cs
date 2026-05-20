@@ -13,8 +13,9 @@ public sealed class Tickers
     private readonly QuoteSummaryService _quoteSummaryService;
     private readonly TickerInfoService _tickerInfoService;
     private readonly HistoryService _historyService;
+    private readonly MarketTimingService _marketTimingService;
 
-    internal Tickers(IEnumerable<string> symbols, QuoteService quoteService, QuoteSummaryService quoteSummaryService, TickerInfoService tickerInfoService, HistoryService historyService)
+    internal Tickers(IEnumerable<string> symbols, QuoteService quoteService, QuoteSummaryService quoteSummaryService, TickerInfoService tickerInfoService, HistoryService historyService, MarketTimingService marketTimingService)
     {
         _symbols = symbols.Select(static symbol => symbol.Trim().ToUpperInvariant())
                           .Where(static symbol => !string.IsNullOrWhiteSpace(symbol))
@@ -24,12 +25,13 @@ public sealed class Tickers
         _quoteSummaryService = quoteSummaryService;
         _tickerInfoService = tickerInfoService;
         _historyService = historyService;
+        _marketTimingService = marketTimingService;
     }
 
     public IReadOnlyList<string> Symbols => _symbols;
 
     public IReadOnlyDictionary<string, Ticker> AsDictionary()
-        => _symbols.ToDictionary(static symbol => symbol, symbol => new Ticker(symbol, _quoteService, _quoteSummaryService, _tickerInfoService, _historyService), StringComparer.Ordinal);
+        => _symbols.ToDictionary(static symbol => symbol, symbol => new Ticker(symbol, _quoteService, _quoteSummaryService, _tickerInfoService, _historyService, _marketTimingService), StringComparer.Ordinal);
 
     public Task<IReadOnlyDictionary<string, QuoteSnapshot>> GetQuotesAsync(CancellationToken cancellationToken = default)
         => _quoteService.GetQuotesAsync(_symbols, cancellationToken);
@@ -54,6 +56,17 @@ public sealed class Tickers
         foreach (string symbol in _symbols)
         {
             results[symbol] = await _historyService.GetHistoryResponseAsync(symbol, startUtc, endUtc, interval, cancellationToken).ConfigureAwait(false);
+        }
+
+        return results;
+    }
+
+    public async Task<IReadOnlyDictionary<string, MarketTimingSnapshot?>> GetMarketTimingsAsync(CancellationToken cancellationToken = default)
+    {
+        Dictionary<string, MarketTimingSnapshot?> results = new(StringComparer.OrdinalIgnoreCase);
+        foreach (string symbol in _symbols)
+        {
+            results[symbol] = await _marketTimingService.GetMarketTimingAsync(symbol, cancellationToken).ConfigureAwait(false);
         }
 
         return results;

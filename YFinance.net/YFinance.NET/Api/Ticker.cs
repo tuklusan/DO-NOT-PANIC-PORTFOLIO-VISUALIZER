@@ -12,14 +12,16 @@ public sealed class Ticker
     private readonly QuoteSummaryService _quoteSummaryService;
     private readonly TickerInfoService _tickerInfoService;
     private readonly HistoryService _historyService;
+    private readonly MarketTimingService _marketTimingService;
 
-    internal Ticker(string symbol, QuoteService quoteService, QuoteSummaryService quoteSummaryService, TickerInfoService tickerInfoService, HistoryService historyService)
+    internal Ticker(string symbol, QuoteService quoteService, QuoteSummaryService quoteSummaryService, TickerInfoService tickerInfoService, HistoryService historyService, MarketTimingService marketTimingService)
     {
         _symbol = symbol.Trim().ToUpperInvariant();
         _quoteService = quoteService;
         _quoteSummaryService = quoteSummaryService;
         _tickerInfoService = tickerInfoService;
         _historyService = historyService;
+        _marketTimingService = marketTimingService;
     }
 
     public string Symbol => _symbol;
@@ -38,4 +40,7 @@ public sealed class Ticker
 
     public Task<HistoryResponse> GetHistoryResponseAsync(DateTimeOffset startUtc, DateTimeOffset endUtc, string interval = "1d", CancellationToken cancellationToken = default)
         => _historyService.GetHistoryResponseAsync(_symbol, startUtc, endUtc, interval, cancellationToken);
+
+    public Task<MarketTimingSnapshot?> GetMarketTimingAsync(CancellationToken cancellationToken = default)
+        => _marketTimingService.GetMarketTimingAsync(_symbol, cancellationToken);
 }

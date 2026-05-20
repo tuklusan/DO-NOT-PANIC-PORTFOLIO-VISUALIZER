@@ -15,6 +15,7 @@ public sealed class YFinanceClient : IDisposable
     private readonly QuoteSummaryService _quoteSummaryService;
     private readonly TickerInfoService _tickerInfoService;
     private readonly HistoryService _historyService;
+    private readonly MarketTimingService _marketTimingService;
     private readonly YFinanceTrace _trace;
 
     public YFinanceClient(YFinanceOptions? options = null)
@@ -26,11 +27,12 @@ public sealed class YFinanceClient : IDisposable
         _quoteSummaryService = new QuoteSummaryService(_httpClient, resolvedOptions, _trace);
         _tickerInfoService = new TickerInfoService(_quoteService, _quoteSummaryService, resolvedOptions, _trace);
         _historyService = new HistoryService(_httpClient, resolvedOptions.DefaultCacheTtl, _trace);
+        _marketTimingService = new MarketTimingService(_httpClient, resolvedOptions.MarketTimingCacheDirectoryPath, resolvedOptions.PersistentMetadataCacheTtl, _trace);
     }
 
-    public Ticker Ticker(string symbol) => new(symbol, _quoteService, _quoteSummaryService, _tickerInfoService, _historyService);
+    public Ticker Ticker(string symbol) => new(symbol, _quoteService, _quoteSummaryService, _tickerInfoService, _historyService, _marketTimingService);
 
-    public Tickers Tickers(IEnumerable<string> symbols) => new(symbols, _quoteService, _quoteSummaryService, _tickerInfoService, _historyService);
+    public Tickers Tickers(IEnumerable<string> symbols) => new(symbols, _quoteService, _quoteSummaryService, _tickerInfoService, _historyService, _marketTimingService);
 
     public void Dispose() => _httpClient.Dispose();
 }

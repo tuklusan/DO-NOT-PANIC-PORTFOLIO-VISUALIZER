@@ -485,6 +485,27 @@
         "Prefer human-like keyboard and mouse interaction over brittle deep UIAutomation crawling where possible, while keeping the Validate-and-close flow reliable.",
         "Close the ticket only after the canonical VM proof shows visible config-tab activity with scrolling captures and no regression in Validate/close behavior."
       ]
+    },
+    {
+      "id": "NB-043",
+      "tracking_number": "NB-043",
+      "priority": 1,
+      "area": "yfinance_market_timing",
+      "title": "Move exchange timing ownership into YFinance.NET and remove ExchangeMarketCalendarService",
+      "status": "resolved",
+      "source": "user_followup",
+      "evidence": [
+        "A live audit on 2026-05-20 proved /v7/finance/quote does not return regularMarketStartTime or regularMarketEndTime for the canonical 26-symbol set even when an explicit fields array is requested.",
+        "A live audit on 2026-05-20 proved /v8/finance/chart/{symbol}?range=1d&interval=1d&includeTimestamps=false returns currentTradingPeriod.regular.start/end plus timezone metadata for all 26 canonical symbols with an average payload size of about 1.1 KB."
+      ],
+      "notes": [
+        "Open a dedicated YFinance market-timing feature that uses the micro-chart endpoint, caches by symbol and exchange-local day, and keeps the transport/history split sync-friendly with upstream yfinance.",
+        "Expose the timing feature on the public YFinance.NET client surface so the app can consume exchange timing without tunneling through presentation-owned calendar code.",
+        "Replace the presentation ExchangeMarketCalendarService with a thin data-layer YFinance timing adapter and remove the old service entirely.",
+        "Keep the countdown semantics unchanged for regular, pre-market, after-hours, and next-open status text while sourcing the windows from the new YFinance timing feature.",
+        "Resolved on 2026-05-20 by adding YFinance.NET.Features.History.MarketTimingService and YFinance.NET.Models.MarketTimingSnapshot, exposing Ticker.GetMarketTimingAsync / Tickers.GetMarketTimingsAsync, moving the app adapter to PortfolioSaver.Data.Services.YFinanceExchangeTimingService, and deleting the old presentation ExchangeMarketCalendarService.",
+        "Validation: dotnet build .\\\\PortfolioScreensaver.sln -c Release --nologo passed; dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo passed 168 / 168; a live proof run resolved all 26 canonical symbols through the new public GetMarketTimingAsync path with regular trading windows present for 26 / 26 symbols."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

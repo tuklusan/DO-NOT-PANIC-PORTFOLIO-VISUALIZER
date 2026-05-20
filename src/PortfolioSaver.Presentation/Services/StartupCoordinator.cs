@@ -44,7 +44,6 @@ public sealed class StartupCoordinator
     private readonly ScreensaverSettingsService _settingsService = new();
     private readonly ExchangePhotoCacheService _exchangePhotoCacheService = new();
     private readonly NetworkAvailabilityService _networkAvailabilityService = new();
-    private readonly ExchangeMarketCalendarService _exchangeMarketCalendarService = new();
     private readonly HistoricalGraphBuilder _historicalGraphBuilder = new();
     private readonly FloatingClockBuilder _floatingClockBuilder = new();
     private readonly FinanceNewsService _financeNewsService = new();

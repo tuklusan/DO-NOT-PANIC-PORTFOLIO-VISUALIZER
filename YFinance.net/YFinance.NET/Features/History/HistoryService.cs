@@ -72,7 +72,7 @@ public sealed class HistoryService
         return new HistoryResponse(symbol, bars, metadata);
     }
 
-    private static HistoryMetadata? ParseMetadata(string symbol, JsonElement result)
+    internal static HistoryMetadata? ParseMetadata(string symbol, JsonElement result)
     {
         if (!result.TryGetProperty("meta", out JsonElement meta) || meta.ValueKind != JsonValueKind.Object)
         {
@@ -108,7 +108,7 @@ public sealed class HistoryService
             RawFields: fields);
     }
 
-    private static CurrentTradingPeriods? ParseCurrentTradingPeriods(JsonElement meta)
+    internal static CurrentTradingPeriods? ParseCurrentTradingPeriods(JsonElement meta)
     {
         if (!meta.TryGetProperty("currentTradingPeriod", out JsonElement periods) || periods.ValueKind != JsonValueKind.Object)
             return null;
@@ -122,7 +122,7 @@ public sealed class HistoryService
         return new CurrentTradingPeriods(pre, regular, post);
     }
 
-    private static TradingPeriodWindow? ParseTradingPeriod(JsonElement periods, string propertyName)
+    internal static TradingPeriodWindow? ParseTradingPeriod(JsonElement periods, string propertyName)
     {
         if (!periods.TryGetProperty(propertyName, out JsonElement period) || period.ValueKind != JsonValueKind.Object)
             return null;
@@ -202,7 +202,7 @@ public sealed class HistoryService
         return null;
     }
 
-    private static object? ConvertScalar(JsonElement value)
+    internal static object? ConvertScalar(JsonElement value)
         => value.ValueKind switch
         {
             JsonValueKind.String => value.GetString(),

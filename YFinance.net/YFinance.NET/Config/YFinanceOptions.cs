@@ -26,4 +26,5 @@ public sealed class YFinanceOptions
         "cache");
 
     public string MetadataCacheDirectoryPath => Path.Combine(PersistentCacheRootPath, CacheBuckets.Metadata);
+    public string MarketTimingCacheDirectoryPath => Path.Combine(MetadataCacheDirectoryPath, "market-timing");
 }

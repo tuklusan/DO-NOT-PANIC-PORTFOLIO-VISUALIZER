@@ -1,13 +1,13 @@
 using PortfolioSaver.Core.Enums;
-using PortfolioSaver.Screensaver.Services;
+using PortfolioSaver.Data.Services;
 using Xunit;
 using YFinance.NET.Models;
 
 namespace PortfolioSaver.Tests.Services;
 
-public sealed class ExchangeMarketCalendarServiceTests
+public sealed class YFinanceExchangeTimingServiceTests
 {
-    private readonly ExchangeMarketCalendarService _service = new();
+    private readonly YFinanceExchangeTimingService _service = new();
 
     [Fact]
     public void ResolveStatus_DuringRegularSession_UsesYahooRegularWindow()
