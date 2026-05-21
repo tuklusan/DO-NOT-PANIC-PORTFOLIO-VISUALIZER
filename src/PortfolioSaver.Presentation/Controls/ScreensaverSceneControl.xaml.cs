@@ -2398,7 +2398,6 @@ public partial class ScreensaverSceneControl : UserControl
         bool valueChanged = !string.Equals(graph.LastText, lastText, StringComparison.Ordinal) ||
                             !string.Equals(graph.ChangeText, changeText, StringComparison.Ordinal);
         long quoteUpdateToken = quote.FetchTimestampUtc.UtcTicks;
-        bool updateTokenChanged = quoteUpdateToken > 0 && quoteUpdateToken != graph.QuoteUpdateToken;
 
         graph.LastText = lastText;
         graph.ChangeText = changeText;
@@ -2406,7 +2405,7 @@ public partial class ScreensaverSceneControl : UserControl
         graph.LatestSegmentBrush = changeBrush;
         graph.QuoteUpdateToken = quoteUpdateToken;
 
-        if (hadPriorSymbol && (valueChanged || updateTokenChanged) && !string.IsNullOrWhiteSpace(lastText))
+        if (hadPriorSymbol && valueChanged && !string.IsNullOrWhiteSpace(lastText))
         {
             ApplyRefreshMotionCue(graph, percent);
             graph.TriggerCardFlash(changeBrush);
