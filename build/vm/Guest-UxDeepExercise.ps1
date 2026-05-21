@@ -56,6 +56,38 @@ public static class NativeWindowSearch {
 
     [DllImport("user32.dll")]
     public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    public static IntPtr FindVisibleWindowByProcessAndTitleFragment(int processId, string titleFragment) {
+        IntPtr found = IntPtr.Zero;
+        EnumWindows(delegate (IntPtr hWnd, IntPtr lParam) {
+            if (!IsWindowVisible(hWnd)) {
+                return true;
+            }
+
+            uint pid;
+            GetWindowThreadProcessId(hWnd, out pid);
+            if (processId > 0 && (int)pid != processId) {
+                return true;
+            }
+
+            int length = GetWindowTextLength(hWnd);
+            if (length <= 0) {
+                return true;
+            }
+
+            var builder = new StringBuilder(length + 1);
+            GetWindowText(hWnd, builder, builder.Capacity);
+            string title = builder.ToString();
+            if (title.IndexOf(titleFragment, StringComparison.OrdinalIgnoreCase) >= 0) {
+                found = hWnd;
+                return false;
+            }
+
+            return true;
+        }, IntPtr.Zero);
+
+        return found;
+    }
 }
 "@
 Add-Type @"
@@ -1038,48 +1070,29 @@ function Get-TopLevelWindowsForProcess {
 function Find-Win32TopLevelWindowLike {
     param(
         [int]$ProcessId = 0,
-        [Parameter(Mandatory = $true)][string]$TitleLike
+        [Parameter(Mandatory = $true)][string]$TitleFragment
     )
 
-    $matches = New-Object System.Collections.Generic.List[object]
-    $callback = [NativeWindowSearch+EnumWindowsProc]{
-        param([IntPtr]$hWnd, [IntPtr]$lParam)
-
-        try {
-            if (-not [NativeWindowSearch]::IsWindowVisible($hWnd)) {
-                return $true
-            }
-
-            $pid = [uint32]0
-            [void][NativeWindowSearch]::GetWindowThreadProcessId($hWnd, [ref]$pid)
-            if ($ProcessId -gt 0 -and [int]$pid -ne $ProcessId) {
-                return $true
-            }
-
-            $length = [NativeWindowSearch]::GetWindowTextLength($hWnd)
-            if ($length -le 0) {
-                return $true
-            }
-
-            $builder = New-Object System.Text.StringBuilder ($length + 1)
-            [void][NativeWindowSearch]::GetWindowText($hWnd, $builder, $builder.Capacity)
-            $title = $builder.ToString()
-            if ($title -like $TitleLike) {
-                $matches.Add([pscustomobject]@{
-                    Handle = $hWnd
-                    ProcessId = [int]$pid
-                    Title = $title
-                })
-                return $false
-            }
+    try {
+        $handle = [NativeWindowSearch]::FindVisibleWindowByProcessAndTitleFragment($ProcessId, $TitleFragment)
+        if ($handle -eq [IntPtr]::Zero) {
+            return @()
         }
-        catch {}
 
-        return $true
+        $window = [System.Windows.Automation.AutomationElement]::FromHandle($handle)
+        if ($null -eq $window) {
+            return @()
+        }
+
+        return @([pscustomobject]@{
+            Handle = $handle
+            ProcessId = [int]$window.Current.ProcessId
+            Title = [string]$window.Current.Name
+        })
     }
-
-    [void][NativeWindowSearch]::EnumWindows($callback, [IntPtr]::Zero)
-    return @($matches)
+    catch {
+        return @()
+    }
 }
 
 function Test-AutomationElementAlive {
@@ -1540,7 +1553,7 @@ function Find-ConfigWindow {
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     Write-ConfigWindowTrace -Event 'FindConfigWindowStart' -Details ("process_id={0}; timeout_seconds={1}" -f $Process.Id, $TimeoutSeconds)
     do {
-        $win32Matches = @(Find-Win32TopLevelWindowLike -ProcessId $Process.Id -TitleLike '*PORTFOLIO VISUALIZER Config*')
+        $win32Matches = @(Find-Win32TopLevelWindowLike -ProcessId $Process.Id -TitleFragment 'PORTFOLIO VISUALIZER Config')
         if ($win32Matches.Count -gt 0) {
             try {
                 $match = $win32Matches[0]
