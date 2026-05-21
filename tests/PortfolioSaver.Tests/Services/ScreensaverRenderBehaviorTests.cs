@@ -781,6 +781,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("private void UpdateStatusFreshnessText(string? fallbackText = null)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow())", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_statusViewModel.UpdatedText = \"Loading initial values\";", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("_statusViewModel.UpdatedPrefixText = \"Last Updated:\";", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("_statusViewModel.UpdatedSymbolText = latestUpdatedSymbol;", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("_statusViewModel.UpdatedAgeText = TimeFormatHelper.ToAgeString(latestUpdatedFetchUtc);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StartupCoordinator.TryGetLatestUpdatedSymbol(_latestQuotes, out string latestUpdatedSymbol, out DateTimeOffset latestUpdatedFetchUtc)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_statusViewModel.UpdatedText = StartupCoordinator.FormatUpdatedText(latestUpdatedSymbol, latestUpdatedFetchUtc);", sceneCodeBehind, StringComparison.Ordinal);
     }
@@ -1117,7 +1120,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("Text=\"{Binding ClockText}\"", statusBarXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding ProviderText}\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("<ColumnDefinition Width=\"Auto\" />", statusBarXaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"{Binding UpdatedText}\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding UpdatedPrefixText}\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding UpdatedSymbolText}\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding UpdatedAgeText}\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"102\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("Width=\"88\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("<ColumnDefinition Width=\"24\" />", statusBarXaml, StringComparison.Ordinal);
@@ -1128,7 +1133,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.DoesNotContain("MaxWidth=\"700\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("LineHeight=\"15\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Matches(new Regex("Text=\\\"\\{Binding MarketStatusText\\}\\\"[\\s\\S]*FontFamily=\\\"\\{StaticResource StableClockFont\\}\\\"", RegexOptions.CultureInvariant), statusBarXaml);
-        Assert.Matches(new Regex("Text=\\\"\\{Binding UpdatedText\\}\\\"[\\s\\S]*FontFamily=\\\"\\{StaticResource StableClockFont\\}\\\"", RegexOptions.CultureInvariant), statusBarXaml);
+        Assert.Matches(new Regex("Text=\\\"\\{Binding UpdatedPrefixText\\}\\\"[\\s\\S]*FontFamily=\\\"\\{StaticResource StableClockFont\\}\\\"", RegexOptions.CultureInvariant), statusBarXaml);
         Assert.Contains("treasuryYieldMeterMax = 6m", sceneCodeBehind, StringComparison.Ordinal);
     }
 

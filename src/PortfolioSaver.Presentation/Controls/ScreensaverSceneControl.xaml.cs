@@ -2421,17 +2421,43 @@ public partial class ScreensaverSceneControl : UserControl
         if (StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow()))
         {
             _statusViewModel.UpdatedText = "Loading initial values";
+            _statusViewModel.UpdatedPrefixText = "Last Updated:";
+            _statusViewModel.UpdatedSymbolText = string.Empty;
+            _statusViewModel.UpdatedAgeText = "Loading...";
+            _statusViewModel.UpdatedSymbolForeground = Brushes.Gainsboro;
             return;
         }
 
         if (StartupCoordinator.TryGetLatestUpdatedSymbol(_latestQuotes, out string latestUpdatedSymbol, out DateTimeOffset latestUpdatedFetchUtc))
         {
             _statusViewModel.UpdatedText = StartupCoordinator.FormatUpdatedText(latestUpdatedSymbol, latestUpdatedFetchUtc);
+            _statusViewModel.UpdatedPrefixText = "Last Updated:";
+            _statusViewModel.UpdatedSymbolText = latestUpdatedSymbol;
+            _statusViewModel.UpdatedAgeText = TimeFormatHelper.ToAgeString(latestUpdatedFetchUtc);
+            _statusViewModel.UpdatedSymbolForeground = ResolveUpdatedSymbolBrush(latestUpdatedSymbol);
             return;
         }
 
         if (!string.IsNullOrWhiteSpace(fallbackText))
             _statusViewModel.UpdatedText = fallbackText;
+
+        _statusViewModel.UpdatedPrefixText = "Last Updated:";
+        _statusViewModel.UpdatedSymbolText = string.Empty;
+        _statusViewModel.UpdatedAgeText = "--";
+        _statusViewModel.UpdatedSymbolForeground = Brushes.Gainsboro;
+    }
+
+    private Brush ResolveUpdatedSymbolBrush(string symbol)
+    {
+        if (!_latestQuotes.TryGetValue(symbol, out QuoteSnapshot? quote))
+            return Brushes.Gainsboro;
+
+        return quote.ChangePercent switch
+        {
+            > 0m => Brushes.LimeGreen,
+            < 0m => Brushes.OrangeRed,
+            _ => Brushes.Gainsboro
+        };
     }
 
     private static IReadOnlyDictionary<string, QuoteSnapshot> MergeQuotes(

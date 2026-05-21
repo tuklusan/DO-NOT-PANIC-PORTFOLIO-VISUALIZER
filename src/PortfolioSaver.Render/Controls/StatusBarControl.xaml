@@ -31,13 +31,27 @@
                            TextTrimming="CharacterEllipsis"
                            LineStackingStrategy="BlockLineHeight"
                            LineHeight="15" />
-                <TextBlock Text="{Binding UpdatedText}"
-                           Foreground="#D2DFEB"
-                           FontFamily="{StaticResource StableClockFont}"
-                           Margin="0,2,0,0"
-                           TextWrapping="NoWrap"
-                           TextTrimming="CharacterEllipsis"
-                           MaxWidth="196" />
+                <StackPanel Orientation="Horizontal"
+                            Margin="0,2,0,0"
+                            MaxWidth="196">
+                    <TextBlock Text="{Binding UpdatedPrefixText}"
+                               Foreground="#D2DFEB"
+                               FontFamily="{StaticResource StableClockFont}"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding UpdatedSymbolText}"
+                               Foreground="{Binding UpdatedSymbolForeground}"
+                               FontFamily="{StaticResource StableClockFont}"
+                               Margin="4,0,0,0"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding UpdatedAgeText}"
+                               Foreground="#D2DFEB"
+                               FontFamily="{StaticResource StableClockFont}"
+                               Margin="4,0,0,0"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
             </StackPanel>
 
             <ItemsControl Grid.Column="1"
