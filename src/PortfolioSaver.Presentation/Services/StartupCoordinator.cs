@@ -1220,17 +1220,13 @@ public sealed class StartupCoordinator
         if (remainingSymbols.Count == 0)
             return [];
 
-        List<string> eligibleSymbols = remainingSymbols
-            .Where(symbol => DataSourceSymbolEligibility.IsEligible(providerPlan.Kind, symbol, symbolProfiles))
-            .ToList();
-        if (eligibleSymbols.Count == 0 && providerPlan.Kind == DataSourceKind.YahooFinance)
-        {
-            // Recover from stale/restrictive symbol profile caches that can otherwise
-            // block all Yahoo requests and leave the scene in "Provider: Unavailable".
-            eligibleSymbols = remainingSymbols
+        List<string> eligibleSymbols = providerPlan.Kind == DataSourceKind.YahooFinance
+            ? remainingSymbols
                 .Where(symbol => DataSourceSymbolEligibility.IsEligible(providerPlan.Kind, symbol))
+                .ToList()
+            : remainingSymbols
+                .Where(symbol => DataSourceSymbolEligibility.IsEligible(providerPlan.Kind, symbol, symbolProfiles))
                 .ToList();
-        }
 
         if (eligibleSymbols.Count == 0)
             return [];

@@ -136,6 +136,14 @@ public sealed class Nb040BehaviorTests
             "!IsDedicatedYahooSymbol(symbol) || !IsDedicatedYahooSymbolCoolingDown(symbol, nowUtc)",
             source,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "providerPlan.Kind == DataSourceKind.YahooFinance",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "DataSourceSymbolEligibility.IsEligible(providerPlan.Kind, symbol)",
+            source,
+            StringComparison.Ordinal);
     }
 
     [Fact]
