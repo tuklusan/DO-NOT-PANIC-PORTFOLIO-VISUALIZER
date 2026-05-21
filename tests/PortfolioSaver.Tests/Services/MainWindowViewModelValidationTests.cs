@@ -70,6 +70,22 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
+    public void OnEditorChanged_WhileApplying_DoesNotInvalidateValidatedState()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", false);
+        SetPrivateField(vm, "_isApplying", true);
+
+        InvokePrivate<object?>(vm, "OnEditorChanged", [null, new PropertyChangedEventArgs(nameof(TickerItemEditorViewModel.DisplayName))]);
+
+        Assert.True(vm.IsValidated);
+        Assert.Equal("Validating...", vm.PrimaryButtonText);
+        Assert.Equal("fingerprint", GetPrivateField<string>(vm, "_validatedFingerprint"));
+    }
+
+    [Fact]
     public async Task OnStateTimerTickAsync_DoesNotTriggerBackgroundSymbolValidation()
     {
         MainWindowViewModel vm = CreateIsolatedViewModel();

@@ -842,6 +842,9 @@ public sealed class MainWindowViewModel : BindableBase
 
     private void OnEditorChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (_isApplying)
+            return;
+
         if (string.Equals(e.PropertyName, nameof(TickerItemEditorViewModel.ValidationState), StringComparison.Ordinal) ||
             string.Equals(e.PropertyName, nameof(TickerItemEditorViewModel.ValidationMessage), StringComparison.Ordinal) ||
             string.Equals(e.PropertyName, nameof(TickerItemEditorViewModel.ValidationBadgeText), StringComparison.Ordinal))
