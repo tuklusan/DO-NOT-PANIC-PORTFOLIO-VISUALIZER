@@ -28,10 +28,8 @@ public sealed class StartupCoordinator
     private const int YahooDedicatedSymbolCooldownMinutes = 12;
     private const int YahooGeneralRateLimitCooldownMinutes = 8;
     private const int YahooDedicatedRateLimitCooldownMinutes = 12;
-    private const int YahooDedicatedWarmupBatchSize = 1;
     private const int YahooDedicatedRuntimeBatchSymbols = 1;
     private const int YahooGeneralRuntimeBatchSymbols = 1;
-    private static readonly TimeSpan YahooWarmupInterBatchDelay = TimeSpan.FromMilliseconds(500);
     private const int MaxBatchSymbolsPerPass = 24;
     private const int MaxRecoveryBatchSymbolsPerPass = 32;
     private const int MaxSequentialSymbolsPerPass = 8;
@@ -53,19 +51,16 @@ public sealed class StartupCoordinator
     private readonly Dictionary<string, QuoteSnapshot> _runtimeQuoteMemory = new(StringComparer.OrdinalIgnoreCase);
     private readonly Func<bool> _isNetworkAvailable;
     private readonly Func<HttpClient, IQuoteProvider> _createYahooProvider;
-    private readonly Func<TimeSpan, CancellationToken, Task> _delayAsync;
 
     public StartupCoordinator(
         Func<bool>? networkAvailability = null,
         Func<HttpClient, IQuoteProvider>? yahooProviderFactory = null,
         Func<HttpClient, IQuoteProvider>? officialMacroProviderFactory = null,
         Func<HttpClient, IQuoteProvider>? globalMarketProviderFactory = null,
-        Func<TimeSpan, CancellationToken, Task>? delayAsync = null,
         ProviderBudgetLedgerService? providerBudgetLedgerService = null)
     {
         _isNetworkAvailable = networkAvailability ?? _networkAvailabilityService.IsNetworkAvailable;
         _createYahooProvider = yahooProviderFactory ?? (client => new YahooFinanceQuoteProvider(client));
-        _delayAsync = delayAsync ?? ((delay, cancellationToken) => Task.Delay(delay, cancellationToken));
         _providerBudgetLedgerService = providerBudgetLedgerService ?? new ProviderBudgetLedgerService();
     }
 
@@ -214,103 +209,6 @@ public sealed class StartupCoordinator
         IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode);
 
         return BuildSceneState(settings, quotes, providerLabel, backgroundPaths, headlines, networkAvailable);
-    }
-
-    public async IAsyncEnumerable<StartupWarmupBatch> WarmStartupYahooQuotesAsync(
-        AppSettings settings,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        bool networkAvailable = _isNetworkAvailable();
-        if (!networkAvailable)
-            TraceRuntime("Warmup proceeding despite unavailable network probe; attempting YFinance.NET batches opportunistically.");
-
-        List<string> symbols = GetDedicatedYahooWarmupSymbols(settings)
-            .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        if (symbols.Count == 0)
-            yield break;
-
-        using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
-        IQuoteProvider yahooProvider = _createYahooProvider(httpClient);
-        Dictionary<string, QuoteSnapshot> aggregated = new(StringComparer.OrdinalIgnoreCase);
-        IReadOnlyList<List<string>> batches = ChunkSymbols(symbols, YahooDedicatedWarmupBatchSize).ToList();
-
-        TraceRuntimeState(
-            "WarmupPlan",
-            new KeyValuePair<string, object?>("symbol_count", symbols.Count),
-            new KeyValuePair<string, object?>("batch_count", batches.Count),
-            new KeyValuePair<string, object?>("symbols", PreviewSymbols(symbols)),
-            new KeyValuePair<string, object?>("network_probe_available", networkAvailable));
-
-        for (int batchIndex = 0; batchIndex < batches.Count; batchIndex++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            List<string> batchSymbols = batches[batchIndex];
-            TraceRuntimeState(
-                "WarmupBatchStarting",
-                new KeyValuePair<string, object?>("batch_number", batchIndex + 1),
-                new KeyValuePair<string, object?>("batch_total", batches.Count),
-                new KeyValuePair<string, object?>("symbols", PreviewSymbols(batchSymbols)),
-                new KeyValuePair<string, object?>("aggregated_quote_count", aggregated.Count));
-            bool haltAfterBatch = false;
-            try
-            {
-                IReadOnlyList<QuoteSnapshot> fetched = await yahooProvider.GetQuotesAsync(batchSymbols, cancellationToken);
-                foreach (QuoteSnapshot quote in fetched)
-                    aggregated[quote.Symbol] = quote;
-
-                TraceRuntimeState(
-                    "WarmupBatchCompleted",
-                    new KeyValuePair<string, object?>("batch_number", batchIndex + 1),
-                    new KeyValuePair<string, object?>("batch_total", batches.Count),
-                    new KeyValuePair<string, object?>("fetched_count", fetched.Count),
-                    new KeyValuePair<string, object?>("aggregated_quote_count", aggregated.Count),
-                    new KeyValuePair<string, object?>("aggregated_symbols", PreviewSymbols(aggregated.Keys)));
-            }
-            catch (Exception ex)
-            {
-                if (TryGetPartialQuotes(ex, out IReadOnlyList<QuoteSnapshot>? partialQuotes))
-                {
-                    IReadOnlyList<QuoteSnapshot> appliedPartialQuotes = partialQuotes!;
-                    foreach (QuoteSnapshot quote in appliedPartialQuotes)
-                        aggregated[quote.Symbol] = quote;
-
-                    TraceRuntimeState(
-                        "WarmupBatchPartialQuotesApplied",
-                        new KeyValuePair<string, object?>("batch_number", batchIndex + 1),
-                        new KeyValuePair<string, object?>("partial_count", appliedPartialQuotes.Count),
-                        new KeyValuePair<string, object?>("partial_symbols", PreviewSymbols(appliedPartialQuotes.Select(quote => quote.Symbol))),
-                        new KeyValuePair<string, object?>("aggregated_quote_count", aggregated.Count));
-                }
-
-                TraceRuntime($"Startup Yahoo warmup batch {batchIndex + 1}/{batches.Count} failed: {ex.GetType().Name}: {ex.Message}");
-                if (IsRateLimited(ex))
-                {
-                    DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
-                    IReadOnlyList<string> failedBatch = batches[batchIndex];
-                    ApplyDedicatedYahooRateLimit(failedBatch, nowUtc);
-                    _providerBudgetLedgerService.NoteRateLimit(DataSourceKind.YahooFinance, GetRateLimitCooldown(DataSourceKind.YahooFinance, failedBatch), nowUtc);
-                    TraceRuntime("Startup Yahoo warmup halted due to rate limiting; deferring retries to scheduled provider refresh/fallback flow.");
-                    haltAfterBatch = true;
-                }
-            }
-
-            if (aggregated.Count > 0 || !haltAfterBatch)
-            {
-                yield return new StartupWarmupBatch(
-                    new Dictionary<string, QuoteSnapshot>(aggregated, StringComparer.OrdinalIgnoreCase),
-                    batchIndex + 1,
-                    batches.Count,
-                    $"Warmup {batchIndex + 1}/{batches.Count} batches complete via YFinance.NET");
-            }
-
-            if (haltAfterBatch)
-                break;
-
-            if (batchIndex < batches.Count - 1)
-                await _delayAsync(YahooWarmupInterBatchDelay, cancellationToken);
-        }
     }
 
     public void PrimeRuntimeQuotes(IReadOnlyDictionary<string, QuoteSnapshot> quotes)
@@ -1400,33 +1298,6 @@ public sealed class StartupCoordinator
         TraceLog.Info("StartupCoordinator.Runtime", message);
     }
 
-    private static IReadOnlyList<string> GetDedicatedYahooWarmupSymbols(AppSettings settings)
-    {
-        List<string> macroSymbols = GetYahooDedicatedMacroSymbols()
-            .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        List<string> globalExchangeSymbols = FloatingClockBuilder.GetWorldIndexSymbols()
-            .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        List<string> portfolioSymbols = BuildInterleavedPortfolioSymbols(settings)
-            .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        return
-        [
-            .. macroSymbols,
-            .. globalExchangeSymbols.Where(symbol => !macroSymbols.Contains(symbol, StringComparer.OrdinalIgnoreCase)),
-            .. portfolioSymbols.Where(symbol =>
-                !macroSymbols.Contains(symbol, StringComparer.OrdinalIgnoreCase) &&
-                !globalExchangeSymbols.Contains(symbol, StringComparer.OrdinalIgnoreCase))
-        ];
-    }
-
     private static IReadOnlyList<string> OrderDedicatedYahooSymbols(IEnumerable<string> symbols)
     {
         List<string> orderedSymbols = symbols
@@ -1678,9 +1549,4 @@ public sealed class StartupCoordinator
     }
 }
 
-public sealed record StartupWarmupBatch(
-    IReadOnlyDictionary<string, QuoteSnapshot> Quotes,
-    int CompletedBatches,
-    int TotalBatches,
-    string StatusMessage);
 

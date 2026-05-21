@@ -81,39 +81,16 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
-    public void StartupWarmup_OrderIsMacrosThenGlobalExchangesThenPortfolio()
+    public void StartupCoordinator_NoLongerContainsDedicatedStartupWarmupPath()
     {
-        MethodInfo method = typeof(StartupCoordinator).GetMethod(
-            "GetDedicatedYahooWarmupSymbols",
-            BindingFlags.NonPublic | BindingFlags.Static)
-            ?? throw new InvalidOperationException("StartupCoordinator.GetDedicatedYahooWarmupSymbols not found.");
+        string coordinatorPath = Path.Combine(
+            GetRepoRoot(),
+            "src", "PortfolioSaver.Presentation", "Services", "StartupCoordinator.cs");
+        string source = File.ReadAllText(Path.GetFullPath(coordinatorPath));
 
-        AppSettings settings = new()
-        {
-            Groups =
-            [
-                new TickerGroup
-                {
-                    Name = "Tape 1",
-                    Enabled = true,
-                    Tickers =
-                    [
-                        new TickerItem { Symbol = "AAPL", DisplayName = "Apple", Enabled = true }
-                    ]
-                }
-            ]
-        };
-
-        IReadOnlyList<string> symbols = Assert.IsAssignableFrom<IReadOnlyList<string>>(method.Invoke(null, [settings]));
-        IReadOnlyList<string> macros = StartupCoordinator.GetMacroIndicatorSymbols();
-        IReadOnlyList<string> exchanges = FloatingClockBuilder.GetWorldIndexSymbols()
-            .Where(symbol => !macros.Contains(symbol, StringComparer.OrdinalIgnoreCase))
-            .ToList();
-
-        Assert.True(symbols.Take(macros.Count).SequenceEqual(macros, StringComparer.OrdinalIgnoreCase));
-        Assert.True(symbols.Skip(macros.Count).Take(exchanges.Count).SequenceEqual(exchanges, StringComparer.OrdinalIgnoreCase));
-        Assert.Contains("AAPL", symbols, StringComparer.OrdinalIgnoreCase);
-        Assert.True(symbols.ToList().FindIndex(symbol => string.Equals(symbol, "AAPL", StringComparison.OrdinalIgnoreCase)) >= macros.Count + exchanges.Count);
+        Assert.DoesNotContain("WarmStartupYahooQuotesAsync", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("StartupWarmupBatch", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetDedicatedYahooWarmupSymbols", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -160,6 +137,10 @@ public sealed class Nb040BehaviorTests
             StringComparison.Ordinal);
         Assert.Contains(
             "await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);",
+            source,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "RunStartupWarmupAsync",
             source,
             StringComparison.Ordinal);
         Assert.Contains(

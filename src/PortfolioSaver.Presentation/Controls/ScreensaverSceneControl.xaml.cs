@@ -66,7 +66,6 @@ public partial class ScreensaverSceneControl : UserControl
     private CancellationTokenSource? _graphWarmupCancellation;
     private Task? _graphWarmupTask;
     private CancellationTokenSource? _captureSequenceCancellation;
-    private CancellationTokenSource? _startupWarmupCancellation;
     private TimeSpan? _ntpOffset;
     private DateTimeOffset _lastNtpSyncUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastWeatherRefreshUtc = DateTimeOffset.MinValue;
@@ -136,8 +135,6 @@ public partial class ScreensaverSceneControl : UserControl
             _refreshTimer.Stop();
             RestartGraphWarmup(_graphRotationSeed, preserveLayout: false);
             _ = RefreshClockDataAsync(force: true);
-            _startupWarmupCancellation = new CancellationTokenSource();
-            await RunStartupWarmupAsync(_startupWarmupCancellation.Token);
             await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);
             StartCaptureSequenceIfRequested();
             StartDemoFlashSequence();
@@ -160,7 +157,6 @@ public partial class ScreensaverSceneControl : UserControl
         _motionTimer.Stop();
         CancelGraphWarmup();
         CancelCaptureSequence();
-        CancelStartupWarmup();
         _initialized = false;
     }
 
@@ -328,76 +324,6 @@ public partial class ScreensaverSceneControl : UserControl
 
         _graphWarmupCancellation.Dispose();
         _graphWarmupCancellation = null;
-    }
-
-    private void CancelStartupWarmup()
-    {
-        if (_startupWarmupCancellation is null)
-            return;
-
-        try
-        {
-            _startupWarmupCancellation.Cancel();
-        }
-        catch
-        {
-        }
-
-        _startupWarmupCancellation.Dispose();
-        _startupWarmupCancellation = null;
-    }
-
-    private async Task RunStartupWarmupAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            await foreach (StartupWarmupBatch batch in _startupCoordinator.WarmStartupYahooQuotesAsync(_settings, cancellationToken))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (_isValidationPaused)
-                {
-                    TraceScene("RunStartupWarmupAsync stopping because validation pause is active.");
-                    break;
-                }
-
-                _latestQuotes = MergeQuotes(_latestQuotes, batch.Quotes);
-                _startupCoordinator.PrimeRuntimeQuotes(batch.Quotes);
-                SyncTapes(_startupCoordinator.BuildTapesForQuotes(_settings, _latestQuotes));
-                ApplyQuotesToGraphs();
-
-                if (_statusViewModel is not null)
-                {
-                    _statusViewModel.ProviderText = "Provider: YFinance.NET warmup";
-                    UpdateStatusFreshnessText(batch.StatusMessage);
-                    DateTimeOffset referenceUtc = GetReferenceUtcNow();
-                    _statusViewModel.ClockDateText = FormatStatusClockDate(referenceUtc);
-                    _statusViewModel.ClockText = FormatClockTimeWithZone(referenceUtc, TimeZoneInfo.Utc);
-                    UpdateStatusMacroMeters(force: true);
-                }
-
-                ApplyClockMarketData(force: true);
-
-                TraceSceneState(
-                    "WarmupBatchApplied",
-                    new KeyValuePair<string, object?>("completed_batches", batch.CompletedBatches),
-                    new KeyValuePair<string, object?>("total_batches", batch.TotalBatches),
-                    new KeyValuePair<string, object?>("quote_count", _latestQuotes.Count),
-                    new KeyValuePair<string, object?>("provider_text", _statusViewModel?.ProviderText),
-                    new KeyValuePair<string, object?>("updated_text", _statusViewModel?.UpdatedText));
-
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception ex)
-        {
-            TraceScene($"RunStartupWarmupAsync failed: {ex}");
-        }
-        finally
-        {
-            CancelStartupWarmup();
-        }
     }
 
     private void StartCaptureSequenceIfRequested()
@@ -666,7 +592,6 @@ public partial class ScreensaverSceneControl : UserControl
         {
             StopLiveTimers();
             CancelGraphWarmup();
-            CancelStartupWarmup();
             TraceScene("Scene paused for config session.");
             return;
         }
