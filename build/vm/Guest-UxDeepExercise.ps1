@@ -38,6 +38,29 @@ public static class NativeWindowBounds {
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
+public static class NativeWindowSearch {
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern int GetWindowTextLength(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+}
+"@
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
 public static class NativeMouseInput {
     public const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
     public const uint MOUSEEVENTF_LEFTUP = 0x0004;
@@ -1012,23 +1035,51 @@ function Get-TopLevelWindowsForProcess {
     }
 }
 
-function Find-RootDescendantByAutomationId {
+function Find-Win32TopLevelWindowLike {
     param(
-        [Parameter(Mandatory = $true)][string]$AutomationId
+        [int]$ProcessId = 0,
+        [Parameter(Mandatory = $true)][string]$TitleLike
     )
 
-    $condition = New-Object System.Windows.Automation.PropertyCondition(
-        [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
-        $AutomationId)
+    $matches = New-Object System.Collections.Generic.List[object]
+    $callback = [NativeWindowSearch+EnumWindowsProc]{
+        param([IntPtr]$hWnd, [IntPtr]$lParam)
 
-    try {
-        return [System.Windows.Automation.AutomationElement]::RootElement.FindFirst(
-            [System.Windows.Automation.TreeScope]::Descendants,
-            $condition)
+        try {
+            if (-not [NativeWindowSearch]::IsWindowVisible($hWnd)) {
+                return $true
+            }
+
+            $pid = [uint32]0
+            [void][NativeWindowSearch]::GetWindowThreadProcessId($hWnd, [ref]$pid)
+            if ($ProcessId -gt 0 -and [int]$pid -ne $ProcessId) {
+                return $true
+            }
+
+            $length = [NativeWindowSearch]::GetWindowTextLength($hWnd)
+            if ($length -le 0) {
+                return $true
+            }
+
+            $builder = New-Object System.Text.StringBuilder ($length + 1)
+            [void][NativeWindowSearch]::GetWindowText($hWnd, $builder, $builder.Capacity)
+            $title = $builder.ToString()
+            if ($title -like $TitleLike) {
+                $matches.Add([pscustomobject]@{
+                    Handle = $hWnd
+                    ProcessId = [int]$pid
+                    Title = $title
+                })
+                return $false
+            }
+        }
+        catch {}
+
+        return $true
     }
-    catch {
-        return $null
-    }
+
+    [void][NativeWindowSearch]::EnumWindows($callback, [IntPtr]::Zero)
+    return @($matches)
 }
 
 function Test-AutomationElementAlive {
@@ -1489,13 +1540,17 @@ function Find-ConfigWindow {
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     Write-ConfigWindowTrace -Event 'FindConfigWindowStart' -Details ("process_id={0}; timeout_seconds={1}" -f $Process.Id, $TimeoutSeconds)
     do {
-        $namedRootDescendant = Find-RootDescendantByAutomationId -AutomationId 'ConfigMainWindow'
-        if ($null -ne $namedRootDescendant) {
+        $win32Matches = @(Find-Win32TopLevelWindowLike -ProcessId $Process.Id -TitleLike '*PORTFOLIO VISUALIZER Config*')
+        if ($win32Matches.Count -gt 0) {
             try {
-                Write-ConfigWindowTrace -Event 'FindConfigWindowRootDescendantMatch' -Details ("process_id={0}; title={1}" -f [int]$namedRootDescendant.Current.ProcessId, [string]$namedRootDescendant.Current.Name)
+                $match = $win32Matches[0]
+                Write-ConfigWindowTrace -Event 'FindConfigWindowWin32Match' -Details ("process_id={0}; title={1}" -f $match.ProcessId, $match.Title)
+                $window = [System.Windows.Automation.AutomationElement]::FromHandle($match.Handle)
+                if ($null -ne $window) {
+                    return $window
+                }
             }
             catch {}
-            return $namedRootDescendant
         }
 
         foreach ($window in @(Get-TopLevelWindowsForProcess -Process $Process)) {
