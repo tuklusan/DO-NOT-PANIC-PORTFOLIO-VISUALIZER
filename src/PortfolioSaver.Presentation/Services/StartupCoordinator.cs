@@ -363,7 +363,7 @@ public sealed class StartupCoordinator
                 continue;
             }
 
-            if (!HasEnabledHistorySource(ticker.Symbol, settings, symbolProfiles))
+            if (!HasEnabledHistorySource(ticker.Symbol))
             {
                 TraceGraph($"Graph warmup skipped live fetch for {ticker.Symbol} because no supported history source is known.");
                 continue;
@@ -525,7 +525,7 @@ public sealed class StartupCoordinator
             if (remainingSymbols.Count == 0)
                 break;
 
-            List<string> requestSymbols = TakeRequestSymbols(remainingSymbols, providerPlan, symbolProfiles, nowUtc);
+            List<string> requestSymbols = TakeRequestSymbols(remainingSymbols, providerPlan, nowUtc);
             if (requestSymbols.Count == 0)
                 continue;
 
@@ -746,12 +746,9 @@ public sealed class StartupCoordinator
         return pairs.Take(maxSceneGraphCards).ToList();
     }
 
-    private static bool HasEnabledHistorySource(
-        string symbol,
-        AppSettings settings,
-        IReadOnlyDictionary<string, SymbolProfile> symbolProfiles)
+    private static bool HasEnabledHistorySource(string symbol)
     {
-        return DataSourceSymbolEligibility.IsHistoryEligible(DataSourceKind.YahooFinance, symbol, symbolProfiles);
+        return DataSourceSymbolEligibility.IsHistoryEligible(DataSourceKind.YahooFinance, symbol);
     }
 
     private static List<string> BuildInterleavedPortfolioSymbols(AppSettings settings)
@@ -1214,7 +1211,6 @@ public sealed class StartupCoordinator
     private List<string> TakeRequestSymbols(
         List<string> remainingSymbols,
         ProviderExecutionPlan providerPlan,
-        IReadOnlyDictionary<string, SymbolProfile> symbolProfiles,
         DateTimeOffset nowUtc)
     {
         if (remainingSymbols.Count == 0)
@@ -1225,7 +1221,7 @@ public sealed class StartupCoordinator
                 .Where(symbol => DataSourceSymbolEligibility.IsEligible(providerPlan.Kind, symbol))
                 .ToList()
             : remainingSymbols
-                .Where(symbol => DataSourceSymbolEligibility.IsEligible(providerPlan.Kind, symbol, symbolProfiles))
+                .Where(symbol => DataSourceSymbolEligibility.IsEligible(providerPlan.Kind, symbol))
                 .ToList();
 
         if (eligibleSymbols.Count == 0)

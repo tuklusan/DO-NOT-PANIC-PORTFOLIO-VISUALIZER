@@ -47,10 +47,6 @@ public sealed class SymbolProfileStore
                 profile.CanonicalSymbol = string.IsNullOrWhiteSpace(profile.CanonicalSymbol)
                     ? profile.Symbol
                     : SymbolProfileHeuristics.Normalize(profile.CanonicalSymbol);
-                profile.SupportedQuoteSources = profile.SupportedQuoteSources
-                    .Distinct()
-                    .OrderBy(kind => (int)kind)
-                    .ToList();
                 return profile;
             })
             .OrderBy(profile => profile.Symbol, StringComparer.OrdinalIgnoreCase)

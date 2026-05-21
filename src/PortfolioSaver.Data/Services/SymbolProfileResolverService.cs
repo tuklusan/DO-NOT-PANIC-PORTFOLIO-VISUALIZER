@@ -58,8 +58,6 @@ public sealed class SymbolProfileResolverService
                 "YFinanceUiBridge",
                 "SymbolProfileRequestComplete",
                 [new("operation_id", operationId), new("symbol", normalizedSymbol), new("display_name", profile.DisplayName), new("exchange", profile.Exchange)]);
-            profile.SupportedQuoteSources = [Core.Enums.DataSourceKind.YahooFinance];
-            profile.SupportedHistorySources = [Core.Enums.DataSourceKind.YahooFinance];
             profile.ValidationSummary = "Validated via YFinance.NET.";
             return ResolvedSymbolProfile.Valid(profile);
         }

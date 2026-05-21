@@ -157,8 +157,7 @@ public sealed class MainWindowViewModelValidationTests
                     Symbol = "AAPL",
                     CanonicalSymbol = "AAPL",
                     DisplayName = "Apple Inc.",
-                    LastValidatedUtc = DateTimeOffset.UtcNow.AddMinutes(-6),
-                    SupportedQuoteSources = [PortfolioSaver.Core.Enums.DataSourceKind.YahooFinance]
+                    LastValidatedUtc = DateTimeOffset.UtcNow.AddMinutes(-6)
                 }
             ]);
 

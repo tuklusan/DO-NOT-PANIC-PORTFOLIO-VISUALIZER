@@ -545,7 +545,6 @@ public sealed class MainWindowViewModel : BindableBase
         foreach (string symbol in enabledSymbols.Select(SymbolProfileHeuristics.Normalize).Distinct(StringComparer.OrdinalIgnoreCase))
         {
             if (cachedProfiles.TryGetValue(symbol, out SymbolProfile? profile) &&
-                profile.SupportedQuoteSources.Count > 0 &&
                 profile.LastValidatedUtc > DateTimeOffset.MinValue &&
                 nowUtc - profile.LastValidatedUtc <= CachedProfileTrustWindow)
             {
@@ -585,8 +584,6 @@ public sealed class MainWindowViewModel : BindableBase
             if (!string.IsNullOrWhiteSpace(entry.DisplayName))
                 profile.DisplayName = entry.DisplayName.Trim();
             profile.LastValidatedUtc = nowUtc;
-            if (!profile.SupportedQuoteSources.Contains(DataSourceKind.YahooFinance))
-                profile.SupportedQuoteSources.Add(DataSourceKind.YahooFinance);
             if (string.IsNullOrWhiteSpace(profile.ValidationSummary))
                 profile.ValidationSummary = "Validated during config apply.";
 
