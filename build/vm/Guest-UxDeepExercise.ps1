@@ -1962,6 +1962,11 @@ function Validate-AndCloseConfigWindow {
             $statusText = Get-ConfigStatusText -Window $Window
             if (-not [string]::IsNullOrWhiteSpace($statusText)) {
                 Write-ConfigWindowTrace -Event 'ValidateStatus' -Details $statusText
+                if ($statusText -like '*Validation passed. Saving and closing now.*' -or
+                    $statusText -like '*saved at *') {
+                    Write-ConfigWindowTrace -Event 'ValidateStatusCloseRequested' -Details $statusText
+                    Close-ConfigWindowIfPresent -Process $Process -Window $Window
+                }
             }
 
             $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
@@ -1970,6 +1975,19 @@ function Validate-AndCloseConfigWindow {
         if ($null -eq $Window) {
             Write-ConfigWindowTrace -Event 'ValidateCloseSucceeded'
             return $true
+        }
+
+        $statusText = Get-ConfigStatusText -Window $Window
+        if (-not [string]::IsNullOrWhiteSpace($statusText) -and
+            ($statusText -like '*Validation passed. Saving and closing now.*' -or
+             $statusText -like '*saved at *')) {
+            Write-ConfigWindowTrace -Event 'ValidateCloseFallbackRequested' -Details $statusText
+            Close-ConfigWindowIfPresent -Process $Process -Window $Window
+            $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 2
+            if ($null -eq $Window) {
+                Write-ConfigWindowTrace -Event 'ValidateCloseFallbackSucceeded'
+                return $true
+            }
         }
     }
 
