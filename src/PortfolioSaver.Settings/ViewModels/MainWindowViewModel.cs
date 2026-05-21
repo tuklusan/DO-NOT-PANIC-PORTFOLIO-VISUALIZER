@@ -41,6 +41,8 @@ public sealed class MainWindowViewModel : BindableBase
     private bool _isNetworkAvailable;
     private string _validatedFingerprint = string.Empty;
     private string _validationLogText = string.Empty;
+    private AppSettings? _validatedCandidateSettings;
+    private List<QuoteSnapshot> _validatedQuoteSeeds = [];
     private static readonly TimeSpan CachedProfileTrustWindow = TimeSpan.FromMinutes(10);
 
     public MainWindowViewModel()
@@ -62,7 +64,8 @@ public sealed class MainWindowViewModel : BindableBase
             _settings.Groups.Select(group => new TickerGroupEditorViewModel(group, RemoveGroup)));
         ValidationLogText = string.Empty;
 
-        PrimaryCommand = new RelayCommand(() => _ = ExecutePrimaryAsync(), () => !_isApplying && !_isValidationClosePending);
+        PrimaryCommand = new RelayCommand(() => _ = ExecutePrimaryAsync(), () => !_isApplying && IsNetworkAvailable);
+        CancelCommand = new RelayCommand(ExecuteCancel, () => CanExecuteCancel());
         RetryNetworkCommand = new RelayCommand(RetryConnectivity);
         AddGroupCommand = new RelayCommand(AddGroup, () => IsConfigActive);
 
@@ -117,10 +120,10 @@ public sealed class MainWindowViewModel : BindableBase
         }
     }
 
-    public bool IsConfigActive => IsNetworkAvailable && !_isApplying && !_isValidationClosePending;
+    public bool IsConfigActive => IsNetworkAvailable && !_isApplying;
     public bool ShowNetworkLockOverlay => !IsNetworkAvailable;
     public bool IsApplying => _isApplying;
-    public bool IsValidationActionEnabled => !_isApplying && !_isValidationClosePending && IsNetworkAvailable;
+    public bool IsValidationActionEnabled => !_isApplying && IsNetworkAvailable;
 
     public bool IsValidated
     {
@@ -131,10 +134,14 @@ public sealed class MainWindowViewModel : BindableBase
                 return;
 
             RaisePropertyChanged(nameof(PrimaryButtonText));
+            RaisePropertyChanged(nameof(ShowValidatedActionButtons));
+            RaisePropertyChanged(nameof(IsValidationActionEnabled));
+            RaiseCommandCanExecuteChanged();
         }
     }
 
-    public string PrimaryButtonText => _isApplying ? "Validating..." : "Validate";
+    public string PrimaryButtonText => _isApplying ? "Validating..." : (IsValidated ? "OK" : "Validate");
+    public bool ShowValidatedActionButtons => IsValidated && !_isApplying;
     public string VersionLabel => $"{PortfolioVersion.BaselineLabel} ({PortfolioVersion.SemanticVersion})";
     public string ValidationLogText
     {
@@ -203,6 +210,7 @@ public sealed class MainWindowViewModel : BindableBase
 
     public ObservableCollection<TickerGroupEditorViewModel> Groups { get; }
     public RelayCommand PrimaryCommand { get; }
+    public RelayCommand CancelCommand { get; }
     public RelayCommand RetryNetworkCommand { get; }
     public RelayCommand AddGroupCommand { get; }
 
@@ -221,12 +229,7 @@ public sealed class MainWindowViewModel : BindableBase
             return false;
         }
 
-        MessageBox.Show(
-            "Validate the configuration first. After a successful validation, the app saves and closes automatically.",
-            "Validation Required",
-            MessageBoxButton.OK,
-            MessageBoxImage.Warning);
-        return false;
+        return true;
     }
 
     private void AddGroup()
@@ -259,6 +262,12 @@ public sealed class MainWindowViewModel : BindableBase
     {
         if (_isApplying || _isValidationClosePending)
             return;
+
+        if (IsValidated)
+        {
+            ApplyValidatedConfiguration();
+            return;
+        }
 
         if (!EnsureValidationConnectivity())
         {
@@ -369,16 +378,17 @@ public sealed class MainWindowViewModel : BindableBase
                 : "DISPLAY NAMES UNCHANGED");
 
             AppendValidationLog("YFINANCE.NET-ONLY MODE: NO ADDITIONAL MARKET-DATA API KEY VALIDATION");
-            RuntimeQuoteSeedStore.Publish(symbolValidation.ValidatedQuotes.Values);
-            AppendValidationLog($"RUNTIME QUOTE SEED: {symbolValidation.ValidatedQuotes.Count} SYMBOL(S)");
-
             Settings = candidate;
             IsValidated = true;
             _validatedFingerprint = BuildFingerprint(candidate);
             _allowClose = false;
+            _validatedCandidateSettings = AppSettingsNormalizer.Normalize(candidate);
+            _validatedQuoteSeeds = symbolValidation.ValidatedQuotes.Values
+                .Select(CloneQuote)
+                .ToList();
             AppendValidationLog("VALIDATION PASSED");
             TraceValidation("ValidationPassed", ("auto_named_count", autoNamedCount));
-            BeginValidatedCloseSequence(candidate, autoNamedCount);
+            UpdateValidatedCloseStatus(autoNamedCount);
         }
         catch (Exception ex)
         {
@@ -753,6 +763,7 @@ public sealed class MainWindowViewModel : BindableBase
     private void RaiseCommandCanExecuteChanged()
     {
         PrimaryCommand.RaiseCanExecuteChanged();
+        CancelCommand.RaiseCanExecuteChanged();
         AddGroupCommand.RaiseCanExecuteChanged();
     }
 
@@ -762,6 +773,8 @@ public sealed class MainWindowViewModel : BindableBase
         IsValidated = false;
         _allowClose = false;
         _validatedFingerprint = string.Empty;
+        _validatedCandidateSettings = null;
+        _validatedQuoteSeeds = [];
         if (!string.IsNullOrWhiteSpace(statusMessage))
             StatusMessage = statusMessage;
     }
@@ -839,25 +852,6 @@ public sealed class MainWindowViewModel : BindableBase
         InvalidateValidationState("Configuration changed. Click Validate.");
     }
 
-    private void BeginValidatedCloseSequence(AppSettings candidate, int autoNamedCount)
-    {
-        CancelValidatedCloseSequence();
-        AppSettings normalized = AppSettingsNormalizer.Normalize(candidate);
-        _isValidationClosePending = true;
-        RaisePropertyChanged(nameof(IsConfigActive));
-        RaisePropertyChanged(nameof(ShowNetworkLockOverlay));
-        RaiseCommandCanExecuteChanged();
-        UpdateValidatedCloseStatus(autoNamedCount);
-        _settingsFileService.Save(normalized);
-        _allowClose = true;
-        _isValidationClosePending = false;
-        RaisePropertyChanged(nameof(IsConfigActive));
-        RaisePropertyChanged(nameof(ShowNetworkLockOverlay));
-        RaiseCommandCanExecuteChanged();
-        StatusMessage = $"{PortfolioVersion.BaselineLabel} saved at {DateTime.Now:T}.";
-        CloseRequested?.Invoke();
-    }
-
     private void CancelValidatedCloseSequence()
     {
         if (!_isValidationClosePending)
@@ -874,8 +868,48 @@ public sealed class MainWindowViewModel : BindableBase
         string namingText = autoNamedCount > 0
             ? $"Filled {autoNamedCount} symbol name(s). "
             : string.Empty;
-        StatusMessage = $"{namingText}Validation passed. Saving and closing now.";
+        StatusMessage = $"{namingText}Validation passed. Click OK to save/apply, or Cancel to discard.";
     }
+
+    private bool CanExecuteCancel()
+        => !_isApplying && IsValidated;
+
+    private void ExecuteCancel()
+    {
+        if (!CanExecuteCancel())
+            return;
+
+        _allowClose = true;
+        StatusMessage = "Validated changes discarded.";
+        CloseRequested?.Invoke();
+    }
+
+    private void ApplyValidatedConfiguration()
+    {
+        if (_validatedCandidateSettings is null)
+            return;
+
+        RuntimeQuoteSeedStore.Publish(_validatedQuoteSeeds);
+        AppendValidationLog($"RUNTIME QUOTE SEED: {_validatedQuoteSeeds.Count} SYMBOL(S)");
+        _settingsFileService.Save(_validatedCandidateSettings);
+        _allowClose = true;
+        StatusMessage = $"{PortfolioVersion.BaselineLabel} saved at {DateTime.Now:T}.";
+        CloseRequested?.Invoke();
+    }
+
+    private static QuoteSnapshot CloneQuote(QuoteSnapshot quote) => new()
+    {
+        Symbol = quote.Symbol,
+        Last = quote.Last,
+        Change = quote.Change,
+        ChangePercent = quote.ChangePercent,
+        PreviousClose = quote.PreviousClose,
+        FetchTimestampUtc = quote.FetchTimestampUtc,
+        ProviderTimestampUtc = quote.ProviderTimestampUtc,
+        Currency = quote.Currency,
+        MarketSession = quote.MarketSession,
+        IsStale = quote.IsStale
+    };
 
     private void BeginValidationRun()
     {

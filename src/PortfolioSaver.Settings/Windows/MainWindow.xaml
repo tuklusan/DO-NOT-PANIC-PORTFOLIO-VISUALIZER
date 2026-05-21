@@ -527,6 +527,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Column="0"
@@ -545,8 +546,18 @@
                            TextWrapping="NoWrap"
                            Margin="0,0,16,0" />
                 <Button Grid.Column="2"
-                        x:Name="ValidateButton"
-                        AutomationProperties.AutomationId="ConfigValidateButton"
+                        x:Name="CancelButton"
+                        AutomationProperties.AutomationId="ConfigCancelButton"
+                        Content="Cancel"
+                        Visibility="{Binding ShowValidatedActionButtons, Converter={StaticResource BoolToVisibilityConverter}}"
+                        Command="{Binding CancelCommand}"
+                        MinWidth="96"
+                        Padding="14,6"
+                        Margin="0,0,12,0"
+                        VerticalAlignment="Center" />
+                <Button Grid.Column="3"
+                        x:Name="PrimaryButton"
+                        AutomationProperties.AutomationId="ConfigPrimaryButton"
                         Content="{Binding PrimaryButtonText}"
                         IsEnabled="{Binding IsValidationActionEnabled}"
                         Command="{Binding PrimaryCommand}"

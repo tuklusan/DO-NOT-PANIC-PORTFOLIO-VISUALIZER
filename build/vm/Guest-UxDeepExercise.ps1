@@ -1928,28 +1928,29 @@ function Validate-AndCloseConfigWindow {
             return $true
         }
 
-        $validateButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigValidateButton'
-        if ($null -eq $validateButton) {
-            Write-ConfigWindowTrace -Event 'ValidateButtonMissing'
+        $primaryButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigPrimaryButton'
+        if ($null -eq $primaryButton) {
+            Write-ConfigWindowTrace -Event 'PrimaryButtonMissing'
             return $false
         }
 
         try {
-            $invoked = Invoke-AutomationElement -Element $validateButton
+            $invoked = Invoke-AutomationElement -Element $primaryButton
             if (-not $invoked) {
-                $invoked = Click-AutomationElementCenter -Element $validateButton
+                $invoked = Click-AutomationElementCenter -Element $primaryButton
             }
-            Write-ConfigWindowTrace -Event 'ValidateButtonInvoked' -Details ("result={0}" -f $invoked)
+            Write-ConfigWindowTrace -Event 'PrimaryButtonInvoked' -Details ("result={0}" -f $invoked)
             if (-not $invoked) {
                 return $false
             }
         }
         catch {
-            Write-ConfigWindowTrace -Event 'ValidateButtonInvokeFailed' -Details $_.Exception.Message
+            Write-ConfigWindowTrace -Event 'PrimaryButtonInvokeFailed' -Details $_.Exception.Message
             return $false
         }
 
         $deadline = (Get-Date).AddSeconds(45)
+        $okReady = $false
         do {
             Start-Sleep -Milliseconds 250
             $Process.Refresh()
@@ -1962,32 +1963,56 @@ function Validate-AndCloseConfigWindow {
             $statusText = Get-ConfigStatusText -Window $Window
             if (-not [string]::IsNullOrWhiteSpace($statusText)) {
                 Write-ConfigWindowTrace -Event 'ValidateStatus' -Details $statusText
-                if ($statusText -like '*Validation passed. Saving and closing now.*' -or
-                    $statusText -like '*saved at *') {
-                    Write-ConfigWindowTrace -Event 'ValidateStatusCloseRequested' -Details $statusText
-                    Close-ConfigWindowIfPresent -Process $Process -Window $Window
-                }
             }
 
             $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
+            if ($null -ne $Window) {
+                $primaryButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigPrimaryButton'
+                $cancelButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigCancelButton'
+                $primaryLabel = if ($null -ne $primaryButton) { [string]$primaryButton.Current.Name } else { '' }
+                if ($primaryLabel -eq 'OK' -and $null -ne $cancelButton) {
+                    Write-ConfigWindowTrace -Event 'ValidateOkReady' -Details $statusText
+                    $okReady = $true
+                    break
+                }
+            }
         } while ($null -ne $Window -and (Get-Date) -lt $deadline)
+
+        if ($null -eq $Window) {
+            Write-ConfigWindowTrace -Event 'ValidateClosedUnexpectedly'
+            return $false
+        }
+
+        if (-not $okReady) {
+            Write-ConfigWindowTrace -Event 'ValidateOkNotReached'
+            continue
+        }
+
+        try {
+            $invoked = Invoke-AutomationElement -Element $primaryButton
+            if (-not $invoked) {
+                $invoked = Click-AutomationElementCenter -Element $primaryButton
+            }
+            Write-ConfigWindowTrace -Event 'OkButtonInvoked' -Details ("result={0}" -f $invoked)
+            if (-not $invoked) {
+                return $false
+            }
+        }
+        catch {
+            Write-ConfigWindowTrace -Event 'OkButtonInvokeFailed' -Details $_.Exception.Message
+            return $false
+        }
+
+        $closeDeadline = (Get-Date).AddSeconds(15)
+        do {
+            Start-Sleep -Milliseconds 200
+            $Process.Refresh()
+            $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
+        } while ($null -ne $Window -and (Get-Date) -lt $closeDeadline)
 
         if ($null -eq $Window) {
             Write-ConfigWindowTrace -Event 'ValidateCloseSucceeded'
             return $true
-        }
-
-        $statusText = Get-ConfigStatusText -Window $Window
-        if (-not [string]::IsNullOrWhiteSpace($statusText) -and
-            ($statusText -like '*Validation passed. Saving and closing now.*' -or
-             $statusText -like '*saved at *')) {
-            Write-ConfigWindowTrace -Event 'ValidateCloseFallbackRequested' -Details $statusText
-            Close-ConfigWindowIfPresent -Process $Process -Window $Window
-            $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 2
-            if ($null -eq $Window) {
-                Write-ConfigWindowTrace -Event 'ValidateCloseFallbackSucceeded'
-                return $true
-            }
         }
     }
 

@@ -66,13 +66,16 @@ public sealed class ConfigTextConsistencyTests
     }
 
     [Fact]
-    public void MainWindowFooter_HasSinglePrimaryValidateBinding_AndSmallVersionLabel()
+    public void MainWindowFooter_HasPrimaryOkWorkflowAndValidatedCancelButton()
     {
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
         int primaryBindingCount = xaml.Split("Content=\"{Binding PrimaryButtonText}\"", StringSplitOptions.None).Length - 1;
         Assert.Equal(1, primaryBindingCount);
-        Assert.Contains("AutomationProperties.AutomationId=\"ConfigValidateButton\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.AutomationId=\"ConfigPrimaryButton\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.AutomationId=\"ConfigCancelButton\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"Cancel\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Visibility=\"{Binding ShowValidatedActionButtons, Converter={StaticResource BoolToVisibilityConverter}}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("IsEnabled=\"{Binding IsValidationActionEnabled}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.AutomationId=\"ConfigStatusText\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding VersionLabel}\"", xaml, StringComparison.Ordinal);

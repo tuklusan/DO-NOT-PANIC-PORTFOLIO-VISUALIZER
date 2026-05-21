@@ -64,7 +64,7 @@ public sealed class MainWindowViewModelValidationTests
         InvokePrivate<object?>(vm, "OnEditorChanged", [null, new PropertyChangedEventArgs(nameof(TickerItemEditorViewModel.ValidationState))]);
 
         Assert.True(vm.IsValidated);
-        Assert.Equal("Validate", vm.PrimaryButtonText);
+        Assert.Equal("OK", vm.PrimaryButtonText);
         Assert.Equal("fingerprint", GetPrivateField<string>(vm, "_validatedFingerprint"));
         Assert.True(GetPrivateField<bool>(vm, "_allowClose"));
     }
@@ -198,7 +198,7 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
-    public void MainWindowViewModel_ValidatedCloseSequence_NoLongerUsesCountdownText()
+    public void MainWindowViewModel_ValidatedWorkflow_UsesOkCancelLanguage()
     {
         string source = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
@@ -207,8 +207,9 @@ public sealed class MainWindowViewModelValidationTests
             "ViewModels",
             "MainWindowViewModel.cs"));
 
-        Assert.Contains("Validation passed. Saving and closing now.", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("Saving and closing in", source, StringComparison.Ordinal);
+        Assert.Contains("Validation passed. Click OK to save/apply, or Cancel to discard.", source, StringComparison.Ordinal);
+        Assert.Contains("public bool ShowValidatedActionButtons => IsValidated && !_isApplying;", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Saving and closing now.", source, StringComparison.Ordinal);
     }
 
     private static MainWindowViewModel CreateIsolatedViewModel(IConnectivityService? connectivity = null)

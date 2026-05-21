@@ -160,11 +160,11 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait(' ')", script, StringComparison.Ordinal);
         Assert.Contains("$selected.Current.IsSelected", script, StringComparison.Ordinal);
         Assert.Contains("Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigStatusText'", script, StringComparison.Ordinal);
-        Assert.Contains("Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigValidateButton'", script, StringComparison.Ordinal);
-        Assert.Contains("$text -like '*Validation passed. Saving and closing now.*'", script, StringComparison.Ordinal);
-        Assert.Contains("Write-ConfigWindowTrace -Event 'ValidateStatusCloseRequested'", script, StringComparison.Ordinal);
-        Assert.Contains("Write-ConfigWindowTrace -Event 'ValidateCloseFallbackSucceeded'", script, StringComparison.Ordinal);
-        Assert.Contains("Write-ConfigWindowTrace -Event 'ValidateButtonInvoked'", script, StringComparison.Ordinal);
+        Assert.Contains("Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigPrimaryButton'", script, StringComparison.Ordinal);
+        Assert.Contains("Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigCancelButton'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-ConfigWindowTrace -Event 'ValidateOkReady'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-ConfigWindowTrace -Event 'PrimaryButtonInvoked'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-ConfigWindowTrace -Event 'OkButtonInvoked'", script, StringComparison.Ordinal);
         Assert.Contains("throw 'Validate did not close the config window automatically.'", script, StringComparison.Ordinal);
         Assert.Contains("Validate-AndCloseConfigWindow -Process $desktop -Window $window", script, StringComparison.Ordinal);
         Assert.Contains("Close-ConfigWindowIfPresent -Process $desktop -Window $window", script, StringComparison.Ordinal);
