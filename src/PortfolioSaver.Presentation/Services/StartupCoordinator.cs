@@ -32,7 +32,6 @@ public sealed class StartupCoordinator
     private const int YahooGeneralRuntimeBatchSymbols = 1;
     private const int MaxBatchSymbolsPerPass = 24;
     private const int MaxRecoveryBatchSymbolsPerPass = 32;
-    private const int MaxSequentialSymbolsPerPass = 8;
     private const int MinimumTapeItemCount = 18;
     private static readonly HashSet<string> DedicatedYahooSymbols = BuildDedicatedYahooSymbolSet();
     private static readonly HashSet<string> OfficialMacroSymbols = BuildOfficialMacroSymbolSet();
@@ -366,11 +365,7 @@ public sealed class StartupCoordinator
             foreach (string symbol in orderedSymbols)
             {
                 if (results.TryGetValue(symbol, out QuoteSnapshot? cached))
-                {
-                    bool hasUsableValue = cached.Last.HasValue || cached.PreviousClose.HasValue;
-                    bool isHardStaleByAge = IsHardStaleByFetchAge(cached, settings, nowUtc);
-                    cached.IsStale = !hasUsableValue || isHardStaleByAge;
-                }
+                    cached.IsStale = !HasUsableQuote(cached);
             }
 
             string cacheOnlyLabel = networkAvailable
@@ -518,8 +513,7 @@ public sealed class StartupCoordinator
             if (cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? cached))
             {
                 QuoteSnapshot staleQuote = CloneQuote(cached);
-                bool hasUsableValue = staleQuote.Last.HasValue || staleQuote.PreviousClose.HasValue;
-                staleQuote.IsStale = !hasUsableValue || IsHardStaleByFetchAge(staleQuote, settings, nowUtc);
+                staleQuote.IsStale = !HasUsableQuote(staleQuote);
                 results[symbol] = staleQuote;
             }
         }
@@ -529,9 +523,7 @@ public sealed class StartupCoordinator
             if (!results.TryGetValue(symbol, out QuoteSnapshot? quote))
                 continue;
 
-            bool hasUsableValue = quote.Last.HasValue || quote.PreviousClose.HasValue;
-            bool isHardStaleByAge = IsHardStaleByFetchAge(quote, settings, nowUtc);
-            quote.IsStale = !hasUsableValue || isHardStaleByAge;
+            quote.IsStale = !HasUsableQuote(quote);
         }
 
         bool usedCache = orderedSymbols.Any(symbol => results.ContainsKey(symbol) && !refreshedSymbols.Contains(symbol));
@@ -627,7 +619,7 @@ public sealed class StartupCoordinator
 
     private static bool HasEnabledHistorySource(string symbol)
     {
-        return DataSourceSymbolEligibility.IsHistoryEligible(DataSourceKind.YahooFinance, symbol);
+        return !string.IsNullOrWhiteSpace(SymbolProfileHeuristics.Normalize(symbol));
     }
 
     private static List<string> BuildInterleavedPortfolioSymbols(AppSettings settings)
@@ -728,12 +720,10 @@ public sealed class StartupCoordinator
         decimal? percent = quote?.ChangePercent;
         bool hasUsableValue = last is not null;
         bool isMissing = !hasUsableValue;
-        bool isStale = !isMissing && IsQuoteBeyondStaleThreshold(quote, settings, nowUtc);
-        bool hideValuesUntilFresh = isStale || isMissing;
-        string lastText = !hideValuesUntilFresh && last is decimal lastValue
+        string lastText = last is decimal lastValue
             ? lastValue.ToString("0.00", CultureInfo.InvariantCulture)
             : string.Empty;
-        string percentText = !hideValuesUntilFresh && percent is decimal percentValue
+        string percentText = percent is decimal percentValue
             ? $"{(percentValue >= 0 ? "+" : string.Empty)}{percentValue:0.00}%"
             : string.Empty;
         Brush changeBrush = percent switch
@@ -748,31 +738,16 @@ public sealed class StartupCoordinator
             SymbolText = symbol,
             LastText = lastText,
             ChangeText = percentText,
-            IsWaitingOnData = hideValuesUntilFresh,
+            IsWaitingOnData = isMissing,
             HasMissingData = isMissing,
             WaitingGlyphText = isMissing ? "◌" : "🕒",
             WaitingGlyphForeground = isMissing ? Brushes.DarkOrange : Brushes.Goldenrod,
-            SymbolForeground = isMissing ? Brushes.DarkOrange : isStale ? Brushes.Gold : changeBrush,
+            SymbolForeground = isMissing ? Brushes.DarkOrange : changeBrush,
             LastForeground = Brushes.WhiteSmoke,
             ChangeForeground = changeBrush,
             QuoteUpdateToken = quote?.FetchTimestampUtc.UtcTicks ?? 0
         };
     }
-
-    private static bool IsQuoteBeyondStaleThreshold(QuoteSnapshot? quote, AppSettings settings, DateTimeOffset nowUtc)
-    {
-        if (quote is null)
-            return true;
-
-        if (quote.IsStale)
-            return true;
-
-        return IsHardStaleByFetchAge(quote, settings, nowUtc);
-    }
-
-    // Staleness is based on last successful fetch time, not provider market timestamp.
-    private static bool IsHardStaleByFetchAge(QuoteSnapshot quote, AppSettings settings, DateTimeOffset nowUtc)
-        => nowUtc - quote.FetchTimestampUtc >= QuoteRefreshPolicy.GetHardStaleThreshold(settings, nowUtc);
 
     private static bool ShouldShowNetworkWaitingOverlay(bool networkProbeAvailable, string providerLabel)
     {
@@ -796,17 +771,7 @@ public sealed class StartupCoordinator
         AppSettings settings,
         DateTimeOffset nowUtc)
     {
-        if (quotes.Count == 0)
-            return true;
-
-        int degradedCount = quotes.Values.Count(quote => IsQuoteBeyondStaleThreshold(quote, settings, nowUtc));
-        if (degradedCount == 0)
-            return false;
-
-        if (degradedCount == quotes.Count)
-            return true;
-
-        return degradedCount >= 12 && degradedCount * 2 >= quotes.Count;
+        return quotes.Count == 0 || quotes.Values.All(quote => !HasUsableQuote(quote));
     }
 
     private FloatingGraphViewModel BuildGraph(string tapeName, TickerHistorySnapshot snapshot, AppSettings settings)
@@ -1096,7 +1061,7 @@ public sealed class StartupCoordinator
             return [];
 
         List<string> eligibleSymbols = orderedSymbols
-            .Where(symbol => DataSourceSymbolEligibility.IsEligible(providerPlan.Kind, symbol))
+            .Where(symbol => !string.IsNullOrWhiteSpace(SymbolProfileHeuristics.Normalize(symbol)))
             .Where(symbol => !IsDedicatedYahooSymbol(symbol) || !IsDedicatedYahooSymbolCoolingDown(symbol, nowUtc))
             .ToList();
 
@@ -1323,11 +1288,9 @@ public sealed class StartupCoordinator
         IReadOnlyDictionary<string, QuoteSnapshot> quotes,
         AppSettings settings)
     {
-        DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
         return expectedSymbols
             .Where(symbol =>
                 !quotes.TryGetValue(symbol, out QuoteSnapshot? quote) ||
-                IsQuoteBeyondStaleThreshold(quote, settings, nowUtc) ||
                 (quote.Last is null && quote.PreviousClose is null))
             .Take(10)
             .ToList();

@@ -440,7 +440,7 @@ public partial class ScreensaverSceneControl : UserControl
             return;
 
         _lastSceneHeartbeatUtc = nowUtc;
-        int staleQuoteCount = _latestQuotes.Values.Count(IsQuoteBeyondStaleThreshold);
+        int staleQuoteCount = _latestQuotes.Values.Count(quote => quote.IsStale);
         TraceSceneState(
             eventName,
             new KeyValuePair<string, object?>("preserve_layout", preserveLayout),
@@ -471,7 +471,7 @@ public partial class ScreensaverSceneControl : UserControl
             .Where(symbol => !_latestQuotes.TryGetValue(symbol, out QuoteSnapshot? quote) || (quote.Last is null && quote.PreviousClose is null))
             .ToList();
         List<string> staleSymbols = StartupCoordinator.GetMacroIndicatorSymbols()
-            .Where(symbol => _latestQuotes.TryGetValue(symbol, out QuoteSnapshot? quote) && IsQuoteBeyondStaleThreshold(quote))
+            .Where(symbol => _latestQuotes.TryGetValue(symbol, out QuoteSnapshot? quote) && quote.IsStale)
             .ToList();
 
         TraceSceneState(
@@ -658,9 +658,6 @@ public partial class ScreensaverSceneControl : UserControl
         foreach (string symbol in expectedSymbols)
         {
             if (!_latestQuotes.TryGetValue(symbol, out QuoteSnapshot? quote))
-                return true;
-
-            if (IsQuoteBeyondStaleThreshold(quote))
                 return true;
 
             if (quote.Last is null && quote.PreviousClose is null)
@@ -1139,7 +1136,7 @@ public partial class ScreensaverSceneControl : UserControl
         meter.ChangeText = changePercent is decimal percent
             ? $"{(percent >= 0 ? "+" : string.Empty)}{percent:0.0}%"
             : string.Empty;
-        bool isStale = IsQuoteBeyondStaleThreshold(quote);
+        bool isStale = quote.IsStale;
         Brush upBrush = invertRiskColors ? Brushes.OrangeRed : Brushes.LimeGreen;
         Brush downBrush = invertRiskColors ? Brushes.LimeGreen : Brushes.OrangeRed;
         meter.AccentBrush = isStale
@@ -2373,7 +2370,7 @@ public partial class ScreensaverSceneControl : UserControl
             return;
         }
 
-        if (IsQuoteBeyondStaleThreshold(quote))
+        if (quote.IsStale)
         {
             graph.IsVisible = false;
             graph.LastText = string.Empty;
@@ -2414,15 +2411,6 @@ public partial class ScreensaverSceneControl : UserControl
             ApplyRefreshMotionCue(graph, percent);
             graph.TriggerCardFlash(changeBrush);
         }
-    }
-
-    private bool IsQuoteBeyondStaleThreshold(QuoteSnapshot quote)
-    {
-        if (quote.IsStale)
-            return true;
-
-        DateTimeOffset nowUtc = GetReferenceUtcNow();
-        return nowUtc - quote.FetchTimestampUtc >= QuoteRefreshPolicy.GetHardStaleThreshold(_settings, nowUtc);
     }
 
     private void UpdateStatusFreshnessText(string? fallbackText = null)
@@ -2468,7 +2456,7 @@ public partial class ScreensaverSceneControl : UserControl
         _statusViewModel.ProviderText = CompactProviderText(_statusViewModel.ProviderText);
 
         if (_latestQuotes.Count > 0 &&
-            _latestQuotes.Values.All(quote => !IsQuoteBeyondStaleThreshold(quote)) &&
+            _latestQuotes.Values.All(quote => !quote.IsStale) &&
             string.Equals(_statusViewModel.ProviderText, "Provider: Live+Cache", StringComparison.Ordinal))
         {
             _statusViewModel.ProviderText = "Provider: Live";

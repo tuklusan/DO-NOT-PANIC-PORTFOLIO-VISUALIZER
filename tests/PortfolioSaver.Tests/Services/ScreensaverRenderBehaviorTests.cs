@@ -85,7 +85,7 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void ApplyQuoteToGraph_StaleQuoteHidesCardAndClearsValues()
+    public void ApplyQuoteToGraph_OlderQuoteStillShowsCurrentValues()
     {
         RunOnSta(() =>
         {
@@ -122,9 +122,9 @@ public sealed class ScreensaverRenderBehaviorTests
                 ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
             applyQuoteMethod.Invoke(control, [graph]);
 
-            Assert.False(graph.IsVisible);
-            Assert.Equal(string.Empty, graph.LastText);
-            Assert.Equal(string.Empty, graph.ChangeText);
+            Assert.True(graph.IsVisible);
+            Assert.Equal("190.00", graph.LastText);
+            Assert.Equal("+1.00%", graph.ChangeText);
         });
     }
 

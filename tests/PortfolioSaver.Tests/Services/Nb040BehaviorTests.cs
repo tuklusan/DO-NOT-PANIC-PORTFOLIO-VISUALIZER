@@ -134,7 +134,7 @@ public sealed class Nb040BehaviorTests
             "_sequentialRuntimeCursor = (_sequentialRuntimeCursor + 1) % eligibleSymbols.Count;",
             source,
             StringComparison.Ordinal);
-        Assert.Contains(
+        Assert.DoesNotContain(
             "DataSourceSymbolEligibility.IsEligible(providerPlan.Kind, symbol)",
             source,
             StringComparison.Ordinal);
@@ -180,3 +180,4 @@ public sealed class Nb040BehaviorTests
         throw new DirectoryNotFoundException("Could not locate repo root from test AppContext.BaseDirectory.");
     }
 }
+
