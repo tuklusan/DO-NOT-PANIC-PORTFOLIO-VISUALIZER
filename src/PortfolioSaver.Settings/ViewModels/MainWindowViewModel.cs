@@ -334,6 +334,8 @@ public sealed class MainWindowViewModel : BindableBase
             AppendValidationLog($"TICKER VALIDATION: {enabledSymbols.Count} SYMBOL(S)");
             YahooSymbolValidationResult symbolValidation = await ValidateSymbolsAgainstSourcesAsync(candidate, enabledSymbols);
             int autoNamedCount = ApplyResolvedDisplayNames(symbolValidation);
+            candidate = BuildCandidateSettings();
+            Settings = candidate;
             SaveTrustedSymbolProfiles(symbolValidation);
             if (symbolValidation.WasRateLimited || symbolValidation.DeferredSymbols.Count > 0)
             {
@@ -850,6 +852,13 @@ public sealed class MainWindowViewModel : BindableBase
             string.Equals(e.PropertyName, nameof(TickerItemEditorViewModel.ValidationBadgeText), StringComparison.Ordinal))
         {
             return;
+        }
+
+        if (IsValidated)
+        {
+            string currentFingerprint = BuildFingerprint(BuildCandidateSettings());
+            if (string.Equals(_validatedFingerprint, currentFingerprint, StringComparison.Ordinal))
+                return;
         }
 
         InvalidateValidationState("Configuration changed. Click Validate.");
