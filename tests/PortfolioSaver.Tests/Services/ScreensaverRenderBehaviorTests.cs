@@ -490,7 +490,7 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void UpdateTapeItem_SameValueWithNewerFetchToken_StillTriggersFlash()
+    public void UpdateTapeItem_SameValueWithNewerFetchToken_DoesNotTriggerFlash()
     {
         MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
             "UpdateTapeItem",
@@ -514,7 +514,7 @@ public sealed class ScreensaverRenderBehaviorTests
 
         method.Invoke(null, [target, source]);
 
-        Assert.Equal(1, target.UpdateSequence);
+        Assert.Equal(0, target.UpdateSequence);
         Assert.Equal(200, target.QuoteUpdateToken);
     }
 

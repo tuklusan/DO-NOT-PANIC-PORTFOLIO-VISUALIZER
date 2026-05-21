@@ -2291,7 +2291,6 @@ public partial class ScreensaverSceneControl : UserControl
         bool hadPriorSymbol = !string.IsNullOrWhiteSpace(target.SymbolText);
         bool valueChanged = !string.Equals(target.LastText, source.LastText, StringComparison.Ordinal) ||
                             !string.Equals(target.ChangeText, source.ChangeText, StringComparison.Ordinal);
-        bool updateTokenChanged = source.QuoteUpdateToken > 0 && source.QuoteUpdateToken != target.QuoteUpdateToken;
 
         target.SymbolText = source.SymbolText;
         target.LastText = source.LastText;
@@ -2306,7 +2305,7 @@ public partial class ScreensaverSceneControl : UserControl
         target.ValueFlashBrush = source.ValueFlashBrush;
         target.QuoteUpdateToken = source.QuoteUpdateToken;
 
-        if (hadPriorSymbol && (valueChanged || updateTokenChanged) && !string.IsNullOrWhiteSpace(source.LastText))
+        if (hadPriorSymbol && valueChanged && !string.IsNullOrWhiteSpace(source.LastText))
             target.TriggerValueFlash(source.ChangeForeground);
     }
 

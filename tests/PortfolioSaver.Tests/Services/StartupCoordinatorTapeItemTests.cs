@@ -26,10 +26,10 @@ public sealed class StartupCoordinatorTapeItemTests
     }
 
     [Fact]
-    public void BuildTapeItem_StaleQuote_HidesValuesWhileFlaggingWaitState()
+    public void BuildTapeItem_OlderQuoteStillShowsValues()
     {
         DateTimeOffset now = new(2026, 4, 10, 12, 0, 0, TimeSpan.Zero);
-        QuoteSnapshot staleQuote = new()
+        QuoteSnapshot olderQuote = new()
         {
             Symbol = "MSFT",
             Last = 100m,
@@ -38,14 +38,14 @@ public sealed class StartupCoordinatorTapeItemTests
             IsStale = false
         };
 
-        TapeItemViewModel item = InvokeBuildTapeItem("MSFT", staleQuote, "Microsoft", now);
+        TapeItemViewModel item = InvokeBuildTapeItem("MSFT", olderQuote, "Microsoft", now);
 
-        Assert.Equal(Brushes.Gold, item.SymbolForeground);
-        Assert.True(item.IsWaitingOnData);
+        Assert.Equal(Brushes.LimeGreen, item.SymbolForeground);
+        Assert.False(item.IsWaitingOnData);
         Assert.False(item.HasMissingData);
         Assert.Equal("🕒", item.WaitingGlyphText);
-        Assert.Equal(string.Empty, item.LastText);
-        Assert.Equal(string.Empty, item.ChangeText);
+        Assert.Equal("100.00", item.LastText);
+        Assert.Equal("+1.00%", item.ChangeText);
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public sealed class StartupCoordinatorTapeItemTests
     }
 
     [Fact]
-    public void BuildTapeItem_UsesFetchTimestampNotProviderTimestampForStaleDecision()
+    public void BuildTapeItem_UsesDisplayedValueInsteadOfTimestampAge()
     {
         DateTimeOffset now = new(2026, 4, 10, 12, 0, 0, TimeSpan.Zero);
         QuoteSnapshot quote = new()
@@ -86,7 +86,7 @@ public sealed class StartupCoordinatorTapeItemTests
 
         TapeItemViewModel item = InvokeBuildTapeItem("SPY", quote, "SPY", now);
 
-        Assert.NotEqual(Brushes.Gold, item.SymbolForeground);
+        Assert.Equal(Brushes.OrangeRed, item.SymbolForeground);
         Assert.Equal("500.00", item.LastText);
         Assert.Equal("-0.10%", item.ChangeText);
     }

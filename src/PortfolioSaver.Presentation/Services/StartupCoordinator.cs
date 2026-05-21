@@ -44,9 +44,7 @@ public sealed class StartupCoordinator
     private readonly HistoricalGraphBuilder _historicalGraphBuilder = new();
     private readonly FloatingClockBuilder _floatingClockBuilder = new();
     private readonly FinanceNewsService _financeNewsService = new();
-    private readonly ProviderBudgetLedgerService _providerBudgetLedgerService;
     private readonly SymbolProfileStore _symbolProfileStore = new(Path.Combine(PathHelper.GetLocalDataDirectory(), "symbol-profiles.json"));
-    private readonly Dictionary<string, DateTimeOffset> _dedicatedYahooCooldownsUtc = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, QuoteSnapshot> _runtimeQuoteMemory = new(StringComparer.OrdinalIgnoreCase);
     private int _sequentialRuntimeCursor;
     private string _sequentialRuntimeFingerprint = string.Empty;
@@ -62,7 +60,6 @@ public sealed class StartupCoordinator
     {
         _isNetworkAvailable = networkAvailability ?? _networkAvailabilityService.IsNetworkAvailable;
         _createYahooProvider = yahooProviderFactory ?? (client => new YahooFinanceQuoteProvider(client));
-        _providerBudgetLedgerService = providerBudgetLedgerService ?? new ProviderBudgetLedgerService();
     }
 
     public ScreensaverSceneState BuildBootstrapScene()
@@ -132,7 +129,6 @@ public sealed class StartupCoordinator
         IReadOnlyDictionary<string, SymbolProfile> symbolProfiles = _symbolProfileStore.Load();
 
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
-        ProviderHealthService providerHealthService = new();
         IQuoteProvider yahooFinanceProvider = _createYahooProvider(httpClient);
 
         List<string> portfolioSymbols = BuildInterleavedPortfolioSymbols(settings);
@@ -148,12 +144,6 @@ public sealed class StartupCoordinator
             settings,
             networkAvailable,
             yahooFinanceProvider,
-            yahooFinanceProvider,
-            yahooFinanceProvider,
-            yahooFinanceProvider,
-            yahooFinanceProvider,
-            providerHealthService,
-            symbolProfiles,
             graphRotationSeed,
             cancellationToken);
         Task<IReadOnlyList<string>> backgroundsTask = _exchangePhotoCacheService.GetAvailableBackgroundsAsync(
@@ -184,7 +174,6 @@ public sealed class StartupCoordinator
         IReadOnlyDictionary<string, SymbolProfile> symbolProfiles = _symbolProfileStore.Load();
 
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
-        ProviderHealthService providerHealthService = new();
         IQuoteProvider yahooFinanceProvider = _createYahooProvider(httpClient);
 
         List<string> portfolioSymbols = BuildInterleavedPortfolioSymbols(settings);
@@ -200,12 +189,6 @@ public sealed class StartupCoordinator
             settings,
             networkAvailable,
             yahooFinanceProvider,
-            yahooFinanceProvider,
-            yahooFinanceProvider,
-            yahooFinanceProvider,
-            yahooFinanceProvider,
-            providerHealthService,
-            symbolProfiles,
             graphRotationSeed,
             cancellationToken);
 
@@ -314,13 +297,7 @@ public sealed class StartupCoordinator
         IReadOnlyList<string> benchmarkSymbols,
         AppSettings settings,
         bool networkAvailable,
-        IQuoteProvider finnhubProvider,
-        IQuoteProvider twelveDataProvider,
-        IQuoteProvider tiingoProvider,
         IQuoteProvider yahooFinanceProvider,
-        IQuoteProvider globalMarketProvider,
-        ProviderHealthService providerHealthService,
-        IReadOnlyDictionary<string, SymbolProfile> symbolProfiles,
         int refreshSeed,
         CancellationToken cancellationToken)
     {
@@ -347,8 +324,6 @@ public sealed class StartupCoordinator
             pair => pair.Key,
             pair => CloneQuote(pair.Value),
             StringComparer.OrdinalIgnoreCase);
-        HashSet<string> liveProvidersUsed = new(StringComparer.OrdinalIgnoreCase);
-        HashSet<string> refreshedSymbols = new(StringComparer.OrdinalIgnoreCase);
         string? latestUpdatedSymbol = null;
         DateTimeOffset latestUpdatedFetchUtc = DateTimeOffset.MinValue;
 
@@ -381,127 +356,44 @@ public sealed class StartupCoordinator
             return (results, cacheOnlyLabel);
         }
 
-        IReadOnlyList<ProviderExecutionPlan> providers = BuildQuoteProviders(
-            settings,
-            finnhubProvider,
-            twelveDataProvider,
-            tiingoProvider,
-            yahooFinanceProvider,
-            refreshSeed);
-        List<string> remainingSymbols = orderedSymbols.ToList();
-
-        TraceRuntimeState(
-            "ProviderOrder",
-            new KeyValuePair<string, object?>("providers", providers.Select(provider => provider.Label)),
-            new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(remainingSymbols)));
-        foreach (ProviderExecutionPlan providerPlan in providers)
+        List<string> requestSymbols = TakeSequentialRequestSymbols(orderedSymbols);
+        if (requestSymbols.Count > 0)
         {
-            if (remainingSymbols.Count == 0)
-                break;
-
-            List<string> requestSymbols = TakeSequentialRequestSymbols(orderedSymbols, providerPlan, nowUtc);
-            if (requestSymbols.Count == 0)
-                continue;
-
-            int queryCost = GetQueryCost(providerPlan, requestSymbols.Count);
-            TraceRuntime($"Trying provider {providerPlan.Label} for {requestSymbols.Count} symbols [{string.Join(", ", requestSymbols)}] cost={queryCost}");
-            TimeSpan minimumReuseInterval = GetMinimumProviderReuseInterval(providerPlan.Kind, requestSymbols);
-            if (!_providerBudgetLedgerService.TryReserve(
-                    providerPlan.Policy,
-                    queryCost,
-                    minimumReuseInterval,
-                    nowUtc))
-            {
-                TraceRuntime($"Provider {providerPlan.Label} skipped by budget/cooldown for [{string.Join(", ", requestSymbols)}]");
-                TraceRuntimeState(
-                    "ProviderSkipped",
-                    new KeyValuePair<string, object?>("provider", providerPlan.Label),
-                    new KeyValuePair<string, object?>("kind", providerPlan.Kind),
-                    new KeyValuePair<string, object?>("query_cost", queryCost),
-                    new KeyValuePair<string, object?>("minimum_reuse_seconds", minimumReuseInterval.TotalSeconds),
-                    new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(requestSymbols)),
-                    new KeyValuePair<string, object?>("remaining_before_skip", PreviewSymbols(remainingSymbols)));
-                continue;
-            }
-
             try
             {
-                IReadOnlyList<QuoteSnapshot> fetched = await providerPlan.Provider.GetQuotesAsync(requestSymbols, cancellationToken);
+                TraceRuntime($"Requesting YFinance.NET sequential quote for [{string.Join(", ", requestSymbols)}]");
+                IReadOnlyList<QuoteSnapshot> fetched = await yahooFinanceProvider.GetQuotesAsync(requestSymbols, cancellationToken);
                 if (fetched.Count == 0)
                 {
-                    TraceRuntime($"Provider {providerPlan.Label} returned no quotes for [{string.Join(", ", requestSymbols)}]");
-                    continue;
+                    TraceRuntime($"YFinance.NET returned no quotes for [{string.Join(", ", requestSymbols)}]");
                 }
-
-                providerHealthService.MarkSuccess();
-                liveProvidersUsed.Add(providerPlan.Label);
-                ClearDedicatedYahooCooldowns(fetched.Select(quote => quote.Symbol));
-                TraceRuntime($"Provider {providerPlan.Label} returned {fetched.Count} quotes.");
                 TraceRuntimeState(
-                    "ProviderReturnedQuotes",
-                    new KeyValuePair<string, object?>("provider", providerPlan.Label),
+                    "SequentialQuoteReturned",
                     new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(requestSymbols)),
-                    new KeyValuePair<string, object?>("fetched_symbols", PreviewSymbols(fetched.Select(quote => quote.Symbol))),
-                    new KeyValuePair<string, object?>("remaining_before_apply", PreviewSymbols(remainingSymbols)));
+                    new KeyValuePair<string, object?>("fetched_symbols", PreviewSymbols(fetched.Select(quote => quote.Symbol))));
 
                 foreach (QuoteSnapshot quote in fetched)
                 {
                     results[quote.Symbol] = quote;
-                    refreshedSymbols.Add(quote.Symbol);
-                    remainingSymbols.RemoveAll(symbol => string.Equals(symbol, quote.Symbol, StringComparison.OrdinalIgnoreCase));
                     NoteLatestUpdatedQuote(quote, ref latestUpdatedSymbol, ref latestUpdatedFetchUtc);
                 }
-
-                TraceRuntimeState(
-                    "ProviderApplyComplete",
-                    new KeyValuePair<string, object?>("provider", providerPlan.Label),
-                    new KeyValuePair<string, object?>("refreshed_symbol_count", refreshedSymbols.Count),
-                    new KeyValuePair<string, object?>("remaining_symbol_count", remainingSymbols.Count),
-                    new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(remainingSymbols)));
             }
             catch (Exception ex)
             {
                 if (TryGetPartialQuotes(ex, out IReadOnlyList<QuoteSnapshot>? partialQuotes))
                 {
-                    IReadOnlyList<QuoteSnapshot> appliedPartialQuotes = partialQuotes!;
-                    providerHealthService.MarkSuccess();
-                    liveProvidersUsed.Add(providerPlan.Label);
-                    ClearDedicatedYahooCooldowns(appliedPartialQuotes.Select(quote => quote.Symbol));
-                    TraceRuntime($"Provider {providerPlan.Label} yielded {appliedPartialQuotes.Count} partial quotes before rate limiting.");
-
-                    foreach (QuoteSnapshot quote in appliedPartialQuotes)
+                    foreach (QuoteSnapshot quote in partialQuotes!)
                     {
                         results[quote.Symbol] = quote;
-                        refreshedSymbols.Add(quote.Symbol);
-                        remainingSymbols.RemoveAll(symbol => string.Equals(symbol, quote.Symbol, StringComparison.OrdinalIgnoreCase));
                         NoteLatestUpdatedQuote(quote, ref latestUpdatedSymbol, ref latestUpdatedFetchUtc);
                     }
-
-                    TraceRuntimeState(
-                        "ProviderPartialQuotesApplied",
-                        new KeyValuePair<string, object?>("provider", providerPlan.Label),
-                        new KeyValuePair<string, object?>("partial_symbols", PreviewSymbols(appliedPartialQuotes.Select(quote => quote.Symbol))),
-                        new KeyValuePair<string, object?>("remaining_symbol_count", remainingSymbols.Count),
-                        new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(remainingSymbols)));
                 }
 
-                providerHealthService.MarkFailure(ex.Message);
-                TraceRuntime($"Provider {providerPlan.Label} failed for [{string.Join(", ", requestSymbols)}]: {ex.GetType().Name}: {ex.Message}");
-                if (IsRateLimited(ex))
-                {
-                    if (providerPlan.Kind == DataSourceKind.YahooFinance)
-                        ApplyDedicatedYahooRateLimit(requestSymbols, nowUtc);
-
-                    _providerBudgetLedgerService.NoteRateLimit(providerPlan.Kind, GetRateLimitCooldown(providerPlan.Kind, requestSymbols), nowUtc);
-                }
-
+                TraceRuntime($"YFinance.NET sequential quote failed for [{string.Join(", ", requestSymbols)}]: {ex.GetType().Name}: {ex.Message}");
                 TraceRuntimeState(
-                    "ProviderFailed",
-                    new KeyValuePair<string, object?>("provider", providerPlan.Label),
-                    new KeyValuePair<string, object?>("kind", providerPlan.Kind),
+                    "SequentialQuoteFailed",
                     new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols(requestSymbols)),
-                    new KeyValuePair<string, object?>("is_rate_limited", IsRateLimited(ex)),
-                    new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(remainingSymbols)));
+                    new KeyValuePair<string, object?>("is_rate_limited", IsRateLimited(ex)));
             }
         }
 
@@ -526,41 +418,27 @@ public sealed class StartupCoordinator
             quote.IsStale = !HasUsableQuote(quote);
         }
 
-        bool usedCache = orderedSymbols.Any(symbol => results.ContainsKey(symbol) && !refreshedSymbols.Contains(symbol));
-        string providerLabel;
-        if (liveProvidersUsed.Count > 0)
-        {
-            providerLabel = string.Join(" + ", liveProvidersUsed.OrderBy(label => label, StringComparer.OrdinalIgnoreCase));
-        }
-        else if (results.Count > 0)
-        {
-            providerLabel = "YFinance.NET Cache";
-        }
-        else
-        {
-            providerLabel = networkAvailable ? "Unavailable" : "Waiting for network";
-        }
-
-        if (usedCache && liveProvidersUsed.Count > 0)
-            providerLabel += " + YFinance.NET Cache";
-        if (orderedSymbols.Count > refreshedSymbols.Count && liveProvidersUsed.Count > 0)
-            providerLabel += " (Sequential)";
-        if (liveProvidersUsed.Count > 0 && !string.IsNullOrWhiteSpace(latestUpdatedSymbol))
+        bool usedCache = orderedSymbols.Any(symbol => results.ContainsKey(symbol) &&
+                                                      (requestSymbols.Count == 0 || !requestSymbols.Contains(symbol, StringComparer.OrdinalIgnoreCase)));
+        string providerLabel = results.Count > 0 ? "YFinance.NET" : (networkAvailable ? "Unavailable" : "Waiting for network");
+        if (usedCache && results.Count > 0)
+            providerLabel += " + Cache";
+        if (!string.IsNullOrWhiteSpace(latestUpdatedSymbol))
             providerLabel += $", {latestUpdatedSymbol} Updated {TimeFormatHelper.ToAgeString(latestUpdatedFetchUtc)}";
 
         TraceRuntimeState(
             "QuoteResolutionSummary",
             new KeyValuePair<string, object?>("provider_label", providerLabel),
             new KeyValuePair<string, object?>("result_quote_count", results.Count),
-            new KeyValuePair<string, object?>("refreshed_symbol_count", refreshedSymbols.Count),
+            new KeyValuePair<string, object?>("refreshed_symbol_count", requestSymbols.Count),
             new KeyValuePair<string, object?>("stale_symbol_count", results.Values.Count(quote => quote.IsStale)),
             new KeyValuePair<string, object?>("stale_symbols", PreviewSymbols(results.Values.Where(quote => quote.IsStale).Select(quote => quote.Symbol))),
             new KeyValuePair<string, object?>("missing_value_symbols", PreviewSymbols(results.Values.Where(quote => !quote.Last.HasValue && !quote.PreviousClose.HasValue).Select(quote => quote.Symbol))),
-            new KeyValuePair<string, object?>("remaining_symbol_count", Math.Max(0, orderedSymbols.Count - refreshedSymbols.Count)),
-            new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(orderedSymbols.Except(refreshedSymbols, StringComparer.OrdinalIgnoreCase))),
+            new KeyValuePair<string, object?>("remaining_symbol_count", Math.Max(0, orderedSymbols.Count - requestSymbols.Count)),
+            new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(orderedSymbols.Except(requestSymbols, StringComparer.OrdinalIgnoreCase))),
             new KeyValuePair<string, object?>("macro_missing_symbols", PreviewMissingSymbols(GetMacroIndicatorSymbols(), results, settings)),
             new KeyValuePair<string, object?>("world_index_missing_symbols", PreviewMissingSymbols(FloatingClockBuilder.GetWorldIndexSymbols(), results, settings)));
-        TraceRuntime($"Quotes resolved. ProviderLabel={providerLabel} Refreshed={refreshedSymbols.Count} Cached={results.Count - refreshedSymbols.Count} Remaining={Math.Max(0, orderedSymbols.Count - refreshedSymbols.Count)}");
+        TraceRuntime($"Quotes resolved. ProviderLabel={providerLabel} Refreshed={requestSymbols.Count} Cached={Math.Max(0, results.Count - requestSymbols.Count)} Remaining={Math.Max(0, orderedSymbols.Count - requestSymbols.Count)}");
         PrimeRuntimeQuotes(results);
         return (results, providerLabel);
     }
@@ -1052,17 +930,13 @@ public sealed class StartupCoordinator
            ((quote.Last is decimal last && last > 0) ||
             (quote.PreviousClose is decimal previousClose && previousClose > 0));
 
-    private List<string> TakeSequentialRequestSymbols(
-        IReadOnlyList<string> orderedSymbols,
-        ProviderExecutionPlan providerPlan,
-        DateTimeOffset nowUtc)
+    private List<string> TakeSequentialRequestSymbols(IReadOnlyList<string> orderedSymbols)
     {
         if (orderedSymbols.Count == 0)
             return [];
 
         List<string> eligibleSymbols = orderedSymbols
             .Where(symbol => !string.IsNullOrWhiteSpace(SymbolProfileHeuristics.Normalize(symbol)))
-            .Where(symbol => !IsDedicatedYahooSymbol(symbol) || !IsDedicatedYahooSymbolCoolingDown(symbol, nowUtc))
             .ToList();
 
         if (eligibleSymbols.Count == 0)
@@ -1355,43 +1229,6 @@ public sealed class StartupCoordinator
         symbol = latest.Symbol;
         fetchUtc = latest.FetchUtc;
         return true;
-    }
-
-    private bool IsDedicatedYahooSymbolCoolingDown(string symbol, DateTimeOffset nowUtc)
-    {
-        string normalized = SymbolProfileHeuristics.Normalize(symbol);
-        if (!_dedicatedYahooCooldownsUtc.TryGetValue(normalized, out DateTimeOffset cooldownUntilUtc))
-            return false;
-
-        if (cooldownUntilUtc <= nowUtc)
-        {
-            _dedicatedYahooCooldownsUtc.Remove(normalized);
-            return false;
-        }
-
-        return true;
-    }
-
-    private void ApplyDedicatedYahooRateLimit(IEnumerable<string> symbols, DateTimeOffset nowUtc)
-    {
-        foreach (string normalized in symbols
-                     .Where(IsDedicatedYahooSymbol)
-                     .Select(SymbolProfileHeuristics.Normalize)
-                     .Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            _dedicatedYahooCooldownsUtc[normalized] = nowUtc.AddMinutes(YahooDedicatedSymbolCooldownMinutes);
-        }
-    }
-
-    private void ClearDedicatedYahooCooldowns(IEnumerable<string> symbols)
-    {
-        foreach (string normalized in symbols
-                     .Where(IsDedicatedYahooSymbol)
-                     .Select(SymbolProfileHeuristics.Normalize)
-                     .Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            _dedicatedYahooCooldownsUtc.Remove(normalized);
-        }
     }
 
     private static int GetDedicatedYahooPriority(string symbol)
