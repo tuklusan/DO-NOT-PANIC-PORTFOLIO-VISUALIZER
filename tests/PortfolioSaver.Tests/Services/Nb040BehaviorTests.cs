@@ -127,11 +127,11 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
-            "!IsDedicatedYahooSymbol(symbol) || !IsDedicatedYahooSymbolCoolingDown(symbol, nowUtc)",
+            "_sequentialRuntimeCursor = (_sequentialRuntimeCursor + 1) % eligibleSymbols.Count;",
             source,
             StringComparison.Ordinal);
-        Assert.Contains(
-            "_sequentialRuntimeCursor = (_sequentialRuntimeCursor + 1) % eligibleSymbols.Count;",
+        Assert.DoesNotContain(
+            "IsDedicatedYahooSymbolCoolingDown",
             source,
             StringComparison.Ordinal);
         Assert.DoesNotContain(
