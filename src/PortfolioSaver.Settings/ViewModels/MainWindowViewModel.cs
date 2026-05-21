@@ -28,7 +28,6 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly IConnectivityService _connectivityService;
     private readonly YahooSymbolValidationService _yahooSymbolValidationService;
     private readonly SymbolProfileStore _symbolProfileStore;
-    private readonly QuoteCacheService _quoteCacheService;
     private readonly DispatcherTimer _stateTimer;
     private readonly DispatcherTimer _validatedCloseTimer;
     private readonly HashSet<TickerGroupEditorViewModel> _trackedGroups = [];
@@ -46,7 +45,6 @@ public sealed class MainWindowViewModel : BindableBase
     private AppSettings? _pendingValidatedSettings;
     private string _validationLogText = string.Empty;
     private static readonly TimeSpan CachedProfileTrustWindow = TimeSpan.FromMinutes(10);
-    private static readonly TimeSpan CachedQuoteTrustWindow = TimeSpan.FromMinutes(10);
 
     public MainWindowViewModel()
         : this(connectivityService: null)
@@ -61,7 +59,6 @@ public sealed class MainWindowViewModel : BindableBase
         _connectivityService = connectivityService ?? new ConfigConnectivityService();
         _yahooSymbolValidationService = new YahooSymbolValidationService();
         _symbolProfileStore = new SymbolProfileStore(Path.Combine(PathHelper.GetLocalDataDirectory(), "symbol-profiles.json"));
-        _quoteCacheService = new QuoteCacheService(Path.Combine(PathHelper.GetLocalDataDirectory(), "quotes-cache.json"));
 
         _settings = _settingsFileService.Load();
         Groups = new ObservableCollection<TickerGroupEditorViewModel>(
@@ -541,12 +538,6 @@ public sealed class MainWindowViewModel : BindableBase
     {
         DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
         IReadOnlyDictionary<string, SymbolProfile> cachedProfiles = _symbolProfileStore.Load();
-        IReadOnlyDictionary<string, QuoteSnapshot> cachedQuotes = _quoteCacheService.LoadCached()
-            .Where(quote => !string.IsNullOrWhiteSpace(quote.Symbol))
-            .GroupBy(quote => SymbolProfileHeuristics.Normalize(quote.Symbol), StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.Last())
-            .ToDictionary(quote => SymbolProfileHeuristics.Normalize(quote.Symbol), StringComparer.OrdinalIgnoreCase);
-
         Dictionary<string, string> currentDisplayNames = EnumerateTickerEditors()
             .Where(ticker => ticker.Enabled && !string.IsNullOrWhiteSpace(ticker.Symbol))
             .GroupBy(ticker => SymbolProfileHeuristics.Normalize(ticker.Symbol), StringComparer.OrdinalIgnoreCase)
@@ -572,21 +563,6 @@ public sealed class MainWindowViewModel : BindableBase
                     profileName,
                     "Validated from cached symbol profile",
                     "LOCAL-PROFILE"));
-                continue;
-            }
-
-            if (cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? quote) &&
-                quote.FetchTimestampUtc > DateTimeOffset.MinValue &&
-                nowUtc - quote.FetchTimestampUtc <= CachedQuoteTrustWindow &&
-                (quote.Last is decimal last && last > 0 || quote.PreviousClose is decimal previousClose && previousClose > 0))
-            {
-                trusted.Add(new TrustedValidationEvidence(
-                    symbol,
-                    currentDisplayNames.GetValueOrDefault(symbol, string.Empty),
-                    quote.IsStale
-                        ? "Validated from cached local quote history"
-                        : "Validated from recent local quote cache",
-                    "LOCAL-CACHE"));
             }
         }
 

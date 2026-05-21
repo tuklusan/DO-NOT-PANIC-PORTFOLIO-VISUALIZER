@@ -11,7 +11,7 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
 {
     private readonly YFinanceClient _client;
 
-    public YahooFinanceQuoteProvider(HttpClient httpClient, YahooFinanceSessionService? sessionService = null)
+    public YahooFinanceQuoteProvider(HttpClient httpClient)
         : this(YFinanceRuntimeClientFactory.GetSharedClient())
     {
     }

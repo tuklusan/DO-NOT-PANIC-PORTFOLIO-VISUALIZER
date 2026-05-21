@@ -52,11 +52,11 @@ Official MIT reference:
 
 - Settings file: `%AppData%\PortfolioSaver\settings.json`
 - Protected secret store: `%AppData%\PortfolioSaver\provider-secrets.json`
-- Quote cache: `%LocalAppData%\PortfolioSaver\quotes-cache.json`
 - News cache: `%LocalAppData%\PortfolioSaver\finance-news-cache.json`
 - Historical cache: `%LocalAppData%\PortfolioSaver\Caches\History`
 - Cache policy:
   - Runtime YFinance.NET memory and metadata caches are capped at 10 minutes
+  - No separate app-level quote cache is maintained; quote reuse comes from YFinance.NET
   - Per-symbol JSON history files
   - Automatic purge of history files older than 14 days
 

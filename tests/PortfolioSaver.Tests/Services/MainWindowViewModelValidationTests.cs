@@ -140,7 +140,7 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
-    public async Task ValidateSymbolsAgainstSourcesAsync_TrustsRecentStaleLocalQuoteCache()
+    public async Task ValidateSymbolsAgainstSourcesAsync_TrustsRecentCachedSymbolProfile()
     {
         string localDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(localDataRoot);
@@ -149,16 +149,16 @@ public sealed class MainWindowViewModelValidationTests
 
         try
         {
-            QuoteCacheService cache = new(Path.Combine(localDataRoot, "quotes-cache.json"));
-            await cache.SaveAsync(
+            SymbolProfileStore store = new(Path.Combine(localDataRoot, "symbol-profiles.json"));
+            store.Save(
             [
-                new QuoteSnapshot
+                new SymbolProfile
                 {
                     Symbol = "AAPL",
-                    Last = 187.42m,
-                    PreviousClose = 186.80m,
-                    FetchTimestampUtc = DateTimeOffset.UtcNow.AddMinutes(-6),
-                    IsStale = true
+                    CanonicalSymbol = "AAPL",
+                    DisplayName = "Apple Inc.",
+                    LastValidatedUtc = DateTimeOffset.UtcNow.AddMinutes(-6),
+                    SupportedQuoteSources = [PortfolioSaver.Core.Enums.DataSourceKind.YahooFinance]
                 }
             ]);
 

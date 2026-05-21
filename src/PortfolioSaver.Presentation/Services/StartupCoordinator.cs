@@ -73,11 +73,7 @@ public sealed class StartupCoordinator
         AppSettings settings = _settingsService.Load();
         bool networkAvailable = _isNetworkAvailable();
         IReadOnlyList<string> backgroundPaths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
-        QuoteCacheService quoteCacheService = new(Path.Combine(PathHelper.GetLocalDataDirectory(), "quotes-cache.json"));
-        Dictionary<string, QuoteSnapshot> cachedQuotes = quoteCacheService.LoadCached()
-            .GroupBy(quote => quote.Symbol, StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.Last())
-            .ToDictionary(quote => quote.Symbol, StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, QuoteSnapshot> cachedQuotes = new(StringComparer.OrdinalIgnoreCase);
         IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode);
         DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
         bool showStartupLoadingStatus = ShouldShowInitialValueLoadingStatus(cachedQuotes, settings, nowUtc);
@@ -103,15 +99,9 @@ public sealed class StartupCoordinator
             {
                 MarketStatusText = "Market (New York): --",
                 ProviderText = networkAvailable
-                    ? (showStartupLoadingStatus
-                        ? (cachedQuotes.Count > 0 ? "Provider: Refreshing stale cache" : "Provider: Loading live data")
-                        : (cachedQuotes.Count > 0 ? "Provider: Cache + live warmup" : "Provider: Loading live data"))
-                    : (cachedQuotes.Count > 0 ? "Provider: Local Cache" : "Provider: Waiting for network"),
-                UpdatedText = showStartupLoadingStatus
-                    ? "Loading initial values"
-                    : TryGetStatusFreshnessAnchorFetchUtc(cachedQuotes, out DateTimeOffset bootstrapAnchorUtc)
-                        ? $"Updated: {TimeFormatHelper.ToAgeString(bootstrapAnchorUtc)}"
-                        : (cachedQuotes.Count > 0 ? "Updated: Cache warm start" : "Updated: Starting..."),
+                    ? "Provider: Loading live data"
+                    : "Provider: Waiting for network",
+                UpdatedText = "Loading initial values",
                 ClockDateText = DateTimeOffset.UtcNow.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
                 ClockText = $"{DateTimeOffset.UtcNow:HH:mm} UTC"
             },
@@ -124,7 +114,7 @@ public sealed class StartupCoordinator
                 : "Waiting for network",
             NetworkWaitingDetail = networkAvailable
                 ? (showStartupLoadingStatus
-                    ? "Refreshing stale cached quotes before showing the live scene..."
+                    ? "Refreshing live quotes before showing the scene..."
                     : "Fetching live quotes, history, and exchange photos...")
                 : $"Retrying live quotes and exchange photos every {FormatRefreshCadenceText(settings)}."
         };
@@ -140,7 +130,6 @@ public sealed class StartupCoordinator
         IReadOnlyDictionary<string, SymbolProfile> symbolProfiles = _symbolProfileStore.Load();
 
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
-        IQuoteCacheService quoteCacheService = new QuoteCacheService(Path.Combine(PathHelper.GetLocalDataDirectory(), "quotes-cache.json"));
         ProviderHealthService providerHealthService = new();
         IQuoteProvider yahooFinanceProvider = new YahooFinanceQuoteProvider(httpClient);
 
@@ -161,7 +150,6 @@ public sealed class StartupCoordinator
             yahooFinanceProvider,
             yahooFinanceProvider,
             yahooFinanceProvider,
-            quoteCacheService,
             providerHealthService,
             symbolProfiles,
             graphRotationSeed,
@@ -193,7 +181,6 @@ public sealed class StartupCoordinator
         IReadOnlyDictionary<string, SymbolProfile> symbolProfiles = _symbolProfileStore.Load();
 
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
-        IQuoteCacheService quoteCacheService = new QuoteCacheService(Path.Combine(PathHelper.GetLocalDataDirectory(), "quotes-cache.json"));
         ProviderHealthService providerHealthService = new();
         IQuoteProvider yahooFinanceProvider = new YahooFinanceQuoteProvider(httpClient);
 
@@ -214,7 +201,6 @@ public sealed class StartupCoordinator
             yahooFinanceProvider,
             yahooFinanceProvider,
             yahooFinanceProvider,
-            quoteCacheService,
             providerHealthService,
             symbolProfiles,
             graphRotationSeed,
@@ -243,7 +229,6 @@ public sealed class StartupCoordinator
 
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
         IQuoteProvider yahooProvider = _createYahooProvider(httpClient);
-        IQuoteCacheService quoteCacheService = new QuoteCacheService(Path.Combine(PathHelper.GetLocalDataDirectory(), "quotes-cache.json"));
         Dictionary<string, QuoteSnapshot> aggregated = new(StringComparer.OrdinalIgnoreCase);
         IReadOnlyList<List<string>> batches = ChunkSymbols(symbols, YahooDedicatedWarmupBatchSize).ToList();
 
@@ -271,9 +256,6 @@ public sealed class StartupCoordinator
                 foreach (QuoteSnapshot quote in fetched)
                     aggregated[quote.Symbol] = quote;
 
-                if (aggregated.Count > 0)
-                    await quoteCacheService.SaveAsync(aggregated.Values, cancellationToken);
-
                 TraceRuntimeState(
                     "WarmupBatchCompleted",
                     new KeyValuePair<string, object?>("batch_number", batchIndex + 1),
@@ -289,9 +271,6 @@ public sealed class StartupCoordinator
                     IReadOnlyList<QuoteSnapshot> appliedPartialQuotes = partialQuotes!;
                     foreach (QuoteSnapshot quote in appliedPartialQuotes)
                         aggregated[quote.Symbol] = quote;
-
-                    if (aggregated.Count > 0)
-                        await quoteCacheService.SaveAsync(aggregated.Values, cancellationToken);
 
                     TraceRuntimeState(
                         "WarmupBatchPartialQuotesApplied",
@@ -428,7 +407,6 @@ public sealed class StartupCoordinator
         IQuoteProvider tiingoProvider,
         IQuoteProvider yahooFinanceProvider,
         IQuoteProvider globalMarketProvider,
-        IQuoteCacheService quoteCacheService,
         ProviderHealthService providerHealthService,
         IReadOnlyDictionary<string, SymbolProfile> symbolProfiles,
         int refreshSeed,
@@ -439,10 +417,7 @@ public sealed class StartupCoordinator
             .. portfolioSymbols,
             .. benchmarkSymbols
         ], refreshSeed);
-        Dictionary<string, QuoteSnapshot> cachedQuotes = (await quoteCacheService.LoadAsync(cancellationToken))
-            .GroupBy(quote => quote.Symbol, StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.Last())
-            .ToDictionary(quote => quote.Symbol, StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, QuoteSnapshot> cachedQuotes = new(StringComparer.OrdinalIgnoreCase);
         DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
 
         if (!networkAvailable)
@@ -669,9 +644,6 @@ public sealed class StartupCoordinator
             quote.IsStale = !hasUsableValue || isHardStaleByAge;
         }
 
-        if (results.Count > 0 && (liveProvidersUsed.Count > 0 || cachedQuotes.Count != results.Count))
-            await quoteCacheService.SaveAsync(results.Values, cancellationToken);
-
         bool usedCache = orderedSymbols.Any(symbol => results.ContainsKey(symbol) && !refreshedSymbols.Contains(symbol));
         string providerLabel;
         if (liveProvidersUsed.Count > 0)
@@ -680,7 +652,7 @@ public sealed class StartupCoordinator
         }
         else if (results.Count > 0)
         {
-            providerLabel = "Local Cache";
+            providerLabel = "YFinance.NET Cache";
         }
         else
         {
@@ -688,7 +660,7 @@ public sealed class StartupCoordinator
         }
 
         if (usedCache && liveProvidersUsed.Count > 0)
-            providerLabel += " + Cache";
+            providerLabel += " + YFinance.NET Cache";
         if (remainingSymbols.Count > 0 && results.Count > 0)
             providerLabel += " (Partial)";
         if (liveProvidersUsed.Count > 0 && !string.IsNullOrWhiteSpace(latestUpdatedSymbol))
