@@ -697,7 +697,6 @@ function Perform-VisibleScrollSequence {
     param(
         [Parameter(Mandatory = $true)]$Window,
         [Parameter(Mandatory = $true)][string]$TabName,
-        [int]$TabSteps = 8,
         [int]$PageDownCount = 1
     )
 
@@ -710,15 +709,8 @@ function Perform-VisibleScrollSequence {
         if (-not $didScroll) {
             $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, $PageDownCount))
         }
-    }
-
-    if (-not $didScroll) {
-        $didScroll = Perform-KeyboardScrollPass -Window $Window -TabSteps $TabSteps -DelayMilliseconds 28
         if (-not $didScroll) {
             $didScroll = Invoke-MouseWheelScroll -Element $Window -Notches ([Math]::Max(3, $PageDownCount + 2)) -DelayMilliseconds 90
-        }
-        if (-not $didScroll) {
-            $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, $PageDownCount))
         }
     }
 
@@ -734,14 +726,8 @@ function Perform-VisibleConfigActivity {
     try { $Window.SetFocus() } catch {}
     Start-Sleep -Milliseconds 40
 
-    $tabSteps = if ($TabName -eq 'Advanced') { 5 } else { 4 }
     $pageDownCount = if ($TabName -eq 'Advanced') { 4 } else { 3 }
-
-    for ($index = 0; $index -lt $tabSteps; $index++) {
-        Send-KeySequence -Keys @('{TAB}') -DelayMilliseconds 28
-    }
-
-    return Perform-VisibleScrollSequence -Window $Window -TabName $TabName -TabSteps $tabSteps -PageDownCount $pageDownCount
+    return Perform-VisibleScrollSequence -Window $Window -TabName $TabName -PageDownCount $pageDownCount
 }
 
 function Find-ElementMetadataByProcessId {
