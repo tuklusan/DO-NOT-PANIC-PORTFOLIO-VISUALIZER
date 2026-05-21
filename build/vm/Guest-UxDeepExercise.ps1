@@ -115,6 +115,78 @@ $results = Join-Path $ResultRootPath $resultName
 
 New-Item -ItemType Directory -Force -Path $results | Out-Null
 
+$script:configWindowTracePath = Join-Path $results 'config-window-events.log'
+Set-Content -LiteralPath $script:configWindowTracePath -Value '' -Encoding UTF8
+
+function Write-ConfigWindowTrace {
+    param(
+        [Parameter(Mandatory = $true)][string]$Event,
+        [string]$Details = ''
+    )
+
+    $timestamp = (Get-Date).ToString('o')
+    $line = if ([string]::IsNullOrWhiteSpace($Details)) {
+        "$timestamp event=$Event"
+    }
+    else {
+        "$timestamp event=$Event details=$Details"
+    }
+
+    Add-Content -LiteralPath $script:configWindowTracePath -Value $line -Encoding UTF8
+}
+
+function Get-TopLevelWindowSnapshot {
+    param([int]$ProcessId = 0)
+
+    $parts = New-Object System.Collections.Generic.List[string]
+    try {
+        $children = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+            [System.Windows.Automation.TreeScope]::Children,
+            [System.Windows.Automation.Condition]::TrueCondition)
+
+        for ($index = 0; $index -lt $children.Count; $index++) {
+            try {
+                $child = $children.Item($index)
+                if ($null -eq $child) { continue }
+                $childProcessId = [int]$child.Current.ProcessId
+                if ($ProcessId -gt 0 -and $childProcessId -ne $ProcessId) { continue }
+                $parts.Add(("{0}|{1}|{2}|{3}" -f
+                        $childProcessId,
+                        [string]$child.Current.AutomationId,
+                        [string]$child.Current.ControlType.ProgrammaticName,
+                        [string]$child.Current.Name))
+            }
+            catch {
+                continue
+            }
+        }
+    }
+    catch {
+        return 'snapshot-error'
+    }
+
+    if ($parts.Count -eq 0) {
+        return 'snapshot-empty'
+    }
+
+    return ($parts -join ' || ')
+}
+
+function Test-ConfigPhaseBudget {
+    param(
+        [Parameter(Mandatory = $true)][datetime]$StartedAt,
+        [Parameter(Mandatory = $true)][string]$Stage
+    )
+
+    if (((Get-Date) - $StartedAt).TotalSeconds -le 60) {
+        return
+    }
+
+    Write-ConfigWindowTrace -Event 'BudgetExceeded' -Details ("stage={0}; windows={1}" -f $Stage, (Get-TopLevelWindowSnapshot))
+    Capture-Screen -Path (Join-Path $results 'config-phase-timeout.png')
+    throw "Config phase exceeded 60 seconds during stage '$Stage'."
+}
+
 function Capture-Screen {
     param([Parameter(Mandatory=$true)][string]$Path)
 
@@ -635,8 +707,6 @@ function Perform-VisibleScrollSequence {
         try { $scrollTarget.Element.SetFocus() } catch {}
         Start-Sleep -Milliseconds 30
         $didScroll = Invoke-MouseWheelScroll -Element $scrollTarget.Element -Notches ([Math]::Max(3, $PageDownCount + 2)) -DelayMilliseconds 90
-        $pageKeys = @(for ($index = 0; $index -lt [Math]::Max(1, $PageDownCount); $index++) { '{PGDN}' })
-        Send-KeySequence -Keys $pageKeys -DelayMilliseconds 90
         if (-not $didScroll) {
             $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, $PageDownCount))
         }
@@ -644,8 +714,9 @@ function Perform-VisibleScrollSequence {
 
     if (-not $didScroll) {
         $didScroll = Perform-KeyboardScrollPass -Window $Window -TabSteps $TabSteps -DelayMilliseconds 28
-        $pageKeys = @(for ($index = 0; $index -lt [Math]::Max(1, $PageDownCount); $index++) { '{PGDN}' })
-        Send-KeySequence -Keys $pageKeys -DelayMilliseconds 90
+        if (-not $didScroll) {
+            $didScroll = Invoke-MouseWheelScroll -Element $Window -Notches ([Math]::Max(3, $PageDownCount + 2)) -DelayMilliseconds 90
+        }
         if (-not $didScroll) {
             $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, $PageDownCount))
         }
@@ -663,8 +734,8 @@ function Perform-VisibleConfigActivity {
     try { $Window.SetFocus() } catch {}
     Start-Sleep -Milliseconds 40
 
-    $tabSteps = if ($TabName -eq 'Advanced') { 12 } else { 10 }
-    $pageDownCount = if ($TabName -eq 'Advanced') { 3 } else { 2 }
+    $tabSteps = if ($TabName -eq 'Advanced') { 5 } else { 4 }
+    $pageDownCount = if ($TabName -eq 'Advanced') { 4 } else { 3 }
 
     for ($index = 0; $index -lt $tabSteps; $index++) {
         Send-KeySequence -Keys @('{TAB}') -DelayMilliseconds 28
@@ -922,6 +993,53 @@ function Find-TopLevelWindowByNameLike {
     } while ((Get-Date) -lt $deadline)
 
     return $null
+}
+
+function Get-TopLevelWindowsForProcess {
+    param(
+        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process
+    )
+
+    try {
+        $children = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+            [System.Windows.Automation.TreeScope]::Children,
+            [System.Windows.Automation.Condition]::TrueCondition)
+
+        $windows = @()
+        for ($index = 0; $index -lt $children.Count; $index++) {
+            try {
+                $child = $children.Item($index)
+                if ($null -eq $child) { continue }
+                if ($child.Current.ProcessId -ne $Process.Id) { continue }
+                if ($child.Current.ControlType -ne [System.Windows.Automation.ControlType]::Window) { continue }
+                $windows += $child
+            }
+            catch {
+                continue
+            }
+        }
+
+        return @($windows)
+    }
+    catch {
+        return @()
+    }
+}
+
+function Test-AutomationElementAlive {
+    param($Element)
+
+    if ($null -eq $Element) {
+        return $false
+    }
+
+    try {
+        $null = $Element.Current.ProcessId
+        return $true
+    }
+    catch {
+        return $false
+    }
 }
 
 function Try-ApplyDisplayResolutionViaSettings {
@@ -1364,11 +1482,15 @@ function Find-ConfigWindow {
     )
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    Write-ConfigWindowTrace -Event 'FindConfigWindowStart' -Details ("process_id={0}; timeout_seconds={1}" -f $Process.Id, $TimeoutSeconds)
     do {
-        foreach ($window in @(Get-ProcessOwnedWindows -Process $Process)) {
+        foreach ($window in @(Get-TopLevelWindowsForProcess -Process $Process)) {
             try {
                 $title = [string]$window.Current.Name
-                if ($title -like '*PORTFOLIO VISUALIZER Config*') {
+                $automationId = [string]$window.Current.AutomationId
+                if ($automationId -eq 'ConfigMainWindow' -or
+                    $title -like '*PORTFOLIO VISUALIZER Config*') {
+                    Write-ConfigWindowTrace -Event 'FindConfigWindowMatch' -Details ("automation_id={0}; title={1}" -f $automationId, $title)
                     return $window
                 }
             }
@@ -1379,35 +1501,17 @@ function Find-ConfigWindow {
 
         $namedTopLevel = Find-TopLevelWindowByNameLike -NameLike '*PORTFOLIO VISUALIZER Config*' -TimeoutSeconds 1
         if ($null -ne $namedTopLevel) {
+            try {
+                Write-ConfigWindowTrace -Event 'FindConfigWindowFallbackMatch' -Details ("automation_id={0}; title={1}" -f [string]$namedTopLevel.Current.AutomationId, [string]$namedTopLevel.Current.Name)
+            }
+            catch {}
             return $namedTopLevel
         }
-
-        try {
-            $children = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
-                [System.Windows.Automation.TreeScope]::Children,
-                [System.Windows.Automation.Condition]::TrueCondition)
-            for ($index = 0; $index -lt $children.Count; $index++) {
-                try {
-                    $child = $children.Item($index)
-                    if ($null -eq $child) { continue }
-                    if ($child.Current.ProcessId -ne $Process.Id) { continue }
-                    if ($child.Current.ControlType -ne [System.Windows.Automation.ControlType]::Window) { continue }
-
-                    $title = [string]$child.Current.Name
-                    if ($title -like '*PORTFOLIO VISUALIZER Config*') {
-                        return $child
-                    }
-                }
-                catch {
-                    continue
-                }
-            }
-        }
-        catch {}
 
         Start-Sleep -Milliseconds 90
     } while ((Get-Date) -lt $deadline)
 
+    Write-ConfigWindowTrace -Event 'FindConfigWindowTimeout' -Details ("process_id={0}; windows={1}" -f $Process.Id, (Get-TopLevelWindowSnapshot -ProcessId $Process.Id))
     return $null
 }
 
@@ -1418,7 +1522,7 @@ function Get-ProcessOwnedWindows {
 
     try {
         $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
-            [System.Windows.Automation.TreeScope]::Descendants,
+            [System.Windows.Automation.TreeScope]::Children,
             [System.Windows.Automation.Condition]::TrueCondition)
 
         $ownedWindows = @()
@@ -1489,6 +1593,7 @@ function Get-ConfigBlockingDialog {
                 continue
             }
 
+            Write-ConfigWindowTrace -Event 'BlockingDialogDetected' -Details ("title={0}; is_modal={1}; message={2}" -f $title, $isModal, $message)
             return [pscustomobject]@{
                 Title = $title
                 Message = $message
@@ -1707,21 +1812,25 @@ function Validate-AndCloseConfigWindow {
     )
 
     for ($attempt = 0; $attempt -lt 2; $attempt++) {
+        Write-ConfigWindowTrace -Event 'ValidateCloseAttempt' -Details ("attempt={0}" -f ($attempt + 1))
         Close-ConfigChildWindows -MainProcessId $Process.Id
         $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 2
 
         if ($null -eq $Window) {
+            Write-ConfigWindowTrace -Event 'ValidateCloseNoWindow'
             return $true
         }
 
         try {
             $windowPattern = $Window.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
             $windowPattern.Close()
+            Write-ConfigWindowTrace -Event 'ValidateCloseWindowPatternClose'
         }
         catch {
             try { $Window.SetFocus() } catch {}
             Start-Sleep -Milliseconds 25
             try { [System.Windows.Forms.SendKeys]::SendWait('%{F4}') } catch {}
+            Write-ConfigWindowTrace -Event 'ValidateCloseAltF4Fallback'
         }
 
         $deadline = (Get-Date).AddSeconds(8)
@@ -1738,10 +1847,12 @@ function Validate-AndCloseConfigWindow {
         } while ($null -ne $Window -and (Get-Date) -lt $deadline)
 
         if ($null -eq $Window) {
+            Write-ConfigWindowTrace -Event 'ValidateCloseSucceeded'
             return $true
         }
     }
 
+    Write-ConfigWindowTrace -Event 'ValidateCloseFailed'
     return $false
 }
 
@@ -1897,6 +2008,7 @@ try {
     $configClosedNaturally = $false
 
     try {
+        $configPhaseStartedAt = [datetime]::UtcNow
         $desktop = Start-Process -FilePath $desktopExe -PassThru
         Start-Sleep -Milliseconds 400
         $desktopWindow = Get-ProcessWindowElement -Process $desktop -TimeoutSeconds 15
@@ -1906,17 +2018,21 @@ try {
 
         [void](Focus-ProcessWindow -Process $desktop)
         $configOpened = $false
+        Write-ConfigWindowTrace -Event 'ConfigPhaseStart' -Details ("desktop_process_id={0}" -f $desktop.Id)
         $optionsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsMenuRoot'
         if ($null -ne $optionsMenuItem) {
             [void](Expand-AutomationElement -Element $optionsMenuItem)
+            Write-ConfigWindowTrace -Event 'OptionsMenuExpanded'
             Start-Sleep -Milliseconds 50
         }
 
         $settingsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsSettingsMenuItem'
         if ($null -ne $settingsMenuItem) {
             $configOpened = Invoke-AutomationElement -Element $settingsMenuItem
+            Write-ConfigWindowTrace -Event 'SettingsMenuInvoked' -Details ("result={0}" -f $configOpened)
             if (-not $configOpened) {
                 try { $configOpened = Click-AutomationElementCenter -Element $settingsMenuItem } catch {}
+                Write-ConfigWindowTrace -Event 'SettingsMenuClickFallback' -Details ("result={0}" -f $configOpened)
             }
         }
 
@@ -1933,6 +2049,7 @@ try {
 
                 $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 2
                 if ($null -ne $window) {
+                    Write-ConfigWindowTrace -Event 'ConfigWindowOpenedByKeyboardPath' -Details ("attempt={0}" -f $attempt)
                     $configOpened = $true
                     break
                 }
@@ -1940,8 +2057,10 @@ try {
         }
 
         Start-Sleep -Milliseconds 180
+        Test-ConfigPhaseBudget -StartedAt $configPhaseStartedAt -Stage 'post-open-reacquire'
         $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 20
         if ($null -eq $window) { throw 'Could not locate config window via UI Automation.' }
+        Write-ConfigWindowTrace -Event 'ConfigWindowReacquired' -Details ("title={0}; automation_id={1}" -f [string]$window.Current.Name, [string]$window.Current.AutomationId)
         if ([string]$window.Current.Name -like '*BETA-5.6*' -or
             [string]$window.Current.HelpText -like '*0.9.0-beta5.6*') {
             $summary.ConfigVersionCheck = "Passed"
@@ -1963,13 +2082,18 @@ try {
 
         $shotIndex = 1
         foreach ($rawTabName in $tabNames) {
-            $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 2
-            if ($null -eq $window) {
+            Test-ConfigPhaseBudget -StartedAt $configPhaseStartedAt -Stage ("tab-{0}" -f $rawTabName)
+            if (-not (Test-AutomationElementAlive -Element $window)) {
+                $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 2
+            }
+
+            if ($null -eq $window -or -not (Test-AutomationElementAlive -Element $window)) {
                 throw 'Config window disappeared during tab traversal.'
             }
 
             $tab = Find-TabItemByName -Window $window -TabName $rawTabName
             if ($null -eq $tab) {
+                Write-ConfigWindowTrace -Event 'TabReacquireFailed' -Details ("tab={0}" -f $rawTabName)
                 $summary.Notes += "Could not reacquire tab '$rawTabName'; skipping."
                 continue
             }
@@ -1977,6 +2101,7 @@ try {
             if ($shotIndex -gt 1) {
                 [void](Select-TabItem -Tab $tab)
             }
+            Write-ConfigWindowTrace -Event 'TabSelected' -Details ("tab={0}" -f $rawTabName)
             Start-Sleep -Milliseconds 50
             $tabName = ($rawTabName -replace '[^A-Za-z0-9_-]','_')
             Capture-Screen -Path (Join-Path $results ("config-tab-{0:D3}-{1}.png" -f $shotIndex, $tabName))
@@ -1984,16 +2109,16 @@ try {
             $shotIndex++
 
             $scrolled = Perform-VisibleConfigActivity -Window $window -TabName $rawTabName
+            Write-ConfigWindowTrace -Event 'TabActivityComplete' -Details ("tab={0}; scrolled={1}" -f $rawTabName, $scrolled)
             if ($scrolled) {
                 Start-Sleep -Milliseconds 80
                 Capture-Screen -Path (Join-Path $results ("config-tab-{0:D3}-{1}-scrolled.png" -f $shotIndex, $tabName))
                 $summary.ConfigShots++
                 $shotIndex++
-                Send-KeySequence -Keys @('{PGUP}','{HOME}') -DelayMilliseconds 70
-                Start-Sleep -Milliseconds 60
             }
         }
 
+        Test-ConfigPhaseBudget -StartedAt $configPhaseStartedAt -Stage 'validate-close'
         $configClosedNaturally = Validate-AndCloseConfigWindow -Process $desktop -Window $window
         if ($configClosedNaturally) {
             $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 2
