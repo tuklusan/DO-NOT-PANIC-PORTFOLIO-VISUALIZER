@@ -731,6 +731,36 @@ function Invoke-MouseWheelScroll {
     }
 }
 
+function Invoke-WindowViewportWheelScroll {
+    param(
+        [Parameter(Mandatory = $true)]$Window,
+        [int]$Notches = 3,
+        [int]$DelayMilliseconds = 90
+    )
+
+    try {
+        $rect = $Window.Current.BoundingRectangle
+        if ($rect.Width -le 0 -or $rect.Height -le 0) {
+            return $false
+        }
+
+        $x = [int]([Math]::Round($rect.Right - 24))
+        $y = [int]([Math]::Round($rect.Top + ($rect.Height / 2.0)))
+        [void][NativeMouseInput]::SetCursorPos($x, $y)
+        Start-Sleep -Milliseconds 30
+
+        for ($index = 0; $index -lt [Math]::Max(1, $Notches); $index++) {
+            [NativeMouseInput]::mouse_event([NativeMouseInput]::MOUSEEVENTF_WHEEL, 0, 0, [uint32](-120), [UIntPtr]::Zero)
+            Start-Sleep -Milliseconds $DelayMilliseconds
+        }
+
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
 function Perform-KeyboardScrollPass {
     param(
         [Parameter(Mandatory = $true)]$Window,
@@ -760,16 +790,16 @@ function Perform-VisibleScrollSequence {
     )
 
     $didScroll = $false
-    $scrollTarget = Get-ScrollPatternTarget -Window $Window -TabName $TabName
-    if ($null -ne $scrollTarget) {
-        try { $scrollTarget.Element.SetFocus() } catch {}
-        Start-Sleep -Milliseconds 30
-        $didScroll = Invoke-MouseWheelScroll -Element $scrollTarget.Element -Notches ([Math]::Max(3, $PageDownCount + 2)) -DelayMilliseconds 90
-        if (-not $didScroll) {
-            $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, $PageDownCount))
-        }
-        if (-not $didScroll) {
-            $didScroll = Invoke-MouseWheelScroll -Element $Window -Notches ([Math]::Max(3, $PageDownCount + 2)) -DelayMilliseconds 90
+    $didScroll = Invoke-WindowViewportWheelScroll -Window $Window -Notches ([Math]::Max(3, $PageDownCount + 2)) -DelayMilliseconds 90
+    if (-not $didScroll) {
+        $scrollTarget = Get-ScrollPatternTarget -Window $Window -TabName $TabName
+        if ($null -ne $scrollTarget) {
+            try { $scrollTarget.Element.SetFocus() } catch {}
+            Start-Sleep -Milliseconds 30
+            $didScroll = Invoke-MouseWheelScroll -Element $scrollTarget.Element -Notches ([Math]::Max(3, $PageDownCount + 2)) -DelayMilliseconds 90
+            if (-not $didScroll) {
+                $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, $PageDownCount))
+            }
         }
     }
 

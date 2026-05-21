@@ -140,6 +140,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Send-KeySequence", script, StringComparison.Ordinal);
         Assert.Contains("function Get-ScrollPatternTarget", script, StringComparison.Ordinal);
         Assert.Contains("function Try-ScrollWindowContent", script, StringComparison.Ordinal);
+        Assert.Contains("function Invoke-WindowViewportWheelScroll", script, StringComparison.Ordinal);
         Assert.Contains("function Perform-KeyboardScrollPass", script, StringComparison.Ordinal);
         Assert.Contains("function Perform-VisibleScrollSequence", script, StringComparison.Ordinal);
         Assert.Contains("function Perform-VisibleConfigActivity", script, StringComparison.Ordinal);
@@ -172,6 +173,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("return Perform-VisibleScrollSequence -Window $Window -TabName $TabName -PageDownCount $pageDownCount", script, StringComparison.Ordinal);
         Assert.Contains("Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, $PageDownCount))", script, StringComparison.Ordinal);
         Assert.Contains("Invoke-MouseWheelScroll -Element $scrollTarget.Element", script, StringComparison.Ordinal);
+        Assert.Contains("Invoke-WindowViewportWheelScroll -Window $Window", script, StringComparison.Ordinal);
         Assert.Contains("config-window-events.log", script, StringComparison.Ordinal);
         Assert.Contains("Config phase exceeded 60 seconds", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'TabActivityComplete'", script, StringComparison.Ordinal);
