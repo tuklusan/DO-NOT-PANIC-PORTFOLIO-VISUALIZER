@@ -81,6 +81,23 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
+    public void RuntimeQuoteSeedStore_PublishesAndConsumesQuotesOnce()
+    {
+        RuntimeQuoteSeedStore.ConsumeAll();
+        RuntimeQuoteSeedStore.Publish(
+        [
+            new QuoteSnapshot { Symbol = "AAPL", Last = 190m, PreviousClose = 189m, FetchTimestampUtc = DateTimeOffset.UtcNow }
+        ]);
+
+        IReadOnlyDictionary<string, QuoteSnapshot> first = RuntimeQuoteSeedStore.ConsumeAll();
+        IReadOnlyDictionary<string, QuoteSnapshot> second = RuntimeQuoteSeedStore.ConsumeAll();
+
+        Assert.Single(first);
+        Assert.True(first.ContainsKey("AAPL"));
+        Assert.Empty(second);
+    }
+
+    [Fact]
     public void StartupCoordinator_NoLongerContainsDedicatedStartupWarmupPath()
     {
         string coordinatorPath = Path.Combine(
@@ -102,11 +119,11 @@ public sealed class Nb040BehaviorTests
         string source = File.ReadAllText(Path.GetFullPath(coordinatorPath));
 
         Assert.Contains(
-            "List<string> orderedEligibleSymbols = remainingSymbols",
+            "private List<string> TakeSequentialRequestSymbols(",
             source,
             StringComparison.Ordinal);
         Assert.Contains(
-            ".Take(1)",
+            "return [selected];",
             source,
             StringComparison.Ordinal);
         Assert.Contains(
@@ -114,7 +131,7 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
-            "providerPlan.Kind == DataSourceKind.YahooFinance",
+            "_sequentialRuntimeCursor = (_sequentialRuntimeCursor + 1) % eligibleSymbols.Count;",
             source,
             StringComparison.Ordinal);
         Assert.Contains(

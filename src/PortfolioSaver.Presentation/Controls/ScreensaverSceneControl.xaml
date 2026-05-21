@@ -50,6 +50,15 @@
                    Panel.ZIndex="90"
                    IsHitTestVisible="False"
                    Text="&#169; Supratim Sanyal. MIT License." />
+        <TextBlock HorizontalAlignment="Center"
+                   VerticalAlignment="Bottom"
+                   Margin="0,0,0,8"
+                   Foreground="#66D0D8E2"
+                   FontSize="10"
+                   FontFamily="Consolas"
+                   Panel.ZIndex="90"
+                   IsHitTestVisible="False"
+                   Text="Delayed by minimum 15 minutes." />
         <Border HorizontalAlignment="Center"
                 VerticalAlignment="Top"
                 Margin="0,10,0,0"

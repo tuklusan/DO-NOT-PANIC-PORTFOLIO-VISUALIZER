@@ -49,6 +49,8 @@ public sealed class StartupCoordinator
     private readonly SymbolProfileStore _symbolProfileStore = new(Path.Combine(PathHelper.GetLocalDataDirectory(), "symbol-profiles.json"));
     private readonly Dictionary<string, DateTimeOffset> _dedicatedYahooCooldownsUtc = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, QuoteSnapshot> _runtimeQuoteMemory = new(StringComparer.OrdinalIgnoreCase);
+    private int _sequentialRuntimeCursor;
+    private string _sequentialRuntimeFingerprint = string.Empty;
     private readonly Func<bool> _isNetworkAvailable;
     private readonly Func<HttpClient, IQuoteProvider> _createYahooProvider;
 
@@ -66,6 +68,7 @@ public sealed class StartupCoordinator
 
     public ScreensaverSceneState BuildBootstrapScene()
     {
+        ConsumePendingRuntimeQuoteSeeds();
         AppSettings settings = _settingsService.Load();
         bool networkAvailable = _isNetworkAvailable();
         IReadOnlyList<string> backgroundPaths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
@@ -124,6 +127,7 @@ public sealed class StartupCoordinator
 
     public async Task<ScreensaverSceneState> BuildSceneAsync(int graphRotationSeed = 0, CancellationToken cancellationToken = default)
     {
+        ConsumePendingRuntimeQuoteSeeds();
         AppSettings settings = _settingsService.Load();
         bool networkAvailable = _isNetworkAvailable();
         IReadOnlyDictionary<string, SymbolProfile> symbolProfiles = _symbolProfileStore.Load();
@@ -175,6 +179,7 @@ public sealed class StartupCoordinator
 
     public async Task<ScreensaverSceneState> BuildProgressiveQuoteSceneAsync(int graphRotationSeed = 0, CancellationToken cancellationToken = default)
     {
+        ConsumePendingRuntimeQuoteSeeds();
         AppSettings settings = _settingsService.Load();
         bool networkAvailable = _isNetworkAvailable();
         IReadOnlyDictionary<string, SymbolProfile> symbolProfiles = _symbolProfileStore.Load();
@@ -320,12 +325,20 @@ public sealed class StartupCoordinator
         int refreshSeed,
         CancellationToken cancellationToken)
     {
-        List<string> orderedSymbols = RotateSymbols(
+        List<string> orderedSymbols =
         [
             .. portfolioSymbols,
             .. benchmarkSymbols
-        ], refreshSeed);
-        Dictionary<string, QuoteSnapshot> cachedQuotes = new(StringComparer.OrdinalIgnoreCase);
+        ];
+        orderedSymbols = orderedSymbols
+            .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        Dictionary<string, QuoteSnapshot> cachedQuotes = _runtimeQuoteMemory.ToDictionary(
+            pair => pair.Key,
+            pair => CloneQuote(pair.Value),
+            StringComparer.OrdinalIgnoreCase);
         DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
 
         if (!networkAvailable)
@@ -339,45 +352,16 @@ public sealed class StartupCoordinator
         HashSet<string> refreshedSymbols = new(StringComparer.OrdinalIgnoreCase);
         string? latestUpdatedSymbol = null;
         DateTimeOffset latestUpdatedFetchUtc = DateTimeOffset.MinValue;
-        Dictionary<string, TimeSpan> refreshWindows = BuildRefreshWindows(settings, portfolioSymbols, benchmarkSymbols);
-        TimeSpan refreshPollingInterval = QuoteRefreshPolicy.GetRefreshPollingInterval(settings, nowUtc);
-        HashSet<string> dueSymbols = orderedSymbols
-            .Where(symbol => refreshWindows.TryGetValue(symbol, out TimeSpan refreshWindow) && IsRefreshDue(symbol, refreshWindow, cachedQuotes, nowUtc))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        List<string> scheduledDueSymbols = SelectDueSymbolsForPass(
-            orderedSymbols,
-            dueSymbols,
-            refreshWindows,
-            cachedQuotes,
-            nowUtc,
-            refreshPollingInterval);
-        List<string> preemptiveRefreshSymbols = [];
-        if (dueSymbols.Count == 0 && networkAvailable)
-        {
-            preemptiveRefreshSymbols = SelectPreemptiveRefreshSymbolsForPass(
-                orderedSymbols,
-                refreshWindows,
-                cachedQuotes,
-                nowUtc,
-                refreshPollingInterval);
-            if (preemptiveRefreshSymbols.Count > 0)
-                scheduledDueSymbols = preemptiveRefreshSymbols;
-        }
 
         TraceRuntimeState(
             "QuoteRefreshPlan",
             new KeyValuePair<string, object?>("ordered_symbol_count", orderedSymbols.Count),
-            new KeyValuePair<string, object?>("due_symbol_count", dueSymbols.Count),
-            new KeyValuePair<string, object?>("scheduled_due_symbol_count", scheduledDueSymbols.Count),
-            new KeyValuePair<string, object?>("preemptive_refresh_symbol_count", preemptiveRefreshSymbols.Count),
             new KeyValuePair<string, object?>("cached_quote_count", cachedQuotes.Count),
             new KeyValuePair<string, object?>("network_available", networkAvailable),
-            new KeyValuePair<string, object?>("polling_interval_seconds", refreshPollingInterval.TotalSeconds),
-            new KeyValuePair<string, object?>("due_symbols", PreviewSymbols(dueSymbols)),
-            new KeyValuePair<string, object?>("scheduled_due_symbols", PreviewSymbols(scheduledDueSymbols)),
-            new KeyValuePair<string, object?>("preemptive_refresh_symbols", PreviewSymbols(preemptiveRefreshSymbols)));
+            new KeyValuePair<string, object?>("polling_interval_seconds", QuoteRefreshPolicy.GetRefreshPollingInterval(settings, nowUtc).TotalSeconds),
+            new KeyValuePair<string, object?>("ordered_symbols", PreviewSymbols(orderedSymbols)));
 
-        if (dueSymbols.Count == 0 && scheduledDueSymbols.Count == 0)
+        if (!networkAvailable || orderedSymbols.Count == 0)
         {
             foreach (string symbol in orderedSymbols)
             {
@@ -390,15 +374,14 @@ public sealed class StartupCoordinator
             }
 
             string cacheOnlyLabel = networkAvailable
-                ? (results.Count > 0 ? "Live Cache" : "Loading live data")
+                ? (results.Count > 0 ? "YFinance.NET Cache" : "Loading live data")
                 : (results.Count > 0 ? "Local Cache" : "Waiting for network");
 
             TraceRuntimeState(
                 "QuoteRefreshSkipped",
-                new KeyValuePair<string, object?>("reason", "no_symbols_due"),
+                new KeyValuePair<string, object?>("reason", networkAvailable ? "no_symbols_configured" : "network_unavailable"),
                 new KeyValuePair<string, object?>("provider_label", cacheOnlyLabel),
                 new KeyValuePair<string, object?>("result_quote_count", results.Count));
-            TraceRuntime($"Quotes served from live cache. Cached={results.Count} RefreshSeed={refreshSeed}");
             PrimeRuntimeQuotes(results);
             return (results, cacheOnlyLabel);
         }
@@ -410,9 +393,7 @@ public sealed class StartupCoordinator
             tiingoProvider,
             yahooFinanceProvider,
             refreshSeed);
-        List<string> remainingSymbols = RotateSymbols(scheduledDueSymbols, refreshSeed)
-            .OrderBy(symbol => cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? cached) && HasUsableQuote(cached) ? 1 : 0)
-            .ToList();
+        List<string> remainingSymbols = orderedSymbols.ToList();
 
         TraceRuntimeState(
             "ProviderOrder",
@@ -423,7 +404,7 @@ public sealed class StartupCoordinator
             if (remainingSymbols.Count == 0)
                 break;
 
-            List<string> requestSymbols = TakeRequestSymbols(remainingSymbols, providerPlan, nowUtc);
+            List<string> requestSymbols = TakeSequentialRequestSymbols(orderedSymbols, providerPlan, nowUtc);
             if (requestSymbols.Count == 0)
                 continue;
 
@@ -570,8 +551,8 @@ public sealed class StartupCoordinator
 
         if (usedCache && liveProvidersUsed.Count > 0)
             providerLabel += " + YFinance.NET Cache";
-        if (remainingSymbols.Count > 0 && results.Count > 0)
-            providerLabel += " (Partial)";
+        if (orderedSymbols.Count > refreshedSymbols.Count && liveProvidersUsed.Count > 0)
+            providerLabel += " (Sequential)";
         if (liveProvidersUsed.Count > 0 && !string.IsNullOrWhiteSpace(latestUpdatedSymbol))
             providerLabel += $", {latestUpdatedSymbol} Updated {TimeFormatHelper.ToAgeString(latestUpdatedFetchUtc)}";
 
@@ -583,11 +564,11 @@ public sealed class StartupCoordinator
             new KeyValuePair<string, object?>("stale_symbol_count", results.Values.Count(quote => quote.IsStale)),
             new KeyValuePair<string, object?>("stale_symbols", PreviewSymbols(results.Values.Where(quote => quote.IsStale).Select(quote => quote.Symbol))),
             new KeyValuePair<string, object?>("missing_value_symbols", PreviewSymbols(results.Values.Where(quote => !quote.Last.HasValue && !quote.PreviousClose.HasValue).Select(quote => quote.Symbol))),
-            new KeyValuePair<string, object?>("remaining_symbol_count", remainingSymbols.Count),
-            new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(remainingSymbols)),
+            new KeyValuePair<string, object?>("remaining_symbol_count", Math.Max(0, orderedSymbols.Count - refreshedSymbols.Count)),
+            new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(orderedSymbols.Except(refreshedSymbols, StringComparer.OrdinalIgnoreCase))),
             new KeyValuePair<string, object?>("macro_missing_symbols", PreviewMissingSymbols(GetMacroIndicatorSymbols(), results, settings)),
             new KeyValuePair<string, object?>("world_index_missing_symbols", PreviewMissingSymbols(FloatingClockBuilder.GetWorldIndexSymbols(), results, settings)));
-        TraceRuntime($"Quotes resolved. ProviderLabel={providerLabel} Refreshed={refreshedSymbols.Count} Cached={results.Count - refreshedSymbols.Count} Remaining={remainingSymbols.Count}");
+        TraceRuntime($"Quotes resolved. ProviderLabel={providerLabel} Refreshed={refreshedSymbols.Count} Cached={results.Count - refreshedSymbols.Count} Remaining={Math.Max(0, orderedSymbols.Count - refreshedSymbols.Count)}");
         PrimeRuntimeQuotes(results);
         return (results, providerLabel);
     }
@@ -1106,40 +1087,35 @@ public sealed class StartupCoordinator
            ((quote.Last is decimal last && last > 0) ||
             (quote.PreviousClose is decimal previousClose && previousClose > 0));
 
-    private List<string> TakeRequestSymbols(
-        List<string> remainingSymbols,
+    private List<string> TakeSequentialRequestSymbols(
+        IReadOnlyList<string> orderedSymbols,
         ProviderExecutionPlan providerPlan,
         DateTimeOffset nowUtc)
     {
-        if (remainingSymbols.Count == 0)
+        if (orderedSymbols.Count == 0)
             return [];
 
-        List<string> eligibleSymbols = providerPlan.Kind == DataSourceKind.YahooFinance
-            ? remainingSymbols
-                .Where(symbol => DataSourceSymbolEligibility.IsEligible(providerPlan.Kind, symbol))
-                .ToList()
-            : remainingSymbols
-                .Where(symbol => DataSourceSymbolEligibility.IsEligible(providerPlan.Kind, symbol))
-                .ToList();
-
-        if (eligibleSymbols.Count == 0)
-            return [];
-
-        eligibleSymbols = eligibleSymbols.Where(symbol => !IsTreasuryMacroSymbol(symbol)).ToList();
-        if (eligibleSymbols.Count == 0)
-            return [];
-
-        HashSet<string> eligibleSet = eligibleSymbols.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        List<string> orderedEligibleSymbols = remainingSymbols
-            .Where(symbol => eligibleSet.Contains(symbol))
+        List<string> eligibleSymbols = orderedSymbols
+            .Where(symbol => DataSourceSymbolEligibility.IsEligible(providerPlan.Kind, symbol))
             .Where(symbol => !IsDedicatedYahooSymbol(symbol) || !IsDedicatedYahooSymbolCoolingDown(symbol, nowUtc))
             .ToList();
-        if (orderedEligibleSymbols.Count == 0)
+
+        if (eligibleSymbols.Count == 0)
             return [];
 
-        return orderedEligibleSymbols
-            .Take(1)
-            .ToList();
+        string fingerprint = string.Join("|", eligibleSymbols);
+        if (!string.Equals(_sequentialRuntimeFingerprint, fingerprint, StringComparison.Ordinal))
+        {
+            _sequentialRuntimeFingerprint = fingerprint;
+            _sequentialRuntimeCursor = 0;
+        }
+
+        if (_sequentialRuntimeCursor >= eligibleSymbols.Count)
+            _sequentialRuntimeCursor = 0;
+
+        string selected = eligibleSymbols[_sequentialRuntimeCursor];
+        _sequentialRuntimeCursor = (_sequentialRuntimeCursor + 1) % eligibleSymbols.Count;
+        return [selected];
     }
 
     private static TimeSpan GetMinimumProviderReuseInterval(DataSourceKind kind, IReadOnlyList<string> requestSymbols)
@@ -1394,6 +1370,30 @@ public sealed class StartupCoordinator
         return fetchUtc > DateTimeOffset.MinValue;
     }
 
+    public static bool TryGetLatestUpdatedSymbol(
+        IReadOnlyDictionary<string, QuoteSnapshot> quotes,
+        out string symbol,
+        out DateTimeOffset fetchUtc)
+    {
+        symbol = string.Empty;
+        fetchUtc = DateTimeOffset.MinValue;
+        if (quotes.Count == 0)
+            return false;
+
+        (string Symbol, DateTimeOffset FetchUtc) latest = quotes
+            .Where(pair => pair.Value.FetchTimestampUtc > DateTimeOffset.MinValue)
+            .Select(pair => (Symbol: pair.Key, FetchUtc: pair.Value.FetchTimestampUtc))
+            .OrderByDescending(pair => pair.FetchUtc)
+            .FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(latest.Symbol) || latest.FetchUtc <= DateTimeOffset.MinValue)
+            return false;
+
+        symbol = latest.Symbol;
+        fetchUtc = latest.FetchUtc;
+        return true;
+    }
+
     private bool IsDedicatedYahooSymbolCoolingDown(string symbol, DateTimeOffset nowUtc)
     {
         string normalized = SymbolProfileHeuristics.Normalize(symbol);
@@ -1512,9 +1512,12 @@ public sealed class StartupCoordinator
         FloatingClockViewModel? clock = settings.EnableFloatingClock ? _floatingClockBuilder.BuildDefault() : null;
 
         DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
-        DateTimeOffset lastUpdate = TryGetStatusFreshnessAnchorFetchUtc(quotes, out DateTimeOffset anchorQuoteFetchUtc)
-            ? anchorQuoteFetchUtc
-            : nowUtc;
+        bool hasLatestUpdatedSymbol = TryGetLatestUpdatedSymbol(quotes, out string latestUpdatedSymbol, out DateTimeOffset latestUpdatedFetchUtc);
+        DateTimeOffset lastUpdate = hasLatestUpdatedSymbol
+            ? latestUpdatedFetchUtc
+            : (TryGetStatusFreshnessAnchorFetchUtc(quotes, out DateTimeOffset anchorQuoteFetchUtc)
+                ? anchorQuoteFetchUtc
+                : nowUtc);
         bool showStartupLoadingStatus = ShouldShowInitialValueLoadingStatus(quotes, settings, nowUtc);
 
         StatusBarViewModel status = new()
@@ -1525,7 +1528,7 @@ public sealed class StartupCoordinator
                 : $"Provider: {providerLabel}",
             UpdatedText = showStartupLoadingStatus
                 ? "Loading initial values"
-                : $"Updated: {TimeFormatHelper.ToAgeString(lastUpdate)}",
+                : FormatUpdatedText(hasLatestUpdatedSymbol ? latestUpdatedSymbol : null, lastUpdate),
             ClockDateText = nowUtc.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
             ClockText = $"{nowUtc:HH:mm} UTC"
         };
@@ -1546,6 +1549,20 @@ public sealed class StartupCoordinator
             NetworkWaitingTitle = "Waiting for network",
             NetworkWaitingDetail = $"Retrying live quotes and exchange photos every {FormatRefreshCadenceText(settings)}."
         };
+    }
+
+    private void ConsumePendingRuntimeQuoteSeeds()
+    {
+        foreach ((string symbol, QuoteSnapshot quote) in RuntimeQuoteSeedStore.ConsumeAll())
+            _runtimeQuoteMemory[symbol] = CloneQuote(quote);
+    }
+
+    public static string FormatUpdatedText(string? latestSymbol, DateTimeOffset fetchUtc)
+    {
+        string age = TimeFormatHelper.ToAgeString(fetchUtc);
+        return string.IsNullOrWhiteSpace(latestSymbol)
+            ? $"Last Updated: {age}"
+            : $"Last Updated: {latestSymbol} {age}";
     }
 }
 

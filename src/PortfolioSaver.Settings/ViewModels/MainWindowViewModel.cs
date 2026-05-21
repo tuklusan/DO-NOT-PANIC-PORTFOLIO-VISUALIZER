@@ -369,6 +369,8 @@ public sealed class MainWindowViewModel : BindableBase
                 : "DISPLAY NAMES UNCHANGED");
 
             AppendValidationLog("YFINANCE.NET-ONLY MODE: NO ADDITIONAL MARKET-DATA API KEY VALIDATION");
+            RuntimeQuoteSeedStore.Publish(symbolValidation.ValidatedQuotes.Values);
+            AppendValidationLog($"RUNTIME QUOTE SEED: {symbolValidation.ValidatedQuotes.Count} SYMBOL(S)");
 
             Settings = candidate;
             IsValidated = true;

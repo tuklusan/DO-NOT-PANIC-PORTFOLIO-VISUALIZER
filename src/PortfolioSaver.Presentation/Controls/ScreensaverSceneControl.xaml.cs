@@ -2436,9 +2436,9 @@ public partial class ScreensaverSceneControl : UserControl
             return;
         }
 
-        if (StartupCoordinator.TryGetStatusFreshnessAnchorFetchUtc(_latestQuotes, out DateTimeOffset anchorQuoteFetchUtc))
+        if (StartupCoordinator.TryGetLatestUpdatedSymbol(_latestQuotes, out string latestUpdatedSymbol, out DateTimeOffset latestUpdatedFetchUtc))
         {
-            _statusViewModel.UpdatedText = $"Updated: {TimeFormatHelper.ToAgeString(anchorQuoteFetchUtc)}";
+            _statusViewModel.UpdatedText = StartupCoordinator.FormatUpdatedText(latestUpdatedSymbol, latestUpdatedFetchUtc);
             return;
         }
 

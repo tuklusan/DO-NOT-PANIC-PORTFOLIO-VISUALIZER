@@ -506,6 +506,52 @@
         "Resolved on 2026-05-20 by adding YFinance.NET.Features.History.MarketTimingService and YFinance.NET.Models.MarketTimingSnapshot, exposing Ticker.GetMarketTimingAsync / Tickers.GetMarketTimingsAsync, moving the app adapter to PortfolioSaver.Data.Services.YFinanceExchangeTimingService, and deleting the old presentation ExchangeMarketCalendarService.",
         "Validation: dotnet build .\\\\PortfolioScreensaver.sln -c Release --nologo passed; dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo passed 168 / 168; a live proof run resolved all 26 canonical symbols through the new public GetMarketTimingAsync path with regular trading windows present for 26 / 26 symbols."
       ]
+    },
+    {
+      "id": "NB-044",
+      "tracking_number": "NB-044",
+      "priority": 1,
+      "area": "config_validation_workflow",
+      "title": "Replace post-validation auto-close with explicit OK and Cancel workflow",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested that, after successful validation, the single Validate button should transition into an explicit OK and Cancel choice instead of immediately saving and closing the config window.",
+        "User also requested that the harness and test routines be updated forensically to exercise both the OK path and the Cancel path."
+      ],
+      "notes": [
+        "After a successful validation pass, the config window should stop presenting Validate as the primary action and instead surface OK and Cancel actions.",
+        "OK must save the newly validated configuration, close the config window, and apply the new configuration live to the desktop runtime, including any necessary ticker-tape or news-scroller regeneration.",
+        "Cancel must close the config window without applying the newly validated edits.",
+        "Audit the current MainWindowViewModel validation, save, and close sequence so the new workflow does not regress the now-stable Validation Required avoidance path.",
+        "Update the VM harness config exerciser so it can explicitly detect the post-validation OK/Cancel state and drive both buttons intentionally rather than assuming auto-close on validation success.",
+        "Update local regression coverage and harness-visible tests so both branches are exercised: Validate then OK should persist and apply changes; Validate then Cancel should dismiss without applying changes.",
+        "Close this ticket only after the canonical VM proof demonstrates the new post-validation button state, a working OK apply path, and a working Cancel dismissal path."
+      ]
+    },
+    {
+      "id": "NB-045",
+      "tracking_number": "NB-045",
+      "priority": 1,
+      "area": "ticker_tape_runtime_population",
+      "title": "Progressive runtime quote loop is leaving some visible tape symbols without populated values",
+      "status": "open",
+      "source": "vm_1_to_7_rerun",
+      "evidence": [
+        "During the fresh 1-7 VM rerun on 2026-05-21, the desktop scene showed moving graph cards and some live tape values, but multiple user-visible tape positions still rendered symbol-only placeholders without quote values.",
+        "The user specifically observed that the 2nd and 4th tapes were still not populating with values in the visible VM run.",
+        "In build/vm/artifacts/ssh-runs/ux-deep-ssh-20260521-121118, progressive quote hydration clearly resumed for some symbols, but not all symbols visible in the active tape layout received runtime quote fills during the sampled run window.",
+        "Combined trace evidence shows QuoteRefreshPlan repeatedly marking symbols such as QUAL, VLUE, SIZE, USMV, INTF, EMGF, SYLD, XLF, XLY, XLE, SMH, and CIBR as due, while requested_symbols and provider-return traces disproportionately favored neighboring symbols and left some visible tape symbols unfilled."
+      ],
+      "notes": [
+        "This bug remains after removing QuoteCacheService and after removing SupportedQuoteSources / SupportedHistorySources multi-source gating, so the remaining issue is not the old app-side quote cache race and not the old source-profile filtering logic.",
+        "The problem currently looks like a runtime scheduling or symbol-selection defect between the visible tape model, the due-symbol planning logic, and the one-by-one progressive quote request loop.",
+        "Audit the full path from tape composition through quote scheduling and scene application, including StartupCoordinator, tape view-model generation, due-symbol selection, and the code that chooses the next symbol(s) for YFinance.NET requests.",
+        "Instrument the runtime more deeply if needed so each tape lane reports: visible symbols, symbols considered due, symbols actually requested, symbols returned, and symbols finally applied to the rendered lane.",
+        "Verify whether duplicate symbols across tapes, ancillary symbol deduplication, or lane ordering are starving some tape symbols indefinitely under the current 500 ms progressive cadence.",
+        "Verify whether some tape groups are present in the rendered scene but absent from the refresh candidate pool after recent YFinance-only and single-source cleanup work.",
+        "Close this ticket only after a canonical VM rerun shows all visible tape lanes progressively filling with live values, not just the first or easiest subset, while preserving the now-working graph-card and macro/global-exchange behavior."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

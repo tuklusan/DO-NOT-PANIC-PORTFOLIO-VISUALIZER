@@ -3,9 +3,10 @@ using System.Net.Http;
 using YFinance.NET.Api;
 using YFinance.NET.Config;
 using YFinance.NET.Diagnostics;
-using YFinance.NET.Models;
 using PortfolioSaver.Data.Services;
 using PortfolioSaver.Shared.Diagnostics;
+using AppQuoteSnapshot = PortfolioSaver.Core.Models.QuoteSnapshot;
+using YfQuoteSnapshot = YFinance.NET.Models.QuoteSnapshot;
 
 namespace PortfolioSaver.Config.Services;
 
@@ -13,7 +14,7 @@ public sealed class YahooSymbolValidationService
 {
     private const int MaxBatchSymbols = 25;
     private readonly Func<int, YFinanceClient> _clientFactory;
-    private readonly Func<IReadOnlyCollection<string>, int, CancellationToken, Task<IReadOnlyDictionary<string, QuoteSnapshot>>>? _quoteLookupAsync;
+    private readonly Func<IReadOnlyCollection<string>, int, CancellationToken, Task<IReadOnlyDictionary<string, YfQuoteSnapshot>>>? _quoteLookupAsync;
 
     public YahooSymbolValidationService(Func<int, YFinanceClient>? clientFactory = null)
     {
@@ -21,7 +22,7 @@ public sealed class YahooSymbolValidationService
     }
 
     public YahooSymbolValidationService(
-        Func<IReadOnlyCollection<string>, int, CancellationToken, Task<IReadOnlyDictionary<string, QuoteSnapshot>>> quoteLookupAsync,
+        Func<IReadOnlyCollection<string>, int, CancellationToken, Task<IReadOnlyDictionary<string, YfQuoteSnapshot>>> quoteLookupAsync,
         Func<int, YFinanceClient>? clientFactory = null)
     {
         _quoteLookupAsync = quoteLookupAsync ?? throw new ArgumentNullException(nameof(quoteLookupAsync));
@@ -59,7 +60,7 @@ public sealed class YahooSymbolValidationService
                     "YFinanceUiBridge",
                     "ValidationQuoteRequestStart",
                     [new("operation_id", operationId), new("batch_number", batchIndex + 1), new("batch_total", batches.Count), new("symbols", batch), new("request_symbols", requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase).ToList())]);
-                IReadOnlyDictionary<string, QuoteSnapshot> quotes = await LookupQuotesAsync(
+                IReadOnlyDictionary<string, YfQuoteSnapshot> quotes = await LookupQuotesAsync(
                         operationId,
                         requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                         timeoutSeconds,
@@ -72,7 +73,7 @@ public sealed class YahooSymbolValidationService
 
                 foreach ((string originalSymbol, string requestSymbol) in requestByOriginal)
                 {
-                    if (!quotes.TryGetValue(requestSymbol, out QuoteSnapshot? quote))
+                    if (!quotes.TryGetValue(requestSymbol, out YfQuoteSnapshot? quote))
                         continue;
 
                     bool hasLiveData = quote.RegularMarketPrice.HasValue ||
@@ -84,6 +85,7 @@ public sealed class YahooSymbolValidationService
                     string normalized = Normalize(originalSymbol);
                     resolvedBatchSymbols.Add(normalized);
                     string resolvedName = quote.DisplayName ?? quote.ShortName ?? quote.LongName ?? string.Empty;
+                    result.RecordQuote(normalized, MapQuote(normalized, quote));
                     result.MarkValid(
                         normalized,
                         resolvedName,
@@ -144,7 +146,7 @@ public sealed class YahooSymbolValidationService
            ex.Message.Contains("too many requests", StringComparison.OrdinalIgnoreCase) ||
            ex.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase);
 
-    private async Task<IReadOnlyDictionary<string, QuoteSnapshot>> LookupQuotesAsync(
+    private async Task<IReadOnlyDictionary<string, YfQuoteSnapshot>> LookupQuotesAsync(
         string operationId,
         IReadOnlyCollection<string> requestSymbols,
         int timeoutSeconds,
@@ -176,6 +178,30 @@ public sealed class YahooSymbolValidationService
             MaxSymbolsPerQuoteRequest = MaxBatchSymbols,
             TraceSink = new ValidationTraceSink()
         });
+
+    private static AppQuoteSnapshot MapQuote(string originalSymbol, YfQuoteSnapshot quote)
+    {
+        decimal? last = YFinanceSymbolMapper.NormalizeNumericValue(originalSymbol, quote.RegularMarketPrice);
+        decimal? previousClose = YFinanceSymbolMapper.NormalizeNumericValue(originalSymbol, quote.RegularMarketPreviousClose);
+        decimal? change = YFinanceSymbolMapper.NormalizeNumericValue(originalSymbol, quote.RegularMarketChange);
+        decimal? changePercent = quote.ComputedChangePercent;
+        if (changePercent is null && last is decimal current && previousClose is decimal prior && prior != 0m)
+            changePercent = ((current - prior) / prior) * 100m;
+
+        return new AppQuoteSnapshot
+        {
+            Symbol = originalSymbol,
+            Last = last,
+            Change = change,
+            ChangePercent = changePercent,
+            PreviousClose = previousClose,
+            Currency = quote.Currency ?? "USD",
+            MarketSession = YFinanceSymbolMapper.MapMarketSession(quote.MarketState),
+            ProviderTimestampUtc = null,
+            FetchTimestampUtc = DateTimeOffset.UtcNow,
+            IsStale = false
+        };
+    }
 }
 
 public sealed record YahooSymbolValidationProgress(
@@ -218,8 +244,11 @@ public sealed class YahooSymbolValidationResult
     public IReadOnlyList<string> RateLimitedSymbols => _rateLimitedSymbols
         .OrderBy(symbol => symbol, StringComparer.OrdinalIgnoreCase)
         .ToList();
+    public IReadOnlyDictionary<string, AppQuoteSnapshot> ValidatedQuotes => _validatedQuotes;
 
     public bool WasRateLimited => _rateLimitedSymbols.Count > 0;
+
+    private readonly Dictionary<string, AppQuoteSnapshot> _validatedQuotes = new(StringComparer.OrdinalIgnoreCase);
 
     public void MergeFrom(YahooSymbolValidationResult other)
     {
@@ -240,6 +269,9 @@ public sealed class YahooSymbolValidationResult
             MarkDeferred(entry.Symbol, entry.FailureReason);
         }
 
+        foreach ((string symbol, AppQuoteSnapshot quote) in other._validatedQuotes)
+            _validatedQuotes[symbol] = quote;
+
         foreach (string symbol in other._rateLimitedSymbols)
             _rateLimitedSymbols.Add(symbol);
     }
@@ -256,6 +288,12 @@ public sealed class YahooSymbolValidationResult
         entry.DisplayName = !string.IsNullOrWhiteSpace(shortName)
             ? shortName!.Trim()
             : (!string.IsNullOrWhiteSpace(longName) ? longName!.Trim() : entry.DisplayName);
+    }
+
+    public void RecordQuote(string symbol, AppQuoteSnapshot quote)
+    {
+        string normalized = Normalize(symbol);
+        _validatedQuotes[normalized] = quote;
     }
 
     public void MarkInvalid(string symbol, string reason)
