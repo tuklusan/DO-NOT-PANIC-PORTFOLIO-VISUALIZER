@@ -1899,7 +1899,7 @@ function Get-ConfigStatusText {
         for ($index = 0; $index -lt $texts.Count; $index++) {
             $text = [string]$texts.Item($index).Current.Name
             if ([string]::IsNullOrWhiteSpace($text)) { continue }
-            if ($text -like '*Validation passed. Saving and closing in *' -or
+            if ($text -like '*Validation passed. Saving and closing now.*' -or
                 $text -like '*saved at *' -or
                 $text -like '*Click Validate.*' -or
                 $text -like '*Loading initial values*') {

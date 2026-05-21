@@ -50,6 +50,7 @@ public sealed class StartupCoordinator
     private readonly ProviderBudgetLedgerService _providerBudgetLedgerService;
     private readonly SymbolProfileStore _symbolProfileStore = new(Path.Combine(PathHelper.GetLocalDataDirectory(), "symbol-profiles.json"));
     private readonly Dictionary<string, DateTimeOffset> _dedicatedYahooCooldownsUtc = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, QuoteSnapshot> _runtimeQuoteMemory = new(StringComparer.OrdinalIgnoreCase);
     private readonly Func<bool> _isNetworkAvailable;
     private readonly Func<HttpClient, IQuoteProvider> _createYahooProvider;
     private readonly Func<TimeSpan, CancellationToken, Task> _delayAsync;
@@ -73,7 +74,10 @@ public sealed class StartupCoordinator
         AppSettings settings = _settingsService.Load();
         bool networkAvailable = _isNetworkAvailable();
         IReadOnlyList<string> backgroundPaths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
-        Dictionary<string, QuoteSnapshot> cachedQuotes = new(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, QuoteSnapshot> cachedQuotes = _runtimeQuoteMemory.ToDictionary(
+            pair => pair.Key,
+            pair => CloneQuote(pair.Value),
+            StringComparer.OrdinalIgnoreCase);
         IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode);
         DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
         bool showStartupLoadingStatus = ShouldShowInitialValueLoadingStatus(cachedQuotes, settings, nowUtc);
@@ -131,7 +135,7 @@ public sealed class StartupCoordinator
 
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
         ProviderHealthService providerHealthService = new();
-        IQuoteProvider yahooFinanceProvider = new YahooFinanceQuoteProvider(httpClient);
+        IQuoteProvider yahooFinanceProvider = _createYahooProvider(httpClient);
 
         List<string> portfolioSymbols = BuildInterleavedPortfolioSymbols(settings);
         List<string> ancillarySymbols =
@@ -182,7 +186,7 @@ public sealed class StartupCoordinator
 
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
         ProviderHealthService providerHealthService = new();
-        IQuoteProvider yahooFinanceProvider = new YahooFinanceQuoteProvider(httpClient);
+        IQuoteProvider yahooFinanceProvider = _createYahooProvider(httpClient);
 
         List<string> portfolioSymbols = BuildInterleavedPortfolioSymbols(settings);
         List<string> ancillarySymbols =
@@ -307,6 +311,12 @@ public sealed class StartupCoordinator
             if (batchIndex < batches.Count - 1)
                 await _delayAsync(YahooWarmupInterBatchDelay, cancellationToken);
         }
+    }
+
+    public void PrimeRuntimeQuotes(IReadOnlyDictionary<string, QuoteSnapshot> quotes)
+    {
+        foreach ((string symbol, QuoteSnapshot quote) in quotes)
+            _runtimeQuoteMemory[symbol] = CloneQuote(quote);
     }
 
     public async IAsyncEnumerable<FloatingGraphViewModel> LoadGraphsIncrementallyAsync(
@@ -491,6 +501,7 @@ public sealed class StartupCoordinator
                 new KeyValuePair<string, object?>("provider_label", cacheOnlyLabel),
                 new KeyValuePair<string, object?>("result_quote_count", results.Count));
             TraceRuntime($"Quotes served from live cache. Cached={results.Count} RefreshSeed={refreshSeed}");
+            PrimeRuntimeQuotes(results);
             return (results, cacheOnlyLabel);
         }
 
@@ -514,7 +525,7 @@ public sealed class StartupCoordinator
             if (remainingSymbols.Count == 0)
                 break;
 
-            List<string> requestSymbols = TakeRequestSymbols(remainingSymbols, providerPlan, symbolProfiles, refreshSeed, nowUtc);
+            List<string> requestSymbols = TakeRequestSymbols(remainingSymbols, providerPlan, symbolProfiles, nowUtc);
             if (requestSymbols.Count == 0)
                 continue;
 
@@ -679,6 +690,7 @@ public sealed class StartupCoordinator
             new KeyValuePair<string, object?>("macro_missing_symbols", PreviewMissingSymbols(GetMacroIndicatorSymbols(), results, settings)),
             new KeyValuePair<string, object?>("world_index_missing_symbols", PreviewMissingSymbols(FloatingClockBuilder.GetWorldIndexSymbols(), results, settings)));
         TraceRuntime($"Quotes resolved. ProviderLabel={providerLabel} Refreshed={refreshedSymbols.Count} Cached={results.Count - refreshedSymbols.Count} Remaining={remainingSymbols.Count}");
+        PrimeRuntimeQuotes(results);
         return (results, providerLabel);
     }
 
@@ -1076,31 +1088,20 @@ public sealed class StartupCoordinator
         if (dueSymbols.Count <= MaxBatchSymbolsPerPass)
             return orderedSymbols.Where(dueSymbols.Contains).ToList();
 
-        List<string> alwaysInclude = orderedSymbols
-            .Where(symbol => dueSymbols.Contains(symbol) && ShouldAlwaysIncludeDueSymbol(symbol))
-            .ToList();
-        HashSet<string> alwaysIncludeSet = alwaysInclude.ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        HashSet<string> budgetedDueSymbols = dueSymbols
-            .Where(symbol => !alwaysIncludeSet.Contains(symbol))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (budgetedDueSymbols.Count == 0)
-            return alwaysInclude;
-
-        int targetCount = CalculateDueSymbolsPerPass(budgetedDueSymbols, refreshWindows, pollingInterval);
+        int targetCount = CalculateDueSymbolsPerPass(dueSymbols, refreshWindows, pollingInterval);
         int degradedCount = orderedSymbols.Count(symbol =>
         {
-            if (!budgetedDueSymbols.Contains(symbol))
+            if (!dueSymbols.Contains(symbol))
                 return false;
 
             bool missingQuote = !cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? cached);
             return missingQuote || !HasUsableQuote(cached) || cached!.IsStale;
         });
-        if (degradedCount >= 6 && degradedCount * 3 >= budgetedDueSymbols.Count)
+        if (degradedCount >= 6 && degradedCount * 3 >= dueSymbols.Count)
             targetCount = Math.Max(targetCount, Math.Min(MaxRecoveryBatchSymbolsPerPass, degradedCount));
 
         List<string> selected = orderedSymbols
-            .Where(symbol => budgetedDueSymbols.Contains(symbol))
+            .Where(symbol => dueSymbols.Contains(symbol))
             .Select((symbol, index) =>
             {
                 bool missingQuote = !cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? cached);
@@ -1118,16 +1119,17 @@ public sealed class StartupCoordinator
                     Symbol = symbol,
                     Index = index,
                     UrgencyRank = urgencyRank,
+                    DedicatedRank = ShouldAlwaysIncludeDueSymbol(symbol) ? 1 : 0,
                     OverdueSeconds = overdueSeconds
                 };
             })
             .OrderBy(item => item.UrgencyRank)
+            .ThenBy(item => item.DedicatedRank)
             .ThenByDescending(item => item.OverdueSeconds)
             .ThenBy(item => item.Index)
             .Take(targetCount)
             .Select(item => item.Symbol)
             .ToList();
-        selected.InsertRange(0, alwaysInclude);
         return selected;
     }
 
@@ -1213,7 +1215,6 @@ public sealed class StartupCoordinator
         List<string> remainingSymbols,
         ProviderExecutionPlan providerPlan,
         IReadOnlyDictionary<string, SymbolProfile> symbolProfiles,
-        int refreshSeed,
         DateTimeOffset nowUtc)
     {
         if (remainingSymbols.Count == 0)
@@ -1238,25 +1239,16 @@ public sealed class StartupCoordinator
         if (eligibleSymbols.Count == 0)
             return [];
 
-        List<string> dedicatedSymbols = eligibleSymbols
-            .Where(IsDedicatedYahooSymbol)
+        HashSet<string> eligibleSet = eligibleSymbols.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        List<string> orderedEligibleSymbols = remainingSymbols
+            .Where(symbol => eligibleSet.Contains(symbol))
+            .Where(symbol => !IsDedicatedYahooSymbol(symbol) || !IsDedicatedYahooSymbolCoolingDown(symbol, nowUtc))
             .ToList();
-        if (dedicatedSymbols.Count > 0)
-        {
-            List<string> availableDedicatedSymbols = RotateSymbols(OrderDedicatedYahooSymbols(dedicatedSymbols), refreshSeed)
-                .Where(symbol => !IsDedicatedYahooSymbolCoolingDown(symbol, nowUtc))
-                .ToList();
-            if (availableDedicatedSymbols.Count > 0)
-            {
-                return availableDedicatedSymbols
-                    .Take(Math.Min(YahooDedicatedRuntimeBatchSymbols, dedicatedSymbols.Count))
-                    .ToList();
-            }
-        }
+        if (orderedEligibleSymbols.Count == 0)
+            return [];
 
-        return eligibleSymbols
-            .Where(symbol => !IsDedicatedYahooSymbol(symbol))
-            .Take(Math.Min(YahooGeneralRuntimeBatchSymbols, eligibleSymbols.Count))
+        return orderedEligibleSymbols
+            .Take(1)
             .ToList();
     }
 

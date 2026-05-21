@@ -29,7 +29,6 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly YahooSymbolValidationService _yahooSymbolValidationService;
     private readonly SymbolProfileStore _symbolProfileStore;
     private readonly DispatcherTimer _stateTimer;
-    private readonly DispatcherTimer _validatedCloseTimer;
     private readonly HashSet<TickerGroupEditorViewModel> _trackedGroups = [];
     private readonly HashSet<TickerItemEditorViewModel> _trackedTickers = [];
 
@@ -41,8 +40,6 @@ public sealed class MainWindowViewModel : BindableBase
     private bool _allowClose;
     private bool _isNetworkAvailable;
     private string _validatedFingerprint = string.Empty;
-    private int _validationCloseCountdownSeconds;
-    private AppSettings? _pendingValidatedSettings;
     private string _validationLogText = string.Empty;
     private static readonly TimeSpan CachedProfileTrustWindow = TimeSpan.FromMinutes(10);
 
@@ -71,9 +68,6 @@ public sealed class MainWindowViewModel : BindableBase
 
         _stateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _stateTimer.Tick += async (_, _) => await OnStateTimerTickAsync();
-
-        _validatedCloseTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _validatedCloseTimer.Tick += (_, _) => OnValidatedCloseTimerTick();
 
         if (Groups.Count == 0)
             AddGroup();
@@ -849,21 +843,24 @@ public sealed class MainWindowViewModel : BindableBase
     private void BeginValidatedCloseSequence(AppSettings candidate, int autoNamedCount)
     {
         CancelValidatedCloseSequence();
-        _pendingValidatedSettings = AppSettingsNormalizer.Normalize(candidate);
-        _validationCloseCountdownSeconds = 5;
+        AppSettings normalized = AppSettingsNormalizer.Normalize(candidate);
         _isValidationClosePending = true;
         RaisePropertyChanged(nameof(IsConfigActive));
         RaisePropertyChanged(nameof(ShowNetworkLockOverlay));
         RaiseCommandCanExecuteChanged();
         UpdateValidatedCloseStatus(autoNamedCount);
-        _validatedCloseTimer.Start();
+        _settingsFileService.Save(normalized);
+        _allowClose = true;
+        _isValidationClosePending = false;
+        RaisePropertyChanged(nameof(IsConfigActive));
+        RaisePropertyChanged(nameof(ShowNetworkLockOverlay));
+        RaiseCommandCanExecuteChanged();
+        StatusMessage = $"{PortfolioVersion.BaselineLabel} saved at {DateTime.Now:T}.";
+        CloseRequested?.Invoke();
     }
 
     private void CancelValidatedCloseSequence()
     {
-        _validatedCloseTimer.Stop();
-        _pendingValidatedSettings = null;
-        _validationCloseCountdownSeconds = 0;
         if (!_isValidationClosePending)
             return;
 
@@ -873,40 +870,12 @@ public sealed class MainWindowViewModel : BindableBase
         RaiseCommandCanExecuteChanged();
     }
 
-    private void OnValidatedCloseTimerTick()
-    {
-        if (_pendingValidatedSettings is null)
-        {
-            CancelValidatedCloseSequence();
-            return;
-        }
-
-        _validationCloseCountdownSeconds--;
-        if (_validationCloseCountdownSeconds > 0)
-        {
-            UpdateValidatedCloseStatus(
-                Groups.SelectMany(group => group.Tickers).Count(ticker => !string.IsNullOrWhiteSpace(ticker.DisplayName)));
-            return;
-        }
-
-        _validatedCloseTimer.Stop();
-        _settingsFileService.Save(_pendingValidatedSettings);
-        _allowClose = true;
-        _isValidationClosePending = false;
-        _pendingValidatedSettings = null;
-        RaisePropertyChanged(nameof(IsConfigActive));
-        RaisePropertyChanged(nameof(ShowNetworkLockOverlay));
-        RaiseCommandCanExecuteChanged();
-        StatusMessage = $"{PortfolioVersion.BaselineLabel} saved at {DateTime.Now:T}.";
-        CloseRequested?.Invoke();
-    }
-
     private void UpdateValidatedCloseStatus(int autoNamedCount)
     {
         string namingText = autoNamedCount > 0
             ? $"Filled {autoNamedCount} symbol name(s). "
             : string.Empty;
-        StatusMessage = $"{namingText}Validation passed. Saving and closing in {_validationCloseCountdownSeconds}s.";
+        StatusMessage = $"{namingText}Validation passed. Saving and closing now.";
     }
 
     private void BeginValidationRun()

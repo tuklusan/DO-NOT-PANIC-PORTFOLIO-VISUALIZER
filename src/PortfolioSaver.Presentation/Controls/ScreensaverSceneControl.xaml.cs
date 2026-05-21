@@ -361,6 +361,7 @@ public partial class ScreensaverSceneControl : UserControl
                 }
 
                 _latestQuotes = MergeQuotes(_latestQuotes, batch.Quotes);
+                _startupCoordinator.PrimeRuntimeQuotes(batch.Quotes);
                 SyncTapes(_startupCoordinator.BuildTapesForQuotes(_settings, _latestQuotes));
                 ApplyQuotesToGraphs();
 

@@ -198,12 +198,40 @@ public sealed class MainWindowViewModelValidationTests
         }
     }
 
+    [Fact]
+    public void MainWindowViewModel_ValidatedCloseSequence_NoLongerUsesCountdownText()
+    {
+        string source = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Settings",
+            "ViewModels",
+            "MainWindowViewModel.cs"));
+
+        Assert.Contains("Validation passed. Saving and closing now.", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Saving and closing in", source, StringComparison.Ordinal);
+    }
+
     private static MainWindowViewModel CreateIsolatedViewModel(IConnectivityService? connectivity = null)
     {
         MainWindowViewModel vm = new(connectivity);
         DispatcherTimer timer = GetPrivateField<DispatcherTimer>(vm, "_stateTimer");
         timer.Stop();
         return vm;
+    }
+
+    private static string GetRepoRoot()
+    {
+        DirectoryInfo? current = new(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "PortfolioScreensaver.sln")))
+                return current.FullName;
+
+            current = current.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate repo root from test AppContext.BaseDirectory.");
     }
 
     private static T InvokePrivate<T>(object instance, string methodName, object?[] args)

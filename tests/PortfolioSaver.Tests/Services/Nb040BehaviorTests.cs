@@ -125,15 +125,15 @@ public sealed class Nb040BehaviorTests
         string source = File.ReadAllText(Path.GetFullPath(coordinatorPath));
 
         Assert.Contains(
-            ".Take(Math.Min(YahooDedicatedRuntimeBatchSymbols, dedicatedSymbols.Count))",
+            "List<string> orderedEligibleSymbols = remainingSymbols",
             source,
             StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            "selected.Add(preferredSymbol);",
+        Assert.Contains(
+            ".Take(1)",
             source,
             StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            "YahooDedicatedRuntimeBatchSymbols + (!string.IsNullOrWhiteSpace(preferredSymbol) ? 1 : 0)",
+        Assert.Contains(
+            "!IsDedicatedYahooSymbol(symbol) || !IsDedicatedYahooSymbolCoolingDown(symbol, nowUtc)",
             source,
             StringComparison.Ordinal);
     }
