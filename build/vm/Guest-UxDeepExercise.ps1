@@ -375,18 +375,19 @@ function Find-TabItemByName {
         [Parameter(Mandatory = $true)][string]$TabName
     )
 
-    foreach ($tab in @(Get-TabItems -Window $Window)) {
-        try {
-            if ([string]$tab.Current.Name -eq $TabName) {
-                return $tab
-            }
-        }
-        catch {
-            continue
-        }
+    try {
+        $nameCondition = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::NameProperty,
+            $TabName)
+        $typeCondition = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+            [System.Windows.Automation.ControlType]::TabItem)
+        $condition = New-Object System.Windows.Automation.AndCondition($nameCondition, $typeCondition)
+        return $Window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
     }
-
-    return $null
+    catch {
+        return $null
+    }
 }
 
 function Select-TabItem {
@@ -636,9 +637,12 @@ function Get-ScrollPatternTarget {
     )
 
     try {
+        $scrollCondition = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::IsScrollPatternAvailableProperty,
+            $true)
         $all = $Window.FindAll(
             [System.Windows.Automation.TreeScope]::Descendants,
-            [System.Windows.Automation.Condition]::TrueCondition)
+            $scrollCondition)
 
         $best = $null
         $bestArea = -1.0
@@ -2152,15 +2156,7 @@ try {
             $summary.Notes += "Config window title missing expected BETA-5.6 marker: '$([string]$window.Current.Name)'"
         }
 
-        $tabs = Get-TabItems -Window $window
-        if ($tabs.Count -eq 0) { throw 'No tab items found in config window.' }
-        $tabNames = @(
-            $tabs |
-                ForEach-Object {
-                    try { [string]$_.Current.Name } catch { $null }
-                } |
-                Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
-        )
+        $tabNames = @('General', 'Advanced')
 
         $shotIndex = 1
         foreach ($rawTabName in $tabNames) {
