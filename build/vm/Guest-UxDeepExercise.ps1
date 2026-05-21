@@ -789,18 +789,9 @@ function Perform-VisibleScrollSequence {
         [int]$PageDownCount = 1
     )
 
-    $didScroll = $false
-    $didScroll = Invoke-WindowViewportWheelScroll -Window $Window -Notches ([Math]::Max(3, $PageDownCount + 2)) -DelayMilliseconds 90
+    $didScroll = Invoke-WindowViewportWheelScroll -Window $Window -Notches ([Math]::Max(2, $PageDownCount + 1)) -DelayMilliseconds 45
     if (-not $didScroll) {
-        $scrollTarget = Get-ScrollPatternTarget -Window $Window -TabName $TabName
-        if ($null -ne $scrollTarget) {
-            try { $scrollTarget.Element.SetFocus() } catch {}
-            Start-Sleep -Milliseconds 30
-            $didScroll = Invoke-MouseWheelScroll -Element $scrollTarget.Element -Notches ([Math]::Max(3, $PageDownCount + 2)) -DelayMilliseconds 90
-            if (-not $didScroll) {
-                $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, $PageDownCount))
-            }
-        }
+        $didScroll = Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, [Math]::Min(2, $PageDownCount)))
     }
 
     return $didScroll
@@ -815,7 +806,7 @@ function Perform-VisibleConfigActivity {
     try { $Window.SetFocus() } catch {}
     Start-Sleep -Milliseconds 40
 
-    $pageDownCount = if ($TabName -eq 'Advanced') { 4 } else { 3 }
+    $pageDownCount = if ($TabName -eq 'Advanced') { 3 } else { 2 }
     return Perform-VisibleScrollSequence -Window $Window -TabName $TabName -PageDownCount $pageDownCount
 }
 
@@ -1624,7 +1615,7 @@ function Find-ConfigWindow {
             return $namedTopLevel
         }
 
-        Start-Sleep -Milliseconds 90
+        Start-Sleep -Milliseconds 40
     } while ((Get-Date) -lt $deadline)
 
     Write-ConfigWindowTrace -Event 'FindConfigWindowTimeout' -Details ("process_id={0}; windows={1}" -f $Process.Id, (Get-TopLevelWindowSnapshot -ProcessId $Process.Id))
@@ -1769,7 +1760,7 @@ function Close-ConfigWindowIfPresent {
                 }
             }
 
-            Start-Sleep -Milliseconds 250
+            Start-Sleep -Milliseconds 150
         }
 
         Start-Sleep -Milliseconds 150
@@ -2149,46 +2140,48 @@ try {
         [void](Focus-ProcessWindow -Process $desktop)
         $configOpened = $false
         Write-ConfigWindowTrace -Event 'ConfigPhaseStart' -Details ("desktop_process_id={0}" -f $desktop.Id)
-        $optionsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsMenuRoot'
-        if ($null -ne $optionsMenuItem) {
-            [void](Expand-AutomationElement -Element $optionsMenuItem)
-            Write-ConfigWindowTrace -Event 'OptionsMenuExpanded'
-            Start-Sleep -Milliseconds 50
-        }
+        foreach ($attempt in 1..3) {
+            try {
+                [void](Focus-ProcessWindow -Process $desktop)
+                [System.Windows.Forms.SendKeys]::SendWait('%o')
+                Write-ConfigWindowTrace -Event 'OptionsMenuExpanded' -Details ("path=keyboard; attempt={0}" -f $attempt)
+                Start-Sleep -Milliseconds 20
+                [System.Windows.Forms.SendKeys]::SendWait('s')
+                Write-ConfigWindowTrace -Event 'SettingsMenuInvoked' -Details ("path=keyboard; attempt={0}" -f $attempt)
+                Start-Sleep -Milliseconds 45
+            }
+            catch {}
 
-        $settingsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsSettingsMenuItem'
-        if ($null -ne $settingsMenuItem) {
-            $configOpened = Invoke-AutomationElement -Element $settingsMenuItem
-            Write-ConfigWindowTrace -Event 'SettingsMenuInvoked' -Details ("result={0}" -f $configOpened)
-            if (-not $configOpened) {
-                try { $configOpened = Click-AutomationElementCenter -Element $settingsMenuItem } catch {}
-                Write-ConfigWindowTrace -Event 'SettingsMenuClickFallback' -Details ("result={0}" -f $configOpened)
+            $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 1
+            if ($null -ne $window) {
+                Write-ConfigWindowTrace -Event 'ConfigWindowOpenedByKeyboardPath' -Details ("attempt={0}" -f $attempt)
+                $configOpened = $true
+                break
             }
         }
 
         if (-not $configOpened) {
-            foreach ($attempt in 1..3) {
-                try {
-                    [void](Focus-ProcessWindow -Process $desktop)
-                    [System.Windows.Forms.SendKeys]::SendWait('%o')
-                    Start-Sleep -Milliseconds 40
-                    [System.Windows.Forms.SendKeys]::SendWait('s')
-                    Start-Sleep -Milliseconds 90
-                }
-                catch {}
+            $optionsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsMenuRoot'
+            if ($null -ne $optionsMenuItem) {
+                [void](Expand-AutomationElement -Element $optionsMenuItem)
+                Write-ConfigWindowTrace -Event 'OptionsMenuExpanded' -Details 'path=automation'
+                Start-Sleep -Milliseconds 40
+            }
 
-                $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 2
-                if ($null -ne $window) {
-                    Write-ConfigWindowTrace -Event 'ConfigWindowOpenedByKeyboardPath' -Details ("attempt={0}" -f $attempt)
-                    $configOpened = $true
-                    break
+            $settingsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsSettingsMenuItem'
+            if ($null -ne $settingsMenuItem) {
+                $configOpened = Invoke-AutomationElement -Element $settingsMenuItem
+                Write-ConfigWindowTrace -Event 'SettingsMenuInvoked' -Details ("path=automation; result={0}" -f $configOpened)
+                if (-not $configOpened) {
+                    try { $configOpened = Click-AutomationElementCenter -Element $settingsMenuItem } catch {}
+                    Write-ConfigWindowTrace -Event 'SettingsMenuClickFallback' -Details ("result={0}" -f $configOpened)
                 }
             }
         }
 
-        Start-Sleep -Milliseconds 180
+        Start-Sleep -Milliseconds 60
         Test-ConfigPhaseBudget -StartedAt $configPhaseStartedAt -Stage 'post-open-reacquire'
-        $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 20
+        $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 8
         if ($null -eq $window) { throw 'Could not locate config window via UI Automation.' }
         Write-ConfigWindowTrace -Event 'ConfigWindowReacquired' -Details ("title={0}; automation_id={1}" -f [string]$window.Current.Name, [string]$window.Current.AutomationId)
         if ([string]$window.Current.Name -like '*BETA-5.6*' -or

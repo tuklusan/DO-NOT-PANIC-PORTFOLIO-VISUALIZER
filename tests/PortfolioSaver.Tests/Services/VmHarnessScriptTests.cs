@@ -171,8 +171,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')", script, StringComparison.Ordinal);
         Assert.Contains("Capture-Screen -Path (Join-Path $results (\"config-tab-{0:D3}-{1}-scrolled.png\"", script, StringComparison.Ordinal);
         Assert.Contains("return Perform-VisibleScrollSequence -Window $Window -TabName $TabName -PageDownCount $pageDownCount", script, StringComparison.Ordinal);
-        Assert.Contains("Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, $PageDownCount))", script, StringComparison.Ordinal);
-        Assert.Contains("Invoke-MouseWheelScroll -Element $scrollTarget.Element", script, StringComparison.Ordinal);
+        Assert.Contains("Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, [Math]::Min(2, $PageDownCount)))", script, StringComparison.Ordinal);
         Assert.Contains("Invoke-WindowViewportWheelScroll -Window $Window", script, StringComparison.Ordinal);
         Assert.Contains("config-window-events.log", script, StringComparison.Ordinal);
         Assert.Contains("Config phase exceeded 60 seconds", script, StringComparison.Ordinal);
