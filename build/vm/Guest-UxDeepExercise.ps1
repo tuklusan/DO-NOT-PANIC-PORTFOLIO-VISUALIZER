@@ -1907,26 +1907,40 @@ function Validate-AndCloseConfigWindow {
             return $true
         }
 
-        try {
-            $windowPattern = $Window.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
-            $windowPattern.Close()
-            Write-ConfigWindowTrace -Event 'ValidateCloseWindowPatternClose'
-        }
-        catch {
-            try { $Window.SetFocus() } catch {}
-            Start-Sleep -Milliseconds 25
-            try { [System.Windows.Forms.SendKeys]::SendWait('%{F4}') } catch {}
-            Write-ConfigWindowTrace -Event 'ValidateCloseAltF4Fallback'
+        $validateButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigValidateButton'
+        if ($null -eq $validateButton) {
+            Write-ConfigWindowTrace -Event 'ValidateButtonMissing'
+            return $false
         }
 
-        $deadline = (Get-Date).AddSeconds(8)
+        try {
+            $invoked = Invoke-AutomationElement -Element $validateButton
+            if (-not $invoked) {
+                $invoked = Click-AutomationElementCenter -Element $validateButton
+            }
+            Write-ConfigWindowTrace -Event 'ValidateButtonInvoked' -Details ("result={0}" -f $invoked)
+            if (-not $invoked) {
+                return $false
+            }
+        }
+        catch {
+            Write-ConfigWindowTrace -Event 'ValidateButtonInvokeFailed' -Details $_.Exception.Message
+            return $false
+        }
+
+        $deadline = (Get-Date).AddSeconds(45)
         do {
-            Start-Sleep -Milliseconds 100
+            Start-Sleep -Milliseconds 250
             $Process.Refresh()
             $blockingDialog = Get-ConfigBlockingDialog -Process $Process
             if ($null -ne $blockingDialog) {
                 $script:summary.Notes += "Config close dialog: $($blockingDialog.Title) - $($blockingDialog.Message)"
                 return $false
+            }
+
+            $statusText = Get-ConfigStatusText -Window $Window
+            if (-not [string]::IsNullOrWhiteSpace($statusText)) {
+                Write-ConfigWindowTrace -Event 'ValidateStatus' -Details $statusText
             }
 
             $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1

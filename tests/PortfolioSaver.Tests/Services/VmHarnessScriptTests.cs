@@ -159,14 +159,15 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait(' ')", script, StringComparison.Ordinal);
         Assert.Contains("$selected.Current.IsSelected", script, StringComparison.Ordinal);
         Assert.Contains("Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigStatusText'", script, StringComparison.Ordinal);
+        Assert.Contains("Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigValidateButton'", script, StringComparison.Ordinal);
         Assert.Contains("$text -like '*Validation passed. Saving and closing in *'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-ConfigWindowTrace -Event 'ValidateButtonInvoked'", script, StringComparison.Ordinal);
         Assert.Contains("throw 'Validate did not close the config window automatically.'", script, StringComparison.Ordinal);
         Assert.Contains("Validate-AndCloseConfigWindow -Process $desktop -Window $window", script, StringComparison.Ordinal);
         Assert.Contains("Close-ConfigWindowIfPresent -Process $desktop -Window $window", script, StringComparison.Ordinal);
         Assert.Contains("[System.Windows.Automation.AutomationElement]::RootElement.FindAll(", script, StringComparison.Ordinal);
         Assert.Contains("[System.Windows.Automation.TreeScope]::Children", script, StringComparison.Ordinal);
         Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')", script, StringComparison.Ordinal);
-        Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait('%{F4}')", script, StringComparison.Ordinal);
         Assert.Contains("Capture-Screen -Path (Join-Path $results (\"config-tab-{0:D3}-{1}-scrolled.png\"", script, StringComparison.Ordinal);
         Assert.Contains("return Perform-VisibleScrollSequence -Window $Window -TabName $TabName -PageDownCount $pageDownCount", script, StringComparison.Ordinal);
         Assert.Contains("Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, $PageDownCount))", script, StringComparison.Ordinal);
