@@ -1026,6 +1026,25 @@ function Get-TopLevelWindowsForProcess {
     }
 }
 
+function Find-RootDescendantByAutomationId {
+    param(
+        [Parameter(Mandatory = $true)][string]$AutomationId
+    )
+
+    $condition = New-Object System.Windows.Automation.PropertyCondition(
+        [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+        $AutomationId)
+
+    try {
+        return [System.Windows.Automation.AutomationElement]::RootElement.FindFirst(
+            [System.Windows.Automation.TreeScope]::Descendants,
+            $condition)
+    }
+    catch {
+        return $null
+    }
+}
+
 function Test-AutomationElementAlive {
     param($Element)
 
@@ -1484,6 +1503,15 @@ function Find-ConfigWindow {
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     Write-ConfigWindowTrace -Event 'FindConfigWindowStart' -Details ("process_id={0}; timeout_seconds={1}" -f $Process.Id, $TimeoutSeconds)
     do {
+        $namedRootDescendant = Find-RootDescendantByAutomationId -AutomationId 'ConfigMainWindow'
+        if ($null -ne $namedRootDescendant) {
+            try {
+                Write-ConfigWindowTrace -Event 'FindConfigWindowRootDescendantMatch' -Details ("process_id={0}; title={1}" -f [int]$namedRootDescendant.Current.ProcessId, [string]$namedRootDescendant.Current.Name)
+            }
+            catch {}
+            return $namedRootDescendant
+        }
+
         foreach ($window in @(Get-TopLevelWindowsForProcess -Process $Process)) {
             try {
                 $title = [string]$window.Current.Name
