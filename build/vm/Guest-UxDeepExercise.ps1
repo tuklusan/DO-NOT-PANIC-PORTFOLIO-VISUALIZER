@@ -2095,24 +2095,6 @@ function Validate-AndCloseConfigWindow {
             continue
         }
 
-        $targetButton = $primaryButton
-        $invokeEvent = 'OkButtonInvoked'
-        $invokeFailedEvent = 'OkButtonInvokeFailed'
-        if ($CompletionMode -eq 'Cancel') {
-            $cancelButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigCancelButton'
-            if ($null -eq $cancelButton) {
-                $cancelButton = Find-DescendantByNameAndControlType -Root $Window -Name 'Cancel' -ControlType ([System.Windows.Automation.ControlType]::Button)
-            }
-            if ($null -eq $cancelButton) {
-                Write-ConfigWindowTrace -Event 'CancelButtonMissing'
-                return $false
-            }
-
-            $targetButton = $cancelButton
-            $invokeEvent = 'CancelButtonInvoked'
-            $invokeFailedEvent = 'CancelButtonInvokeFailed'
-        }
-
         try {
             $invoked = $false
             if ($Window) {
@@ -2132,6 +2114,24 @@ function Validate-AndCloseConfigWindow {
                     Write-ConfigWindowTrace -Event 'ValidatedKeyboardCloseSucceeded' -Details ("mode={0}" -f $CompletionMode)
                     return $true
                 }
+            }
+
+            $targetButton = $primaryButton
+            $invokeEvent = 'OkButtonInvoked'
+            $invokeFailedEvent = 'OkButtonInvokeFailed'
+            if ($CompletionMode -eq 'Cancel') {
+                $cancelButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigCancelButton'
+                if ($null -eq $cancelButton) {
+                    $cancelButton = Find-DescendantByNameAndControlType -Root $Window -Name 'Cancel' -ControlType ([System.Windows.Automation.ControlType]::Button)
+                }
+                if ($null -eq $cancelButton) {
+                    Write-ConfigWindowTrace -Event 'CancelButtonMissing'
+                    return $false
+                }
+
+                $targetButton = $cancelButton
+                $invokeEvent = 'CancelButtonInvoked'
+                $invokeFailedEvent = 'CancelButtonInvokeFailed'
             }
 
             if ($null -ne $targetButton) {
