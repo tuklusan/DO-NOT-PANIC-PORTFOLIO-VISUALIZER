@@ -127,7 +127,7 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
-            "_sequentialRuntimeCursor = (_sequentialRuntimeCursor + 1) % eligibleSymbols.Count;",
+            "_sequentialRuntimeCursor = (_sequentialRuntimeCursor + 1) % sequenceSymbols.Count;",
             source,
             StringComparison.Ordinal);
         Assert.DoesNotContain(

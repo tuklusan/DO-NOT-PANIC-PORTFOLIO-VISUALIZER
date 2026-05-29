@@ -337,12 +337,6 @@ public sealed class StartupCoordinator
 
         if (!networkAvailable || orderedSymbols.Count == 0)
         {
-            foreach (string symbol in orderedSymbols)
-            {
-                if (results.TryGetValue(symbol, out QuoteSnapshot? cached))
-                    cached.IsStale = !HasUsableQuote(cached);
-            }
-
             string cacheOnlyLabel = networkAvailable
                 ? (results.Count > 0 ? "YFinance.NET Cache" : "YFinance.NET")
                 : (results.Count > 0 ? "Local Cache" : "Waiting for network");
@@ -403,19 +397,7 @@ public sealed class StartupCoordinator
                 continue;
 
             if (cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? cached))
-            {
-                QuoteSnapshot staleQuote = CloneQuote(cached);
-                staleQuote.IsStale = !HasUsableQuote(staleQuote);
-                results[symbol] = staleQuote;
-            }
-        }
-
-        foreach (string symbol in orderedSymbols)
-        {
-            if (!results.TryGetValue(symbol, out QuoteSnapshot? quote))
-                continue;
-
-            quote.IsStale = !HasUsableQuote(quote);
+                results[symbol] = CloneQuote(cached);
         }
 
         bool usedCache = orderedSymbols.Any(symbol => results.ContainsKey(symbol) &&
@@ -741,182 +723,6 @@ public sealed class StartupCoordinator
             : $"{cadence.TotalSeconds:0.##} seconds";
     }
 
-    private static Dictionary<string, TimeSpan> BuildRefreshWindows(
-        AppSettings settings,
-        IReadOnlyList<string> portfolioSymbols,
-        IReadOnlyList<string> ancillarySymbols)
-    {
-        TimeSpan portfolioWindow = QuoteRefreshPolicy.GetEffectiveRefreshWindow(settings, DateTimeOffset.UtcNow);
-
-        Dictionary<string, TimeSpan> windows = new(StringComparer.OrdinalIgnoreCase);
-        foreach (string symbol in portfolioSymbols.Where(symbol => !string.IsNullOrWhiteSpace(symbol)))
-            windows[symbol] = portfolioWindow;
-
-        foreach (string symbol in ancillarySymbols.Where(symbol => !string.IsNullOrWhiteSpace(symbol)))
-            windows.TryAdd(symbol, portfolioWindow);
-
-        return windows;
-    }
-
-    private static bool IsRefreshDue(
-        string symbol,
-        TimeSpan refreshWindow,
-        IReadOnlyDictionary<string, QuoteSnapshot> cachedQuotes,
-        DateTimeOffset nowUtc)
-    {
-        if (!cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? cached))
-            return true;
-
-        TimeSpan stagger = GetRefreshStaggerOffset(symbol, refreshWindow);
-        DateTimeOffset dueAt = cached.FetchTimestampUtc + refreshWindow + stagger;
-        return cached.IsStale || nowUtc >= dueAt;
-    }
-
-    private static TimeSpan GetRefreshStaggerOffset(string symbol, TimeSpan refreshWindow)
-    {
-        double windowSeconds = Math.Max(1d, refreshWindow.TotalSeconds);
-        double maxOffsetSeconds = Math.Min(15d, Math.Max(0d, windowSeconds - 1d));
-        if (maxOffsetSeconds < 1d)
-            return TimeSpan.Zero;
-
-        int hash = StringComparer.OrdinalIgnoreCase.GetHashCode(symbol) & int.MaxValue;
-        int bucketCount = Math.Max(1, (int)Math.Round(maxOffsetSeconds));
-        int bucket = hash % bucketCount;
-        return TimeSpan.FromSeconds(bucket);
-    }
-
-    private static List<string> SelectDueSymbolsForPass(
-        IReadOnlyList<string> orderedSymbols,
-        HashSet<string> dueSymbols,
-        IReadOnlyDictionary<string, TimeSpan> refreshWindows,
-        IReadOnlyDictionary<string, QuoteSnapshot> cachedQuotes,
-        DateTimeOffset nowUtc,
-        TimeSpan pollingInterval)
-    {
-        if (dueSymbols.Count == 0)
-            return [];
-
-        if (dueSymbols.Count <= MaxBatchSymbolsPerPass)
-            return orderedSymbols.Where(dueSymbols.Contains).ToList();
-
-        int targetCount = CalculateDueSymbolsPerPass(dueSymbols, refreshWindows, pollingInterval);
-        int degradedCount = orderedSymbols.Count(symbol =>
-        {
-            if (!dueSymbols.Contains(symbol))
-                return false;
-
-            bool missingQuote = !cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? cached);
-            return missingQuote || !HasUsableQuote(cached) || cached!.IsStale;
-        });
-        if (degradedCount >= 6 && degradedCount * 3 >= dueSymbols.Count)
-            targetCount = Math.Max(targetCount, Math.Min(MaxRecoveryBatchSymbolsPerPass, degradedCount));
-
-        List<string> selected = orderedSymbols
-            .Where(symbol => dueSymbols.Contains(symbol))
-            .Select((symbol, index) =>
-            {
-                bool missingQuote = !cachedQuotes.TryGetValue(symbol, out QuoteSnapshot? cached);
-                bool missingValue = missingQuote || !HasUsableQuote(cached);
-                bool stale = !missingQuote && cached!.IsStale;
-                TimeSpan refreshWindow = refreshWindows.TryGetValue(symbol, out TimeSpan configuredWindow)
-                    ? configuredWindow
-                    : pollingInterval;
-                double overdueSeconds = missingQuote
-                    ? double.MaxValue
-                    : Math.Max(0d, (nowUtc - (cached!.FetchTimestampUtc + refreshWindow)).TotalSeconds);
-                int urgencyRank = missingValue ? 0 : (stale ? 1 : 2);
-                return new
-                {
-                    Symbol = symbol,
-                    Index = index,
-                    UrgencyRank = urgencyRank,
-                    DedicatedRank = ShouldAlwaysIncludeDueSymbol(symbol) ? 1 : 0,
-                    OverdueSeconds = overdueSeconds
-                };
-            })
-            .OrderBy(item => item.UrgencyRank)
-            .ThenBy(item => item.DedicatedRank)
-            .ThenByDescending(item => item.OverdueSeconds)
-            .ThenBy(item => item.Index)
-            .Take(targetCount)
-            .Select(item => item.Symbol)
-            .ToList();
-        return selected;
-    }
-
-    private static bool ShouldAlwaysIncludeDueSymbol(string symbol)
-        => IsOfficialMacroSymbol(symbol) ||
-           IsTreasuryMacroSymbol(symbol) ||
-           IsDedicatedYahooSymbol(symbol);
-
-    private static int CalculateDueSymbolsPerPass(
-        HashSet<string> dueSymbols,
-        IReadOnlyDictionary<string, TimeSpan> refreshWindows,
-        TimeSpan pollingInterval)
-    {
-        if (dueSymbols.Count == 0)
-            return 0;
-
-        double pollingSeconds = Math.Max(1d, pollingInterval.TotalSeconds);
-        double dueShare = dueSymbols.Sum(symbol =>
-        {
-            TimeSpan refreshWindow = refreshWindows.TryGetValue(symbol, out TimeSpan configuredWindow)
-                ? configuredWindow
-                : pollingInterval;
-            return pollingSeconds / Math.Max(1d, refreshWindow.TotalSeconds);
-        });
-
-        int targetCount = Math.Max(1, (int)Math.Ceiling(dueShare));
-        return Math.Min(dueSymbols.Count, targetCount);
-    }
-
-    private static List<string> SelectPreemptiveRefreshSymbolsForPass(
-        IReadOnlyList<string> orderedSymbols,
-        IReadOnlyDictionary<string, TimeSpan> refreshWindows,
-        IReadOnlyDictionary<string, QuoteSnapshot> cachedQuotes,
-        DateTimeOffset nowUtc,
-        TimeSpan pollingInterval)
-    {
-        return orderedSymbols
-            .Where(symbol => refreshWindows.ContainsKey(symbol) && cachedQuotes.ContainsKey(symbol))
-            .Select((symbol, index) =>
-            {
-                QuoteSnapshot cached = cachedQuotes[symbol];
-                TimeSpan refreshWindow = refreshWindows[symbol];
-                TimeSpan leadTime = GetSoftRefreshLeadTime(refreshWindow, pollingInterval);
-                DateTimeOffset dueAt = cached.FetchTimestampUtc + refreshWindow + GetRefreshStaggerOffset(symbol, refreshWindow);
-                DateTimeOffset preemptiveAt = dueAt - leadTime;
-                if (nowUtc < preemptiveAt)
-                    return null;
-
-                double windowSeconds = Math.Max(1d, refreshWindow.TotalSeconds);
-                double ageRatio = Math.Clamp((nowUtc - cached.FetchTimestampUtc).TotalSeconds / windowSeconds, 0d, 2d);
-                return new
-                {
-                    Symbol = symbol,
-                    Index = index,
-                    Priority = ShouldAlwaysIncludeDueSymbol(symbol) ? 0 : 1,
-                    AgeRatio = ageRatio
-                };
-            })
-            .Where(item => item is not null)
-            .OrderBy(item => item!.Priority)
-            .ThenByDescending(item => item!.AgeRatio)
-            .ThenBy(item => item!.Index)
-            .Take(1)
-            .Select(item => item!.Symbol)
-            .ToList();
-    }
-
-    private static TimeSpan GetSoftRefreshLeadTime(TimeSpan refreshWindow, TimeSpan pollingInterval)
-    {
-        double leadSeconds = Math.Min(
-            pollingInterval.TotalSeconds * 1.5d,
-            Math.Max(15d, refreshWindow.TotalSeconds * 0.2d));
-        leadSeconds = Math.Min(leadSeconds, Math.Max(15d, refreshWindow.TotalSeconds - 1d));
-        return TimeSpan.FromSeconds(Math.Max(15d, leadSeconds));
-    }
-
     private static bool HasUsableQuote(QuoteSnapshot? quote)
         => quote is not null &&
            ((quote.Last is decimal last && last > 0) ||
@@ -927,25 +733,25 @@ public sealed class StartupCoordinator
         if (orderedSymbols.Count == 0)
             return [];
 
-        List<string> eligibleSymbols = orderedSymbols
+        List<string> sequenceSymbols = orderedSymbols
             .Where(symbol => !string.IsNullOrWhiteSpace(SymbolProfileHeuristics.Normalize(symbol)))
             .ToList();
 
-        if (eligibleSymbols.Count == 0)
+        if (sequenceSymbols.Count == 0)
             return [];
 
-        string fingerprint = string.Join("|", eligibleSymbols);
+        string fingerprint = string.Join("|", sequenceSymbols);
         if (!string.Equals(_sequentialRuntimeFingerprint, fingerprint, StringComparison.Ordinal))
         {
             _sequentialRuntimeFingerprint = fingerprint;
             _sequentialRuntimeCursor = 0;
         }
 
-        if (_sequentialRuntimeCursor >= eligibleSymbols.Count)
+        if (_sequentialRuntimeCursor >= sequenceSymbols.Count)
             _sequentialRuntimeCursor = 0;
 
-        string selected = eligibleSymbols[_sequentialRuntimeCursor];
-        _sequentialRuntimeCursor = (_sequentialRuntimeCursor + 1) % eligibleSymbols.Count;
+        string selected = sequenceSymbols[_sequentialRuntimeCursor];
+        _sequentialRuntimeCursor = (_sequentialRuntimeCursor + 1) % sequenceSymbols.Count;
         return [selected];
     }
 
@@ -1347,8 +1153,8 @@ public sealed class StartupCoordinator
     {
         string age = TimeFormatHelper.ToAgeString(fetchUtc);
         return string.IsNullOrWhiteSpace(latestSymbol)
-            ? $"Last Updated: {age}"
-            : $"Last Updated: {latestSymbol} {age}";
+            ? age
+            : $"{latestSymbol} {age}";
     }
 }
 
