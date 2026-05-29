@@ -156,6 +156,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Close-ConfigWindowIfPresent", script, StringComparison.Ordinal);
         Assert.Contains("function Click-AutomationElementCenter", script, StringComparison.Ordinal);
         Assert.Contains("function Click-ConfigFooterButtonFallback", script, StringComparison.Ordinal);
+        Assert.Contains("function Click-ConfigCloseButtonFallback", script, StringComparison.Ordinal);
         Assert.Contains("function Get-ConfigStatusText", script, StringComparison.Ordinal);
         Assert.Contains("$automationId -eq 'DesktopMainWindow'", script, StringComparison.Ordinal);
         Assert.Contains("$title -like 'DO NOT PANIC PORTFOLIO VISUALIZER*'", script, StringComparison.Ordinal);
@@ -173,6 +174,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Write-ConfigWindowTrace -Event 'ValidateOkReady'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'ValidatedKeyboardCloseAttempt'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'ValidatedKeyboardCloseSucceeded'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-ConfigWindowTrace -Event 'FooterButtonClickFallbackAttempt'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-ConfigWindowTrace -Event 'ConfigCloseButtonFallback'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'FooterButtonClickFallback'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'PrimaryButtonInvoked'", script, StringComparison.Ordinal);
         Assert.Contains("$invokeEvent = 'OkButtonInvoked'", script, StringComparison.Ordinal);

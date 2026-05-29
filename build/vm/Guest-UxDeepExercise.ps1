@@ -1921,6 +1921,7 @@ function Click-ConfigFooterButtonFallback {
         }
         $targetY = $bounds.Bottom - 34
 
+        Write-ConfigWindowTrace -Event 'FooterButtonClickFallbackAttempt' -Details ("mode={0}; x={1}; y={2}" -f $CompletionMode, [int][Math]::Round($targetX), [int][Math]::Round($targetY))
         [void][NativeMouseInput]::SetCursorPos([int][Math]::Round($targetX), [int][Math]::Round($targetY))
         Start-Sleep -Milliseconds 80
         [NativeMouseInput]::mouse_event([NativeMouseInput]::MOUSEEVENTF_LEFTDOWN, 0, 0, 0, [UIntPtr]::Zero)
@@ -1931,6 +1932,32 @@ function Click-ConfigFooterButtonFallback {
     }
     catch {
         Write-ConfigWindowTrace -Event 'FooterButtonClickFallbackFailed' -Details $_.Exception.Message
+        return $false
+    }
+}
+
+function Click-ConfigCloseButtonFallback {
+    param(
+        [Parameter(Mandatory = $true)]$Window
+    )
+
+    try {
+        $closeButton = Find-DescendantByNameAndControlType -Root $Window -Name 'Close' -ControlType ([System.Windows.Automation.ControlType]::Button)
+        if ($null -eq $closeButton) {
+            Write-ConfigWindowTrace -Event 'ConfigCloseButtonMissing'
+            return $false
+        }
+
+        $invoked = Invoke-AutomationElement -Element $closeButton
+        if (-not $invoked) {
+            $invoked = Click-AutomationElementCenter -Element $closeButton
+        }
+
+        Write-ConfigWindowTrace -Event 'ConfigCloseButtonFallback' -Details ("result={0}" -f $invoked)
+        return $invoked
+    }
+    catch {
+        Write-ConfigWindowTrace -Event 'ConfigCloseButtonFallbackFailed' -Details $_.Exception.Message
         return $false
     }
 }
@@ -2143,6 +2170,9 @@ function Validate-AndCloseConfigWindow {
             }
             if (-not $invoked) {
                 $invoked = Click-ConfigFooterButtonFallback -Window $Window -CompletionMode $CompletionMode
+            }
+            if (-not $invoked -and $CompletionMode -eq 'Cancel') {
+                $invoked = Click-ConfigCloseButtonFallback -Window $Window
             }
             Write-ConfigWindowTrace -Event $invokeEvent -Details ("result={0}; mode={1}" -f $invoked, $CompletionMode)
             if (-not $invoked) {
