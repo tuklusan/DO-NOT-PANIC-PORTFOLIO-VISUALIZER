@@ -171,6 +171,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$validatedStatusReady = -not [string]::IsNullOrWhiteSpace($statusText) -and", script, StringComparison.Ordinal);
         Assert.Contains("$statusText -like '*Validation passed. Click OK to save/apply, or Cancel to discard.*'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'ValidateOkReady'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-ConfigWindowTrace -Event 'ValidatedKeyboardCloseAttempt'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-ConfigWindowTrace -Event 'ValidatedKeyboardCloseSucceeded'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'FooterButtonClickFallback'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'PrimaryButtonInvoked'", script, StringComparison.Ordinal);
         Assert.Contains("$invokeEvent = 'OkButtonInvoked'", script, StringComparison.Ordinal);

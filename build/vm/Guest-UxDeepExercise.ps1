@@ -2115,6 +2115,19 @@ function Validate-AndCloseConfigWindow {
 
         try {
             $invoked = $false
+            if ($Window -and (Focus-AutomationElement -Element $Window)) {
+                $keys = if ($CompletionMode -eq 'Cancel') { @('{ESC}') } else { @('{ENTER}') }
+                Send-KeySequence -Keys $keys -DelayMilliseconds 80
+                Write-ConfigWindowTrace -Event 'ValidatedKeyboardCloseAttempt' -Details ("mode={0}; key={1}" -f $CompletionMode, $keys[0])
+                Start-Sleep -Milliseconds 220
+                $Process.Refresh()
+                $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
+                if ($null -eq $Window -or $Process.HasExited) {
+                    Write-ConfigWindowTrace -Event 'ValidatedKeyboardCloseSucceeded' -Details ("mode={0}" -f $CompletionMode)
+                    return $true
+                }
+            }
+
             if ($null -ne $targetButton) {
                 $invoked = Invoke-AutomationElement -Element $targetButton
                 if (-not $invoked) {
