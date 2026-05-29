@@ -73,7 +73,9 @@ public sealed class ConfigTextConsistencyTests
         int primaryBindingCount = xaml.Split("Content=\"{Binding PrimaryButtonText}\"", StringSplitOptions.None).Length - 1;
         Assert.Equal(1, primaryBindingCount);
         Assert.Contains("AutomationProperties.AutomationId=\"ConfigPrimaryButton\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"{Binding PrimaryButtonText}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.AutomationId=\"ConfigCancelButton\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Cancel\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"Cancel\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Visibility=\"{Binding ShowValidatedActionButtons, Converter={StaticResource BoolToVisibilityConverter}}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("IsEnabled=\"{Binding IsValidationActionEnabled}\"", xaml, StringComparison.Ordinal);
