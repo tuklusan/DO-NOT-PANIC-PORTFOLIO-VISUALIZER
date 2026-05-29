@@ -1900,6 +1900,41 @@ function Click-AutomationElementCenter {
     }
 }
 
+function Click-ConfigFooterButtonFallback {
+    param(
+        [Parameter(Mandatory = $true)]$Window,
+        [ValidateSet('Apply', 'Cancel')]
+        [string]$CompletionMode
+    )
+
+    try {
+        $bounds = $Window.Current.BoundingRectangle
+        if ($null -eq $bounds -or $bounds.Width -le 1 -or $bounds.Height -le 1) {
+            return $false
+        }
+
+        $targetX = if ($CompletionMode -eq 'Cancel') {
+            $bounds.Right - 170
+        }
+        else {
+            $bounds.Right - 62
+        }
+        $targetY = $bounds.Bottom - 34
+
+        [void][NativeMouseInput]::SetCursorPos([int][Math]::Round($targetX), [int][Math]::Round($targetY))
+        Start-Sleep -Milliseconds 80
+        [NativeMouseInput]::mouse_event([NativeMouseInput]::MOUSEEVENTF_LEFTDOWN, 0, 0, 0, [UIntPtr]::Zero)
+        Start-Sleep -Milliseconds 40
+        [NativeMouseInput]::mouse_event([NativeMouseInput]::MOUSEEVENTF_LEFTUP, 0, 0, 0, [UIntPtr]::Zero)
+        Write-ConfigWindowTrace -Event 'FooterButtonClickFallback' -Details ("mode={0}; x={1}; y={2}" -f $CompletionMode, [int][Math]::Round($targetX), [int][Math]::Round($targetY))
+        return $true
+    }
+    catch {
+        Write-ConfigWindowTrace -Event 'FooterButtonClickFallbackFailed' -Details $_.Exception.Message
+        return $false
+    }
+}
+
 function Get-ConfigStatusText {
     param(
         [Parameter(Mandatory = $true)]$Window
@@ -2079,9 +2114,15 @@ function Validate-AndCloseConfigWindow {
         }
 
         try {
-            $invoked = Invoke-AutomationElement -Element $targetButton
+            $invoked = $false
+            if ($null -ne $targetButton) {
+                $invoked = Invoke-AutomationElement -Element $targetButton
+                if (-not $invoked) {
+                    $invoked = Click-AutomationElementCenter -Element $targetButton
+                }
+            }
             if (-not $invoked) {
-                $invoked = Click-AutomationElementCenter -Element $targetButton
+                $invoked = Click-ConfigFooterButtonFallback -Window $Window -CompletionMode $CompletionMode
             }
             Write-ConfigWindowTrace -Event $invokeEvent -Details ("result={0}; mode={1}" -f $invoked, $CompletionMode)
             if (-not $invoked) {

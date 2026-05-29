@@ -155,6 +155,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Get-ProcessOwnedWindows", script, StringComparison.Ordinal);
         Assert.Contains("function Close-ConfigWindowIfPresent", script, StringComparison.Ordinal);
         Assert.Contains("function Click-AutomationElementCenter", script, StringComparison.Ordinal);
+        Assert.Contains("function Click-ConfigFooterButtonFallback", script, StringComparison.Ordinal);
         Assert.Contains("function Get-ConfigStatusText", script, StringComparison.Ordinal);
         Assert.Contains("$automationId -eq 'DesktopMainWindow'", script, StringComparison.Ordinal);
         Assert.Contains("$title -like 'DO NOT PANIC PORTFOLIO VISUALIZER*'", script, StringComparison.Ordinal);
@@ -170,6 +171,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$validatedStatusReady = -not [string]::IsNullOrWhiteSpace($statusText) -and", script, StringComparison.Ordinal);
         Assert.Contains("$statusText -like '*Validation passed. Click OK to save/apply, or Cancel to discard.*'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'ValidateOkReady'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-ConfigWindowTrace -Event 'FooterButtonClickFallback'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'PrimaryButtonInvoked'", script, StringComparison.Ordinal);
         Assert.Contains("$invokeEvent = 'OkButtonInvoked'", script, StringComparison.Ordinal);
         Assert.Contains("$invokeEvent = 'CancelButtonInvoked'", script, StringComparison.Ordinal);
