@@ -162,6 +162,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigStatusText'", script, StringComparison.Ordinal);
         Assert.Contains("Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigPrimaryButton'", script, StringComparison.Ordinal);
         Assert.Contains("Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigCancelButton'", script, StringComparison.Ordinal);
+        Assert.Contains("$validatedStatusReady = -not [string]::IsNullOrWhiteSpace($statusText) -and", script, StringComparison.Ordinal);
+        Assert.Contains("$statusText -like '*Validation passed. Click OK to save/apply, or Cancel to discard.*'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'ValidateOkReady'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'PrimaryButtonInvoked'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'OkButtonInvoked'", script, StringComparison.Ordinal);

@@ -1970,8 +1970,10 @@ function Validate-AndCloseConfigWindow {
                 $primaryButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigPrimaryButton'
                 $cancelButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigCancelButton'
                 $primaryLabel = if ($null -ne $primaryButton) { [string]$primaryButton.Current.Name } else { '' }
-                if ($primaryLabel -eq 'OK' -and $null -ne $cancelButton) {
-                    Write-ConfigWindowTrace -Event 'ValidateOkReady' -Details $statusText
+                $validatedStatusReady = -not [string]::IsNullOrWhiteSpace($statusText) -and
+                    $statusText -like '*Validation passed. Click OK to save/apply, or Cancel to discard.*'
+                if (($primaryLabel -eq 'OK' -and $null -ne $cancelButton) -or $validatedStatusReady) {
+                    Write-ConfigWindowTrace -Event 'ValidateOkReady' -Details ("status={0}; primary_label={1}; cancel_present={2}" -f $statusText, $primaryLabel, ($null -ne $cancelButton))
                     $okReady = $true
                     break
                 }
