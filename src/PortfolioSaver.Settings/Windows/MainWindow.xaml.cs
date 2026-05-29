@@ -34,6 +34,15 @@ public partial class MainWindow : Window
 
     private void OnCloseRequested()
     {
+        if (!Dispatcher.CheckAccess())
+        {
+            _ = Dispatcher.InvokeAsync(OnCloseRequested, DispatcherPriority.Send);
+            return;
+        }
+
+        if (IsVisible)
+            Hide();
+
         Close();
     }
 

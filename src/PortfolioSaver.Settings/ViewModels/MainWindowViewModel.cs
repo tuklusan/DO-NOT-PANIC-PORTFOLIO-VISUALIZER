@@ -64,7 +64,8 @@ public sealed class MainWindowViewModel : BindableBase
             _settings.Groups.Select(group => new TickerGroupEditorViewModel(group, RemoveGroup)));
         ValidationLogText = string.Empty;
 
-        PrimaryCommand = new RelayCommand(() => _ = ExecutePrimaryAsync(), () => !_isApplying && IsNetworkAvailable);
+        PrimaryCommand = new RelayCommand(() => _ = ExecutePrimaryAsync(), () => CanExecuteValidate());
+        OkCommand = new RelayCommand(ExecuteOk, () => CanExecuteOk());
         CancelCommand = new RelayCommand(ExecuteCancel, () => CanExecuteCancel());
         RetryNetworkCommand = new RelayCommand(RetryConnectivity);
         AddGroupCommand = new RelayCommand(AddGroup, () => IsConfigActive);
@@ -123,7 +124,7 @@ public sealed class MainWindowViewModel : BindableBase
     public bool IsConfigActive => IsNetworkAvailable && !_isApplying;
     public bool ShowNetworkLockOverlay => !IsNetworkAvailable;
     public bool IsApplying => _isApplying;
-    public bool IsValidationActionEnabled => !_isApplying && IsNetworkAvailable;
+    public bool IsValidationActionEnabled => CanExecuteValidate();
 
     public bool IsValidated
     {
@@ -134,13 +135,15 @@ public sealed class MainWindowViewModel : BindableBase
                 return;
 
             RaisePropertyChanged(nameof(PrimaryButtonText));
+            RaisePropertyChanged(nameof(ShowValidateButton));
             RaisePropertyChanged(nameof(ShowValidatedActionButtons));
             RaisePropertyChanged(nameof(IsValidationActionEnabled));
             RaiseCommandCanExecuteChanged();
         }
     }
 
-    public string PrimaryButtonText => _isApplying ? "Validating..." : (IsValidated ? "OK" : "Validate");
+    public string PrimaryButtonText => _isApplying ? "Validating..." : "Validate";
+    public bool ShowValidateButton => !IsValidated;
     public bool ShowValidatedActionButtons => IsValidated && !_isApplying;
     public string VersionLabel => $"{PortfolioVersion.BaselineLabel} ({PortfolioVersion.SemanticVersion})";
     public string ValidationLogText
@@ -210,6 +213,7 @@ public sealed class MainWindowViewModel : BindableBase
 
     public ObservableCollection<TickerGroupEditorViewModel> Groups { get; }
     public RelayCommand PrimaryCommand { get; }
+    public RelayCommand OkCommand { get; }
     public RelayCommand CancelCommand { get; }
     public RelayCommand RetryNetworkCommand { get; }
     public RelayCommand AddGroupCommand { get; }
@@ -262,12 +266,6 @@ public sealed class MainWindowViewModel : BindableBase
     {
         if (_isApplying || _isValidationClosePending)
             return;
-
-        if (IsValidated)
-        {
-            ApplyValidatedConfiguration();
-            return;
-        }
 
         if (!EnsureValidationConnectivity())
         {
@@ -755,6 +753,7 @@ public sealed class MainWindowViewModel : BindableBase
     private void RaiseCommandCanExecuteChanged()
     {
         PrimaryCommand.RaiseCanExecuteChanged();
+        OkCommand.RaiseCanExecuteChanged();
         CancelCommand.RaiseCanExecuteChanged();
         AddGroupCommand.RaiseCanExecuteChanged();
     }
@@ -901,6 +900,20 @@ public sealed class MainWindowViewModel : BindableBase
             ? $"Filled {autoNamedCount} symbol name(s). "
             : string.Empty;
         StatusMessage = $"{namingText}Validation passed. Click OK to save/apply, or Cancel to discard.";
+    }
+
+    private bool CanExecuteValidate()
+        => !_isApplying && IsNetworkAvailable && !IsValidated;
+
+    private bool CanExecuteOk()
+        => !_isApplying && IsValidated;
+
+    private void ExecuteOk()
+    {
+        if (!CanExecuteOk())
+            return;
+
+        ApplyValidatedConfiguration();
     }
 
     private bool CanExecuteCancel()

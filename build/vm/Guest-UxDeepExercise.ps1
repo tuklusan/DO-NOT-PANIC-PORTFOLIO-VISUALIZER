@@ -1624,6 +1624,28 @@ function Find-ConfigWindow {
     return $null
 }
 
+function Find-ConfigWindowOwned {
+    param(
+        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process
+    )
+
+    foreach ($window in @(Get-ProcessOwnedWindows -Process $Process)) {
+        try {
+            $title = [string]$window.Current.Name
+            $automationId = [string]$window.Current.AutomationId
+            if ($automationId -eq 'ConfigMainWindow' -or
+                $title -like '*PORTFOLIO VISUALIZER Config*') {
+                return $window
+            }
+        }
+        catch {
+            continue
+        }
+    }
+
+    return $null
+}
+
 function Get-ProcessOwnedWindows {
     param(
         [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process
@@ -1971,13 +1993,22 @@ function Validate-AndCloseConfigWindow {
 
             $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
             if ($null -ne $Window) {
-                $primaryButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigPrimaryButton'
+                $okButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigOkButton'
+                if ($null -eq $okButton) {
+                    $okButton = Find-DescendantByNameAndControlType -Root $Window -Name 'OK' -ControlType ([System.Windows.Automation.ControlType]::Button)
+                }
                 $cancelButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigCancelButton'
-                $primaryLabel = if ($null -ne $primaryButton) { [string]$primaryButton.Current.Name } else { '' }
+                if ($null -eq $cancelButton) {
+                    $cancelButton = Find-DescendantByNameAndControlType -Root $Window -Name 'Cancel' -ControlType ([System.Windows.Automation.ControlType]::Button)
+                }
+                $primaryLabel = if ($null -ne $okButton) { [string]$okButton.Current.Name } else { '' }
                 $validatedStatusReady = -not [string]::IsNullOrWhiteSpace($statusText) -and
                     $statusText -like '*Validation passed. Click OK to save/apply, or Cancel to discard.*'
-                if (($primaryLabel -eq 'OK' -and $null -ne $cancelButton) -or $validatedStatusReady) {
+                if (($null -ne $okButton -and ($CompletionMode -eq 'Apply' -or $null -ne $cancelButton)) -or $validatedStatusReady) {
                     Write-ConfigWindowTrace -Event 'ValidateOkReady' -Details ("status={0}; primary_label={1}; cancel_present={2}; mode={3}" -f $statusText, $primaryLabel, ($null -ne $cancelButton), $CompletionMode)
+                    if ($null -ne $okButton) {
+                        $primaryButton = $okButton
+                    }
                     $okReady = $true
                     break
                 }
@@ -1999,6 +2030,9 @@ function Validate-AndCloseConfigWindow {
         $invokeFailedEvent = 'OkButtonInvokeFailed'
         if ($CompletionMode -eq 'Cancel') {
             $cancelButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigCancelButton'
+            if ($null -eq $cancelButton) {
+                $cancelButton = Find-DescendantByNameAndControlType -Root $Window -Name 'Cancel' -ControlType ([System.Windows.Automation.ControlType]::Button)
+            }
             if ($null -eq $cancelButton) {
                 Write-ConfigWindowTrace -Event 'CancelButtonMissing'
                 return $false
@@ -2028,7 +2062,7 @@ function Validate-AndCloseConfigWindow {
         do {
             Start-Sleep -Milliseconds 200
             $Process.Refresh()
-            $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
+            $Window = Find-ConfigWindowOwned -Process $Process
         } while ($null -ne $Window -and (Get-Date) -lt $closeDeadline)
 
         if ($null -eq $Window) {
@@ -2300,7 +2334,8 @@ try {
         Test-ConfigPhaseBudget -StartedAt $configPhaseStartedAt -Stage 'validate-close'
         $configClosedNaturally = Validate-AndCloseConfigWindow -Process $desktop -Window $window -CompletionMode $ValidationCompletionMode
         if ($configClosedNaturally) {
-            $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 2
+            Start-Sleep -Milliseconds 200
+            $window = Find-ConfigWindowOwned -Process $desktop
             if ($null -ne $window) {
                 $configClosedNaturally = $false
             }

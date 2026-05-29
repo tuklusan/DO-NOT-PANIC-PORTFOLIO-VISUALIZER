@@ -65,7 +65,9 @@ public sealed class MainWindowViewModelValidationTests
         InvokePrivate<object?>(vm, "OnEditorChanged", [null, new PropertyChangedEventArgs(nameof(TickerItemEditorViewModel.ValidationState))]);
 
         Assert.True(vm.IsValidated);
-        Assert.Equal("OK", vm.PrimaryButtonText);
+        Assert.Equal("Validate", vm.PrimaryButtonText);
+        Assert.False(vm.ShowValidateButton);
+        Assert.True(vm.ShowValidatedActionButtons);
         Assert.Equal("fingerprint", GetPrivateField<string>(vm, "_validatedFingerprint"));
         Assert.True(GetPrivateField<bool>(vm, "_allowClose"));
     }
@@ -119,7 +121,9 @@ public sealed class MainWindowViewModelValidationTests
         await task;
 
         Assert.True(vm.IsValidated);
-        Assert.Equal("OK", vm.PrimaryButtonText);
+        Assert.Equal("Validate", vm.PrimaryButtonText);
+        Assert.False(vm.ShowValidateButton);
+        Assert.True(vm.ShowValidatedActionButtons);
         Assert.Equal("idle-fingerprint", GetPrivateField<string>(vm, "_validatedFingerprint"));
         Assert.Equal("Validation passed. Click OK to save/apply, or Cancel to discard.", vm.StatusMessage);
     }
@@ -242,6 +246,7 @@ public sealed class MainWindowViewModelValidationTests
             "MainWindowViewModel.cs"));
 
         Assert.Contains("Validation passed. Click OK to save/apply, or Cancel to discard.", source, StringComparison.Ordinal);
+        Assert.Contains("public bool ShowValidateButton => !IsValidated;", source, StringComparison.Ordinal);
         Assert.Contains("public bool ShowValidatedActionButtons => IsValidated && !_isApplying;", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Saving and closing now.", source, StringComparison.Ordinal);
     }
