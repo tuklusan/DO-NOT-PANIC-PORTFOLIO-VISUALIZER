@@ -2381,6 +2381,11 @@ public partial class ScreensaverSceneControl : UserControl
             _statusViewModel.UpdatedSymbolText = latestUpdatedSymbol;
             _statusViewModel.UpdatedAgeText = TimeFormatHelper.ToAgeString(latestUpdatedFetchUtc);
             _statusViewModel.UpdatedSymbolForeground = ResolveUpdatedSymbolBrush(latestUpdatedSymbol);
+            decimal? changePercent = _latestQuotes.TryGetValue(latestUpdatedSymbol, out QuoteSnapshot? updatedQuote)
+                ? updatedQuote.ChangePercent
+                : null;
+            _statusViewModel.UpdatedTickerFieldText = StartupCoordinator.FormatUpdatedTickerField(latestUpdatedSymbol, changePercent, latestUpdatedFetchUtc);
+            _statusViewModel.UpdatedTickerFieldForeground = StartupCoordinator.ResolveUpdatedTickerFieldBrush(changePercent);
             return;
         }
 
@@ -2391,6 +2396,8 @@ public partial class ScreensaverSceneControl : UserControl
         _statusViewModel.UpdatedSymbolText = string.Empty;
         _statusViewModel.UpdatedAgeText = "--";
         _statusViewModel.UpdatedSymbolForeground = Brushes.Gainsboro;
+        _statusViewModel.UpdatedTickerFieldText = StartupCoordinator.FormatUpdatedTickerField(null, null, DateTimeOffset.MinValue);
+        _statusViewModel.UpdatedTickerFieldForeground = Brushes.Gainsboro;
     }
 
     private Brush ResolveUpdatedSymbolBrush(string symbol)
@@ -2405,6 +2412,7 @@ public partial class ScreensaverSceneControl : UserControl
             _ => Brushes.Gainsboro
         };
     }
+
 
     private static IReadOnlyDictionary<string, QuoteSnapshot> MergeQuotes(
         IReadOnlyDictionary<string, QuoteSnapshot> existing,

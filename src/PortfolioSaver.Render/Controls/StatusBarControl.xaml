@@ -33,20 +33,15 @@
                            LineHeight="15" />
                 <StackPanel Orientation="Horizontal"
                             Margin="0,2,0,0"
-                            MaxWidth="196">
+                            MaxWidth="208">
                     <TextBlock Text="{Binding UpdatedPrefixText}"
                                Foreground="#D2DFEB"
                                FontFamily="{StaticResource StableClockFont}"
                                TextWrapping="NoWrap"
                                TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding UpdatedSymbolText}"
-                               Foreground="{Binding UpdatedSymbolForeground}"
-                               FontFamily="{StaticResource StableClockFont}"
-                               Margin="4,0,0,0"
-                               TextWrapping="NoWrap"
-                               TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding UpdatedAgeText}"
-                               Foreground="#D2DFEB"
+                    <TextBlock Text="{Binding UpdatedTickerFieldText}"
+                               Width="182"
+                               Foreground="{Binding UpdatedTickerFieldForeground}"
                                FontFamily="{StaticResource StableClockFont}"
                                Margin="4,0,0,0"
                                TextWrapping="NoWrap"
@@ -72,7 +67,7 @@
                                 CornerRadius="8"
                                 Padding="4,3"
                                 Margin="0,0,4,0"
-                                Width="88">
+                                Width="96">
                             <Grid VerticalAlignment="Center">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="24" />
@@ -108,8 +103,8 @@
                                                TextAlignment="Left" />
                                     <Grid Grid.Row="1">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="30" />
-                                            <ColumnDefinition Width="22" />
+                                            <ColumnDefinition Width="34" />
+                                            <ColumnDefinition Width="26" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="{Binding ValueText}"
                                                    Foreground="White"

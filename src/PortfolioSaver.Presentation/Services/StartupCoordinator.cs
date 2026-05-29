@@ -1121,6 +1121,8 @@ public sealed class StartupCoordinator
             MarketStatusText = "Market (New York): --",
             ProviderText = $"Provider: {providerLabel}",
             UpdatedText = FormatUpdatedText(hasLatestUpdatedSymbol ? latestUpdatedSymbol : null, lastUpdate),
+            UpdatedTickerFieldText = FormatUpdatedTickerField(hasLatestUpdatedSymbol ? latestUpdatedSymbol : null, hasLatestUpdatedSymbol ? quotes.GetValueOrDefault(latestUpdatedSymbol)?.ChangePercent : null, lastUpdate),
+            UpdatedTickerFieldForeground = ResolveUpdatedTickerFieldBrush(hasLatestUpdatedSymbol ? quotes.GetValueOrDefault(latestUpdatedSymbol)?.ChangePercent : null),
             ClockDateText = nowUtc.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
             ClockText = $"{nowUtc:HH:mm} UTC"
         };
@@ -1156,6 +1158,33 @@ public sealed class StartupCoordinator
             ? age
             : $"{latestSymbol} {age}";
     }
+
+    public static string FormatUpdatedTickerField(string? latestSymbol, decimal? changePercent, DateTimeOffset fetchUtc)
+    {
+        string age = fetchUtc > DateTimeOffset.MinValue
+            ? TimeFormatHelper.ToAgeString(fetchUtc)
+            : "--";
+        string percentText = changePercent is decimal percent
+            ? $"{(percent >= 0m ? "+" : string.Empty)}{percent:0.00}%"
+            : string.Empty;
+        string content = string.IsNullOrWhiteSpace(latestSymbol)
+            ? age
+            : string.IsNullOrWhiteSpace(percentText)
+                ? $"{latestSymbol} {age}"
+                : $"{latestSymbol} {percentText} {age}";
+
+        return content.Length >= 25
+            ? content[..25]
+            : content.PadRight(25);
+    }
+
+    public static Brush ResolveUpdatedTickerFieldBrush(decimal? changePercent)
+        => changePercent switch
+        {
+            > 0m => Brushes.LimeGreen,
+            < 0m => Brushes.OrangeRed,
+            _ => Brushes.Gainsboro
+        };
 }
 
 

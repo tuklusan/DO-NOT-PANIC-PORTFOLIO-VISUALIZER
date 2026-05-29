@@ -13,6 +13,8 @@ public sealed class StatusBarViewModel : BindableBase
     private string _updatedSymbolText = string.Empty;
     private string _updatedAgeText = "--";
     private Brush _updatedSymbolForeground = Brushes.Gainsboro;
+    private string _updatedTickerFieldText = string.Empty;
+    private Brush _updatedTickerFieldForeground = Brushes.Gainsboro;
     private string _clockDateText = DateTime.Now.ToString("ddd dd-MMM-yyyy").ToUpperInvariant();
     private string _clockText = DateTime.Now.ToLongTimeString();
     private ObservableCollection<MacroMeterViewModel> _macroMeters = [];
@@ -57,6 +59,18 @@ public sealed class StatusBarViewModel : BindableBase
     {
         get => _updatedSymbolForeground;
         set => SetProperty(ref _updatedSymbolForeground, value);
+    }
+
+    public string UpdatedTickerFieldText
+    {
+        get => _updatedTickerFieldText;
+        set => SetProperty(ref _updatedTickerFieldText, value);
+    }
+
+    public Brush UpdatedTickerFieldForeground
+    {
+        get => _updatedTickerFieldForeground;
+        set => SetProperty(ref _updatedTickerFieldForeground, value);
     }
 
     public string ClockText
