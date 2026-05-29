@@ -552,6 +552,24 @@
         "Verify whether some tape groups are present in the rendered scene but absent from the refresh candidate pool after recent YFinance-only and single-source cleanup work.",
         "Close this ticket only after a canonical VM rerun shows all visible tape lanes progressively filling with live values, not just the first or easiest subset, while preserving the now-working graph-card and macro/global-exchange behavior."
       ]
+    },
+    {
+      "id": "NB-046",
+      "tracking_number": "NB-046",
+      "priority": 2,
+      "area": "ui_polish",
+      "title": "Stabilize macro-card clipping and Last Updated ribbon layout",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested a follow-up ticket covering macro-card value clipping, richer Last Updated ticker display, and fixed-width layout so the top-left ribbon does not shift based on symbol length."
+      ],
+      "notes": [
+        "Fix macro cards so the change/value text no longer gets chopped off at the right edge.",
+        "Extend the top-left Last Updated ticker display so it also shows change percent in the same red/green color treatment as the associated ticker change.",
+        "Use a fixed-width 25-character field for the Last Updated ticker/status segment so the entire top-left ribbon does not reflow based on ticker symbol length or updated-time text length.",
+        "Validate the result visually in the canonical VM flow so the top-left ribbon stays stable while symbols rotate and update."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
@@ -1407,4 +1425,3 @@
     }
   ]
 }
-
