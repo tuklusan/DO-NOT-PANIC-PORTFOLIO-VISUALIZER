@@ -242,6 +242,9 @@ internal static class Program
             string launcherPath = Path.Combine(scriptsPath, $"agent-launch-{resultName}.cmd");
             int duration = command.Payload?.ScreensaverDurationMinutes ?? 20;
             int captureInterval = command.Payload?.CaptureIntervalSeconds ?? 5;
+            string validationCompletionMode = string.Equals(command.Payload?.ValidationCompletionMode, "Cancel", StringComparison.OrdinalIgnoreCase)
+                ? "Cancel"
+                : "Apply";
             int? displayWidth = command.Payload?.DisplayWidth;
             int? displayHeight = command.Payload?.DisplayHeight;
             string? displayProfile = command.Payload?.DisplayProfile;
@@ -260,7 +263,7 @@ internal static class Program
             {
                 "@echo off",
                 $"cd /d \"{_rootPath}\"",
-                $"\"{_pwshPath}\" -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"{_uxScript}\" -RootPath \"{_rootPath}\" -ResultName \"{resultName}\" -ResultRootPath \"{resultRoot}\" -ScreensaverDurationMinutes {duration} -CaptureIntervalSeconds {captureInterval}{displayArguments} 1>\"{stdoutPath}\" 2>\"{stderrPath}\""
+                $"\"{_pwshPath}\" -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"{_uxScript}\" -RootPath \"{_rootPath}\" -ResultName \"{resultName}\" -ResultRootPath \"{resultRoot}\" -ValidationCompletionMode \"{validationCompletionMode}\" -ScreensaverDurationMinutes {duration} -CaptureIntervalSeconds {captureInterval}{displayArguments} 1>\"{stdoutPath}\" 2>\"{stderrPath}\""
             });
             File.WriteAllText(launcherPath, launcherContents);
 
@@ -433,6 +436,7 @@ internal static class Program
         public string? ResultRootPath { get; set; }
         public int? ScreensaverDurationMinutes { get; set; }
         public int? CaptureIntervalSeconds { get; set; }
+        public string? ValidationCompletionMode { get; set; }
         public int? DisplayWidth { get; set; }
         public int? DisplayHeight { get; set; }
         public string? DisplayProfile { get; set; }

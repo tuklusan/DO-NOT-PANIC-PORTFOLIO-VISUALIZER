@@ -71,6 +71,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Guest-ConfigureDesktopAutomation.ps1", script, StringComparison.Ordinal);
         Assert.Contains("Guest-ApplyTestSecrets.ps1", script, StringComparison.Ordinal);
         Assert.Contains("[ValidateRange(1, 10080)]", script, StringComparison.Ordinal);
+        Assert.Contains("[ValidateSet('Apply', 'Cancel')]", script, StringComparison.Ordinal);
+        Assert.Contains("[string]$ValidationCompletionMode = 'Apply'", script, StringComparison.Ordinal);
         Assert.Contains("[int]$DisplayWidth", script, StringComparison.Ordinal);
         Assert.Contains("[int]$DisplayHeight", script, StringComparison.Ordinal);
         Assert.Contains("[string]$DisplayProfile", script, StringComparison.Ordinal);
@@ -84,6 +86,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Desktop-session agent start attempt failed once; retrying.", script, StringComparison.Ordinal);
         Assert.Contains("Set-Content -LiteralPath $localAgentCommandPath -Encoding UTF8", script, StringComparison.Ordinal);
         Assert.Contains("Send-VmItem -Bundle $bundle -LocalPath $localAgentCommandPath", script, StringComparison.Ordinal);
+        Assert.Contains("ValidationCompletionMode = $ValidationCompletionMode", script, StringComparison.Ordinal);
         Assert.Contains("DisplayWidth = if ($DisplayWidth -gt 0) { $DisplayWidth } else { $null }", script, StringComparison.Ordinal);
         Assert.Contains("DisplayHeight = if ($DisplayHeight -gt 0) { $DisplayHeight } else { $null }", script, StringComparison.Ordinal);
         Assert.Contains("DisplayProfile = if (-not [string]::IsNullOrWhiteSpace($DisplayProfile)) { $DisplayProfile } else { $null }", script, StringComparison.Ordinal);

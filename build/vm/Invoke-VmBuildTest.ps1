@@ -5,6 +5,8 @@ param(
     [switch]$Bootstrap,
     [switch]$PushWorkspace,
     [switch]$RunUxDeep,
+    [ValidateSet('Apply', 'Cancel')]
+    [string]$ValidationCompletionMode = 'Apply',
     [ValidateRange(1, 10080)]
     [int]$GuestScreensaverDurationMinutes = 20,
     [ValidateRange(1, 3600)]
@@ -182,6 +184,7 @@ if (Test-Path '$remoteAgentStatus') {
                 ResultRootPath = (Join-Path $RootPath 'results')
                 ScreensaverDurationMinutes = $GuestScreensaverDurationMinutes
                 CaptureIntervalSeconds = $CaptureIntervalSeconds
+                ValidationCompletionMode = $ValidationCompletionMode
                 DisplayWidth = if ($DisplayWidth -gt 0) { $DisplayWidth } else { $null }
                 DisplayHeight = if ($DisplayHeight -gt 0) { $DisplayHeight } else { $null }
                 DisplayProfile = if (-not [string]::IsNullOrWhiteSpace($DisplayProfile)) { $DisplayProfile } else { $null }
