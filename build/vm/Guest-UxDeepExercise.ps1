@@ -2115,7 +2115,13 @@ function Validate-AndCloseConfigWindow {
 
         try {
             $invoked = $false
-            if ($Window -and (Focus-AutomationElement -Element $Window)) {
+            if ($Window) {
+                try {
+                    $Window.SetFocus()
+                }
+                catch {
+                }
+
                 $keys = if ($CompletionMode -eq 'Cancel') { @('{ESC}') } else { @('{ENTER}') }
                 Send-KeySequence -Keys $keys -DelayMilliseconds 80
                 Write-ConfigWindowTrace -Event 'ValidatedKeyboardCloseAttempt' -Details ("mode={0}; key={1}" -f $CompletionMode, $keys[0])
