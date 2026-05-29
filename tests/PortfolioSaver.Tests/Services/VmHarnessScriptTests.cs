@@ -183,6 +183,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[System.Windows.Automation.AutomationElement]::RootElement.FindAll(", script, StringComparison.Ordinal);
         Assert.Contains("[System.Windows.Automation.TreeScope]::Children", script, StringComparison.Ordinal);
         Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')", script, StringComparison.Ordinal);
+        Assert.Contains("@{ Name = 'Escape'; Key = '{ESC}'; UseMenu = $false }", script, StringComparison.Ordinal);
+        Assert.Contains("@{ Name = 'F11'; Key = '{F11}'; UseMenu = $false }", script, StringComparison.Ordinal);
+        Assert.Contains("@{ Name = 'MenuToggle'; Key = $null; UseMenu = $true }", script, StringComparison.Ordinal);
         Assert.Contains("Capture-Screen -Path (Join-Path $results (\"config-tab-{0:D3}-{1}-scrolled.png\"", script, StringComparison.Ordinal);
         Assert.Contains("return Perform-VisibleScrollSequence -Window $Window -TabName $TabName -PageDownCount $pageDownCount", script, StringComparison.Ordinal);
         Assert.Contains("Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, [Math]::Min(2, $PageDownCount)))", script, StringComparison.Ordinal);

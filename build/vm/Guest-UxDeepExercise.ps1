@@ -2531,12 +2531,33 @@ try {
         Write-SummaryFiles
 
         [void](Focus-ProcessWindow -Process $desktop)
-        try { [System.Windows.Forms.SendKeys]::SendWait('{ESC}') } catch {}
-        $windowedDeadline = (Get-Date).AddSeconds(8)
-        do {
-            Start-Sleep -Milliseconds 350
-            $stillFullScreen = Test-IsTrueFullscreen -Process $desktop
-        } while ($stillFullScreen -and (Get-Date) -lt $windowedDeadline)
+        $stillFullScreen = $true
+        foreach ($exitAttempt in @(
+            @{ Name = 'Escape'; Key = '{ESC}'; UseMenu = $false },
+            @{ Name = 'F11'; Key = '{F11}'; UseMenu = $false },
+            @{ Name = 'MenuToggle'; Key = $null; UseMenu = $true }
+        )) {
+            if (-not $stillFullScreen) { break }
+
+            if ($exitAttempt.UseMenu) {
+                $desktopWindow = Find-DescendantByAutomationId -Root ([System.Windows.Automation.AutomationElement]::RootElement) -AutomationId 'DesktopMainWindow'
+                if ($null -ne $desktopWindow) {
+                    $toggleMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'ViewFullScreenMenuItem'
+                    if ($null -ne $toggleMenuItem) {
+                        [void](Invoke-AutomationElement -Element $toggleMenuItem)
+                    }
+                }
+            }
+            else {
+                try { [System.Windows.Forms.SendKeys]::SendWait([string]$exitAttempt.Key) } catch {}
+            }
+
+            $windowedDeadline = (Get-Date).AddSeconds(4)
+            do {
+                Start-Sleep -Milliseconds 350
+                $stillFullScreen = Test-IsTrueFullscreen -Process $desktop
+            } while ($stillFullScreen -and (Get-Date) -lt $windowedDeadline)
+        }
         $desktopWindowed = Join-Path $results 'desktop-windowed-after-esc.png'
         Capture-Screen -Path $desktopWindowed
         $summary.DesktopShots++
