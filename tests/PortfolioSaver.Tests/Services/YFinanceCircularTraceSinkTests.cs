@@ -18,8 +18,6 @@ public sealed class YFinanceCircularTraceSinkTests
             string traceFilePath = Path.Combine(traceDirectory, "yfinance.circular.log");
             string traceIndexPath = Path.Combine(traceDirectory, "yfinance.circular.idx");
             Directory.CreateDirectory(traceDirectory);
-            File.Delete(traceFilePath);
-            File.Delete(traceIndexPath);
             string marker = "yfinance-trace-test-" + Guid.NewGuid().ToString("N");
 
             YFinanceCircularTraceSink.Instance.InfoState(
