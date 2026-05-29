@@ -1629,7 +1629,32 @@ function Find-ConfigWindowOwned {
         [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process
     )
 
+    $win32Matches = @(Find-Win32TopLevelWindowLike -ProcessId $Process.Id -TitleFragment 'PORTFOLIO VISUALIZER Config')
+    if ($win32Matches.Count -gt 0) {
+        try {
+            $window = [System.Windows.Automation.AutomationElement]::FromHandle($win32Matches[0].Handle)
+            if ($null -ne $window) {
+                return $window
+            }
+        }
+        catch {}
+    }
+
     foreach ($window in @(Get-ProcessOwnedWindows -Process $Process)) {
+        try {
+            $title = [string]$window.Current.Name
+            $automationId = [string]$window.Current.AutomationId
+            if ($automationId -eq 'ConfigMainWindow' -or
+                $title -like '*PORTFOLIO VISUALIZER Config*') {
+                return $window
+            }
+        }
+        catch {
+            continue
+        }
+    }
+
+    foreach ($window in @(Get-TopLevelWindowsForProcess -Process $Process)) {
         try {
             $title = [string]$window.Current.Name
             $automationId = [string]$window.Current.AutomationId
@@ -2168,11 +2193,11 @@ function Validate-AndCloseConfigWindow {
                     $invoked = Click-AutomationElementCenter -Element $targetButton
                 }
             }
-            if (-not $invoked) {
-                $invoked = Click-ConfigFooterButtonFallback -Window $Window -CompletionMode $CompletionMode
-            }
             if (-not $invoked -and $CompletionMode -eq 'Cancel') {
                 $invoked = Click-ConfigCloseButtonFallback -Window $Window
+            }
+            if (-not $invoked) {
+                $invoked = Click-ConfigFooterButtonFallback -Window $Window -CompletionMode $CompletionMode
             }
             Write-ConfigWindowTrace -Event $invokeEvent -Details ("result={0}; mode={1}" -f $invoked, $CompletionMode)
             if (-not $invoked) {

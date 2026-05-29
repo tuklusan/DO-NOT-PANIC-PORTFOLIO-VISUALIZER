@@ -411,7 +411,7 @@
       "priority": 1,
       "area": "startup_quotes",
       "title": "Startup quote hydration is too slow to populate visible values during short VM UX runs",
-      "status": "open",
+      "status": "resolved",
       "source": "visible_validation_sequence",
       "evidence": [
         "In build/vm/artifacts/ssh-runs/ux-deep-ssh-20260520-165421, the desktop UI remained on Loading initial values while tape cards still showed waiting glyphs and no populated values in the captured VM screenshots.",
@@ -483,7 +483,8 @@
         "Keep simulated user-action spacing at or below 500 milliseconds during config exercise unless a modal/system wait genuinely requires more time.",
         "Make Advanced and other long config tabs visibly scroll while the harness is exercising controls so the UI activity is apparent in screenshots and live observation.",
         "Prefer human-like keyboard and mouse interaction over brittle deep UIAutomation crawling where possible, while keeping the Validate-and-close flow reliable.",
-        "Close the ticket only after the canonical VM proof shows visible config-tab activity with scrolling captures and no regression in Validate/close behavior."
+        "Close the ticket only after the canonical VM proof shows visible config-tab activity with scrolling captures and no regression in Validate/close behavior.",
+        "Resolved on 2026-05-30 by hardening Guest-UxDeepExercise to reacquire the config window via Win32/UIA matching, keep tab traversal visibly scrolled, trace every config-window event, and complete the config phase successfully in the canonical VM proof bundle ux-deep-ssh-20260530-010712."
       ]
     },
     {
@@ -513,7 +514,7 @@
       "priority": 1,
       "area": "config_validation_workflow",
       "title": "Replace post-validation auto-close with explicit OK and Cancel workflow",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested that, after successful validation, the single Validate button should transition into an explicit OK and Cancel choice instead of immediately saving and closing the config window.",
@@ -526,7 +527,8 @@
         "Audit the current MainWindowViewModel validation, save, and close sequence so the new workflow does not regress the now-stable Validation Required avoidance path.",
         "Update the VM harness config exerciser so it can explicitly detect the post-validation OK/Cancel state and drive both buttons intentionally rather than assuming auto-close on validation success.",
         "Update local regression coverage and harness-visible tests so both branches are exercised: Validate then OK should persist and apply changes; Validate then Cancel should dismiss without applying changes.",
-        "Close this ticket only after the canonical VM proof demonstrates the new post-validation button state, a working OK apply path, and a working Cancel dismissal path."
+        "Close this ticket only after the canonical VM proof demonstrates the new post-validation button state, a working OK apply path, and a working Cancel dismissal path.",
+        "Resolved on 2026-05-30 by switching the config workflow to explicit OK/Cancel after validation, updating the harness to drive both validated Apply and validated Cancel paths, and proving both flows in canonical VM runs including ux-deep-ssh-20260529-234155 (Apply) and ux-deep-ssh-20260530-010712 (Cancel)."
       ]
     },
     {
@@ -535,7 +537,7 @@
       "priority": 1,
       "area": "ticker_tape_runtime_population",
       "title": "Progressive runtime quote loop is leaving some visible tape symbols without populated values",
-      "status": "open",
+      "status": "resolved",
       "source": "vm_1_to_7_rerun",
       "evidence": [
         "During the fresh 1-7 VM rerun on 2026-05-21, the desktop scene showed moving graph cards and some live tape values, but multiple user-visible tape positions still rendered symbol-only placeholders without quote values.",
@@ -550,7 +552,8 @@
         "Instrument the runtime more deeply if needed so each tape lane reports: visible symbols, symbols considered due, symbols actually requested, symbols returned, and symbols finally applied to the rendered lane.",
         "Verify whether duplicate symbols across tapes, ancillary symbol deduplication, or lane ordering are starving some tape symbols indefinitely under the current 500 ms progressive cadence.",
         "Verify whether some tape groups are present in the rendered scene but absent from the refresh candidate pool after recent YFinance-only and single-source cleanup work.",
-        "Close this ticket only after a canonical VM rerun shows all visible tape lanes progressively filling with live values, not just the first or easiest subset, while preserving the now-working graph-card and macro/global-exchange behavior."
+        "Close this ticket only after a canonical VM rerun shows all visible tape lanes progressively filling with live values, not just the first or easiest subset, while preserving the now-working graph-card and macro/global-exchange behavior.",
+        "Resolved on 2026-05-30 after the one-by-one runtime loop and single-source cleanup were revalidated in canonical VM proof ux-deep-ssh-20260530-010712, where all four visible tape lanes rendered live values and the trace explicitly showed formerly-missing symbols such as QUAL, VLUE, SIZE, USMV, INTF, EMGF, XLF, XLY, XLE, SMH, and CIBR being requested and completed."
       ]
     },
     {
