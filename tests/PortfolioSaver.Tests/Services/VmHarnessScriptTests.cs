@@ -166,9 +166,10 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$statusText -like '*Validation passed. Click OK to save/apply, or Cancel to discard.*'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'ValidateOkReady'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'PrimaryButtonInvoked'", script, StringComparison.Ordinal);
-        Assert.Contains("Write-ConfigWindowTrace -Event 'OkButtonInvoked'", script, StringComparison.Ordinal);
+        Assert.Contains("$invokeEvent = 'OkButtonInvoked'", script, StringComparison.Ordinal);
+        Assert.Contains("$invokeEvent = 'CancelButtonInvoked'", script, StringComparison.Ordinal);
         Assert.Contains("throw 'Validate did not close the config window automatically.'", script, StringComparison.Ordinal);
-        Assert.Contains("Validate-AndCloseConfigWindow -Process $desktop -Window $window", script, StringComparison.Ordinal);
+        Assert.Contains("Validate-AndCloseConfigWindow -Process $desktop -Window $window -CompletionMode $ValidationCompletionMode", script, StringComparison.Ordinal);
         Assert.Contains("Close-ConfigWindowIfPresent -Process $desktop -Window $window", script, StringComparison.Ordinal);
         Assert.Contains("[System.Windows.Automation.AutomationElement]::RootElement.FindAll(", script, StringComparison.Ordinal);
         Assert.Contains("[System.Windows.Automation.TreeScope]::Children", script, StringComparison.Ordinal);
@@ -227,6 +228,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[int]$DisplayWidth", script, StringComparison.Ordinal);
         Assert.Contains("[int]$DisplayHeight", script, StringComparison.Ordinal);
         Assert.Contains("[string]$DisplayProfile = 'default'", script, StringComparison.Ordinal);
+        Assert.Contains("[ValidateSet('Apply', 'Cancel')]", script, StringComparison.Ordinal);
+        Assert.Contains("[string]$ValidationCompletionMode = 'Apply'", script, StringComparison.Ordinal);
         Assert.Contains("$root = $RootPath", script, StringComparison.Ordinal);
         Assert.Contains("$summary.ExportMode = 'LocalWorkspace'", script, StringComparison.Ordinal);
         Assert.Contains("$localTraceTarget = Join-Path $results 'trace'", script, StringComparison.Ordinal);

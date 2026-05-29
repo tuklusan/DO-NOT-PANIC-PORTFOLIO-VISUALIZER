@@ -6,6 +6,8 @@ param(
     [int]$DisplayWidth,
     [int]$DisplayHeight,
     [string]$DisplayProfile = 'default',
+    [ValidateSet('Apply', 'Cancel')]
+    [string]$ValidationCompletionMode = 'Apply',
     [string]$RootPath = (Join-Path $env:USERPROFILE 'Desktop\PortfolioVmUx'),
     [string]$ResultName = ('ux-deep-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
     [string]$ResultRootPath
@@ -1915,7 +1917,9 @@ function Get-ConfigStatusText {
 function Validate-AndCloseConfigWindow {
     param(
         [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process,
-        $Window
+        $Window,
+        [ValidateSet('Apply', 'Cancel')]
+        [string]$CompletionMode = 'Apply'
     )
 
     for ($attempt = 0; $attempt -lt 2; $attempt++) {
@@ -1973,7 +1977,7 @@ function Validate-AndCloseConfigWindow {
                 $validatedStatusReady = -not [string]::IsNullOrWhiteSpace($statusText) -and
                     $statusText -like '*Validation passed. Click OK to save/apply, or Cancel to discard.*'
                 if (($primaryLabel -eq 'OK' -and $null -ne $cancelButton) -or $validatedStatusReady) {
-                    Write-ConfigWindowTrace -Event 'ValidateOkReady' -Details ("status={0}; primary_label={1}; cancel_present={2}" -f $statusText, $primaryLabel, ($null -ne $cancelButton))
+                    Write-ConfigWindowTrace -Event 'ValidateOkReady' -Details ("status={0}; primary_label={1}; cancel_present={2}; mode={3}" -f $statusText, $primaryLabel, ($null -ne $cancelButton), $CompletionMode)
                     $okReady = $true
                     break
                 }
@@ -1990,18 +1994,33 @@ function Validate-AndCloseConfigWindow {
             continue
         }
 
-        try {
-            $invoked = Invoke-AutomationElement -Element $primaryButton
-            if (-not $invoked) {
-                $invoked = Click-AutomationElementCenter -Element $primaryButton
+        $targetButton = $primaryButton
+        $invokeEvent = 'OkButtonInvoked'
+        $invokeFailedEvent = 'OkButtonInvokeFailed'
+        if ($CompletionMode -eq 'Cancel') {
+            $cancelButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigCancelButton'
+            if ($null -eq $cancelButton) {
+                Write-ConfigWindowTrace -Event 'CancelButtonMissing'
+                return $false
             }
-            Write-ConfigWindowTrace -Event 'OkButtonInvoked' -Details ("result={0}" -f $invoked)
+
+            $targetButton = $cancelButton
+            $invokeEvent = 'CancelButtonInvoked'
+            $invokeFailedEvent = 'CancelButtonInvokeFailed'
+        }
+
+        try {
+            $invoked = Invoke-AutomationElement -Element $targetButton
+            if (-not $invoked) {
+                $invoked = Click-AutomationElementCenter -Element $targetButton
+            }
+            Write-ConfigWindowTrace -Event $invokeEvent -Details ("result={0}; mode={1}" -f $invoked, $CompletionMode)
             if (-not $invoked) {
                 return $false
             }
         }
         catch {
-            Write-ConfigWindowTrace -Event 'OkButtonInvokeFailed' -Details $_.Exception.Message
+            Write-ConfigWindowTrace -Event $invokeFailedEvent -Details $_.Exception.Message
             return $false
         }
 
@@ -2279,7 +2298,7 @@ try {
         }
 
         Test-ConfigPhaseBudget -StartedAt $configPhaseStartedAt -Stage 'validate-close'
-        $configClosedNaturally = Validate-AndCloseConfigWindow -Process $desktop -Window $window
+        $configClosedNaturally = Validate-AndCloseConfigWindow -Process $desktop -Window $window -CompletionMode $ValidationCompletionMode
         if ($configClosedNaturally) {
             $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 2
             if ($null -ne $window) {
