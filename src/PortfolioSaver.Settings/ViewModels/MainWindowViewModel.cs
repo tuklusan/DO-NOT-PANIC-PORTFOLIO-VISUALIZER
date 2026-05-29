@@ -610,17 +610,7 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task OnStateTimerTickAsync()
     {
         UpdateConnectivityState();
-        if (!IsConfigActive)
-            return;
-
-        AppSettings candidateSettings = BuildCandidateSettings();
-
-        if (IsValidated)
-        {
-            string currentFingerprint = BuildFingerprint(candidateSettings);
-            if (!string.Equals(currentFingerprint, _validatedFingerprint, StringComparison.Ordinal))
-                InvalidateValidationState("Configuration changed. Click Validate.");
-        }
+        await Task.CompletedTask;
     }
 
     private AppSettings BuildCandidateSettings()
@@ -772,6 +762,11 @@ public sealed class MainWindowViewModel : BindableBase
     private void InvalidateValidationState(string statusMessage)
     {
         CancelValidatedCloseSequence();
+        TraceValidation(
+            "ValidationStateInvalidated",
+            ("status", statusMessage),
+            ("was_validated", IsValidated),
+            ("is_applying", _isApplying));
         IsValidated = false;
         _allowClose = false;
         _validatedFingerprint = string.Empty;
@@ -845,12 +840,24 @@ public sealed class MainWindowViewModel : BindableBase
     private void OnEditorChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (_isApplying)
+        {
+            TraceValidation(
+                "EditorChangeIgnored",
+                ("reason", "applying"),
+                ("property", e.PropertyName),
+                ("sender_type", sender?.GetType().Name ?? "<null>"));
             return;
+        }
 
         if (string.Equals(e.PropertyName, nameof(TickerItemEditorViewModel.ValidationState), StringComparison.Ordinal) ||
             string.Equals(e.PropertyName, nameof(TickerItemEditorViewModel.ValidationMessage), StringComparison.Ordinal) ||
             string.Equals(e.PropertyName, nameof(TickerItemEditorViewModel.ValidationBadgeText), StringComparison.Ordinal))
         {
+            TraceValidation(
+                "EditorChangeIgnored",
+                ("reason", "validation-status"),
+                ("property", e.PropertyName),
+                ("sender_type", sender?.GetType().Name ?? "<null>"));
             return;
         }
 
@@ -858,8 +865,21 @@ public sealed class MainWindowViewModel : BindableBase
         {
             string currentFingerprint = BuildFingerprint(BuildCandidateSettings());
             if (string.Equals(_validatedFingerprint, currentFingerprint, StringComparison.Ordinal))
+            {
+                TraceValidation(
+                    "EditorChangeIgnored",
+                    ("reason", "validated-fingerprint-match"),
+                    ("property", e.PropertyName),
+                    ("sender_type", sender?.GetType().Name ?? "<null>"));
                 return;
+            }
         }
+
+        TraceValidation(
+            "EditorChangeInvalidatesValidation",
+            ("property", e.PropertyName),
+            ("sender_type", sender?.GetType().Name ?? "<null>"),
+            ("is_validated", IsValidated));
 
         InvalidateValidationState("Configuration changed. Click Validate.");
     }

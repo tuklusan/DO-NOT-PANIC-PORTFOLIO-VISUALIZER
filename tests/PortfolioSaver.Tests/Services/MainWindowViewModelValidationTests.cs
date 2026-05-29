@@ -107,6 +107,23 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
+    public async Task OnStateTimerTickAsync_WhenValidated_DoesNotInvalidateIdleValidatedState()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "idle-fingerprint");
+        vm.StatusMessage = "Validation passed. Click OK to save/apply, or Cancel to discard.";
+
+        Task task = InvokePrivate<Task>(vm, "OnStateTimerTickAsync", []);
+        await task;
+
+        Assert.True(vm.IsValidated);
+        Assert.Equal("OK", vm.PrimaryButtonText);
+        Assert.Equal("idle-fingerprint", GetPrivateField<string>(vm, "_validatedFingerprint"));
+        Assert.Equal("Validation passed. Click OK to save/apply, or Cancel to discard.", vm.StatusMessage);
+    }
+
+    [Fact]
     public void UpdateConnectivityState_WhenConnectivityRecovers_ClearsInternetRequiredStatus()
     {
         FakeConnectivityService connectivity = new(initiallyAvailable: true);
