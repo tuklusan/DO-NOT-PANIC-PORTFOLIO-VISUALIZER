@@ -2126,10 +2126,11 @@ function Validate-AndCloseConfigWindow {
                 }
                 if ($null -eq $cancelButton) {
                     Write-ConfigWindowTrace -Event 'CancelButtonMissing'
-                    return $false
+                    $targetButton = $null
                 }
-
-                $targetButton = $cancelButton
+                else {
+                    $targetButton = $cancelButton
+                }
                 $invokeEvent = 'CancelButtonInvoked'
                 $invokeFailedEvent = 'CancelButtonInvokeFailed'
             }
