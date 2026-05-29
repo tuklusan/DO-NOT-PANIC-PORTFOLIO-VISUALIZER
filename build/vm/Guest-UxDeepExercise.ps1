@@ -1936,6 +1936,40 @@ function Get-ConfigStatusText {
     return $null
 }
 
+function Get-WindowButtonSnapshot {
+    param(
+        [Parameter(Mandatory = $true)]$Window
+    )
+
+    try {
+        $buttons = $Window.FindAll(
+            [System.Windows.Automation.TreeScope]::Descendants,
+            (New-Object System.Windows.Automation.PropertyCondition(
+                [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+                [System.Windows.Automation.ControlType]::Button)))
+
+        $snapshot = @()
+        for ($index = 0; $index -lt $buttons.Count; $index++) {
+            try {
+                $button = $buttons.Item($index)
+                $snapshot += ('{0}|{1}|enabled={2}|offscreen={3}' -f
+                    [string]$button.Current.AutomationId,
+                    [string]$button.Current.Name,
+                    $button.Current.IsEnabled,
+                    $button.Current.IsOffscreen)
+            }
+            catch {
+                continue
+            }
+        }
+
+        return [string]::Join('; ', $snapshot)
+    }
+    catch {
+        return ''
+    }
+}
+
 function Validate-AndCloseConfigWindow {
     param(
         [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process,
@@ -2005,7 +2039,8 @@ function Validate-AndCloseConfigWindow {
                 $validatedStatusReady = -not [string]::IsNullOrWhiteSpace($statusText) -and
                     $statusText -like '*Validation passed. Click OK to save/apply, or Cancel to discard.*'
                 if (($null -ne $okButton -and ($CompletionMode -eq 'Apply' -or $null -ne $cancelButton)) -or $validatedStatusReady) {
-                    Write-ConfigWindowTrace -Event 'ValidateOkReady' -Details ("status={0}; primary_label={1}; cancel_present={2}; mode={3}" -f $statusText, $primaryLabel, ($null -ne $cancelButton), $CompletionMode)
+                    $buttonSnapshot = Get-WindowButtonSnapshot -Window $Window
+                    Write-ConfigWindowTrace -Event 'ValidateOkReady' -Details ("status={0}; primary_label={1}; cancel_present={2}; mode={3}; buttons={4}" -f $statusText, $primaryLabel, ($null -ne $cancelButton), $CompletionMode, $buttonSnapshot)
                     if ($null -ne $okButton) {
                         $primaryButton = $okButton
                     }

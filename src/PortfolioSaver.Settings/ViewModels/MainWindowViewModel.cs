@@ -284,6 +284,7 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task ValidateConfigurationAsync()
     {
         BeginValidationRun();
+        bool completedValidatedState = false;
         try
         {
             AppSettings candidate = BuildCandidateSettings();
@@ -388,6 +389,8 @@ public sealed class MainWindowViewModel : BindableBase
                 .ToList();
             AppendValidationLog("VALIDATION PASSED");
             TraceValidation("ValidationPassed", ("auto_named_count", autoNamedCount));
+            EndValidationRun();
+            completedValidatedState = true;
             UpdateValidatedCloseStatus(autoNamedCount);
         }
         catch (Exception ex)
@@ -403,7 +406,8 @@ public sealed class MainWindowViewModel : BindableBase
         }
         finally
         {
-            EndValidationRun();
+            if (!completedValidatedState)
+                EndValidationRun();
         }
     }
 
