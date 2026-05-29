@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Threading;
 using PortfolioSaver.Config.Services;
 using PortfolioSaver.Config.ViewModels;
+using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Data.Services;
 using Xunit;
@@ -243,6 +244,82 @@ public sealed class MainWindowViewModelValidationTests
         Assert.Contains("Validation passed. Click OK to save/apply, or Cancel to discard.", source, StringComparison.Ordinal);
         Assert.Contains("public bool ShowValidatedActionButtons => IsValidated && !_isApplying;", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Saving and closing now.", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ApplyValidatedConfiguration_SavesSeedsQuotes_AndRequestsClose()
+    {
+        string localDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(localDataRoot);
+        string? originalLocalDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", localDataRoot);
+        RuntimeQuoteSeedStore.ConsumeAll();
+
+        try
+        {
+            MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));
+            bool closeRequested = false;
+            vm.CloseRequested += () => closeRequested = true;
+
+            AppSettings validated = Defaults.CreateSettings();
+            validated.DeepSeekApiKey = "super-secret";
+            SetPrivateField(vm, "_validatedCandidateSettings", validated);
+            SetPrivateField(vm, "_validatedQuoteSeeds", new List<QuoteSnapshot>
+            {
+                new()
+                {
+                    Symbol = "AAPL",
+                    Last = 123.45m,
+                    ChangePercent = 1.23m,
+                    FetchTimestampUtc = DateTimeOffset.UtcNow
+                }
+            });
+
+            InvokePrivate<object?>(vm, "ApplyValidatedConfiguration", []);
+
+            SettingsFileService service = new();
+            Assert.True(File.Exists(service.SettingsPath));
+            string savedJson = File.ReadAllText(service.SettingsPath);
+            Assert.DoesNotContain("super-secret", savedJson, StringComparison.Ordinal);
+
+            IReadOnlyDictionary<string, QuoteSnapshot> published = RuntimeQuoteSeedStore.ConsumeAll();
+            Assert.True(closeRequested);
+            Assert.True(GetPrivateField<bool>(vm, "_allowClose"));
+            Assert.Contains("saved", vm.StatusMessage, StringComparison.OrdinalIgnoreCase);
+            Assert.True(published.ContainsKey("AAPL"));
+        }
+        finally
+        {
+            RuntimeQuoteSeedStore.ConsumeAll();
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", originalLocalDataRoot);
+            try
+            {
+                if (Directory.Exists(localDataRoot))
+                    Directory.Delete(localDataRoot, recursive: true);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    [Fact]
+    public void ExecuteCancel_RequestsCloseWithoutPublishingValidatedQuotes()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));
+        bool closeRequested = false;
+        vm.CloseRequested += () => closeRequested = true;
+        RuntimeQuoteSeedStore.ConsumeAll();
+
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedCandidateSettings", Defaults.CreateSettings());
+
+        InvokePrivate<object?>(vm, "ExecuteCancel", []);
+
+        Assert.True(closeRequested);
+        Assert.True(GetPrivateField<bool>(vm, "_allowClose"));
+        Assert.Equal("Validated changes discarded.", vm.StatusMessage);
+        Assert.Empty(RuntimeQuoteSeedStore.ConsumeAll());
     }
 
     private static MainWindowViewModel CreateIsolatedViewModel(IConnectivityService? connectivity = null)

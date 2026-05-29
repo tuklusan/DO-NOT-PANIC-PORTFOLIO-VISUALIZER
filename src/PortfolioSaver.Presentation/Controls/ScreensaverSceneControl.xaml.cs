@@ -27,7 +27,6 @@ namespace PortfolioSaver.Screensaver.Controls;
 public partial class ScreensaverSceneControl : UserControl
 {
     private static readonly bool EnableMarketCritters = false;
-    private const string GlobalMarketsWaitingGlyph = "🕒";
     private const string PinnedNycExchangeKey = "NewYorkNasdaq";
     private const int MaxVisibleGraphCards = 12;
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
@@ -578,8 +577,7 @@ public partial class ScreensaverSceneControl : UserControl
             new KeyValuePair<string, object?>("refresh_seconds", _refreshTimer.Interval.TotalSeconds),
             new KeyValuePair<string, object?>("background_seconds", _backgroundTimer.Interval.TotalSeconds),
             new KeyValuePair<string, object?>("world_data_minutes", _worldDataTimer.Interval.TotalMinutes),
-            new KeyValuePair<string, object?>("background_rotation_enabled", _backgroundPaths.Count > 1),
-            new KeyValuePair<string, object?>("pending_quote_recovery", HasPendingQuoteRecovery()));
+            new KeyValuePair<string, object?>("background_rotation_enabled", _backgroundPaths.Count > 1));
     }
 
     public void SetValidationPause(bool paused)
@@ -626,45 +624,8 @@ public partial class ScreensaverSceneControl : UserControl
     }
 
     private double GetRefreshSeconds()
-    {
-        bool noResolvedQuotes = _latestQuotes.Count == 0;
-        bool providerUnavailable = _statusViewModel?.ProviderText?.Contains("Unavailable", StringComparison.OrdinalIgnoreCase) == true;
-        bool waitingForNetwork = _statusViewModel?.ProviderText?.Contains("Waiting for network", StringComparison.OrdinalIgnoreCase) == true;
-        if (noResolvedQuotes || providerUnavailable || waitingForNetwork || HasPendingQuoteRecovery())
-            return QuoteRefreshPolicy.RecoveryRefreshSeconds;
-
+    {   
         return QuoteRefreshPolicy.GetRefreshPollingInterval(_settings, GetReferenceUtcNow()).TotalSeconds;
-    }
-
-    private bool HasPendingQuoteRecovery()
-    {
-        HashSet<string> expectedSymbols = new(StringComparer.OrdinalIgnoreCase);
-        foreach (TickerGroup group in _settings.Groups.Where(group => group.Enabled))
-        {
-            foreach (TickerItem ticker in group.Tickers.Where(ticker => ticker.Enabled && !string.IsNullOrWhiteSpace(ticker.Symbol)))
-                expectedSymbols.Add(ticker.Symbol);
-        }
-
-        foreach (string symbol in FloatingClockBuilder.GetWorldIndexSymbols())
-            expectedSymbols.Add(symbol);
-
-        foreach (string symbol in StartupCoordinator.GetMacroIndicatorSymbols())
-            expectedSymbols.Add(symbol);
-
-        if (expectedSymbols.Count == 0)
-            return false;
-
-        DateTimeOffset nowUtc = GetReferenceUtcNow();
-        foreach (string symbol in expectedSymbols)
-        {
-            if (!_latestQuotes.TryGetValue(symbol, out QuoteSnapshot? quote))
-                return true;
-
-            if (quote.Last is null && quote.PreviousClose is null)
-                return true;
-        }
-
-        return false;
     }
 
     private void ApplyResponsiveLayout()
@@ -1058,15 +1019,14 @@ public partial class ScreensaverSceneControl : UserControl
             return;
 
         EnsureMacroMetersInitialized();
-        bool loadingInitialValues = StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow());
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[0], "VIX", "^VIX", 60m, loadingInitialValues, invertRiskColors: true);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[1], "NASDAQ", "^IXIC", nasdaqMeterMax, loadingInitialValues);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[2], "UST10Y", "^TNX", treasuryYieldMeterMax, loadingInitialValues);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[3], "UST3M", "^IRX", treasuryYieldMeterMax, loadingInitialValues);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[4], "GOLD", "GC=F", 4000m, loadingInitialValues);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[5], "CRUDE", "BZ=F", 160m, loadingInitialValues);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[6], "DXY", "DX-Y.NYB", 120m, loadingInitialValues, invertRiskColors: true);
-        UpdateQuoteMeter(_statusViewModel.MacroMeters[7], "BTC", "BTC-USD", bitcoinMeterMax, loadingInitialValues);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[0], "VIX", "^VIX", 60m, invertRiskColors: true);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[1], "NASDAQ", "^IXIC", nasdaqMeterMax);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[2], "UST10Y", "^TNX", treasuryYieldMeterMax);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[3], "UST3M", "^IRX", treasuryYieldMeterMax);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[4], "GOLD", "GC=F", 4000m);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[5], "CRUDE", "BZ=F", 160m);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[6], "DXY", "DX-Y.NYB", 120m, invertRiskColors: true);
+        UpdateQuoteMeter(_statusViewModel.MacroMeters[7], "BTC", "BTC-USD", bitcoinMeterMax);
 
         _lastMacroMeterRefreshUtc = nowUtc;
         TraceMacroSnapshot(force);
@@ -1104,16 +1064,9 @@ public partial class ScreensaverSceneControl : UserControl
         string label,
         string symbol,
         decimal maxValue,
-        bool loadingInitialValues,
         bool invertRiskColors = false)
     {
         meter.Label = label;
-        if (loadingInitialValues)
-        {
-            ApplyWaitingMacroMeter(meter);
-            return;
-        }
-
         meter.AccentBrush = Brushes.SlateGray;
         meter.ValueText = "--";
         meter.ChangeText = string.Empty;
@@ -1148,14 +1101,6 @@ public partial class ScreensaverSceneControl : UserControl
             _ => Brushes.Gainsboro
         };
         meter.SetFill((double)Math.Clamp(last.Value / Math.Max(1m, maxValue), 0m, 1m));
-    }
-
-    private static void ApplyWaitingMacroMeter(MacroMeterViewModel meter, bool keepPointsSuffix = false)
-    {
-        meter.AccentBrush = Brushes.Goldenrod;
-        meter.ValueText = GlobalMarketsWaitingGlyph;
-        meter.ChangeText = keepPointsSuffix ? "pts" : string.Empty;
-        meter.SetFill(0d);
     }
 
     private async Task RefreshClockDataAsync(bool force)
@@ -1253,10 +1198,8 @@ public partial class ScreensaverSceneControl : UserControl
             return;
 
         List<string> missingSymbols = [];
-        List<string> loadingSymbols = [];
         int populatedCount = 0;
         DateTimeOffset referenceUtc = GetReferenceUtcNow();
-        bool loadingInitialValues = StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, referenceUtc);
         foreach (ClockCityViewModel city in _clockViewModel.Cities.Where(city => city.ShowExchangeDetails))
         {
             if (string.IsNullOrWhiteSpace(city.ExchangeSymbol))
@@ -1270,17 +1213,6 @@ public partial class ScreensaverSceneControl : UserControl
             }
 
             ApplyExchangeCardMarketStatus(city, quote, referenceUtc);
-
-            if (loadingInitialValues)
-            {
-                loadingSymbols.Add(city.ExchangeSymbol);
-                city.IndexValueText = GlobalMarketsWaitingGlyph;
-                city.IndexChangeText = "--";
-                city.IndexChangeForeground = Brushes.Goldenrod;
-                city.MiniGraphStroke = Brushes.Goldenrod;
-                city.MiniGraphPoints = [];
-                continue;
-            }
 
             decimal? last = quote.Last ?? quote.PreviousClose;
             decimal? changePercent = quote.ChangePercent;
@@ -1330,8 +1262,8 @@ public partial class ScreensaverSceneControl : UserControl
             TraceSceneState(
                 "ClockMarketDataSummary",
                 new KeyValuePair<string, object?>("populated_exchange_count", populatedCount),
-                new KeyValuePair<string, object?>("loading_exchange_count", loadingSymbols.Count),
-                new KeyValuePair<string, object?>("loading_exchange_symbols", loadingSymbols.Take(10).ToList()),
+                new KeyValuePair<string, object?>("loading_exchange_count", 0),
+                new KeyValuePair<string, object?>("loading_exchange_symbols", Array.Empty<string>()),
                 new KeyValuePair<string, object?>("missing_exchange_count", missingSymbols.Count),
                 new KeyValuePair<string, object?>("missing_exchange_symbols", missingSymbols.Take(10).ToList()));
         }
@@ -2336,6 +2268,32 @@ public partial class ScreensaverSceneControl : UserControl
             "DisplayedTapeSample",
             new KeyValuePair<string, object?>("sample_count", sample.Count),
             new KeyValuePair<string, object?>("sample", sample));
+
+        List<string> laneSnapshots = _tapes
+            .Select((tape, index) =>
+            {
+                List<string> entries = tape.Items
+                    .Where(item => !string.IsNullOrWhiteSpace(item.SymbolText))
+                    .Take(8)
+                    .Select(item =>
+                    {
+                        string state = item.HasMissingData
+                            ? "missing"
+                            : item.IsWaitingOnData
+                                ? "stale"
+                                : "live";
+                        return $"{item.SymbolText}:{NormalizeTapeSnapshotValue(item.LastText)}:{state}";
+                    })
+                    .ToList();
+
+                return $"lane{index + 1}={tape.Title}[{string.Join(", ", entries)}]";
+            })
+            .ToList();
+
+        TraceSceneState(
+            "DisplayedTapeLanes",
+            new KeyValuePair<string, object?>("lane_count", laneSnapshots.Count),
+            new KeyValuePair<string, object?>("lanes", laneSnapshots));
     }
 
     private static string NormalizeTapeSnapshotValue(string? value)
@@ -2415,16 +2373,6 @@ public partial class ScreensaverSceneControl : UserControl
     {
         if (_statusViewModel is null)
             return;
-
-        if (StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow()))
-        {
-            _statusViewModel.UpdatedText = "Loading initial values";
-            _statusViewModel.UpdatedPrefixText = "Last Updated:";
-            _statusViewModel.UpdatedSymbolText = string.Empty;
-            _statusViewModel.UpdatedAgeText = "Loading...";
-            _statusViewModel.UpdatedSymbolForeground = Brushes.Gainsboro;
-            return;
-        }
 
         if (StartupCoordinator.TryGetLatestUpdatedSymbol(_latestQuotes, out string latestUpdatedSymbol, out DateTimeOffset latestUpdatedFetchUtc))
         {

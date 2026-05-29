@@ -779,8 +779,7 @@ public sealed class ScreensaverRenderBehaviorTests
 
         Assert.Contains("UpdateStatusFreshnessText(_statusViewModel.UpdatedText);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void UpdateStatusFreshnessText(string? fallbackText = null)", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow())", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("_statusViewModel.UpdatedText = \"Loading initial values\";", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("Loading initial values", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_statusViewModel.UpdatedPrefixText = \"Last Updated:\";", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_statusViewModel.UpdatedSymbolText = latestUpdatedSymbol;", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_statusViewModel.UpdatedAgeText = TimeFormatHelper.ToAgeString(latestUpdatedFetchUtc);", sceneCodeBehind, StringComparison.Ordinal);
@@ -1007,7 +1006,7 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void GlobalMarkets_HoldWaitingGlyphUntilInitialValuesAreReady()
+    public void GlobalMarkets_UseLiveQuoteStateWithoutSeparateInitialWaitingLane()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
@@ -1016,16 +1015,10 @@ public sealed class ScreensaverRenderBehaviorTests
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
 
-        Assert.Contains("private const string GlobalMarketsWaitingGlyph = \"🕒\";", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("bool loadingInitialValues = StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow());", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("city.IndexValueText = GlobalMarketsWaitingGlyph;", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("city.IndexChangeText = \"--\";", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("city.IndexChangeForeground = Brushes.Goldenrod;", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("city.MiniGraphPoints = [];", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("List<string> loadingSymbols = [];", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("loadingSymbols.Add(city.ExchangeSymbol);", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("new KeyValuePair<string, object?>(\"loading_exchange_count\", loadingSymbols.Count)", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("new KeyValuePair<string, object?>(\"loading_exchange_symbols\", loadingSymbols.Take(10).ToList())", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("GlobalMarketsWaitingGlyph", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new KeyValuePair<string, object?>(\"loading_exchange_count\", 0)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new KeyValuePair<string, object?>(\"loading_exchange_symbols\", Array.Empty<string>())", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ApplyExchangeCardMarketStatus(city, quote, referenceUtc);", sceneCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1088,9 +1081,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("\"CRUDE\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("\"YLD SPRD\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Brushes.Goldenrod", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("bool loadingInitialValues = StartupCoordinator.ShouldShowInitialValueLoadingStatus(_latestQuotes, _settings, GetReferenceUtcNow());", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("ApplyWaitingMacroMeter(meter);", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("meter.ValueText = GlobalMarketsWaitingGlyph;", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("ApplyWaitingMacroMeter(meter);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new KeyValuePair<string, object?>(\"stale_symbols\", staleSymbols)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("quote.Last is null && quote.PreviousClose is null", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("graph.IsRefreshTravelFlashActive = true;", sceneCodeBehind, StringComparison.Ordinal);
@@ -1170,6 +1161,8 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("TraceDisplayedTapeSample();", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void TraceDisplayedTapeSample()", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DisplayedTapeSample", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DisplayedTapeLanes", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("lane{index + 1}={tape.Title}[", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("~{NormalizeTapeSnapshotValue(item.LastText)}~", sceneCodeBehind, StringComparison.Ordinal);
     }
 
@@ -1220,7 +1213,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("UpdateQuoteMeter method not found.");
 
-            method.Invoke(control, [meter, "VIX", "^VIX", 60m, false, true]);
+            method.Invoke(control, [meter, "VIX", "^VIX", 60m, true]);
 
             Assert.Same(Brushes.OrangeRed, meter.AccentBrush);
             Assert.Equal("+2.0%", meter.ChangeText);
@@ -1258,7 +1251,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("UpdateQuoteMeter method not found.");
 
-            method.Invoke(control, [meter, "DXY", "DX-Y.NYB", 120m, false, true]);
+            method.Invoke(control, [meter, "DXY", "DX-Y.NYB", 120m, true]);
 
             Assert.Same(Brushes.OrangeRed, meter.AccentBrush);
             Assert.Equal("+0.8%", meter.ChangeText);
@@ -1296,7 +1289,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("UpdateQuoteMeter method not found.");
 
-            method.Invoke(control, [meter, "DXY", "DX-Y.NYB", 120m, false, true]);
+            method.Invoke(control, [meter, "DXY", "DX-Y.NYB", 120m, true]);
 
             Assert.Same(Brushes.LimeGreen, meter.AccentBrush);
             Assert.Equal("-0.3%", meter.ChangeText);

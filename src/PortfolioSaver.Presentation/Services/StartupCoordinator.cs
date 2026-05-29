@@ -74,7 +74,6 @@ public sealed class StartupCoordinator
             StringComparer.OrdinalIgnoreCase);
         IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode);
         DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
-        bool showStartupLoadingStatus = ShouldShowInitialValueLoadingStatus(cachedQuotes, settings, nowUtc);
         bool showNetworkWaitingOverlay = !networkAvailable;
 
         TraceRuntimeState(
@@ -84,8 +83,11 @@ public sealed class StartupCoordinator
             new KeyValuePair<string, object?>("cached_quote_count", cachedQuotes.Count),
             new KeyValuePair<string, object?>("headline_count", headlines.Count),
             new KeyValuePair<string, object?>("group_count", settings.Groups.Count(group => group.Enabled)),
-            new KeyValuePair<string, object?>("show_startup_loading_status", showStartupLoadingStatus),
             new KeyValuePair<string, object?>("show_network_waiting_overlay", showNetworkWaitingOverlay));
+
+        string bootstrapUpdatedText = TryGetLatestUpdatedSymbol(cachedQuotes, out string latestBootstrapSymbol, out DateTimeOffset latestBootstrapFetchUtc)
+            ? FormatUpdatedText(latestBootstrapSymbol, latestBootstrapFetchUtc)
+            : "Last Updated: --";
 
         return new ScreensaverSceneState
         {
@@ -97,9 +99,9 @@ public sealed class StartupCoordinator
             {
                 MarketStatusText = "Market (New York): --",
                 ProviderText = networkAvailable
-                    ? "Provider: Loading live data"
+                    ? "Provider: YFinance.NET"
                     : "Provider: Waiting for network",
-                UpdatedText = "Loading initial values",
+                UpdatedText = bootstrapUpdatedText,
                 ClockDateText = DateTimeOffset.UtcNow.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
                 ClockText = $"{DateTimeOffset.UtcNow:HH:mm} UTC"
             },
@@ -108,12 +110,10 @@ public sealed class StartupCoordinator
             BackgroundPaths = backgroundPaths,
             ShowNetworkWaitingOverlay = showNetworkWaitingOverlay,
             NetworkWaitingTitle = networkAvailable
-                ? (showStartupLoadingStatus ? "Refreshing live market data" : "Loading market data")
+                ? "Loading market data"
                 : "Waiting for network",
             NetworkWaitingDetail = networkAvailable
-                ? (showStartupLoadingStatus
-                    ? "Refreshing live quotes before showing the scene..."
-                    : "Fetching live quotes, history, and exchange photos...")
+                ? "Fetching live quotes, history, and exchange photos..."
                 : $"Retrying live quotes and exchange photos every {FormatRefreshCadenceText(settings)}."
         };
     }
@@ -344,7 +344,7 @@ public sealed class StartupCoordinator
             }
 
             string cacheOnlyLabel = networkAvailable
-                ? (results.Count > 0 ? "YFinance.NET Cache" : "Loading live data")
+                ? (results.Count > 0 ? "YFinance.NET Cache" : "YFinance.NET")
                 : (results.Count > 0 ? "Local Cache" : "Waiting for network");
 
             TraceRuntimeState(
@@ -642,14 +642,6 @@ public sealed class StartupCoordinator
             return true;
 
         return providerLabel.StartsWith("Local Cache", StringComparison.OrdinalIgnoreCase);
-    }
-
-    public static bool ShouldShowInitialValueLoadingStatus(
-        IReadOnlyDictionary<string, QuoteSnapshot> quotes,
-        AppSettings settings,
-        DateTimeOffset nowUtc)
-    {
-        return quotes.Count == 0 || quotes.Values.All(quote => !HasUsableQuote(quote));
     }
 
     private FloatingGraphViewModel BuildGraph(string tapeName, TickerHistorySnapshot snapshot, AppSettings settings)
@@ -1318,17 +1310,11 @@ public sealed class StartupCoordinator
             : (TryGetStatusFreshnessAnchorFetchUtc(quotes, out DateTimeOffset anchorQuoteFetchUtc)
                 ? anchorQuoteFetchUtc
                 : nowUtc);
-        bool showStartupLoadingStatus = ShouldShowInitialValueLoadingStatus(quotes, settings, nowUtc);
-
         StatusBarViewModel status = new()
         {
             MarketStatusText = "Market (New York): --",
-            ProviderText = showStartupLoadingStatus
-                ? (quotes.Count > 0 ? "Provider: Refreshing stale cache" : "Provider: Loading live data")
-                : $"Provider: {providerLabel}",
-            UpdatedText = showStartupLoadingStatus
-                ? "Loading initial values"
-                : FormatUpdatedText(hasLatestUpdatedSymbol ? latestUpdatedSymbol : null, lastUpdate),
+            ProviderText = $"Provider: {providerLabel}",
+            UpdatedText = FormatUpdatedText(hasLatestUpdatedSymbol ? latestUpdatedSymbol : null, lastUpdate),
             ClockDateText = nowUtc.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
             ClockText = $"{nowUtc:HH:mm} UTC"
         };

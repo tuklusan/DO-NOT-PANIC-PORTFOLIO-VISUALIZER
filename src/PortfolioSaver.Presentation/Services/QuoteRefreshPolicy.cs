@@ -6,7 +6,6 @@ namespace PortfolioSaver.Screensaver.Services;
 
 internal static class QuoteRefreshPolicy
 {
-    internal const double RecoveryRefreshSeconds = 1.0d;
     private static readonly TimeSpan UiSequentialCadence = TimeSpan.FromMilliseconds(1000);
     private static readonly TimeSpan MinimumHardStaleThreshold = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan HardStaleGrace = TimeSpan.FromMinutes(2);
