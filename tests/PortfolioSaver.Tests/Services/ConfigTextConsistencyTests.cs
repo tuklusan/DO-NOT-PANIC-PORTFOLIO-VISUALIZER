@@ -1,4 +1,4 @@
-﻿using PortfolioSaver.Shared;
+using PortfolioSaver.Shared;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
@@ -6,30 +6,30 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class ConfigTextConsistencyTests
 {
     [Fact]
-    public void PortfolioVersion_UsesBeta54Labeling()
+    public void PortfolioVersion_UsesBeta6Labeling()
     {
-        Assert.Equal("BETA-5.6", PortfolioVersion.BaselineLabel);
-        Assert.Contains("beta5", PortfolioVersion.SemanticVersion, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("BETA-5.6", PortfolioVersion.DisplayName, StringComparison.Ordinal);
+        Assert.Equal("BETA-6", PortfolioVersion.BaselineLabel);
+        Assert.Contains("beta6", PortfolioVersion.SemanticVersion, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("BETA-6", PortfolioVersion.DisplayName, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void AboutDocument_ContainsBeta54PublisherAuthorAndLicense()
+    public void AboutDocument_ContainsBeta6PublisherAuthorAndLicense()
     {
         string aboutText = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Content", "about.txt"));
 
-        Assert.Contains("BETA-5.6 baseline", aboutText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("BETA-6 baseline", aboutText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Publisher: SANYALnet Labs", aboutText, StringComparison.Ordinal);
         Assert.Contains("Author: Supratim Sanyal", aboutText, StringComparison.Ordinal);
         Assert.Contains("License: MIT License", aboutText, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void MainWindowXaml_HasBeta54Title_AndNoBenchmarkEditorText()
+    public void MainWindowXaml_HasBeta6Title_AndNoBenchmarkEditorText()
     {
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
-        Assert.Contains("Title=\"DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-5.6\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Title=\"DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-6\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Floating benchmark cards", xaml, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Benchmark refresh", xaml, StringComparison.OrdinalIgnoreCase);
     }
@@ -210,5 +210,6 @@ public sealed class ConfigTextConsistencyTests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 }
+
 
 

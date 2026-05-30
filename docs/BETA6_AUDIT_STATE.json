@@ -1,18 +1,18 @@
 {
   "document_type": "audit_state",
-  "title": "BETA-5.6 Audit State",
+  "title": "BETA-6 Audit State",
   "date": "2026-05-20",
-  "current_lane": "BETA-5.6",
+  "current_lane": "BETA-6",
   "current_snapshot": {
     "product": "DO NOT PANIC PORTFOLIO VISUALIZER",
     "publisher": "SANYALnet Labs",
     "author": "Supratim Sanyal",
     "license": "MIT LICENSE",
-    "semantic_version_lane": "0.9.0-beta5.6",
+    "semantic_version_lane": "0.9.0-beta6",
     "target_framework": "net10.0-windows",
     "primary_host": "PortfolioSaver.Desktop",
     "legacy_host": "PortfolioSaver.Screensaver",
-    "repository_history": "main starts at the BETA-5.4 baseline; BETA-5.5 is frozen at tag BETA-5.5 on commit d60e6ed; BETA-5.6 begins immediately after that freeze."
+    "repository_history": "main starts at the BETA-5.4 baseline; BETA-5.5 is frozen at tag BETA-5.5 on commit d60e6ed; BETA-5.6 is frozen at tag BETA-5.6 on commit 816708a; BETA-6 begins immediately after that freeze."
   },
   "latest_recorded_validation_state": {
     "automated_tests": {
@@ -1450,3 +1450,4 @@
     }
   ]
 }
+

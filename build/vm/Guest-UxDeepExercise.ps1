@@ -2445,13 +2445,13 @@ try {
         $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 8
         if ($null -eq $window) { throw 'Could not locate config window via UI Automation.' }
         Write-ConfigWindowTrace -Event 'ConfigWindowReacquired' -Details ("title={0}; automation_id={1}" -f [string]$window.Current.Name, [string]$window.Current.AutomationId)
-        if ([string]$window.Current.Name -like '*BETA-5.6*' -or
-            [string]$window.Current.HelpText -like '*0.9.0-beta5.6*') {
+        if ([string]$window.Current.Name -like '*BETA-6*' -or
+            [string]$window.Current.HelpText -like '*0.9.0-beta6*') {
             $summary.ConfigVersionCheck = "Passed"
         }
         else {
             $summary.ConfigVersionCheck = "Failed"
-            $summary.Notes += "Config window title missing expected BETA-5.6 marker: '$([string]$window.Current.Name)'"
+            $summary.Notes += "Config window title missing expected BETA-6 marker: '$([string]$window.Current.Name)'"
         }
 
         $tabNames = @('General', 'Advanced')
@@ -2687,5 +2687,7 @@ finally {
     Write-Output "RESULTS=$results"
     Write-Output "SUMMARY=$summaryPath"
 }
+
+
 
 

@@ -262,7 +262,7 @@ $config = Start-Process -FilePath $configExe -PassThru
 Start-Sleep -Seconds 4
 [void](Focus-Window -Process $config)
 
-$window = Get-WindowElement -WindowName 'DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-5.6' -TimeoutSeconds 10
+$window = Get-WindowElement -WindowName 'DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-6' -TimeoutSeconds 10
 if ($null -eq $window) {
     $window = Get-WindowElement -WindowName 'DO NOT PANIC PORTFOLIO VISUALIZER Config' -TimeoutSeconds 5
 }
@@ -369,4 +369,5 @@ $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $summaryPath -Enco
 
 Write-Output "RESULTS=$results"
 Write-Output "SUMMARY=$summaryPath"
+
 
