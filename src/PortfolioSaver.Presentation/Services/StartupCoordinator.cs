@@ -22,20 +22,7 @@ namespace PortfolioSaver.Screensaver.Services;
 
 public sealed class StartupCoordinator
 {
-    private const int MinimumQuoteProviderReuseSeconds = 1;
-    private const int YahooGeneralReuseSeconds = 1;
-    private const int YahooDedicatedProviderReuseSeconds = 1;
-    private const int YahooDedicatedSymbolCooldownMinutes = 12;
-    private const int YahooGeneralRateLimitCooldownMinutes = 8;
-    private const int YahooDedicatedRateLimitCooldownMinutes = 12;
-    private const int YahooDedicatedRuntimeBatchSymbols = 1;
-    private const int YahooGeneralRuntimeBatchSymbols = 1;
-    private const int MaxBatchSymbolsPerPass = 24;
-    private const int MaxRecoveryBatchSymbolsPerPass = 32;
     private const int MinimumTapeItemCount = 18;
-    private static readonly HashSet<string> DedicatedYahooSymbols = BuildDedicatedYahooSymbolSet();
-    private static readonly HashSet<string> OfficialMacroSymbols = BuildOfficialMacroSymbolSet();
-    private static readonly HashSet<string> TreasuryMacroSymbols = BuildTreasuryMacroSymbolSet();
     private const string StatusFreshnessAnchorSymbol = "^SPX";
 
     private readonly ScreensaverSettingsService _settingsService = new();
@@ -85,9 +72,7 @@ public sealed class StartupCoordinator
             new KeyValuePair<string, object?>("group_count", settings.Groups.Count(group => group.Enabled)),
             new KeyValuePair<string, object?>("show_network_waiting_overlay", showNetworkWaitingOverlay));
 
-        string bootstrapUpdatedText = TryGetLatestUpdatedSymbol(cachedQuotes, out string latestBootstrapSymbol, out DateTimeOffset latestBootstrapFetchUtc)
-            ? FormatUpdatedText(latestBootstrapSymbol, latestBootstrapFetchUtc)
-            : "Last Updated: --";
+        bool hasBootstrapUpdatedSymbol = TryGetLatestUpdatedSymbol(cachedQuotes, out string latestBootstrapSymbol, out DateTimeOffset latestBootstrapFetchUtc);
 
         return new ScreensaverSceneState
         {
@@ -98,10 +83,17 @@ public sealed class StartupCoordinator
             Status = new StatusBarViewModel
             {
                 MarketStatusText = "Market (New York): --",
-                ProviderText = networkAvailable
-                    ? "Provider: YFinance.NET"
-                    : "Provider: Waiting for network",
-                UpdatedText = bootstrapUpdatedText,
+                UpdatedPrefixText = "Last Updated:",
+                UpdatedTickerFieldText = FormatUpdatedTickerField(
+                    hasBootstrapUpdatedSymbol ? latestBootstrapSymbol : null,
+                    hasBootstrapUpdatedSymbol && cachedQuotes.TryGetValue(latestBootstrapSymbol, out QuoteSnapshot? bootstrapQuote)
+                        ? bootstrapQuote.ChangePercent
+                        : null,
+                    hasBootstrapUpdatedSymbol ? latestBootstrapFetchUtc : DateTimeOffset.MinValue),
+                UpdatedTickerFieldForeground = ResolveUpdatedTickerFieldBrush(
+                    hasBootstrapUpdatedSymbol && cachedQuotes.TryGetValue(latestBootstrapSymbol, out bootstrapQuote)
+                        ? bootstrapQuote.ChangePercent
+                        : null),
                 ClockDateText = DateTimeOffset.UtcNow.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
                 ClockText = $"{DateTimeOffset.UtcNow:HH:mm} UTC"
             },
@@ -126,8 +118,6 @@ public sealed class StartupCoordinator
         ConsumePendingRuntimeQuoteSeeds();
         AppSettings settings = _settingsService.Load();
         bool networkAvailable = _isNetworkAvailable();
-        IReadOnlyDictionary<string, SymbolProfile> symbolProfiles = _symbolProfileStore.Load();
-
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
         IQuoteProvider yahooFinanceProvider = _createYahooProvider(httpClient);
 
@@ -138,7 +128,7 @@ public sealed class StartupCoordinator
             .. GetMacroIndicatorSymbols()
         ];
 
-        Task<(Dictionary<string, QuoteSnapshot> Quotes, string ProviderLabel)> quotesTask = LoadQuotesAsync(
+        Task<Dictionary<string, QuoteSnapshot>> quotesTask = LoadQuotesAsync(
             portfolioSymbols,
             ancillarySymbols,
             settings,
@@ -159,11 +149,11 @@ public sealed class StartupCoordinator
 
         await Task.WhenAll(quotesTask, backgroundsTask, headlinesTask);
 
-        (Dictionary<string, QuoteSnapshot> quotes, string providerLabel) = await quotesTask;
+        Dictionary<string, QuoteSnapshot> quotes = await quotesTask;
         IReadOnlyList<string> backgroundPaths = await backgroundsTask;
         IReadOnlyList<string> headlines = await headlinesTask;
 
-        return BuildSceneState(settings, quotes, providerLabel, backgroundPaths, headlines, networkAvailable);
+        return BuildSceneState(settings, quotes, backgroundPaths, headlines, networkAvailable);
     }
 
     public async Task<ScreensaverSceneState> BuildProgressiveQuoteSceneAsync(int graphRotationSeed = 0, CancellationToken cancellationToken = default)
@@ -171,8 +161,6 @@ public sealed class StartupCoordinator
         ConsumePendingRuntimeQuoteSeeds();
         AppSettings settings = _settingsService.Load();
         bool networkAvailable = _isNetworkAvailable();
-        IReadOnlyDictionary<string, SymbolProfile> symbolProfiles = _symbolProfileStore.Load();
-
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
         IQuoteProvider yahooFinanceProvider = _createYahooProvider(httpClient);
 
@@ -183,7 +171,7 @@ public sealed class StartupCoordinator
             .. GetMacroIndicatorSymbols()
         ];
 
-        (Dictionary<string, QuoteSnapshot> quotes, string providerLabel) = await LoadQuotesAsync(
+        Dictionary<string, QuoteSnapshot> quotes = await LoadQuotesAsync(
             portfolioSymbols,
             ancillarySymbols,
             settings,
@@ -195,7 +183,7 @@ public sealed class StartupCoordinator
         IReadOnlyList<string> backgroundPaths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
         IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode);
 
-        return BuildSceneState(settings, quotes, providerLabel, backgroundPaths, headlines, networkAvailable);
+        return BuildSceneState(settings, quotes, backgroundPaths, headlines, networkAvailable);
     }
 
     public void PrimeRuntimeQuotes(IReadOnlyDictionary<string, QuoteSnapshot> quotes)
@@ -292,7 +280,7 @@ public sealed class StartupCoordinator
         }
     }
 
-    private async Task<(Dictionary<string, QuoteSnapshot> Quotes, string ProviderLabel)> LoadQuotesAsync(
+    private async Task<Dictionary<string, QuoteSnapshot>> LoadQuotesAsync(
         IReadOnlyList<string> portfolioSymbols,
         IReadOnlyList<string> benchmarkSymbols,
         AppSettings settings,
@@ -337,17 +325,12 @@ public sealed class StartupCoordinator
 
         if (!networkAvailable || orderedSymbols.Count == 0)
         {
-            string cacheOnlyLabel = networkAvailable
-                ? (results.Count > 0 ? "YFinance.NET Cache" : "YFinance.NET")
-                : (results.Count > 0 ? "Local Cache" : "Waiting for network");
-
             TraceRuntimeState(
                 "QuoteRefreshSkipped",
                 new KeyValuePair<string, object?>("reason", networkAvailable ? "no_symbols_configured" : "network_unavailable"),
-                new KeyValuePair<string, object?>("provider_label", cacheOnlyLabel),
                 new KeyValuePair<string, object?>("result_quote_count", results.Count));
             PrimeRuntimeQuotes(results);
-            return (results, cacheOnlyLabel);
+            return results;
         }
 
         List<string> requestSymbols = TakeSequentialRequestSymbols(orderedSymbols);
@@ -400,17 +383,8 @@ public sealed class StartupCoordinator
                 results[symbol] = CloneQuote(cached);
         }
 
-        bool usedCache = orderedSymbols.Any(symbol => results.ContainsKey(symbol) &&
-                                                      (requestSymbols.Count == 0 || !requestSymbols.Contains(symbol, StringComparer.OrdinalIgnoreCase)));
-        string providerLabel = results.Count > 0 ? "YFinance.NET" : (networkAvailable ? "Unavailable" : "Waiting for network");
-        if (usedCache && results.Count > 0)
-            providerLabel += " + Cache";
-        if (!string.IsNullOrWhiteSpace(latestUpdatedSymbol))
-            providerLabel += $", {latestUpdatedSymbol} Updated {TimeFormatHelper.ToAgeString(latestUpdatedFetchUtc)}";
-
         TraceRuntimeState(
             "QuoteResolutionSummary",
-            new KeyValuePair<string, object?>("provider_label", providerLabel),
             new KeyValuePair<string, object?>("result_quote_count", results.Count),
             new KeyValuePair<string, object?>("refreshed_symbol_count", requestSymbols.Count),
             new KeyValuePair<string, object?>("stale_symbol_count", results.Values.Count(quote => quote.IsStale)),
@@ -420,9 +394,9 @@ public sealed class StartupCoordinator
             new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(orderedSymbols.Except(requestSymbols, StringComparer.OrdinalIgnoreCase))),
             new KeyValuePair<string, object?>("macro_missing_symbols", PreviewMissingSymbols(GetMacroIndicatorSymbols(), results, settings)),
             new KeyValuePair<string, object?>("world_index_missing_symbols", PreviewMissingSymbols(FloatingClockBuilder.GetWorldIndexSymbols(), results, settings)));
-        TraceRuntime($"Quotes resolved. ProviderLabel={providerLabel} Refreshed={requestSymbols.Count} Cached={Math.Max(0, results.Count - requestSymbols.Count)} Remaining={Math.Max(0, orderedSymbols.Count - requestSymbols.Count)}");
+        TraceRuntime($"Quotes resolved. Refreshed={requestSymbols.Count} Cached={Math.Max(0, results.Count - requestSymbols.Count)} Remaining={Math.Max(0, orderedSymbols.Count - requestSymbols.Count)}");
         PrimeRuntimeQuotes(results);
-        return (results, providerLabel);
+        return results;
     }
 
     private static IReadOnlyList<TickerItem> SelectGraphTickers(TickerGroup group, AppSettings settings, int rotationSeed)
@@ -570,7 +544,6 @@ public sealed class StartupCoordinator
         if (news.Headlines.Count == 0)
             news.Headlines.Add(new NewsHeadlineViewModel { Text = "Waiting for summarized financial news..." });
 
-        news.MarqueeText = string.Join(" STOP ", news.Headlines.Select(headline => headline.Text));
         return news;
     }
 
@@ -609,22 +582,6 @@ public sealed class StartupCoordinator
         };
     }
 
-    private static bool ShouldShowNetworkWaitingOverlay(bool networkProbeAvailable, string providerLabel)
-    {
-        if (networkProbeAvailable)
-            return false;
-
-        if (string.IsNullOrWhiteSpace(providerLabel))
-            return true;
-
-        if (providerLabel.Contains("Waiting for network", StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        if (providerLabel.Contains("Unavailable", StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        return providerLabel.StartsWith("Local Cache", StringComparison.OrdinalIgnoreCase);
-    }
 
     private FloatingGraphViewModel BuildGraph(string tapeName, TickerHistorySnapshot snapshot, AppSettings settings)
     {
@@ -671,49 +628,9 @@ public sealed class StartupCoordinator
         ];
     }
 
-    private static IEnumerable<List<string>> ChunkSymbols(IReadOnlyList<string> symbols, int chunkSize)
-    {
-        if (chunkSize <= 0)
-            yield break;
-
-        for (int index = 0; index < symbols.Count; index += chunkSize)
-            yield return symbols.Skip(index).Take(Math.Min(chunkSize, symbols.Count - index)).ToList();
-    }
-
-    private static IReadOnlyList<ProviderExecutionPlan> BuildQuoteProviders(
-        AppSettings settings,
-        IQuoteProvider finnhubProvider,
-        IQuoteProvider twelveDataProvider,
-        IQuoteProvider tiingoProvider,
-        IQuoteProvider yahooFinanceProvider,
-        int rotationSeed)
-    {
-        DataSourcePolicySettings yahooPolicy = DataSourceCatalog.CreateDefaultPolicy(DataSourceKind.YahooFinance);
-        yahooPolicy.EnableSingleTickerQueries = true;
-        yahooPolicy.EnableBatchTickerQueries = true;
-        DataSourceCapabilities yahooCapabilities = DataSourceCatalog.GetCapabilities(DataSourceKind.YahooFinance);
-        return [new ProviderExecutionPlan(DataSourceKind.YahooFinance, yahooCapabilities.DisplayName, yahooPolicy, yahooFinanceProvider)];
-    }
-
-    private static IReadOnlyList<T> RotateProviders<T>(IReadOnlyList<T> providers, int rotationSeed)
-    {
-        if (providers.Count <= 1)
-            return providers;
-
-        int normalizedSeed = Math.Abs(rotationSeed) % providers.Count;
-        if (normalizedSeed == 0)
-            return providers;
-
-        List<T> rotated = [];
-        for (int i = 0; i < providers.Count; i++)
-            rotated.Add(providers[(normalizedSeed + i) % providers.Count]);
-
-        return rotated;
-    }
 
 
-    private static double GetRefreshSeconds(AppSettings settings)
-        => QuoteRefreshPolicy.GetConfiguredRefreshWindow(settings, DateTimeOffset.UtcNow).TotalSeconds;
+
 
     private static string FormatRefreshCadenceText(AppSettings settings)
     {
@@ -755,22 +672,7 @@ public sealed class StartupCoordinator
         return [selected];
     }
 
-    private static TimeSpan GetMinimumProviderReuseInterval(DataSourceKind kind, IReadOnlyList<string> requestSymbols)
-    {
-        return requestSymbols.Any(IsDedicatedYahooSymbol)
-            ? TimeSpan.FromSeconds(YahooDedicatedProviderReuseSeconds)
-            : TimeSpan.FromSeconds(YahooGeneralReuseSeconds);
-    }
 
-    private static int GetQueryCost(ProviderExecutionPlan providerPlan, int requestedSymbolCount)
-    {
-        if (requestedSymbolCount <= 0)
-            return 0;
-
-        return providerPlan.Policy.EnableBatchTickerQueries && DataSourceCatalog.GetCapabilities(providerPlan.Kind).SupportsBatchTickerQueries
-            ? 1
-            : requestedSymbolCount;
-    }
 
     private static bool IsRateLimited(Exception ex)
         => ex is HttpRequestException { StatusCode: HttpStatusCode.TooManyRequests } ||
@@ -791,12 +693,6 @@ public sealed class StartupCoordinator
         return false;
     }
 
-    private static TimeSpan GetRateLimitCooldown(DataSourceKind kind, IReadOnlyList<string>? requestSymbols = null) => kind switch
-    {
-        DataSourceKind.YahooFinance when requestSymbols is not null && requestSymbols.Any(IsDedicatedYahooSymbol) => TimeSpan.FromMinutes(YahooDedicatedRateLimitCooldownMinutes),
-        DataSourceKind.YahooFinance => TimeSpan.FromMinutes(YahooGeneralRateLimitCooldownMinutes),
-        _ => TimeSpan.FromMinutes(15)
-    };
 
     private static QuoteSnapshot CloneQuote(QuoteSnapshot source)
         => new()
@@ -911,38 +807,6 @@ public sealed class StartupCoordinator
         TraceLog.Info("StartupCoordinator.Runtime", message);
     }
 
-    private static IReadOnlyList<string> OrderDedicatedYahooSymbols(IEnumerable<string> symbols)
-    {
-        List<string> orderedSymbols = symbols
-            .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(GetDedicatedYahooPriority)
-            .ToList();
-
-        List<string> macroSymbols = orderedSymbols
-            .Where(symbol => GetDedicatedYahooBucket(symbol) == 0)
-            .ToList();
-        List<string> worldIndexSymbols = orderedSymbols
-            .Where(symbol => GetDedicatedYahooBucket(symbol) == 1)
-            .ToList();
-        List<string> remainder = orderedSymbols
-            .Where(symbol => GetDedicatedYahooBucket(symbol) > 1)
-            .ToList();
-
-        List<string> interleaved = [];
-        int pairCount = Math.Max(macroSymbols.Count, worldIndexSymbols.Count);
-        for (int i = 0; i < pairCount; i++)
-        {
-            if (i < macroSymbols.Count)
-                interleaved.Add(macroSymbols[i]);
-
-            if (i < worldIndexSymbols.Count)
-                interleaved.Add(worldIndexSymbols[i]);
-        }
-
-        interleaved.AddRange(remainder);
-        return interleaved;
-    }
 
     private static IReadOnlyList<string> PreviewSymbols(IEnumerable<string> symbols, int maxCount = 10)
     {
@@ -973,14 +837,8 @@ public sealed class StartupCoordinator
             ? "Market (New York): --"
             : statusLine.Replace(" | ", Environment.NewLine, StringComparison.Ordinal);
 
-    private static bool IsDedicatedYahooSymbol(string symbol)
-        => DedicatedYahooSymbols.Contains(SymbolProfileHeuristics.Normalize(symbol));
 
-    private static bool IsOfficialMacroSymbol(string symbol)
-        => OfficialMacroSymbols.Contains(SymbolProfileHeuristics.Normalize(symbol));
 
-    private static bool IsTreasuryMacroSymbol(string symbol)
-        => TreasuryMacroSymbols.Contains(SymbolProfileHeuristics.Normalize(symbol));
 
     public static bool TryGetStatusFreshnessAnchorFetchUtc(
         IReadOnlyDictionary<string, QuoteSnapshot> quotes,
@@ -1029,78 +887,18 @@ public sealed class StartupCoordinator
         return true;
     }
 
-    private static int GetDedicatedYahooPriority(string symbol)
-    {
-        string normalized = SymbolProfileHeuristics.Normalize(symbol);
-        IReadOnlyList<string> macroSymbols = GetYahooDedicatedMacroSymbols();
-        int macroIndex = macroSymbols
-            .Select((value, index) => (value, index))
-            .Where(entry => string.Equals(entry.value, normalized, StringComparison.OrdinalIgnoreCase))
-            .Select(entry => entry.index)
-            .DefaultIfEmpty(-1)
-            .First();
-        if (macroIndex >= 0)
-            return macroIndex;
 
-        IReadOnlyList<string> worldIndexSymbols = FloatingClockBuilder.GetWorldIndexSymbols();
-        int worldIndex = worldIndexSymbols
-            .Select((value, index) => (value, index))
-            .Where(entry => string.Equals(entry.value, normalized, StringComparison.OrdinalIgnoreCase))
-            .Select(entry => entry.index)
-            .DefaultIfEmpty(-1)
-            .First();
-        return worldIndex >= 0 ? 100 + worldIndex : int.MaxValue;
-    }
 
-    private static int GetDedicatedYahooBucket(string symbol)
-    {
-        int priority = GetDedicatedYahooPriority(symbol);
-        if (priority < 100)
-            return 0;
 
-        if (priority < int.MaxValue)
-            return 1;
 
-        return 2;
-    }
 
-    private static HashSet<string> BuildDedicatedYahooSymbolSet()
-    {
-        HashSet<string> symbols = new(StringComparer.OrdinalIgnoreCase);
-        foreach (string symbol in GetYahooDedicatedMacroSymbols())
-            symbols.Add(SymbolProfileHeuristics.Normalize(symbol));
 
-        foreach (string symbol in FloatingClockBuilder.GetWorldIndexSymbols())
-            symbols.Add(SymbolProfileHeuristics.Normalize(symbol));
 
-        return symbols;
-    }
 
-    private static HashSet<string> BuildOfficialMacroSymbolSet()
-        => new(GetOfficialMacroSymbols().Select(SymbolProfileHeuristics.Normalize), StringComparer.OrdinalIgnoreCase);
-
-    private static HashSet<string> BuildTreasuryMacroSymbolSet()
-        => new(GetTreasuryMacroSymbols().Select(SymbolProfileHeuristics.Normalize), StringComparer.OrdinalIgnoreCase);
-
-    private static IReadOnlyList<string> GetYahooDedicatedMacroSymbols()
-        => GetMacroIndicatorSymbols();
-
-    private static IReadOnlyList<string> GetOfficialMacroSymbols()
-        => ["^VIX", "^IXIC", "GC=F", "BZ=F", "DX-Y.NYB", "BTC-USD"];
-
-    private static IReadOnlyList<string> GetTreasuryMacroSymbols()
-        => ["^IRX", "^TNX"];
-
-    private sealed record ProviderExecutionPlan(
-        DataSourceKind Kind,
-        string Label,
-        DataSourcePolicySettings Policy,
-        IQuoteProvider Provider);
 
     private ScreensaverSceneState BuildSceneState(
         AppSettings settings,
         IReadOnlyDictionary<string, QuoteSnapshot> quotes,
-        string providerLabel,
         IReadOnlyList<string> backgroundPaths,
         IReadOnlyList<string> headlines,
         bool networkAvailable)
@@ -1119,15 +917,14 @@ public sealed class StartupCoordinator
         StatusBarViewModel status = new()
         {
             MarketStatusText = "Market (New York): --",
-            ProviderText = $"Provider: {providerLabel}",
-            UpdatedText = FormatUpdatedText(hasLatestUpdatedSymbol ? latestUpdatedSymbol : null, lastUpdate),
+            UpdatedPrefixText = "Last Updated:",
             UpdatedTickerFieldText = FormatUpdatedTickerField(hasLatestUpdatedSymbol ? latestUpdatedSymbol : null, hasLatestUpdatedSymbol ? quotes.GetValueOrDefault(latestUpdatedSymbol)?.ChangePercent : null, lastUpdate),
             UpdatedTickerFieldForeground = ResolveUpdatedTickerFieldBrush(hasLatestUpdatedSymbol ? quotes.GetValueOrDefault(latestUpdatedSymbol)?.ChangePercent : null),
             ClockDateText = nowUtc.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
             ClockText = $"{nowUtc:HH:mm} UTC"
         };
 
-        bool showNetworkWaitingOverlay = ShouldShowNetworkWaitingOverlay(networkAvailable, providerLabel);
+        bool showNetworkWaitingOverlay = !networkAvailable;
 
         return new ScreensaverSceneState
         {
@@ -1149,14 +946,6 @@ public sealed class StartupCoordinator
     {
         foreach ((string symbol, QuoteSnapshot quote) in RuntimeQuoteSeedStore.ConsumeAll())
             _runtimeQuoteMemory[symbol] = CloneQuote(quote);
-    }
-
-    public static string FormatUpdatedText(string? latestSymbol, DateTimeOffset fetchUtc)
-    {
-        string age = TimeFormatHelper.ToAgeString(fetchUtc);
-        return string.IsNullOrWhiteSpace(latestSymbol)
-            ? age
-            : $"{latestSymbol} {age}";
     }
 
     public static string FormatUpdatedTickerField(string? latestSymbol, decimal? changePercent, DateTimeOffset fetchUtc)

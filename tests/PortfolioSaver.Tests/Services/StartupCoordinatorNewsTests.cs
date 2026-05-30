@@ -15,9 +15,8 @@ public sealed class StartupCoordinatorNewsTests
 
         Assert.Equal(2, news.Headlines.Count);
         Assert.All(news.Headlines, headline => Assert.False(string.IsNullOrWhiteSpace(headline.Text)));
-        Assert.Contains("Headline A", news.MarqueeText, StringComparison.Ordinal);
-        Assert.Contains("Headline B", news.MarqueeText, StringComparison.Ordinal);
-        Assert.Contains(" STOP ", news.MarqueeText, StringComparison.Ordinal);
+        Assert.Equal("Headline A", news.Headlines[0].Text);
+        Assert.Equal("Headline B", news.Headlines[1].Text);
     }
 
     [Fact]

@@ -8,7 +8,6 @@ public sealed class NewsFlasherViewModel : BindableBase
 {
     private string _title = "FINANCE NEWS";
     private double _speed = Defaults.DefaultNewsSpeed;
-    private string _marqueeText = string.Empty;
 
     public string Title
     {
@@ -20,12 +19,6 @@ public sealed class NewsFlasherViewModel : BindableBase
     {
         get => _speed;
         set => SetProperty(ref _speed, value);
-    }
-
-    public string MarqueeText
-    {
-        get => _marqueeText;
-        set => SetProperty(ref _marqueeText, value);
     }
 
     public ObservableCollection<NewsHeadlineViewModel> Headlines { get; set; } = [];

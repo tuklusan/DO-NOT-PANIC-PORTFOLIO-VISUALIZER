@@ -711,65 +711,6 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void ProviderStatusText_IsCompactedForTopBandReadability()
-    {
-        MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
-            "CompactProviderText",
-            BindingFlags.NonPublic | BindingFlags.Static)
-            ?? throw new InvalidOperationException("CompactProviderText method not found.");
-
-        string compact = Assert.IsType<string>(method.Invoke(null,
-        [
-            "Provider: YFinance.NET + Cache (Partial), AAPL Updated 6s ago"
-        ]));
-
-        Assert.Equal("Provider: Live+Cache (Partial)", compact);
-    }
-
-    [Fact]
-    public void ProviderStatusText_DropsCacheSuffixOnceAllQuotesAreLive()
-    {
-        RunOnSta(() =>
-        {
-            ScreensaverSceneControl control = new();
-            StatusBarViewModel status = new() { ProviderText = "Provider: YFinance.NET + Cache, ^SPX Updated 0s ago" };
-
-            FieldInfo statusField = typeof(ScreensaverSceneControl).GetField(
-                "_statusViewModel",
-                BindingFlags.NonPublic | BindingFlags.Instance)
-                ?? throw new InvalidOperationException("_statusViewModel field not found.");
-            statusField.SetValue(control, status);
-
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
-                "_latestQuotes",
-                BindingFlags.NonPublic | BindingFlags.Instance)
-                ?? throw new InvalidOperationException("_latestQuotes field not found.");
-            latestQuotesField.SetValue(
-                control,
-                new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase)
-                {
-                    ["^SPX"] = new QuoteSnapshot
-                    {
-                        Symbol = "^SPX",
-                        Last = 100m,
-                        PreviousClose = 99m,
-                        FetchTimestampUtc = DateTimeOffset.UtcNow,
-                        IsStale = false
-                    }
-                });
-
-            MethodInfo compactMethod = typeof(ScreensaverSceneControl).GetMethod(
-                "CompactStatusText",
-                BindingFlags.NonPublic | BindingFlags.Instance)
-                ?? throw new InvalidOperationException("CompactStatusText method not found.");
-
-            compactMethod.Invoke(control, []);
-
-            Assert.Equal("Provider: Live", status.ProviderText);
-        });
-    }
-
-    [Fact]
     public void StatusFreshness_IsRecomputedFromLatestQuoteTimestamps()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
@@ -779,16 +720,13 @@ public sealed class ScreensaverRenderBehaviorTests
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
 
-        Assert.Contains("UpdateStatusFreshnessText(_statusViewModel.UpdatedText);", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("private void UpdateStatusFreshnessText(string? fallbackText = null)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("UpdateStatusFreshnessText();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void UpdateStatusFreshnessText()", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("Loading initial values", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_statusViewModel.UpdatedPrefixText = \"Last Updated:\";", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("_statusViewModel.UpdatedSymbolText = latestUpdatedSymbol;", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("_statusViewModel.UpdatedAgeText = TimeFormatHelper.ToAgeString(latestUpdatedFetchUtc);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_statusViewModel.UpdatedTickerFieldText = StartupCoordinator.FormatUpdatedTickerField", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_statusViewModel.UpdatedTickerFieldForeground = StartupCoordinator.ResolveUpdatedTickerFieldBrush", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StartupCoordinator.TryGetLatestUpdatedSymbol(_latestQuotes, out string latestUpdatedSymbol, out DateTimeOffset latestUpdatedFetchUtc)", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("_statusViewModel.UpdatedText = StartupCoordinator.FormatUpdatedText(latestUpdatedSymbol, latestUpdatedFetchUtc);", sceneCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -829,7 +767,7 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void NewsFlasherControl_ScrollsAfterSecondLineAndIgnoresMarqueeTextChurn()
+    public void NewsFlasherControl_ScrollsAfterSecondLineAndDefersRefreshUntilAfterAdvance()
     {
         RunOnSta(() =>
         {
@@ -860,6 +798,8 @@ public sealed class ScreensaverRenderBehaviorTests
                 ?? throw new InvalidOperationException("NewsFlasherControl.OnPlaybackTick not found.");
             FieldInfo phaseField = typeof(NewsFlasherControl).GetField("_phase", BindingFlags.Instance | BindingFlags.NonPublic)
                 ?? throw new InvalidOperationException("NewsFlasherControl._phase not found.");
+            FieldInfo pendingRefreshField = typeof(NewsFlasherControl).GetField("_pendingRefresh", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._pendingRefresh not found.");
             TextBlock headlineBlock = (TextBlock)(control.FindName("ActiveHeadlineBlock")
                 ?? throw new InvalidOperationException("ActiveHeadlineBlock not found."));
 
@@ -868,10 +808,11 @@ public sealed class ScreensaverRenderBehaviorTests
 
             bool sawScrolling = false;
             bool sawNegativeOffset = false;
+            bool sawPendingRefresh = false;
             for (int tick = 0; tick < 260; tick++)
             {
                 if (tick == 120)
-                    viewModel.MarqueeText = "This update should not reset the teleprinter.";
+                    viewModel.Headlines[0].Text = "This updated teleprinter item should finish the current step before refreshing into a new line pair.";
 
                 tickMethod.Invoke(control, [control, EventArgs.Empty]);
                 string phaseName = phaseField.GetValue(control)?.ToString() ?? string.Empty;
@@ -880,10 +821,14 @@ public sealed class ScreensaverRenderBehaviorTests
 
                 if (Canvas.GetTop(headlineBlock) < -0.1d)
                     sawNegativeOffset = true;
+
+                if (pendingRefreshField.GetValue(control) is true)
+                    sawPendingRefresh = true;
             }
 
             Assert.True(sawScrolling);
             Assert.True(sawNegativeOffset);
+            Assert.True(sawPendingRefresh);
         });
     }
 

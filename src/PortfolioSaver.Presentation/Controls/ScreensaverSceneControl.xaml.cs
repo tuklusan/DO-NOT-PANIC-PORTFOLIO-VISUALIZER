@@ -212,7 +212,6 @@ public partial class ScreensaverSceneControl : UserControl
         _settings = state.Settings;
         _latestQuotes = MergeQuotes(_latestQuotes, state.Quotes);
         _statusViewModel = state.Status;
-        CompactStatusText();
         StatusBarHost.DataContext = _statusViewModel;
         UpdateStatusMacroMeters(force: true);
         SyncTapes(_startupCoordinator.BuildTapesForQuotes(_settings, _latestQuotes));
@@ -447,8 +446,7 @@ public partial class ScreensaverSceneControl : UserControl
             new KeyValuePair<string, object?>("stale_quote_count", staleQuoteCount),
             new KeyValuePair<string, object?>("graph_count", _graphs.Count),
             new KeyValuePair<string, object?>("tape_count", _tapes.Count),
-            new KeyValuePair<string, object?>("provider_text", _statusViewModel?.ProviderText),
-            new KeyValuePair<string, object?>("updated_text", _statusViewModel?.UpdatedText),
+            new KeyValuePair<string, object?>("updated_ticker_field", _statusViewModel?.UpdatedTickerFieldText),
             new KeyValuePair<string, object?>("waiting_overlay_visible", NetworkWaitingHost.Visibility == Visibility.Visible),
             new KeyValuePair<string, object?>("clock_visible", _clockViewModel is not null));
     }
@@ -995,7 +993,7 @@ public partial class ScreensaverSceneControl : UserControl
         {
             _statusViewModel.ClockDateText = FormatStatusClockDate(referenceUtc);
             _statusViewModel.ClockText = FormatClockTimeWithZone(referenceUtc, TimeZoneInfo.Utc);
-            UpdateStatusFreshnessText(_statusViewModel.UpdatedText);
+            UpdateStatusFreshnessText();
             if (refreshStatusAncillary)
             {
                 _statusViewModel.MarketStatusText = BuildPinnedNewYorkStatusBandText(referenceUtc);
@@ -2368,18 +2366,14 @@ public partial class ScreensaverSceneControl : UserControl
         }
     }
 
-    private void UpdateStatusFreshnessText(string? fallbackText = null)
+    private void UpdateStatusFreshnessText()
     {
         if (_statusViewModel is null)
             return;
 
         if (StartupCoordinator.TryGetLatestUpdatedSymbol(_latestQuotes, out string latestUpdatedSymbol, out DateTimeOffset latestUpdatedFetchUtc))
         {
-            _statusViewModel.UpdatedText = StartupCoordinator.FormatUpdatedText(latestUpdatedSymbol, latestUpdatedFetchUtc);
             _statusViewModel.UpdatedPrefixText = "Last Updated:";
-            _statusViewModel.UpdatedSymbolText = latestUpdatedSymbol;
-            _statusViewModel.UpdatedAgeText = TimeFormatHelper.ToAgeString(latestUpdatedFetchUtc);
-            _statusViewModel.UpdatedSymbolForeground = ResolveUpdatedSymbolBrush(latestUpdatedSymbol);
             decimal? changePercent = _latestQuotes.TryGetValue(latestUpdatedSymbol, out QuoteSnapshot? updatedQuote)
                 ? updatedQuote.ChangePercent
                 : null;
@@ -2388,28 +2382,9 @@ public partial class ScreensaverSceneControl : UserControl
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(fallbackText))
-            _statusViewModel.UpdatedText = fallbackText;
-
         _statusViewModel.UpdatedPrefixText = "Last Updated:";
-        _statusViewModel.UpdatedSymbolText = string.Empty;
-        _statusViewModel.UpdatedAgeText = "--";
-        _statusViewModel.UpdatedSymbolForeground = Brushes.Gainsboro;
         _statusViewModel.UpdatedTickerFieldText = StartupCoordinator.FormatUpdatedTickerField(null, null, DateTimeOffset.MinValue);
         _statusViewModel.UpdatedTickerFieldForeground = Brushes.Gainsboro;
-    }
-
-    private Brush ResolveUpdatedSymbolBrush(string symbol)
-    {
-        if (!_latestQuotes.TryGetValue(symbol, out QuoteSnapshot? quote))
-            return Brushes.Gainsboro;
-
-        return quote.ChangePercent switch
-        {
-            > 0m => Brushes.LimeGreen,
-            < 0m => Brushes.OrangeRed,
-            _ => Brushes.Gainsboro
-        };
     }
 
 
@@ -2427,60 +2402,6 @@ public partial class ScreensaverSceneControl : UserControl
         return merged;
     }
 
-    private void CompactStatusText()
-    {
-        if (_statusViewModel is null)
-            return;
-
-        _statusViewModel.ProviderText = CompactProviderText(_statusViewModel.ProviderText);
-
-        if (_latestQuotes.Count > 0 &&
-            _latestQuotes.Values.All(quote => !quote.IsStale) &&
-            string.Equals(_statusViewModel.ProviderText, "Provider: Live+Cache", StringComparison.Ordinal))
-        {
-            _statusViewModel.ProviderText = "Provider: Live";
-        }
-    }
-
-    private static string CompactProviderText(string providerText)
-    {
-        if (string.IsNullOrWhiteSpace(providerText) ||
-            !providerText.StartsWith("Provider:", StringComparison.OrdinalIgnoreCase))
-        {
-            return providerText;
-        }
-
-        string body = providerText["Provider:".Length..].Trim();
-        int commaIndex = body.LastIndexOf(',');
-        if (commaIndex >= 0)
-        {
-            string candidate = body[(commaIndex + 1)..].Trim();
-            if (candidate.Contains("Updated", StringComparison.OrdinalIgnoreCase))
-                body = body[..commaIndex].Trim();
-        }
-
-        bool includesCache = body.Contains("Cache", StringComparison.OrdinalIgnoreCase);
-        bool isPartial = body.Contains("Partial", StringComparison.OrdinalIgnoreCase);
-        bool localOnly = body.Contains("Local Cache", StringComparison.OrdinalIgnoreCase);
-        bool cooldown = body.Contains("cooldown", StringComparison.OrdinalIgnoreCase);
-
-        string compact = body switch
-        {
-            _ when localOnly && cooldown => "Cache cooldown",
-            _ when localOnly => "Local cache",
-            _ when body.Contains(" + ", StringComparison.Ordinal) => includesCache ? "Live+Cache" : "Live",
-            _ => body
-        };
-
-        compact = compact
-            .Replace("Yahoo Finance v8", "Yahoo", StringComparison.OrdinalIgnoreCase)
-            .Replace(" source cooldown", " cooldown", StringComparison.OrdinalIgnoreCase);
-
-        if (isPartial && !compact.Contains("Partial", StringComparison.OrdinalIgnoreCase))
-            compact += " (Partial)";
-
-        return $"Provider: {compact}";
-    }
 
     private void StartDemoFlashSequence()
     {
