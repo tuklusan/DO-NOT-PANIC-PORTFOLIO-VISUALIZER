@@ -1382,7 +1382,7 @@
       "priority": 1,
       "area": "client_server_refactor",
       "title": "Replace the in-process YFinance runtime with a standalone YFinance.NET client-server architecture",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested replacing the old service-ready DataEngine concept with a pure client-server architecture where YFinance.NET runs as its own process and the UI becomes a sequential client."
@@ -1411,7 +1411,13 @@
         "UI configuration changes should normally affect only client-side request sequencing and symbol selection. They should not generally mutate server internals; the server should expose only a small admin/control surface such as health, status, optional shutdown, and optional cache flush operations.",
         "This is a major refactor and includes test script updates, harness updates, starting and stopping YFinance.NET alongside the UI for now, documentation updates, and forensic code-review cleanup revealed during the transition.",
         "Acceptance should include a clean end-to-end UI proof with the standalone YFinance.NET server process, updated harness lifecycle management, updated docs, and removal of obsolete in-process retrieval assumptions from the active code path.",
-        "Protocol and implementation design are now captured in docs/YFINANCE_NET_ICD.md and docs/YFINANCE_NET_IMPLEMENTATION_PLAN.md as the starting baseline for execution."
+        "Protocol and implementation design are now captured in docs/YFINANCE_NET_ICD.md and docs/YFINANCE_NET_IMPLEMENTATION_PLAN.md as the starting baseline for execution.",
+        "Implemented YFinance.NET.Protocol, YFinance.NET.Client, and YFinance.NET.Server as the active client-server runtime boundary.",
+        "The standalone server now listens on TCP 14870, binds to any IP, supports owned and standalone modes, and advertises a maximum of 1024 concurrent clients.",
+        "All request, response, and async event messages now carry a local-time timestamp with UTC offset plus an uppercase SHA-256 payload checksum.",
+        "All client/server communications are now logged into the dedicated UI and YFinance circular trace files, including request send/receive, response send/receive, integrity verification, and lifecycle events.",
+        "PortfolioSaver quote, history, market-timing, ticker-info, and config-validation paths now go through the TCP client seam rather than calling YFinance in-process.",
+        "Canonical owned-mode VM proof completed successfully in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260530-230915 with ConfigPhaseStatus=Completed, DesktopPhaseStatus=Completed, and FullScreenToggleStatus=Completed."
       ]
     },
     {
