@@ -58,6 +58,7 @@ $screensaverOut = Join-Path $publishRoot "screensaver"
 $configOut = Join-Path $publishRoot "config"
 $desktopOut = Join-Path $publishRoot "desktop"
 $agentOut = Join-Path $publishRoot "agent"
+$serverOut = Join-Path $publishRoot "server"
 $dotnetCli = Resolve-DotNetCli
 
 Write-Step "Preparing temp publish workspace: $tempRoot"
@@ -120,16 +121,18 @@ foreach ($assetFile in $assetFiles) {
 if (Test-Path $publishRoot) {
     Remove-Item -LiteralPath $publishRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
-New-Item -ItemType Directory -Force -Path $screensaverOut,$configOut,$desktopOut,$agentOut | Out-Null
+New-Item -ItemType Directory -Force -Path $screensaverOut,$configOut,$desktopOut,$agentOut,$serverOut | Out-Null
 
 $screensaverProject = ".\src\PortfolioSaver.Screensaver\PortfolioSaver.Screensaver.csproj"
 $configProject = ".\src\PortfolioSaver.Config\PortfolioSaver.Config.csproj"
 $desktopProject = ".\src\PortfolioSaver.Desktop\PortfolioSaver.Desktop.csproj"
 $agentProject = ".\src\PortfolioSaver.VmAgent\PortfolioSaver.VmAgent.csproj"
+$serverProject = ".\YFinance.net\YFinance.NET.Server\YFinance.NET.Server.csproj"
 $screensaverTempPublish = ".\src\PortfolioSaver.Screensaver\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
 $configTempPublish = ".\src\PortfolioSaver.Config\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
 $desktopTempPublish = ".\src\PortfolioSaver.Desktop\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
 $agentTempPublish = ".\src\PortfolioSaver.VmAgent\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
+$serverTempPublish = ".\YFinance.net\YFinance.NET.Server\bin\$Configuration\net10.0\publish"
 
 Push-Location $tempRoot
 try {
@@ -153,6 +156,11 @@ try {
     & $dotnetCli restore $agentProject -r $RuntimeIdentifier --disable-parallel --ignore-failed-sources -m:1 -v minimal
     if ($LASTEXITCODE -ne 0) { throw "Restore failed for agent" }
 
+    Test-Deadline -Deadline $deadline -NextStep "restore yfinance server"
+    Write-Step "Restoring YFinance server project"
+    & $dotnetCli restore $serverProject --disable-parallel --ignore-failed-sources -m:1 -v minimal
+    if ($LASTEXITCODE -ne 0) { throw "Restore failed for YFinance server" }
+
     Test-Deadline -Deadline $deadline -NextStep "publish screensaver"
     Write-Step "Publishing screensaver"
     & $dotnetCli publish $screensaverProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore --disable-parallel -m:1 -v minimal
@@ -173,11 +181,17 @@ try {
     & $dotnetCli publish $agentProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore --disable-parallel -m:1 -v minimal
     if ($LASTEXITCODE -ne 0) { throw "Publish failed for agent" }
 
+    Test-Deadline -Deadline $deadline -NextStep "publish yfinance server"
+    Write-Step "Publishing YFinance server"
+    & $dotnetCli publish $serverProject -c $Configuration --self-contained false --no-restore --disable-parallel -m:1 -v minimal
+    if ($LASTEXITCODE -ne 0) { throw "Publish failed for YFinance server" }
+
     foreach ($pair in @(
         @{ From = $screensaverTempPublish; To = $screensaverOut },
         @{ From = $configTempPublish; To = $configOut },
         @{ From = $desktopTempPublish; To = $desktopOut },
-        @{ From = $agentTempPublish; To = $agentOut }
+        @{ From = $agentTempPublish; To = $agentOut },
+        @{ From = $serverTempPublish; To = $serverOut }
     )) {
         if (-not (Test-Path $pair.From)) {
             throw "Expected publish output not found: $($pair.From)"

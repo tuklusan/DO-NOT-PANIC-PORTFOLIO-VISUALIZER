@@ -128,6 +128,20 @@ public sealed class YFinanceClientServerProtocolTests
     }
 
     [Fact]
+    public void PublishAndLauncher_StageAndDiscoverSiblingServerBundle()
+    {
+        string repoRoot = GetRepoRoot();
+        string publishScript = File.ReadAllText(Path.Combine(repoRoot, "build", "publish-safe-temp.ps1"));
+        string launcherSource = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Shared", "Services", "YFinanceServerProcessManager.cs"));
+
+        Assert.Contains("$serverOut = Join-Path $publishRoot \"server\"", publishScript, StringComparison.Ordinal);
+        Assert.Contains("$serverProject = \".\\YFinance.net\\YFinance.NET.Server\\YFinance.NET.Server.csproj\"", publishScript, StringComparison.Ordinal);
+        Assert.Contains("$serverTempPublish = \".\\YFinance.net\\YFinance.NET.Server\\bin\\$Configuration\\net10.0\\publish\"", publishScript, StringComparison.Ordinal);
+        Assert.Contains("Path.GetFullPath(Path.Combine(baseDirectory, \"..\", \"server\", \"YFinance.NET.Server.exe\"))", launcherSource, StringComparison.Ordinal);
+        Assert.Contains("string siblingRepo = Path.Combine(current, \"repo\")", launcherSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ServerProcess_RespondsToHealthRequest_OverTcpProtocol()
     {
         using Process server = StartServerProcess(14871);

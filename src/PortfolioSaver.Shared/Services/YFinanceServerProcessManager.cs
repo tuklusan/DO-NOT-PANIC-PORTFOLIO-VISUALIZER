@@ -116,6 +116,7 @@ public static class YFinanceServerProcessManager
         [
             Path.Combine(baseDirectory, "YFinance.NET.Server.exe"),
             Path.Combine(baseDirectory, "YFinance.NET.Server", "YFinance.NET.Server.exe"),
+            Path.GetFullPath(Path.Combine(baseDirectory, "..", "server", "YFinance.NET.Server.exe")),
             Path.Combine(GetRepoRoot(), "YFinance.net", "YFinance.NET.Server", "bin", "Release", "net10.0", "YFinance.NET.Server.exe"),
             Path.Combine(GetRepoRoot(), "YFinance.net", "YFinance.NET.Server", "bin", "Debug", "net10.0", "YFinance.NET.Server.exe")
         ];
@@ -130,6 +131,7 @@ public static class YFinanceServerProcessManager
         [
             Path.Combine(baseDirectory, "YFinance.NET.Server.dll"),
             Path.Combine(baseDirectory, "YFinance.NET.Server", "YFinance.NET.Server.dll"),
+            Path.GetFullPath(Path.Combine(baseDirectory, "..", "server", "YFinance.NET.Server.dll")),
             Path.Combine(GetRepoRoot(), "YFinance.net", "YFinance.NET.Server", "bin", "Release", "net10.0", "YFinance.NET.Server.dll"),
             Path.Combine(GetRepoRoot(), "YFinance.net", "YFinance.NET.Server", "bin", "Debug", "net10.0", "YFinance.NET.Server.dll")
         ];
@@ -153,6 +155,10 @@ public static class YFinanceServerProcessManager
         {
             if (File.Exists(Path.Combine(current, "PortfolioScreensaver.sln")))
                 return current;
+
+            string siblingRepo = Path.Combine(current, "repo");
+            if (File.Exists(Path.Combine(siblingRepo, "PortfolioScreensaver.sln")))
+                return siblingRepo;
 
             DirectoryInfo? parent = Directory.GetParent(current);
             current = parent?.FullName;
