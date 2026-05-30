@@ -1410,7 +1410,8 @@
         "Server lifecycle must support two modes: owned mode and standalone mode. The default product mode for now is owned mode, where the UI launches the YFinance.NET server and the server exits when the owning UI process or session goes away.",
         "UI configuration changes should normally affect only client-side request sequencing and symbol selection. They should not generally mutate server internals; the server should expose only a small admin/control surface such as health, status, optional shutdown, and optional cache flush operations.",
         "This is a major refactor and includes test script updates, harness updates, starting and stopping YFinance.NET alongside the UI for now, documentation updates, and forensic code-review cleanup revealed during the transition.",
-        "Acceptance should include a clean end-to-end UI proof with the standalone YFinance.NET server process, updated harness lifecycle management, updated docs, and removal of obsolete in-process retrieval assumptions from the active code path."
+        "Acceptance should include a clean end-to-end UI proof with the standalone YFinance.NET server process, updated harness lifecycle management, updated docs, and removal of obsolete in-process retrieval assumptions from the active code path.",
+        "Protocol and implementation design are now captured in docs/YFINANCE_NET_ICD.md and docs/YFINANCE_NET_IMPLEMENTATION_PLAN.md as the starting baseline for execution."
       ]
     },
     {
