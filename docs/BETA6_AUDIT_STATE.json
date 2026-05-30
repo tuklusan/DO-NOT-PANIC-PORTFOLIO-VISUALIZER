@@ -1395,13 +1395,20 @@
         "Design the server so it can run on a completely separate machine from the UI client in the future.",
         "Long-range portability target: keep the architecture and protocol clean enough that the YFinance.NET server can later be reimplemented or migrated to cross-platform standard C++ for Linux/Unix/Windows/Windows-XP/macOS Intel/macOS ARM/Raspberry Pi and related platforms.",
         "Define a network protocol between the UI and the YFinance.NET server, ideally echoing the clarity of Yahoo v7-style request/response semantics, while remaining our own stable product protocol.",
+        "Document the protocol in a dedicated Interface Control Document (ICD) kept in the project repository, and treat that ICD as a maintained project artifact that evolves with implementation changes and test expectations.",
+        "The client-server protocol must be minimal but sufficient: no speculative complexity, but enough structure to cleanly support the required request types, cache semantics, server metadata, and explicit error states.",
         "Protocol responses must include explicit exception scenarios the UI can handle cleanly, such as Network Lost, Upstream Server Not Responding, upstream throttled, invalid symbol, and cache miss or stale-result states where relevant.",
+        "Async server messages are limited to server or connection lifecycle events, not ordinary market-data flow. Normal quote/history/timing failures should be returned as request-scoped error responses, not unsolicited pushes.",
+        "Primary protocol model: client-driven request/response. The UI client owns request initiation and pacing; the server answers requests and does not become the UI scheduler.",
+        "Ordinary lookup and upstream failures must remain request-scoped error responses. Async server exception messages are reserved for server-wide or connection-wide conditions such as shutdown, overload, idle timeout, or protocol violation.",
         "Preserve upstream-sync friendliness: the clean-room YFinance.NET port must remain easy to keep in sync with future changes from the user's upstream Python fork, and the new client-server split must not destroy that maintainability goal.",
         "YFinance.NET server behavior for single or batch ticker requests: first check cache, return cached values when they are newer than the 10-minute freshness ceiling, otherwise fetch from Yahoo, return the fresh data, and store it back in cache.",
         "Nothing served from cache should be older than 10 minutes unless the protocol intentionally marks it as stale under a future degraded-mode extension.",
         "Any client identifier sent upstream to Yahoo must be a unique random hash derived from the requesting machine identity and must not include the author name, organization name, or other human-identifying product branding.",
         "Once the caching YFinance.NET server is functional, the UI should no longer carry throttling responsibility. The UI should request macros one by one during warmup, then global exchanges one by one, then continue sequential retrieval from YFinance.NET with approximately 500 milliseconds (0.5 seconds) spacing after each UI update so visual update flares remain continuous while CPU load stays controlled.",
         "No parallel connections from the same UI client to YFinance.NET. Multi-client server support exists so one shared server can eventually support many desktop UIs across a network, not so a single UI floods the server with parallel requests.",
+        "Server lifecycle must support two modes: owned mode and standalone mode. The default product mode for now is owned mode, where the UI launches the YFinance.NET server and the server exits when the owning UI process or session goes away.",
+        "UI configuration changes should normally affect only client-side request sequencing and symbol selection. They should not generally mutate server internals; the server should expose only a small admin/control surface such as health, status, optional shutdown, and optional cache flush operations.",
         "This is a major refactor and includes test script updates, harness updates, starting and stopping YFinance.NET alongside the UI for now, documentation updates, and forensic code-review cleanup revealed during the transition.",
         "Acceptance should include a clean end-to-end UI proof with the standalone YFinance.NET server process, updated harness lifecycle management, updated docs, and removal of obsolete in-process retrieval assumptions from the active code path."
       ]
@@ -1450,4 +1457,3 @@
     }
   ]
 }
-
