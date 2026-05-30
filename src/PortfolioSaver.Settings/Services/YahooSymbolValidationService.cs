@@ -156,7 +156,18 @@ public sealed class YahooSymbolValidationService
                 cancellationToken)
             .ConfigureAwait(false);
 
-        return response.Quotes.ToDictionary(quote => quote.Symbol, StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, QuoteDto> results = new(StringComparer.OrdinalIgnoreCase);
+        foreach (QuoteDto quote in response.Quotes)
+        {
+            if (!string.IsNullOrWhiteSpace(quote.Symbol))
+                results[quote.Symbol] = quote;
+
+            string responseKey = YFinanceSymbolMapper.ToResponseMatchKey(quote.Symbol);
+            if (!string.IsNullOrWhiteSpace(responseKey))
+                results[responseKey] = quote;
+        }
+
+        return results;
     }
 
     private static PortfolioSaver.Core.Models.QuoteSnapshot MapQuote(string originalSymbol, QuoteDto quote)

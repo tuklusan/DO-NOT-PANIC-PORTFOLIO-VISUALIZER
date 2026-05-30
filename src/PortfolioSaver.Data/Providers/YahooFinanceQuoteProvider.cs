@@ -54,10 +54,21 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
         }
 
         Dictionary<string, QuoteSnapshot> results = new(StringComparer.OrdinalIgnoreCase);
-        Dictionary<string, QuoteDto> byRequestSymbol = resolved.Quotes.ToDictionary(quote => quote.Symbol, StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, QuoteDto> byResponseKey = new(StringComparer.OrdinalIgnoreCase);
+        foreach (QuoteDto quote in resolved.Quotes)
+        {
+            if (!string.IsNullOrWhiteSpace(quote.Symbol))
+                byResponseKey[quote.Symbol] = quote;
+
+            string responseKey = YFinanceSymbolMapper.ToResponseMatchKey(quote.Symbol);
+            if (!string.IsNullOrWhiteSpace(responseKey))
+                byResponseKey[responseKey] = quote;
+        }
+
         foreach ((string originalSymbol, string requestSymbol) in requestByOriginal)
         {
-            if (!byRequestSymbol.TryGetValue(requestSymbol, out QuoteDto? quote))
+            if (!byResponseKey.TryGetValue(requestSymbol, out QuoteDto? quote) &&
+                !byResponseKey.TryGetValue(YFinanceSymbolMapper.ToResponseMatchKey(requestSymbol), out quote))
                 continue;
 
             QuoteSnapshot mapped = MapQuote(originalSymbol, quote);

@@ -21,6 +21,9 @@ public static class YFinanceSymbolMapper
         return RequestAliases.TryGetValue(normalized, out string? mapped) ? mapped : normalized;
     }
 
+    public static string ToResponseMatchKey(string? symbol)
+        => Normalize(symbol).TrimStart('^');
+
     public static decimal? NormalizeNumericValue(string requestedSymbol, decimal? value)
     {
         if (!value.HasValue)
