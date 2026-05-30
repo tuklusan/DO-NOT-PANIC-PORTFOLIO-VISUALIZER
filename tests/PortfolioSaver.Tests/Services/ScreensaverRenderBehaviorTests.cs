@@ -2,9 +2,11 @@ using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Render.Controls;
 using PortfolioSaver.Render.Services;
 using PortfolioSaver.Render.ViewModels;
 using PortfolioSaver.Screensaver.Controls;
@@ -807,17 +809,82 @@ public sealed class ScreensaverRenderBehaviorTests
 
         Assert.Contains("FontFamily=\"Courier New\"", newsXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ActiveHeadlineBlock\"", newsXaml, StringComparison.Ordinal);
+        Assert.Contains("TextWrapping=\"Wrap\"", newsXaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"{Binding ElementName=ViewportHost, Path=ActualWidth}\"", newsXaml, StringComparison.Ordinal);
+        Assert.Contains("MaxHeight=\"38\"", newsXaml, StringComparison.Ordinal);
         Assert.Contains("LineStackingStrategy=\"BlockLineHeight\"", newsXaml, StringComparison.Ordinal);
         Assert.Contains("FormatHeadline", newsCode, StringComparison.Ordinal);
         Assert.Contains("Regex.Replace(normalized, @\"[\\u0000-\\u001F\\u007F]+\", \" \")", newsCode, StringComparison.Ordinal);
         Assert.Contains("Regex.Replace(normalized, @\"\\s+\", \" \")", newsCode, StringComparison.Ordinal);
-        Assert.Contains("upper + \" STOP\"", newsCode, StringComparison.Ordinal);
         Assert.Contains("PlaybackPhase.Typing", newsCode, StringComparison.Ordinal);
         Assert.Contains("PlaybackPhase.Scrolling", newsCode, StringComparison.Ordinal);
-        Assert.Contains("PlaybackPhase.Clearing", newsCode, StringComparison.Ordinal);
+        Assert.Contains("PlaybackPhase.PauseAfterScroll", newsCode, StringComparison.Ordinal);
+        Assert.Contains("PlaybackPhase.AdvanceHeadline", newsCode, StringComparison.Ordinal);
         Assert.Contains("TeleprinterCursor", newsCode, StringComparison.Ordinal);
-        Assert.Contains("SetDisplayedHeadlineText(_activeText, includeCursor: true);", newsCode, StringComparison.Ordinal);
-        Assert.Contains("ClearCharactersPerTick = 2", newsCode, StringComparison.Ordinal);
+        Assert.Contains("Canvas.SetTop(ActiveHeadlineBlock, _currentVerticalOffset);", newsCode, StringComparison.Ordinal);
+        Assert.Contains("MeasureHeadlineHeight", newsCode, StringComparison.Ordinal);
+        Assert.Contains("TelegraphVerticalScrollPixelsPerSecond = 42d", newsCode, StringComparison.Ordinal);
+        Assert.Contains("TypewriterCharactersPerTick = 2", newsCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("nameof(NewsFlasherViewModel.MarqueeText)", newsCode, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NewsFlasherControl_ScrollsAfterSecondLineAndIgnoresMarqueeTextChurn()
+    {
+        RunOnSta(() =>
+        {
+            NewsFlasherControl control = new()
+            {
+                Width = 1180,
+                Height = 54
+            };
+            NewsFlasherViewModel viewModel = new()
+            {
+                Speed = 1d
+            };
+            viewModel.Headlines.Add(new NewsHeadlineViewModel
+            {
+                Text = "Global markets brace for a remarkably long teleprinter headline that should wrap to a second line before the scroll phase begins."
+            });
+
+            control.DataContext = viewModel;
+            control.Measure(new Size(1180, 54));
+            control.Arrange(new Rect(0, 0, 1180, 54));
+            control.UpdateLayout();
+
+            MethodInfo subscribeMethod = typeof(NewsFlasherControl).GetMethod("SubscribeToFlasher", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.SubscribeToFlasher not found.");
+            MethodInfo resetMethod = typeof(NewsFlasherControl).GetMethod("ResetPlayback", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.ResetPlayback not found.");
+            MethodInfo tickMethod = typeof(NewsFlasherControl).GetMethod("OnPlaybackTick", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.OnPlaybackTick not found.");
+            FieldInfo phaseField = typeof(NewsFlasherControl).GetField("_phase", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._phase not found.");
+            TextBlock headlineBlock = (TextBlock)(control.FindName("ActiveHeadlineBlock")
+                ?? throw new InvalidOperationException("ActiveHeadlineBlock not found."));
+
+            subscribeMethod.Invoke(control, [viewModel]);
+            resetMethod.Invoke(control, []);
+
+            bool sawScrolling = false;
+            bool sawNegativeOffset = false;
+            for (int tick = 0; tick < 260; tick++)
+            {
+                if (tick == 120)
+                    viewModel.MarqueeText = "This update should not reset the teleprinter.";
+
+                tickMethod.Invoke(control, [control, EventArgs.Empty]);
+                string phaseName = phaseField.GetValue(control)?.ToString() ?? string.Empty;
+                if (string.Equals(phaseName, "Scrolling", StringComparison.Ordinal))
+                    sawScrolling = true;
+
+                if (Canvas.GetTop(headlineBlock) < -0.1d)
+                    sawNegativeOffset = true;
+            }
+
+            Assert.True(sawScrolling);
+            Assert.True(sawNegativeOffset);
+        });
     }
 
     [Fact]
@@ -854,7 +921,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("Source = item", tapeCode, StringComparison.Ordinal);
         Assert.Contains("nameof(TapeItemViewModel.WaitingGlyphText)", tapeCode, StringComparison.Ordinal);
         Assert.Contains("nameof(TapeItemViewModel.WaitingGlyphForeground)", tapeCode, StringComparison.Ordinal);
-        Assert.Contains("MinHeight=\"72\"", statusXaml, StringComparison.Ordinal);
+        Assert.Contains("MinHeight=\"92\"", statusXaml, StringComparison.Ordinal);
         Assert.Contains("TextWrapping=\"Wrap\"", statusXaml, StringComparison.Ordinal);
         Assert.Contains("double statusHeight = Math.Max(72d, StatusBarHost.ActualHeight);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("double tapeTopMargin = Math.Clamp(statusHeight + 12d, 78d, 126d);", sceneCodeBehind, StringComparison.Ordinal);
@@ -1117,17 +1184,20 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("Text=\"{Binding UpdatedTickerFieldText}\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("Foreground=\"{Binding UpdatedTickerFieldForeground}\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"102\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("MinHeight=\"92\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("Width=\"96\"", statusBarXaml, StringComparison.Ordinal);
-        Assert.Contains("<ColumnDefinition Width=\"24\" />", statusBarXaml, StringComparison.Ordinal);
-        Assert.Contains("<ColumnDefinition Width=\"52\" />", statusBarXaml, StringComparison.Ordinal);
-        Assert.Contains("<ColumnDefinition Width=\"34\" />", statusBarXaml, StringComparison.Ordinal);
-        Assert.Contains("<ColumnDefinition Width=\"26\" />", statusBarXaml, StringComparison.Ordinal);
-        Assert.Contains("MaxWidth=\"208\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("MinHeight=\"50\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("<ColumnDefinition Width=\"22\" />", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("<ColumnDefinition Width=\"64\" />", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("FontSize=\"8\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("Grid.Row=\"2\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("TextAlignment=\"Left\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("MaxWidth=\"248\"", statusBarXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("MaxWidth=\"700\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("LineHeight=\"15\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Matches(new Regex("Text=\\\"\\{Binding MarketStatusText\\}\\\"[\\s\\S]*FontFamily=\\\"\\{StaticResource StableClockFont\\}\\\"", RegexOptions.CultureInvariant), statusBarXaml);
         Assert.Matches(new Regex("Text=\\\"\\{Binding UpdatedPrefixText\\}\\\"[\\s\\S]*FontFamily=\\\"\\{StaticResource StableClockFont\\}\\\"", RegexOptions.CultureInvariant), statusBarXaml);
-        Assert.Contains("Width=\"182\"", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"222\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("treasuryYieldMeterMax = 6m", sceneCodeBehind, StringComparison.Ordinal);
     }
 

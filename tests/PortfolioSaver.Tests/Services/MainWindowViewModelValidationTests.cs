@@ -178,6 +178,23 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
+    public void EndValidationRun_WhenAlreadyValidated_ShowsOkCancelActions()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));
+        SetPrivateField(vm, "_isValidated", true);
+
+        InvokePrivate<object?>(vm, "BeginValidationRun", []);
+        Assert.True(vm.IsApplying);
+        Assert.False(vm.ShowValidatedActionButtons);
+
+        InvokePrivate<object?>(vm, "EndValidationRun", []);
+
+        Assert.False(vm.IsApplying);
+        Assert.False(vm.ShowValidateButton);
+        Assert.True(vm.ShowValidatedActionButtons);
+    }
+
+    [Fact]
     public async Task ValidateSymbolsAgainstSourcesAsync_TrustsRecentCachedSymbolProfile()
     {
         string localDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));

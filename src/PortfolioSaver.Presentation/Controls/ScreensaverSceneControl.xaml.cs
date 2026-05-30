@@ -2201,7 +2201,6 @@ public partial class ScreensaverSceneControl : UserControl
                 _newsViewModel.Headlines.Add(CloneHeadline(next));
         }
 
-        _newsViewModel.MarqueeText = string.Join(" | ", _newsViewModel.Headlines.Select(headline => headline.Text));
     }
 
     private static TapeItemViewModel CloneTapeItem(TapeItemViewModel item) => new()

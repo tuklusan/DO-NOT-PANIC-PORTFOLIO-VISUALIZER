@@ -2112,8 +2112,15 @@ function Validate-AndCloseConfigWindow {
                 Write-ConfigWindowTrace -Event 'ValidateStatus' -Details $statusText
             }
 
-            $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
+            if (-not (Test-AutomationElementAlive -Element $Window)) {
+                $Window = Find-ConfigWindowOwned -Process $Process
+                if ($null -eq $Window) {
+                    $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
+                }
+            }
             if ($null -ne $Window) {
+                $validatedStatusReady = -not [string]::IsNullOrWhiteSpace($statusText) -and
+                    $statusText -like '*Validation passed. Click OK to save/apply, or Cancel to discard.*'
                 $okButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigOkButton'
                 if ($null -eq $okButton) {
                     $okButton = Find-DescendantByNameAndControlType -Root $Window -Name 'OK' -ControlType ([System.Windows.Automation.ControlType]::Button)
@@ -2123,9 +2130,13 @@ function Validate-AndCloseConfigWindow {
                     $cancelButton = Find-DescendantByNameAndControlType -Root $Window -Name 'Cancel' -ControlType ([System.Windows.Automation.ControlType]::Button)
                 }
                 $primaryLabel = if ($null -ne $okButton) { [string]$okButton.Current.Name } else { '' }
-                $validatedStatusReady = -not [string]::IsNullOrWhiteSpace($statusText) -and
-                    $statusText -like '*Validation passed. Click OK to save/apply, or Cancel to discard.*'
-                if (($null -ne $okButton -and ($CompletionMode -eq 'Apply' -or $null -ne $cancelButton)) -or $validatedStatusReady) {
+                $validatedButtonsReady = if ($CompletionMode -eq 'Apply') {
+                    $null -ne $okButton
+                }
+                else {
+                    $null -ne $okButton -and $null -ne $cancelButton
+                }
+                if (($validatedStatusReady -and $validatedButtonsReady) -or $validatedButtonsReady) {
                     $buttonSnapshot = Get-WindowButtonSnapshot -Window $Window
                     Write-ConfigWindowTrace -Event 'ValidateOkReady' -Details ("status={0}; primary_label={1}; cancel_present={2}; mode={3}; buttons={4}" -f $statusText, $primaryLabel, ($null -ne $cancelButton), $CompletionMode, $buttonSnapshot)
                     if ($null -ne $okButton) {
@@ -2149,25 +2160,6 @@ function Validate-AndCloseConfigWindow {
 
         try {
             $invoked = $false
-            if ($Window) {
-                try {
-                    $Window.SetFocus()
-                }
-                catch {
-                }
-
-                $keys = if ($CompletionMode -eq 'Cancel') { @('{ESC}') } else { @('{ENTER}') }
-                Send-KeySequence -Keys $keys -DelayMilliseconds 80
-                Write-ConfigWindowTrace -Event 'ValidatedKeyboardCloseAttempt' -Details ("mode={0}; key={1}" -f $CompletionMode, $keys[0])
-                Start-Sleep -Milliseconds 220
-                $Process.Refresh()
-                $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
-                if ($null -eq $Window -or $Process.HasExited) {
-                    Write-ConfigWindowTrace -Event 'ValidatedKeyboardCloseSucceeded' -Details ("mode={0}" -f $CompletionMode)
-                    return $true
-                }
-            }
-
             $targetButton = $primaryButton
             $invokeEvent = 'OkButtonInvoked'
             $invokeFailedEvent = 'OkButtonInvokeFailed'
@@ -2188,11 +2180,40 @@ function Validate-AndCloseConfigWindow {
             }
 
             if ($null -ne $targetButton) {
+                try {
+                    $targetButton.SetFocus()
+                }
+                catch {
+                }
+                Write-ConfigWindowTrace -Event 'ValidatedButtonTargetReady' -Details ("mode={0}; automation_id={1}; name={2}" -f $CompletionMode, [string]$targetButton.Current.AutomationId, [string]$targetButton.Current.Name)
+            }
+
+            if ($null -ne $targetButton) {
                 $invoked = Invoke-AutomationElement -Element $targetButton
                 if (-not $invoked) {
                     $invoked = Click-AutomationElementCenter -Element $targetButton
                 }
             }
+
+            if (-not $invoked -and $Window) {
+                try {
+                    $Window.SetFocus()
+                }
+                catch {
+                }
+
+                $keys = if ($CompletionMode -eq 'Cancel') { @('{ESC}') } else { @('{ENTER}') }
+                Send-KeySequence -Keys $keys -DelayMilliseconds 80
+                Write-ConfigWindowTrace -Event 'ValidatedKeyboardCloseAttempt' -Details ("mode={0}; key={1}" -f $CompletionMode, $keys[0])
+                Start-Sleep -Milliseconds 220
+                $Process.Refresh()
+                $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
+                if ($null -eq $Window -or $Process.HasExited) {
+                    Write-ConfigWindowTrace -Event 'ValidatedKeyboardCloseSucceeded' -Details ("mode={0}" -f $CompletionMode)
+                    return $true
+                }
+            }
+
             if (-not $invoked -and $CompletionMode -eq 'Cancel') {
                 $invoked = Click-ConfigCloseButtonFallback -Window $Window
             }
@@ -2389,43 +2410,34 @@ try {
         [void](Focus-ProcessWindow -Process $desktop)
         $configOpened = $false
         Write-ConfigWindowTrace -Event 'ConfigPhaseStart' -Details ("desktop_process_id={0}" -f $desktop.Id)
-        foreach ($attempt in 1..3) {
-            try {
-                [void](Focus-ProcessWindow -Process $desktop)
-                [System.Windows.Forms.SendKeys]::SendWait('%o')
-                Write-ConfigWindowTrace -Event 'OptionsMenuExpanded' -Details ("path=keyboard; attempt={0}" -f $attempt)
-                Start-Sleep -Milliseconds 20
-                [System.Windows.Forms.SendKeys]::SendWait('s')
-                Write-ConfigWindowTrace -Event 'SettingsMenuInvoked' -Details ("path=keyboard; attempt={0}" -f $attempt)
-                Start-Sleep -Milliseconds 45
-            }
-            catch {}
+        $optionsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsMenuRoot'
+        if ($null -ne $optionsMenuItem) {
+            [void](Expand-AutomationElement -Element $optionsMenuItem)
+            Write-ConfigWindowTrace -Event 'OptionsMenuExpanded' -Details 'path=automation'
+            Start-Sleep -Milliseconds 40
+        }
 
-            $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 1
-            if ($null -ne $window) {
-                Write-ConfigWindowTrace -Event 'ConfigWindowOpenedByKeyboardPath' -Details ("attempt={0}" -f $attempt)
-                $configOpened = $true
-                break
+        $settingsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsSettingsMenuItem'
+        if ($null -ne $settingsMenuItem) {
+            $configOpened = Invoke-AutomationElement -Element $settingsMenuItem
+            Write-ConfigWindowTrace -Event 'SettingsMenuInvoked' -Details ("path=automation; result={0}" -f $configOpened)
+            if (-not $configOpened) {
+                try { $configOpened = Click-AutomationElementCenter -Element $settingsMenuItem } catch {}
+                Write-ConfigWindowTrace -Event 'SettingsMenuClickFallback' -Details ("result={0}" -f $configOpened)
             }
         }
 
         if (-not $configOpened) {
-            $optionsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsMenuRoot'
-            if ($null -ne $optionsMenuItem) {
-                [void](Expand-AutomationElement -Element $optionsMenuItem)
-                Write-ConfigWindowTrace -Event 'OptionsMenuExpanded' -Details 'path=automation'
-                Start-Sleep -Milliseconds 40
+            try {
+                [void](Focus-ProcessWindow -Process $desktop)
+                [System.Windows.Forms.SendKeys]::SendWait('%o')
+                Write-ConfigWindowTrace -Event 'OptionsMenuExpanded' -Details 'path=keyboard-fallback'
+                Start-Sleep -Milliseconds 20
+                [System.Windows.Forms.SendKeys]::SendWait('s')
+                Write-ConfigWindowTrace -Event 'SettingsMenuInvoked' -Details 'path=keyboard-fallback'
+                Start-Sleep -Milliseconds 45
             }
-
-            $settingsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsSettingsMenuItem'
-            if ($null -ne $settingsMenuItem) {
-                $configOpened = Invoke-AutomationElement -Element $settingsMenuItem
-                Write-ConfigWindowTrace -Event 'SettingsMenuInvoked' -Details ("path=automation; result={0}" -f $configOpened)
-                if (-not $configOpened) {
-                    try { $configOpened = Click-AutomationElementCenter -Element $settingsMenuItem } catch {}
-                    Write-ConfigWindowTrace -Event 'SettingsMenuClickFallback' -Details ("result={0}" -f $configOpened)
-                }
-            }
+            catch {}
         }
 
         Start-Sleep -Milliseconds 60

@@ -750,6 +750,8 @@ public sealed class MainWindowViewModel : BindableBase
         RaisePropertyChanged(nameof(IsValidationActionEnabled));
         RaisePropertyChanged(nameof(ShowNetworkLockOverlay));
         RaisePropertyChanged(nameof(PrimaryButtonText));
+        RaisePropertyChanged(nameof(ShowValidateButton));
+        RaisePropertyChanged(nameof(ShowValidatedActionButtons));
         RaiseCommandCanExecuteChanged();
         ValidationActivityChanged?.Invoke(applying);
     }

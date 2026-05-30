@@ -32,17 +32,19 @@
             <Grid Grid.Column="1"
                   x:Name="ViewportHost"
                   ClipToBounds="True"
-                  Height="38"
+                  Height="44"
                   Margin="12,0,10,0"
                   VerticalAlignment="Center">
                 <Canvas x:Name="TrackPanel">
                     <TextBlock x:Name="ActiveHeadlineBlock"
                                TextTrimming="None"
-                               TextWrapping="NoWrap"
+                               TextWrapping="Wrap"
+                               Width="{Binding ElementName=ViewportHost, Path=ActualWidth}"
+                               MaxHeight="38"
                                LineStackingStrategy="BlockLineHeight"
                                LineHeight="19"
                                FontFamily="Courier New"
-                               FontSize="17"
+                               FontSize="16"
                                FontWeight="Bold"
                                Foreground="WhiteSmoke"
                                VerticalAlignment="Center" />

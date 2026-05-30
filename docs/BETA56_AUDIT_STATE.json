@@ -473,7 +473,7 @@
       "priority": 2,
       "area": "vm_config_ui_exerciser",
       "title": "Make VM config-tab exercise fast and visibly scrolling during input activity",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested that the VM harness execution of the configuration screen tabs minimize waits and visibly scroll the configuration UI while inputs are being provided or widgets are manipulated."
@@ -484,7 +484,28 @@
         "Make Advanced and other long config tabs visibly scroll while the harness is exercising controls so the UI activity is apparent in screenshots and live observation.",
         "Prefer human-like keyboard and mouse interaction over brittle deep UIAutomation crawling where possible, while keeping the Validate-and-close flow reliable.",
         "Close the ticket only after the canonical VM proof shows visible config-tab activity with scrolling captures and no regression in Validate/close behavior.",
-        "Resolved on 2026-05-30 by hardening Guest-UxDeepExercise to reacquire the config window via Win32/UIA matching, keep tab traversal visibly scrolled, trace every config-window event, and complete the config phase successfully in the canonical VM proof bundle ux-deep-ssh-20260530-010712."
+        "Resolved on 2026-05-30 by hardening Guest-UxDeepExercise to reacquire the config window via Win32/UIA matching, keep tab traversal visibly scrolled, trace every config-window event, surface validated OK/Cancel actions reliably, and complete the config phase successfully in canonical VM proof bundles including ux-deep-ssh-20260530-010712 and ux-deep-ssh-20260530-092303."
+      ]
+    },
+    {
+      "id": "NB-042",
+      "tracking_number": "NB-042",
+      "priority": 2,
+      "area": "news_scroller_redesign",
+      "title": "Redesign the news scroller to a two-line teleprinter reveal",
+      "status": "resolved",
+      "source": "user_followup",
+      "evidence": [
+        "User requested a different news scroller look with character-by-character reveal, medium speed, right-edge word wrap, a second wrapped line, and then scrolling onward.",
+        "User also specified that each new news item should start on a new line."
+      ],
+      "notes": [
+        "Implement a teleprinter-style reveal for the finance news scroller rather than the current presentation.",
+        "Reveal characters one by one at a medium speed that remains readable in the live desktop scene.",
+        "Wrap text at the right edge and allow wraparound to a second line before the scroller continues onward.",
+        "Ensure each new news item begins on a new line rather than continuing directly after the previous item.",
+        "Validate the result visually in the canonical VM flow so the new playback behavior is obvious in screenshots and live observation.",
+        "Resolved on 2026-05-30 by replacing the old marquee with a two-line teleprinter control, revealing text character-by-character inside a wrapped two-line viewport, segmenting long headlines into overlapping line pairs, scrolling upward one line at a time instead of clearing the whole viewport, and deferring playback resets until the current headline step completes. Canonical VM proof bundles ux-deep-ssh-20260530-085545 and ux-deep-ssh-20260530-092303 show the teleprinter rendering two lines live with line-step scrolling and no blank viewport clears."
       ]
     },
     {
@@ -562,7 +583,7 @@
       "priority": 2,
       "area": "ui_polish",
       "title": "Stabilize macro-card clipping and Last Updated ribbon layout",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested a follow-up ticket covering macro-card value clipping, richer Last Updated ticker display, and fixed-width layout so the top-left ribbon does not shift based on symbol length."
@@ -571,7 +592,8 @@
         "Fix macro cards so the change/value text no longer gets chopped off at the right edge.",
         "Extend the top-left Last Updated ticker display so it also shows change percent in the same red/green color treatment as the associated ticker change.",
         "Use a fixed-width 25-character field for the Last Updated ticker/status segment so the entire top-left ribbon does not reflow based on ticker symbol length or updated-time text length.",
-        "Validate the result visually in the canonical VM flow so the top-left ribbon stays stable while symbols rotate and update."
+        "Validate the result visually in the canonical VM flow so the top-left ribbon stays stable while symbols rotate and update.",
+        "Resolved on 2026-05-30 by widening the top-left fixed field, carrying symbol plus change percent in the same directional color, and rebalancing the macro cards to use the available vertical room instead of clipping at the right edge. Canonical VM proof bundles ux-deep-ssh-20260530-085545 and ux-deep-ssh-20260530-092303 show stable Last Updated layout and macro cards with unclipped values/change text."
       ]
     }
   ],
