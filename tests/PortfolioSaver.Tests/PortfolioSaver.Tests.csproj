@@ -11,6 +11,9 @@
     <ProjectReference Include="..\..\src\PortfolioSaver.Data\PortfolioSaver.Data.csproj" />
     <ProjectReference Include="..\..\src\PortfolioSaver.Screensaver\PortfolioSaver.Screensaver.csproj" />
     <ProjectReference Include="..\..\YFinance.net\YFinance.NET\YFinance.NET.csproj" />
+    <ProjectReference Include="..\..\YFinance.net\YFinance.NET.Client\YFinance.NET.Client.csproj" />
+    <ProjectReference Include="..\..\YFinance.net\YFinance.NET.Protocol\YFinance.NET.Protocol.csproj" />
+    <ProjectReference Include="..\..\YFinance.net\YFinance.NET.Server\YFinance.NET.Server.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />

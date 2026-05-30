@@ -1,32 +1,25 @@
 using System.Net;
 using System.Net.Http;
-using YFinance.NET.Api;
-using YFinance.NET.Config;
-using YFinance.NET.Diagnostics;
 using PortfolioSaver.Data.Services;
 using PortfolioSaver.Shared.Diagnostics;
-using AppQuoteSnapshot = PortfolioSaver.Core.Models.QuoteSnapshot;
-using YfQuoteSnapshot = YFinance.NET.Models.QuoteSnapshot;
+using YFinance.NET.Protocol.Dtos;
 
 namespace PortfolioSaver.Config.Services;
 
 public sealed class YahooSymbolValidationService
 {
     private const int MaxBatchSymbols = 25;
-    private readonly Func<int, YFinanceClient> _clientFactory;
-    private readonly Func<IReadOnlyCollection<string>, int, CancellationToken, Task<IReadOnlyDictionary<string, YfQuoteSnapshot>>>? _quoteLookupAsync;
+    private readonly Func<IReadOnlyCollection<string>, int, CancellationToken, Task<IReadOnlyDictionary<string, QuoteDto>>>? _quoteLookupAsync;
 
-    public YahooSymbolValidationService(Func<int, YFinanceClient>? clientFactory = null)
+    public YahooSymbolValidationService(Func<int, object>? clientFactory = null)
     {
-        _clientFactory = clientFactory ?? CreateClient;
     }
 
     public YahooSymbolValidationService(
-        Func<IReadOnlyCollection<string>, int, CancellationToken, Task<IReadOnlyDictionary<string, YfQuoteSnapshot>>> quoteLookupAsync,
-        Func<int, YFinanceClient>? clientFactory = null)
+        Func<IReadOnlyCollection<string>, int, CancellationToken, Task<IReadOnlyDictionary<string, QuoteDto>>> quoteLookupAsync,
+        Func<int, object>? clientFactory = null)
     {
         _quoteLookupAsync = quoteLookupAsync ?? throw new ArgumentNullException(nameof(quoteLookupAsync));
-        _clientFactory = clientFactory ?? CreateClient;
     }
 
     public async Task<YahooSymbolValidationResult> ValidateAsync(
@@ -60,7 +53,7 @@ public sealed class YahooSymbolValidationService
                     "YFinanceUiBridge",
                     "ValidationQuoteRequestStart",
                     [new("operation_id", operationId), new("batch_number", batchIndex + 1), new("batch_total", batches.Count), new("symbols", batch), new("request_symbols", requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase).ToList())]);
-                IReadOnlyDictionary<string, YfQuoteSnapshot> quotes = await LookupQuotesAsync(
+                IReadOnlyDictionary<string, QuoteDto> quotes = await LookupQuotesAsync(
                         operationId,
                         requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                         timeoutSeconds,
@@ -73,7 +66,7 @@ public sealed class YahooSymbolValidationService
 
                 foreach ((string originalSymbol, string requestSymbol) in requestByOriginal)
                 {
-                    if (!quotes.TryGetValue(requestSymbol, out YfQuoteSnapshot? quote))
+                    if (!quotes.TryGetValue(requestSymbol, out QuoteDto? quote))
                         continue;
 
                     bool hasLiveData = quote.RegularMarketPrice.HasValue ||
@@ -146,7 +139,7 @@ public sealed class YahooSymbolValidationService
            ex.Message.Contains("too many requests", StringComparison.OrdinalIgnoreCase) ||
            ex.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase);
 
-    private async Task<IReadOnlyDictionary<string, YfQuoteSnapshot>> LookupQuotesAsync(
+    private async Task<IReadOnlyDictionary<string, QuoteDto>> LookupQuotesAsync(
         string operationId,
         IReadOnlyCollection<string> requestSymbols,
         int timeoutSeconds,
@@ -155,40 +148,27 @@ public sealed class YahooSymbolValidationService
         if (_quoteLookupAsync is not null)
             return await _quoteLookupAsync(requestSymbols, timeoutSeconds, cancellationToken).ConfigureAwait(false);
 
-        using YFinanceClient client = _clientFactory(timeoutSeconds);
-        return await YFinanceRuntimeClientFactory
+        QuotesResponseDto response = await YFinanceRuntimeClientFactory
             .RunSerializedAsync(
                 "config-validation",
                 operationId,
-                (_, token) => client
-                    .Tickers(requestSymbols)
-                    .GetQuotesAsync(token),
+                (client, token) => client.GetQuotesAsync(requestSymbols.ToList(), token),
                 cancellationToken)
             .ConfigureAwait(false);
+
+        return response.Quotes.ToDictionary(quote => quote.Symbol, StringComparer.OrdinalIgnoreCase);
     }
 
-    private static YFinanceClient CreateClient(int timeoutSeconds)
-        => new(new YFinanceOptions
-        {
-            MinimumRequestSpacing = TimeSpan.FromSeconds(1),
-            MaxRetries = 3,
-            DefaultCacheTtl = TimeSpan.FromMinutes(10),
-            SummaryCacheTtl = TimeSpan.FromMinutes(10),
-            PersistentMetadataCacheTtl = TimeSpan.FromMinutes(10),
-            MaxSymbolsPerQuoteRequest = MaxBatchSymbols,
-            TraceSink = new ValidationTraceSink()
-        });
-
-    private static AppQuoteSnapshot MapQuote(string originalSymbol, YfQuoteSnapshot quote)
+    private static PortfolioSaver.Core.Models.QuoteSnapshot MapQuote(string originalSymbol, QuoteDto quote)
     {
         decimal? last = YFinanceSymbolMapper.NormalizeNumericValue(originalSymbol, quote.RegularMarketPrice);
         decimal? previousClose = YFinanceSymbolMapper.NormalizeNumericValue(originalSymbol, quote.RegularMarketPreviousClose);
         decimal? change = YFinanceSymbolMapper.NormalizeNumericValue(originalSymbol, quote.RegularMarketChange);
-        decimal? changePercent = quote.ComputedChangePercent;
+        decimal? changePercent = quote.RegularMarketChangePercent;
         if (changePercent is null && last is decimal current && previousClose is decimal prior && prior != 0m)
             changePercent = ((current - prior) / prior) * 100m;
 
-        return new AppQuoteSnapshot
+        return new PortfolioSaver.Core.Models.QuoteSnapshot
         {
             Symbol = originalSymbol,
             Last = last,
@@ -199,7 +179,7 @@ public sealed class YahooSymbolValidationService
             MarketSession = YFinanceSymbolMapper.MapMarketSession(quote.MarketState),
             ProviderTimestampUtc = null,
             FetchTimestampUtc = DateTimeOffset.UtcNow,
-            IsStale = false
+            IsStale = quote.Cache.Stale
         };
     }
 }
@@ -244,11 +224,11 @@ public sealed class YahooSymbolValidationResult
     public IReadOnlyList<string> RateLimitedSymbols => _rateLimitedSymbols
         .OrderBy(symbol => symbol, StringComparer.OrdinalIgnoreCase)
         .ToList();
-    public IReadOnlyDictionary<string, AppQuoteSnapshot> ValidatedQuotes => _validatedQuotes;
+    public IReadOnlyDictionary<string, PortfolioSaver.Core.Models.QuoteSnapshot> ValidatedQuotes => _validatedQuotes;
 
     public bool WasRateLimited => _rateLimitedSymbols.Count > 0;
 
-    private readonly Dictionary<string, AppQuoteSnapshot> _validatedQuotes = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, PortfolioSaver.Core.Models.QuoteSnapshot> _validatedQuotes = new(StringComparer.OrdinalIgnoreCase);
 
     public void MergeFrom(YahooSymbolValidationResult other)
     {
@@ -269,7 +249,7 @@ public sealed class YahooSymbolValidationResult
             MarkDeferred(entry.Symbol, entry.FailureReason);
         }
 
-        foreach ((string symbol, AppQuoteSnapshot quote) in other._validatedQuotes)
+        foreach ((string symbol, PortfolioSaver.Core.Models.QuoteSnapshot quote) in other._validatedQuotes)
             _validatedQuotes[symbol] = quote;
 
         foreach (string symbol in other._rateLimitedSymbols)
@@ -290,7 +270,7 @@ public sealed class YahooSymbolValidationResult
             : (!string.IsNullOrWhiteSpace(longName) ? longName!.Trim() : entry.DisplayName);
     }
 
-    public void RecordQuote(string symbol, AppQuoteSnapshot quote)
+    public void RecordQuote(string symbol, PortfolioSaver.Core.Models.QuoteSnapshot quote)
     {
         string normalized = Normalize(symbol);
         _validatedQuotes[normalized] = quote;
@@ -354,18 +334,4 @@ public sealed class YahooSymbolValidationEntry
     public bool WasChecked { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public string FailureReason { get; set; } = string.Empty;
-}
-
-internal sealed class ValidationTraceSink : IYFinanceTraceSink
-{
-    private static readonly IYFinanceTraceSink Sink = YFinanceCircularTraceSink.Instance;
-
-    public void InfoState(string source, string eventName, IEnumerable<KeyValuePair<string, object?>> fields)
-        => Sink.InfoState(source, eventName, fields);
-
-    public void WarnState(string source, string eventName, IEnumerable<KeyValuePair<string, object?>> fields)
-        => Sink.WarnState(source, eventName, fields);
-
-    public void ErrorState(string source, string eventName, IEnumerable<KeyValuePair<string, object?>> fields, Exception? exception = null)
-        => Sink.ErrorState(source, eventName, fields, exception);
 }

@@ -1,6 +1,7 @@
 using System.Windows;
 using PortfolioSaver.Shared.Diagnostics;
 using PortfolioSaver.Shared.Integrity;
+using PortfolioSaver.Shared.Services;
 
 namespace PortfolioSaver.Desktop;
 
@@ -31,6 +32,19 @@ public partial class App : Application
         };
 
         TraceLog.Info("Desktop.App", $"Startup args: {string.Join(" ", e.Args)}");
+        YFinanceServerProcessManager.EnsureOwnedServerAsync("PortfolioSaver.Desktop").GetAwaiter().GetResult();
         base.OnStartup(e);
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        try
+        {
+            YFinanceServerProcessManager.StopOwnedServerAsync().GetAwaiter().GetResult();
+        }
+        finally
+        {
+            base.OnExit(e);
+        }
     }
 }

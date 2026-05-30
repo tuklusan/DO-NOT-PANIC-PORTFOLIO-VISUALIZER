@@ -1,20 +1,13 @@
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Shared.Diagnostics;
-using YFinance.NET.Api;
 using YFinance.NET.Models;
+using YFinance.NET.Protocol.Dtos;
 
 namespace PortfolioSaver.Data.Services;
 
 public sealed class YFinanceExchangeTimingService
 {
     private const string YFinanceCalendarSource = "YFinance.NET market timing";
-
-    private readonly Func<YFinanceClient> _clientFactory;
-
-    public YFinanceExchangeTimingService(Func<YFinanceClient>? clientFactory = null)
-    {
-        _clientFactory = clientFactory ?? YFinanceRuntimeClientFactory.GetSharedClient;
-    }
 
     public async Task<ExchangeCalendarSet> GetCalendarSetAsync(
         IReadOnlyList<ExchangeCalendarRequest> requests,
@@ -30,7 +23,6 @@ public sealed class YFinanceExchangeTimingService
         if (!networkAvailable || requests.Count == 0)
             return set;
 
-        YFinanceClient client = _clientFactory();
         foreach (ExchangeCalendarRequest request in requests)
         {
             if (string.IsNullOrWhiteSpace(request.ExchangeSymbol))
@@ -43,11 +35,11 @@ public sealed class YFinanceExchangeTimingService
                     "YFinanceUiBridge",
                     "ExchangeTimingRequestStart",
                     [new("operation_id", operationId), new("city_key", request.CityKey), new("exchange_symbol", request.ExchangeSymbol)]);
-                MarketTimingSnapshot? timing = await YFinanceRuntimeClientFactory
+                MarketTimingDto timing = await YFinanceRuntimeClientFactory
                     .RunSerializedAsync(
                         "exchange-timing",
                         operationId,
-                        (_, token) => client.Ticker(request.ExchangeSymbol).GetMarketTimingAsync(token),
+                        (client, token) => client.GetMarketTimingAsync(request.ExchangeSymbol, token),
                         cancellationToken)
                     .ConfigureAwait(false);
                 ExchangeTradingCalendar? calendar = BuildFromTiming(request, timing);
@@ -169,7 +161,7 @@ public sealed class YFinanceExchangeTimingService
         };
     }
 
-    private static ExchangeTradingCalendar? BuildFromTiming(ExchangeCalendarRequest request, MarketTimingSnapshot? timing)
+    private static ExchangeTradingCalendar? BuildFromTiming(ExchangeCalendarRequest request, MarketTimingDto? timing)
     {
         if (timing?.CurrentTradingPeriod is null)
             return null;
@@ -184,9 +176,15 @@ public sealed class YFinanceExchangeTimingService
             AlternateTimeZoneId = request.AlternateTimeZoneId,
             Source = YFinanceCalendarSource,
             RegularMarketTimeUtc = timing.RegularMarketTimeUtc,
-            CurrentTradingPeriod = timing.CurrentTradingPeriod
+            CurrentTradingPeriod = MapCurrentTradingPeriods(timing.CurrentTradingPeriod)
         };
     }
+
+    private static CurrentTradingPeriods? MapCurrentTradingPeriods(CurrentTradingPeriodsDto? dto)
+        => dto is null ? null : new CurrentTradingPeriods(MapTradingPeriod(dto.Pre), MapTradingPeriod(dto.Regular), MapTradingPeriod(dto.Post));
+
+    private static TradingPeriodWindow? MapTradingPeriod(TradingPeriodWindowDto? dto)
+        => dto is null ? null : new TradingPeriodWindow(dto.StartUtc, dto.EndUtc, null, dto.GmtOffsetSeconds);
 
     private static bool IsActive(TradingPeriodWindow? window, DateTimeOffset utcNow)
         => window is not null && utcNow >= window.StartUtc && utcNow < window.EndUtc;

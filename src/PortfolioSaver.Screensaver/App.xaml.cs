@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Media;
 using PortfolioSaver.Shared.Diagnostics;
 using PortfolioSaver.Shared.Integrity;
+using PortfolioSaver.Shared.Services;
 
 namespace PortfolioSaver.Screensaver;
 
@@ -38,6 +39,19 @@ public partial class App : Application
         };
 
         TraceLog.Info("Screensaver.App", $"Startup args: {string.Join(" ", e.Args)}");
+        YFinanceServerProcessManager.EnsureOwnedServerAsync("PortfolioSaver.Screensaver").GetAwaiter().GetResult();
         base.OnStartup(e);
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        try
+        {
+            YFinanceServerProcessManager.StopOwnedServerAsync().GetAwaiter().GetResult();
+        }
+        finally
+        {
+            base.OnExit(e);
+        }
     }
 }

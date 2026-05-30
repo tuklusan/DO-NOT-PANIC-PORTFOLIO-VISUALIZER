@@ -105,12 +105,13 @@ This format is chosen because it is:
 - efficient enough for the expected message sizes and update cadence
 
 ## 6. Common message envelope
-All protocol messages must carry a common envelope.
+All protocol messages must carry a common envelope. The envelope timestamp must use local time with UTC offset, not a UTC-only `Z` timestamp.
 
 ### 6.1 Required common fields
 - `protocolVersion` : integer
 - `messageType` : string
-- `timestampUtc` : ISO 8601 UTC timestamp string
+- `timestamp` : ISO 8601 local timestamp string with UTC offset
+- `payloadChecksum` : uppercase SHA-256 checksum of the serialized JSON payload section only
 
 ### 6.2 Request/response correlation
 Request-scoped messages must also carry:
@@ -132,7 +133,8 @@ A request message must follow this shape:
   "protocolVersion": 1,
   "messageType": "request",
   "requestId": "req-000001",
-  "timestampUtc": "2026-05-30T12:34:56Z",
+  "timestamp": "2026-05-30T16:34:56+04:00",
+  "payloadChecksum": "44136FA355B3678A1146AD16F7E8649E94FB4FC21F8DD0F2B3A6D3D4B0716F8A",
   "operation": "get_quote",
   "payload": {}
 }
@@ -146,7 +148,8 @@ A response message must follow this shape:
   "protocolVersion": 1,
   "messageType": "response",
   "requestId": "req-000001",
-  "timestampUtc": "2026-05-30T12:34:56Z",
+  "timestamp": "2026-05-30T16:34:56+04:00",
+  "payloadChecksum": "44136FA355B3678A1146AD16F7E8649E94FB4FC21F8DD0F2B3A6D3D4B0716F8A",
   "operation": "get_quote",
   "status": "ok",
   "payload": {}
@@ -161,7 +164,8 @@ A request-scoped error must still be a `response` message:
   "protocolVersion": 1,
   "messageType": "response",
   "requestId": "req-000001",
-  "timestampUtc": "2026-05-30T12:34:56Z",
+  "timestamp": "2026-05-30T16:34:56+04:00",
+  "payloadChecksum": "44136FA355B3678A1146AD16F7E8649E94FB4FC21F8DD0F2B3A6D3D4B0716F8A",
   "operation": "get_quote",
   "status": "error",
   "error": {
@@ -179,7 +183,8 @@ Async server events are allowed only for connection/server lifecycle conditions:
 {
   "protocolVersion": 1,
   "messageType": "event",
-  "timestampUtc": "2026-05-30T12:35:10Z",
+  "timestamp": "2026-05-30T16:35:10+04:00",
+  "payloadChecksum": "D6C76C72C4C22D78B7B0B9345CEBB89D4B4DFB7B9D28F7F211B8B7D9CA9F725D",
   "eventType": "server_shutting_down",
   "payload": {
     "reason": "service_stop"
@@ -201,7 +206,6 @@ The initial protocol revision should define only the minimum set of operations n
 - `get_quotes`
 - `get_history`
 - `get_market_timing`
-- `validate_symbols`
 
 ### 8.3 Optional admin operations
 These should be implemented only if needed by harness/admin scenarios:
@@ -325,16 +329,6 @@ Suggested response payload:
 - `regularMarketTime`
 - `currentTradingPeriod`
 - `cache`
-
-### 9.9 `validate_symbols`
-Purpose:
-- validate candidate symbols for configuration workflows
-
-Suggested request payload:
-- `symbols` : array of strings
-
-Suggested response payload:
-- `results` : per-symbol validation result objects
 
 ## 10. Cache semantics
 ### 10.1 Server-owned cache
@@ -472,10 +466,14 @@ The protocol and implementation should be trace-friendly.
 Recommended trace points include:
 - connection accepted
 - hello received and answered
-- request start
-- request end
+- request send
+- request receive
+- response send
+- response receive
 - request-scoped error
+- payload checksum failure
 - async event sent
+- async event receive
 - goodbye received
 - owned-mode shutdown
 

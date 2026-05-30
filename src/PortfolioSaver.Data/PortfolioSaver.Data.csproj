@@ -11,5 +11,7 @@
     <ProjectReference Include="..\PortfolioSaver.Core\PortfolioSaver.Core.csproj" />
     <ProjectReference Include="..\PortfolioSaver.Shared\PortfolioSaver.Shared.csproj" />
     <ProjectReference Include="..\..\YFinance.net\YFinance.NET\YFinance.NET.csproj" />
+    <ProjectReference Include="..\..\YFinance.net\YFinance.NET.Client\YFinance.NET.Client.csproj" />
+    <ProjectReference Include="..\..\YFinance.net\YFinance.NET.Protocol\YFinance.NET.Protocol.csproj" />
   </ItemGroup>
 </Project>

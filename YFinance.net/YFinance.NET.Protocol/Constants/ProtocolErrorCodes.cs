@@ -1,0 +1,16 @@
+namespace YFinance.NET.Protocol.Constants;
+
+public static class ProtocolErrorCodes
+{
+    public const string InvalidSymbol = "invalid_symbol";
+    public const string NetworkLost = "network_lost";
+    public const string UpstreamUnavailable = "upstream_unavailable";
+    public const string UpstreamThrottled = "upstream_throttled";
+    public const string Timeout = "timeout";
+    public const string CacheMiss = "cache_miss";
+    public const string InternalError = "internal_error";
+    public const string UnsupportedOperation = "unsupported_operation";
+    public const string ProtocolError = "protocol_error";
+    public const string ProtocolViolation = "protocol_violation";
+    public const string ServerOverloaded = "server_overloaded";
+}

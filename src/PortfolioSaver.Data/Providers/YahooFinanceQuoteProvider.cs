@@ -2,23 +2,14 @@ using PortfolioSaver.Core.Models;
 using PortfolioSaver.Data.Interfaces;
 using PortfolioSaver.Data.Services;
 using PortfolioSaver.Shared.Diagnostics;
-using YFinance.NET.Api;
-using YFinanceQuoteSnapshot = YFinance.NET.Models.QuoteSnapshot;
+using YFinance.NET.Protocol.Dtos;
 
 namespace PortfolioSaver.Data.Providers;
 
 public sealed class YahooFinanceQuoteProvider : IQuoteProvider
 {
-    private readonly YFinanceClient _client;
-
     public YahooFinanceQuoteProvider(HttpClient httpClient)
-        : this(YFinanceRuntimeClientFactory.GetSharedClient())
     {
-    }
-
-    internal YahooFinanceQuoteProvider(YFinanceClient client)
-    {
-        _client = client;
     }
 
     public async Task<IReadOnlyList<QuoteSnapshot>> GetQuotesAsync(IEnumerable<string> symbols, CancellationToken cancellationToken = default)
@@ -41,16 +32,15 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
             "YFinanceUiBridge",
             "QuoteRequestStart",
             [new("operation_id", operationId), new("requested_count", requestedSymbols.Count), new("symbols", requestedSymbols), new("request_symbols", requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase).ToList())]);
-        IReadOnlyDictionary<string, YFinanceQuoteSnapshot> resolved;
+
+        QuotesResponseDto resolved;
         try
         {
             resolved = await YFinanceRuntimeClientFactory
                 .RunSerializedAsync(
                     "quotes",
                     operationId,
-                    (client, token) => client
-                        .Tickers(requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase))
-                        .GetQuotesAsync(token),
+                    (client, token) => client.GetQuotesAsync(requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase).ToList(), token),
                     cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -64,9 +54,10 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
         }
 
         Dictionary<string, QuoteSnapshot> results = new(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, QuoteDto> byRequestSymbol = resolved.Quotes.ToDictionary(quote => quote.Symbol, StringComparer.OrdinalIgnoreCase);
         foreach ((string originalSymbol, string requestSymbol) in requestByOriginal)
         {
-            if (!resolved.TryGetValue(requestSymbol, out YFinanceQuoteSnapshot? quote))
+            if (!byRequestSymbol.TryGetValue(requestSymbol, out QuoteDto? quote))
                 continue;
 
             QuoteSnapshot mapped = MapQuote(originalSymbol, quote);
@@ -86,14 +77,14 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
             [new("operation_id", operationId), new("requested_count", requestedSymbols.Count), new("resolved_count", results.Count), new("resolved_symbols", results.Keys.ToList())]);
 
         if (results.Count == 0)
-            throw new InvalidOperationException("YFinance.NET returned no matching quotes.");
+            throw new InvalidOperationException("YFinance.NET server returned no matching quotes.");
 
         List<string> unresolved = requestedSymbols
             .Where(symbol => !results.ContainsKey(symbol))
             .ToList();
         if (unresolved.Count > 0 && results.Count > 0)
             throw new PartialQuoteResultException(
-                $"YFinance.NET returned partial quotes. Missing: {string.Join(", ", unresolved)}",
+                $"YFinance.NET server returned partial quotes. Missing: {string.Join(", ", unresolved)}",
                 requestedSymbols.Where(results.ContainsKey).Select(symbol => results[symbol]).ToList());
 
         return requestedSymbols.Where(results.ContainsKey).Select(symbol => results[symbol]).ToList();
@@ -112,12 +103,12 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
         }
     }
 
-    private static QuoteSnapshot MapQuote(string originalSymbol, YFinanceQuoteSnapshot quote)
+    private static QuoteSnapshot MapQuote(string originalSymbol, QuoteDto quote)
     {
         decimal? last = YFinanceSymbolMapper.NormalizeNumericValue(originalSymbol, quote.RegularMarketPrice);
         decimal? previousClose = YFinanceSymbolMapper.NormalizeNumericValue(originalSymbol, quote.RegularMarketPreviousClose);
         decimal? change = YFinanceSymbolMapper.NormalizeNumericValue(originalSymbol, quote.RegularMarketChange);
-        decimal? changePercent = quote.ComputedChangePercent;
+        decimal? changePercent = quote.RegularMarketChangePercent;
         if (changePercent is null && last is decimal current && previousClose is decimal prior && prior != 0m)
             changePercent = ((current - prior) / prior) * 100m;
 
@@ -132,7 +123,7 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
             MarketSession = YFinanceSymbolMapper.MapMarketSession(quote.MarketState),
             ProviderTimestampUtc = null,
             FetchTimestampUtc = DateTimeOffset.UtcNow,
-            IsStale = false
+            IsStale = quote.Cache.Stale
         };
     }
 }

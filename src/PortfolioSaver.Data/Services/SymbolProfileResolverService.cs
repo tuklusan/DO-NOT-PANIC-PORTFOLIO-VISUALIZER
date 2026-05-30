@@ -2,7 +2,7 @@ using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Core.Services;
 using PortfolioSaver.Shared.Diagnostics;
-using YFinanceTickerInfo = YFinance.NET.Models.TickerInfo;
+using YFinance.NET.Protocol.Dtos;
 
 namespace PortfolioSaver.Data.Services;
 
@@ -36,14 +36,14 @@ public sealed class SymbolProfileResolverService
                 "YFinanceUiBridge",
                 "SymbolProfileRequestStart",
                 [new("operation_id", operationId), new("symbol", normalizedSymbol), new("request_symbol", requestSymbol)]);
-            YFinanceTickerInfo? info = await YFinanceRuntimeClientFactory
+            TickerInfoDto info = await YFinanceRuntimeClientFactory
                 .RunSerializedAsync(
                     "symbol-profile",
                     operationId,
-                    (client, token) => client.Ticker(requestSymbol).GetInfoAsync(token),
+                    (client, token) => client.GetTickerInfoAsync(requestSymbol, token),
                     cancellationToken)
                 .ConfigureAwait(false);
-            if (info is null || (info.RegularMarketPrice is null && info.RegularMarketPreviousClose is null))
+            if (info.RegularMarketPrice is null && info.RegularMarketPreviousClose is null)
             {
                 TraceLog.WarnState(
                     "YFinanceUiBridge",
@@ -72,7 +72,7 @@ public sealed class SymbolProfileResolverService
         }
     }
 
-    private static void ApplyMetadata(SymbolProfile profile, string normalizedSymbol, YFinanceTickerInfo info)
+    private static void ApplyMetadata(SymbolProfile profile, string normalizedSymbol, TickerInfoDto info)
     {
         profile.CanonicalSymbol = normalizedSymbol;
         profile.DisplayName = info.DisplayName?.Trim()

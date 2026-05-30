@@ -3,6 +3,7 @@ using System.Windows.Media;
 using PortfolioSaver.Config.Windows;
 using PortfolioSaver.Shared.Diagnostics;
 using PortfolioSaver.Shared.Integrity;
+using PortfolioSaver.Shared.Services;
 
 namespace PortfolioSaver.Config;
 
@@ -38,10 +39,23 @@ public partial class App : Application
         };
 
         TraceLog.Info("Config.App", $"Startup args: {string.Join(" ", e.Args)}");
+        YFinanceServerProcessManager.EnsureOwnedServerAsync("PortfolioSaver.Config").GetAwaiter().GetResult();
         base.OnStartup(e);
 
         var window = new MainWindow();
         MainWindow = window;
         window.Show();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        try
+        {
+            YFinanceServerProcessManager.StopOwnedServerAsync().GetAwaiter().GetResult();
+        }
+        finally
+        {
+            base.OnExit(e);
+        }
     }
 }

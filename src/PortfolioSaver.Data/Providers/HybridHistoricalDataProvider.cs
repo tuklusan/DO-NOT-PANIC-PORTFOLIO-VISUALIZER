@@ -2,7 +2,7 @@ using PortfolioSaver.Core.Models;
 using PortfolioSaver.Data.Interfaces;
 using PortfolioSaver.Data.Services;
 using PortfolioSaver.Shared.Diagnostics;
-using YFinanceHistoryResponse = YFinance.NET.Models.HistoryResponse;
+using YFinance.NET.Protocol.Dtos;
 
 namespace PortfolioSaver.Data.Providers;
 
@@ -76,13 +76,11 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
                         "YFinanceUiBridge",
                         "HistoryRequestStart",
                         [new("operation_id", operationId), new("symbol", symbol), new("request_symbol", requestSymbol), new("lookback_days", lookbackDays)]);
-                    YFinanceHistoryResponse response = await YFinanceRuntimeClientFactory
+                    HistoryResponseDto response = await YFinanceRuntimeClientFactory
                         .RunSerializedAsync(
                             "history",
                             operationId,
-                            (client, token) => client
-                                .Ticker(requestSymbol)
-                                .GetHistoryResponseAsync(startUtc, endUtc, ResolveInterval(lookbackDays), token),
+                            (client, token) => client.GetHistoryAsync(requestSymbol, startUtc, endUtc, ResolveInterval(lookbackDays), token),
                             cancellationToken)
                         .ConfigureAwait(false);
 
@@ -148,7 +146,7 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
         return results;
     }
 
-    private static TickerHistorySnapshot MapHistory(string originalSymbol, int lookbackDays, YFinanceHistoryResponse response)
+    private static TickerHistorySnapshot MapHistory(string originalSymbol, int lookbackDays, HistoryResponseDto response)
     {
         return new TickerHistorySnapshot
         {
@@ -159,7 +157,7 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
                 .Where(static bar => bar.Close.HasValue)
                 .Select(bar => new HistoricalPricePoint
                 {
-                    TimestampUtc = bar.Timestamp,
+                    TimestampUtc = bar.TimestampUtc,
                     Close = YFinanceSymbolMapper.NormalizeNumericValue(originalSymbol, bar.Close) ?? 0m
                 })
                 .Where(static point => point.Close > 0m)

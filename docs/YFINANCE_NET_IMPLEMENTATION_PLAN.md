@@ -348,6 +348,6 @@ The first code step should be:
 1. create `YFinance.NET.Protocol`
 2. define the common envelope types
 3. implement length-prefixed framing helpers
-4. add serialization round-trip tests
+4. add serialization round-trip tests including local-time-plus-offset envelope timestamps and payload checksums
 
 That gives the rest of `NB-031` a stable foundation.
