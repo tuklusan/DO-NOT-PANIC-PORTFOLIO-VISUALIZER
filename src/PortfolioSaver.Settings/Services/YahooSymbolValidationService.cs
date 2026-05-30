@@ -62,11 +62,12 @@ public sealed class YahooSymbolValidationService
                 TraceLog.InfoState(
                     "YFinanceUiBridge",
                     "ValidationQuoteRequestComplete",
-                    [new("operation_id", operationId), new("batch_number", batchIndex + 1), new("resolved_count", quotes.Count)]);
+                    [new("operation_id", operationId), new("batch_number", batchIndex + 1), new("resolved_count", quotes.Count), new("response_keys", quotes.Keys.ToList())]);
 
                 foreach ((string originalSymbol, string requestSymbol) in requestByOriginal)
                 {
-                    if (!quotes.TryGetValue(requestSymbol, out QuoteDto? quote))
+                    if (!quotes.TryGetValue(requestSymbol, out QuoteDto? quote) &&
+                        !quotes.TryGetValue(YFinanceSymbolMapper.ToResponseMatchKey(requestSymbol), out quote))
                         continue;
 
                     bool hasLiveData = quote.RegularMarketPrice.HasValue ||

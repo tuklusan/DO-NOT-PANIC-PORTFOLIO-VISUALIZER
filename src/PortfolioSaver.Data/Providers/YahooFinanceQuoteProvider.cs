@@ -53,6 +53,16 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
             throw;
         }
 
+        TraceLog.InfoState(
+            "YFinanceNetQuoteProvider",
+            "QuoteResponsePayload",
+            [
+                new("operation_id", operationId),
+                new("quote_count", resolved.Quotes.Count),
+                new("missing_count", resolved.MissingSymbols.Count),
+                new("response_symbols", resolved.Quotes.Select(static quote => quote.Symbol).ToList())
+            ]);
+
         Dictionary<string, QuoteSnapshot> results = new(StringComparer.OrdinalIgnoreCase);
         Dictionary<string, QuoteDto> byResponseKey = new(StringComparer.OrdinalIgnoreCase);
         foreach (QuoteDto quote in resolved.Quotes)
@@ -69,11 +79,35 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
         {
             if (!byResponseKey.TryGetValue(requestSymbol, out QuoteDto? quote) &&
                 !byResponseKey.TryGetValue(YFinanceSymbolMapper.ToResponseMatchKey(requestSymbol), out quote))
+            {
+                TraceLog.WarnState(
+                    "YFinanceNetQuoteProvider",
+                    "QuoteResponseNoMatch",
+                    [
+                        new("operation_id", operationId),
+                        new("original_symbol", originalSymbol),
+                        new("request_symbol", requestSymbol),
+                        new("response_keys", byResponseKey.Keys.ToList())
+                    ]);
                 continue;
+            }
 
             QuoteSnapshot mapped = MapQuote(originalSymbol, quote);
             if (mapped.Last is null && mapped.PreviousClose is null)
+            {
+                TraceLog.WarnState(
+                    "YFinanceNetQuoteProvider",
+                    "QuoteResponseNoNumericData",
+                    [
+                        new("operation_id", operationId),
+                        new("original_symbol", originalSymbol),
+                        new("response_symbol", quote.Symbol),
+                        new("regular_market_price", quote.RegularMarketPrice),
+                        new("regular_market_previous_close", quote.RegularMarketPreviousClose),
+                        new("regular_market_change", quote.RegularMarketChange)
+                    ]);
                 continue;
+            }
 
             results[originalSymbol] = mapped;
         }
