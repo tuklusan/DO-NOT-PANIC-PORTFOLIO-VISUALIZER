@@ -602,7 +602,7 @@
       "priority": 2,
       "area": "floating_graphs",
       "title": "Limit floating graph carts to the top 16 biggest movers and refresh the selection every 10 minutes",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested that floating graph carts be limited to the top 16 biggest movers, with the active top-16 refreshed every 10 minutes."
@@ -612,7 +612,9 @@
         "Determine the visible graph-cart set from the biggest movers in the currently available live symbol universe rather than from a static rotation list.",
         "Recompute the active top-16 selection every 10 minutes.",
         "Keep the selection logic compatible with the current one-by-one asynchronous quote request model and avoid reintroducing batchy whole-screen churn.",
-        "Validate visually in the canonical VM flow so both the graph-cart count and the 10-minute reselection behavior are proven in runtime."
+        "Validate visually in the canonical VM flow so both the graph-cart count and the 10-minute reselection behavior are proven in runtime.",
+        "Resolved on 2026-05-31 by limiting floating graph-cart selection to the top 16 biggest live movers in StartupCoordinator, refreshing the selection every 10 minutes, and proving the reselection trigger in VM bundle ux-deep-ssh-20260531-202724 via GraphSelectionRefreshDue.",
+        "Background rotation/slow-zoom verification was completed in VM bundle ux-deep-ssh-20260531-214056 after lowering the product default background interval to 120 seconds, forcing a 20-second harness override, and tracing BackgroundTimerArmed, BackgroundRotationChosen, BackgroundTransitionComplete, and BackgroundZoomStarted events."
       ]
     }
   ],
