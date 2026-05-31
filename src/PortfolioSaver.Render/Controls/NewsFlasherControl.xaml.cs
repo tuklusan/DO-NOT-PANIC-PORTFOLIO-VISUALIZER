@@ -367,8 +367,13 @@ public partial class NewsFlasherControl : UserControl
             return [wrappedLines[0]];
 
         List<string> segments = [];
-        for (int index = 0; index < wrappedLines.Count - 1; index++)
-            segments.Add($"{wrappedLines[index]}{Environment.NewLine}{wrappedLines[index + 1]}");
+        for (int index = 0; index < wrappedLines.Count; index += 2)
+        {
+            if (index + 1 < wrappedLines.Count)
+                segments.Add($"{wrappedLines[index]}{Environment.NewLine}{wrappedLines[index + 1]}");
+            else
+                segments.Add(wrappedLines[index]);
+        }
 
         return segments;
     }

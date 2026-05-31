@@ -833,6 +833,41 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void NewsFlasherControl_UsesNonOverlappingTwoLineSegments()
+    {
+        RunOnSta(() =>
+        {
+            NewsFlasherControl control = new()
+            {
+                Width = 360,
+                Height = 54
+            };
+
+            control.Measure(new Size(360, 54));
+            control.Arrange(new Rect(0, 0, 360, 54));
+            control.UpdateLayout();
+
+            MethodInfo formatMethod = typeof(NewsFlasherControl).GetMethod("FormatHeadline", BindingFlags.Static | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.FormatHeadline not found.");
+            MethodInfo buildSegmentsMethod = typeof(NewsFlasherControl).GetMethod("BuildDisplaySegments", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.BuildDisplaySegments not found.");
+
+            string text = Assert.IsType<string>(formatMethod.Invoke(null, ["alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima mike november"]));
+            IReadOnlyList<string> segments = Assert.IsAssignableFrom<IReadOnlyList<string>>(buildSegmentsMethod.Invoke(control, [text]));
+
+            Assert.True(segments.Count >= 2);
+            Assert.DoesNotContain(segments.Zip(segments.Skip(1)), pair =>
+            {
+                string[] leftLines = pair.First.Split(Environment.NewLine);
+                string[] rightLines = pair.Second.Split(Environment.NewLine);
+                return leftLines.Length > 1 &&
+                       rightLines.Length > 0 &&
+                       string.Equals(leftLines[^1], rightLines[0], StringComparison.Ordinal);
+            });
+        });
+    }
+
+    [Fact]
     public void TapeAndStatusBarLayout_UseSafeInsetsAndFixedHeightForMotionStability()
     {
         string tapeXaml = File.ReadAllText(Path.Combine(
