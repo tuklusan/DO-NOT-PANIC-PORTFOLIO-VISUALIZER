@@ -44,6 +44,7 @@ public partial class ScreensaverSceneControl : UserControl
     private readonly DispatcherTimer _backgroundTimer = new();
     private readonly DispatcherTimer _backgroundZoomTimer = new() { Interval = TimeSpan.FromMilliseconds(120) };
     private readonly DispatcherTimer _worldDataTimer = new();
+    private DispatcherTimer? _backgroundTransitionCompletionTimer;
     private readonly DispatcherTimer _demoFlashTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private readonly DispatcherTimer _motionTimer = new() { Interval = TimeSpan.FromMilliseconds(33) };
     private readonly Random _random = new();
@@ -1997,10 +1998,11 @@ public partial class ScreensaverSceneControl : UserControl
         AnimateBackgroundProperty(incoming, Image.OpacityProperty, 0d, 0.45d, duration, ease);
         AnimateBackgroundProperty(outgoing, Image.OpacityProperty, outgoing.Opacity, 0d, duration, ease);
 
-        DispatcherTimer completionTimer = new() { Interval = duration + TimeSpan.FromMilliseconds(100) };
-        completionTimer.Tick += (_, _) =>
+        _backgroundTransitionCompletionTimer?.Stop();
+        _backgroundTransitionCompletionTimer = new DispatcherTimer { Interval = duration + TimeSpan.FromMilliseconds(100) };
+        _backgroundTransitionCompletionTimer.Tick += (_, _) =>
         {
-            completionTimer.Stop();
+            _backgroundTransitionCompletionTimer?.Stop();
             ResetBackgroundTransform(incoming);
             ResetBackgroundTransform(outgoing);
             SetBackgroundScale(incoming, _backgroundZoomScale, _backgroundZoomScale);
@@ -2014,8 +2016,9 @@ public partial class ScreensaverSceneControl : UserControl
                 new KeyValuePair<string, object?>("path", Path.GetFileName(path)),
                 new KeyValuePair<string, object?>("zoom_scale", _backgroundZoomScale));
             EnsureBackgroundSlowZoomRunning();
+            _backgroundTransitionCompletionTimer = null;
         };
-        completionTimer.Start();
+        _backgroundTransitionCompletionTimer.Start();
     }
 
     private void ResetBackgroundZoomState()
