@@ -16,6 +16,19 @@ public static class YFinanceServerProcessManager
         await Sync.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            if (_ownedProcess is not null)
+            {
+                if (!_ownedProcess.HasExited)
+                {
+                    TraceLog.InfoState("YFinanceServerManager", "OwnedServerAlreadyRunning", [new("client_type", clientType), new("pid", _ownedProcess.Id)]);
+                    return;
+                }
+
+                _ownedProcess.Dispose();
+                _ownedProcess = null;
+                _launchToken = null;
+            }
+
             if (await CanConnectAsync(cancellationToken).ConfigureAwait(false))
             {
                 TraceLog.InfoState("YFinanceServerManager", "ServerAlreadyReachable", [new("client_type", clientType)]);

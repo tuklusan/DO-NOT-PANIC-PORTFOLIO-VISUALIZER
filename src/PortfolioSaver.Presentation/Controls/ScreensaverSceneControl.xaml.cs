@@ -190,7 +190,7 @@ public partial class ScreensaverSceneControl : UserControl
                 return;
             }
 
-            ApplySceneState(state, preserveLayout);
+            ApplySceneState(state, preserveLayout, fullAncillaryRefresh);
             if (!preserveLayout)
                 RestartGraphWarmup(currentRotationSeed, preserveLayout);
             if (preserveLayout && _settings.EnableFloatingGraphs)
@@ -206,29 +206,33 @@ public partial class ScreensaverSceneControl : UserControl
         }
     }
 
-    private void ApplySceneState(ScreensaverSceneState state, bool preserveLayout)
+    private void ApplySceneState(ScreensaverSceneState state, bool preserveLayout, bool fullAncillaryRefresh = false)
     {
         TraceScene($"ApplySceneState preserveLayout={preserveLayout} tapes={state.Tapes.Count} graphs={state.Graphs.Count} backgrounds={state.BackgroundPaths.Count} news={state.News.Headlines.Count} waiting={state.ShowNetworkWaitingOverlay}");
+        bool structuralRefresh = !preserveLayout;
         _settings = state.Settings;
         _latestQuotes = MergeQuotes(_latestQuotes, state.Quotes);
-        _statusViewModel = state.Status;
-        StatusBarHost.DataContext = _statusViewModel;
-        UpdateStatusMacroMeters(force: true);
+        SyncStatusViewModel(state.Status, forceMacroRefresh: structuralRefresh || fullAncillaryRefresh);
         SyncTapes(_startupCoordinator.BuildTapesForQuotes(_settings, _latestQuotes));
-        SyncNews(state.News);
+        if (structuralRefresh || NewsChanged(state.News))
+            SyncNews(state.News);
         ApplyDimOpacity(state.Settings.DimOpacity);
-        _backgroundPaths = state.BackgroundPaths
-            .Where(IsSupportedBackgroundReference)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        if (string.IsNullOrWhiteSpace(_currentBackgroundPath) || !_backgroundPaths.Contains(_currentBackgroundPath, StringComparer.OrdinalIgnoreCase))
-            _currentBackgroundPath = null;
+        if (structuralRefresh)
+        {
+            _backgroundPaths = state.BackgroundPaths
+                .Where(IsSupportedBackgroundReference)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (string.IsNullOrWhiteSpace(_currentBackgroundPath) || !_backgroundPaths.Contains(_currentBackgroundPath, StringComparer.OrdinalIgnoreCase))
+                _currentBackgroundPath = null;
+        }
 
         if (_currentBackgroundPath is null)
             RotateBackground(forceDifferent: false);
 
         ApplyNetworkWaitingOverlay(state);
 
+        bool graphStructureChanged = false;
         if (state.Graphs.Count > 0 || (!preserveLayout && _graphs.Count == 0))
         {
             Dictionary<string, FloatingGraphViewModel> previousGraphs = preserveLayout
@@ -245,19 +249,32 @@ public partial class ScreensaverSceneControl : UserControl
 
                 _graphs.Add(graph);
             }
+
+            graphStructureChanged = true;
         }
 
-        SyncGraphVisuals();
+        if (graphStructureChanged || structuralRefresh)
+            SyncGraphVisuals();
         ApplyQuotesToGraphs();
 
-        if (state.Clock is null)
+        if (structuralRefresh)
         {
-            GlobalMarketsTapeHost.Visibility = Visibility.Collapsed;
-            GlobalMarketsTapeHost.Content = null;
-            GlobalMarketsTapeHost.DataContext = null;
-            _clockViewModel = null;
+            if (state.Clock is null)
+            {
+                GlobalMarketsTapeHost.Visibility = Visibility.Collapsed;
+                GlobalMarketsTapeHost.Content = null;
+                GlobalMarketsTapeHost.DataContext = null;
+                _clockViewModel = null;
+            }
+            else
+            {
+                _clockViewModel = state.Clock;
+                GlobalMarketsTapeHost.Visibility = Visibility.Visible;
+                GlobalMarketsTapeHost.DataContext = _clockViewModel;
+                GlobalMarketsTapeHost.Content = _clockViewModel;
+            }
         }
-        else
+        else if (_clockViewModel is null && state.Clock is not null)
         {
             _clockViewModel = state.Clock;
             GlobalMarketsTapeHost.Visibility = Visibility.Visible;
@@ -265,15 +282,22 @@ public partial class ScreensaverSceneControl : UserControl
             GlobalMarketsTapeHost.Content = _clockViewModel;
         }
 
-        UpdateLayout();
-        _hasSeededLayout = preserveLayout && _graphs.All(graph => graph.X > 0 || graph.Y > 0);
-        ApplyResponsiveLayout();
-        SeedSpriteLayout(onlyMissingPositions: preserveLayout);
-        UpdateClocks(forceAncillaryRefresh: true);
+        if (structuralRefresh)
+        {
+            UpdateLayout();
+            _hasSeededLayout = preserveLayout && _graphs.All(graph => graph.X > 0 || graph.Y > 0);
+            ApplyResponsiveLayout();
+            SeedSpriteLayout(onlyMissingPositions: preserveLayout);
+        }
+
+        UpdateClocks(forceAncillaryRefresh: structuralRefresh || fullAncillaryRefresh);
         ApplyWeatherToClock();
-        ApplyClockMarketData(force: true);
-        ConfigureTimers();
-        _ = RefreshClockDataAsync(force: false);
+        ApplyClockMarketData(force: structuralRefresh || fullAncillaryRefresh);
+        if (structuralRefresh)
+        {
+            ConfigureTimers();
+            _ = RefreshClockDataAsync(force: true);
+        }
         TraceDisplayedTapeSample();
         TraceSceneStateSummary("ApplySceneStateComplete", preserveLayout);
     }
@@ -2201,6 +2225,30 @@ public partial class ScreensaverSceneControl : UserControl
 
     }
 
+    private bool NewsChanged(NewsFlasherViewModel source)
+    {
+        if (!string.Equals(_newsViewModel.Title, source.Title, StringComparison.Ordinal) ||
+            Math.Abs(_newsViewModel.Speed - source.Speed) > 0.001d ||
+            _newsViewModel.Headlines.Count != source.Headlines.Count)
+        {
+            return true;
+        }
+
+        for (int index = 0; index < source.Headlines.Count; index++)
+        {
+            NewsHeadlineViewModel current = _newsViewModel.Headlines[index];
+            NewsHeadlineViewModel next = source.Headlines[index];
+            if (!string.Equals(current.Text, next.Text, StringComparison.Ordinal) ||
+                !Equals(current.Foreground, next.Foreground) ||
+                current.IsSupplemental != next.IsSupplemental)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static TapeItemViewModel CloneTapeItem(TapeItemViewModel item) => new()
     {
         SymbolText = item.SymbolText,
@@ -2385,6 +2433,26 @@ public partial class ScreensaverSceneControl : UserControl
         _statusViewModel.UpdatedPrefixText = "Last Updated:";
         _statusViewModel.UpdatedTickerFieldText = StartupCoordinator.FormatUpdatedTickerField(null, null, DateTimeOffset.MinValue);
         _statusViewModel.UpdatedTickerFieldForeground = Brushes.Gainsboro;
+    }
+
+    private void SyncStatusViewModel(StatusBarViewModel source, bool forceMacroRefresh)
+    {
+        if (_statusViewModel is null)
+        {
+            _statusViewModel = source;
+            StatusBarHost.DataContext = _statusViewModel;
+        }
+        else
+        {
+            _statusViewModel.MarketStatusText = source.MarketStatusText;
+            _statusViewModel.UpdatedPrefixText = source.UpdatedPrefixText;
+            _statusViewModel.UpdatedTickerFieldText = source.UpdatedTickerFieldText;
+            _statusViewModel.UpdatedTickerFieldForeground = source.UpdatedTickerFieldForeground;
+            _statusViewModel.ClockDateText = source.ClockDateText;
+            _statusViewModel.ClockText = source.ClockText;
+        }
+
+        UpdateStatusMacroMeters(force: forceMacroRefresh);
     }
 
 

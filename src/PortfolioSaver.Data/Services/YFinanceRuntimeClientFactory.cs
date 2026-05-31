@@ -15,6 +15,7 @@ public static class YFinanceRuntimeClientFactory
     private static long _operationSequence;
     private static YFinanceServerClient? _sharedClient;
     private static bool _helloCompleted;
+    private static bool _serverReadyEnsured;
 
     public static YFinanceServerClient GetSharedClient()
     {
@@ -31,7 +32,11 @@ public static class YFinanceRuntimeClientFactory
 
     public static async Task EnsureServerReadyAsync(string clientType, string clientVersion, CancellationToken cancellationToken = default)
     {
-        await YFinanceServerProcessManager.EnsureOwnedServerAsync(clientType, cancellationToken).ConfigureAwait(false);
+        if (!_serverReadyEnsured)
+        {
+            await YFinanceServerProcessManager.EnsureOwnedServerAsync(clientType, cancellationToken).ConfigureAwait(false);
+            _serverReadyEnsured = true;
+        }
 
         if (_helloCompleted)
             return;
@@ -53,6 +58,11 @@ public static class YFinanceRuntimeClientFactory
             _helloCompleted = true;
             TraceLog.InfoState("YFinanceUiBridge", "ServerHelloComplete", [new("client_type", clientType), new("client_version", clientVersion)]);
         }
+        catch
+        {
+            ResetConnectionState();
+            throw;
+        }
         finally
         {
             HelloGate.Release();
@@ -72,6 +82,7 @@ public static class YFinanceRuntimeClientFactory
         }
         catch (Exception ex)
         {
+            ResetConnectionState();
             TraceLog.WarnState("YFinanceRuntimeClientFactory", "ClientOperationError", [new("lane", lane), new("operation_id", operationId), new("message", ex.Message)]);
             throw;
         }
@@ -95,5 +106,23 @@ public static class YFinanceRuntimeClientFactory
         string raw = $"{Environment.MachineName}|{Environment.UserName}|{Environment.OSVersion}|{Environment.ProcessorCount}";
         byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(raw));
         return Convert.ToHexString(hash)[..32];
+    }
+
+    private static void ResetConnectionState()
+    {
+        lock (Sync)
+        {
+            try
+            {
+                _sharedClient?.Dispose();
+            }
+            catch
+            {
+            }
+
+            _sharedClient = null;
+            _helloCompleted = false;
+            _serverReadyEnsured = false;
+        }
     }
 }
