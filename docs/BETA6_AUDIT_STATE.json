@@ -663,6 +663,30 @@
         "Maintain standalone traces for macro request start, response receive, cache age if exposed, and macro-card UI patch completion so jitter analysis can isolate macro behavior.",
         "Acceptance requires VM-visible proof that macro cards continue updating independently and that macro refreshes no longer correlate with whole-screen lock-ups or unrelated tape/news redraws."
       ]
+    },
+    {
+      "id": "NB-050",
+      "tracking_number": "NB-050",
+      "priority": 2,
+      "area": "local_data_storage",
+      "title": "Audit and consolidate all application data stores under Local AppData with installer lifecycle support",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested a manual line-by-line code scan to identify every data-storage location used by the application.",
+        "User requested that all local data stores use Local AppData rather than Roaming AppData, and that installer/uninstaller behavior be aligned with that storage root.",
+        "User further clarified that the audit and consolidation scope must include VM harnesses and test code as well."
+      ],
+      "notes": [
+        "Manually scan the codebase line by line and inventory every application-owned data storage path, including settings, caches, traces, metadata stores, provider secrets, staging folders, VM harness outputs, test artifacts, and any per-feature runtime files.",
+        "Identify which stores currently use Roaming AppData, Local AppData, custom override roots, temp paths, repo-local artifact directories, or any other persistent local filesystem locations.",
+        "Modify the active product code so that all local data stores that belong to the installed app use Local AppData rather than Roaming AppData, unless a narrowly justified exception is explicitly documented.",
+        "Extend the same audit and cleanup discipline to VM harness and test code so their intended storage roots are explicit, consistent, and not accidentally dependent on Roaming AppData.",
+        "Preserve any supported environment-variable override behavior only where it is intentional for development, harnessing, or diagnostics, and document those overrides clearly.",
+        "Review installer and uninstaller flows so installation initializes the Local AppData storage root appropriately and uninstallation deletes the application-owned Local AppData storage tree safely.",
+        "Ensure the future installer lifecycle requirement is treated as part of the ticket acceptance, not as an optional follow-up.",
+        "Add or update tests, docs, and harness checks as needed so the finalized Local AppData storage contract is explicit and regression-resistant."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
