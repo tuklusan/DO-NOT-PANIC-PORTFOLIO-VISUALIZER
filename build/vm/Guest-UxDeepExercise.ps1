@@ -172,6 +172,8 @@ $results = Join-Path $ResultRootPath $resultName
 
 New-Item -ItemType Directory -Force -Path $results | Out-Null
 
+$script:vmBackgroundChangeSeconds = 20
+
 $script:configWindowTracePath = Join-Path $results 'config-window-events.log'
 Set-Content -LiteralPath $script:configWindowTracePath -Value '' -Encoding UTF8
 
@@ -254,6 +256,33 @@ function Capture-Screen {
     $bitmap.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
     $graphics.Dispose()
     $bitmap.Dispose()
+}
+
+function Apply-HarnessSettingsOverrides {
+    $appDataRoot = if ([string]::IsNullOrWhiteSpace($env:PORTFOLIOSAVER_APPDATA_ROOT)) {
+        Join-Path $env:APPDATA 'PortfolioSaver'
+    }
+    else {
+        $env:PORTFOLIOSAVER_APPDATA_ROOT
+    }
+
+    New-Item -ItemType Directory -Force -Path $appDataRoot | Out-Null
+    $settingsPath = Join-Path $appDataRoot 'settings.json'
+    $settings = @{}
+    if (Test-Path $settingsPath) {
+        try {
+            $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json -AsHashtable
+        }
+        catch {
+            $settings = @{}
+        }
+    }
+
+    $settings['BackgroundChangeSeconds'] = $script:vmBackgroundChangeSeconds
+    $settings['ShuffleBackgrounds'] = $true
+
+    $settings | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $settingsPath -Encoding UTF8
+    Write-ConfigWindowTrace -Event 'HarnessSettingsOverrideApplied' -Details ("settings_path={0}; background_seconds={1}; shuffle={2}" -f $settingsPath, $script:vmBackgroundChangeSeconds, $true)
 }
 
 function Get-WindowRectangle {
@@ -2389,6 +2418,7 @@ Start-Transcript -Path $logPath -Force | Out-Null
 
 try {
     Reset-PortfolioTraceRoot
+    Apply-HarnessSettingsOverrides
     $displayApply = Try-ApplyDisplayResolution -Width $DisplayWidth -Height $DisplayHeight
     $summary.DisplayResolutionChange = $displayApply
     if ($displayApply.PSObject.Properties.Name -contains 'AvailableModes') {

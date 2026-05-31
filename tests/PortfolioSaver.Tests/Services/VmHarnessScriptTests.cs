@@ -148,6 +148,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Perform-VisibleScrollSequence", script, StringComparison.Ordinal);
         Assert.Contains("function Perform-VisibleConfigActivity", script, StringComparison.Ordinal);
         Assert.Contains("function Write-ConfigWindowTrace", script, StringComparison.Ordinal);
+        Assert.Contains("function Apply-HarnessSettingsOverrides", script, StringComparison.Ordinal);
         Assert.Contains("function Get-TopLevelWindowSnapshot", script, StringComparison.Ordinal);
         Assert.Contains("function Test-ConfigPhaseBudget", script, StringComparison.Ordinal);
         Assert.Contains("function Validate-AndCloseConfigWindow", script, StringComparison.Ordinal);
@@ -196,6 +197,10 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("config-window-events.log", script, StringComparison.Ordinal);
         Assert.Contains("Config phase exceeded 60 seconds", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'TabActivityComplete'", script, StringComparison.Ordinal);
+        Assert.Contains("$script:vmBackgroundChangeSeconds = 20", script, StringComparison.Ordinal);
+        Assert.Contains("$settings['BackgroundChangeSeconds'] = $script:vmBackgroundChangeSeconds", script, StringComparison.Ordinal);
+        Assert.Contains("$settings['ShuffleBackgrounds'] = $true", script, StringComparison.Ordinal);
+        Assert.Contains("Write-ConfigWindowTrace -Event 'HarnessSettingsOverrideApplied'", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Send-KeySequence -Keys @('{TAB}') -DelayMilliseconds 28", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Send-KeySequence -Keys @('{PGUP}','{HOME}') -DelayMilliseconds 70", script, StringComparison.Ordinal);
         Assert.DoesNotContain("$clickedTab = Click-AutomationElementCenter -Element $tab", script, StringComparison.Ordinal);

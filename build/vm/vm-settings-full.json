@@ -4,7 +4,7 @@
     "refreshSecondsOffHours":  5,
     "httpTimeoutSeconds":  10,
     "backgroundImageFolder":  "C:\\Users\\User\\Pictures\\ExchangeBackgrounds",
-    "backgroundChangeSeconds":  60,
+    "backgroundChangeSeconds":  20,
     "shuffleBackgrounds":  true,
     "enableBlur":  true,
     "blurRadius":  12,

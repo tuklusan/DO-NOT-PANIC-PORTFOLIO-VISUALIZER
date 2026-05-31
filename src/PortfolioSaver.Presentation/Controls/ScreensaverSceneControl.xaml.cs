@@ -607,9 +607,21 @@ public partial class ScreensaverSceneControl : UserControl
         _refreshTimer.Start();
         _worldDataTimer.Start();
         if (_backgroundPaths.Count > 1)
+        {
             _backgroundTimer.Start();
+            TraceSceneState(
+                "BackgroundTimerArmed",
+                new KeyValuePair<string, object?>("interval_seconds", _backgroundTimer.Interval.TotalSeconds),
+                new KeyValuePair<string, object?>("background_count", _backgroundPaths.Count));
+        }
         else
+        {
             _backgroundTimer.Stop();
+            TraceSceneState(
+                "BackgroundTimerNotArmed",
+                new KeyValuePair<string, object?>("interval_seconds", _backgroundTimer.Interval.TotalSeconds),
+                new KeyValuePair<string, object?>("background_count", _backgroundPaths.Count));
+        }
         _lastMotionTick = DateTime.UtcNow;
         _motionTimer.Start();
         TraceSceneState(
@@ -1691,7 +1703,7 @@ public partial class ScreensaverSceneControl : UserControl
     {
         if (!IsSupportedBackgroundReference(path))
         {
-            _backgroundZoomTimer.Stop();
+            SetBackgroundZoomRunning(false, "background-cleared");
             if (_activeBackgroundImage is not null)
                 _activeBackgroundImage.Source = null;
             if (_inactiveBackgroundImage is not null)
@@ -1954,6 +1966,12 @@ public partial class ScreensaverSceneControl : UserControl
             ? candidates[_random.Next(candidates.Count)]
             : candidates[0];
 
+        TraceSceneState(
+            "BackgroundRotationChosen",
+            new KeyValuePair<string, object?>("force_different", forceDifferent),
+            new KeyValuePair<string, object?>("shuffle_enabled", _settings.ShuffleBackgrounds),
+            new KeyValuePair<string, object?>("candidate_count", candidates.Count),
+            new KeyValuePair<string, object?>("chosen_path", Path.GetFileName(nextPath)));
         _currentBackgroundPath = nextPath;
         LoadBackground(nextPath);
     }
@@ -1991,6 +2009,10 @@ public partial class ScreensaverSceneControl : UserControl
             outgoing.Source = null;
             _activeBackgroundImage = incoming;
             _inactiveBackgroundImage = outgoing;
+            TraceSceneState(
+                "BackgroundTransitionComplete",
+                new KeyValuePair<string, object?>("path", Path.GetFileName(path)),
+                new KeyValuePair<string, object?>("zoom_scale", _backgroundZoomScale));
             EnsureBackgroundSlowZoomRunning();
         };
         completionTimer.Start();
@@ -2008,19 +2030,18 @@ public partial class ScreensaverSceneControl : UserControl
     {
         if (_activeBackgroundImage?.Source is null)
         {
-            _backgroundZoomTimer.Stop();
+            SetBackgroundZoomRunning(false, "no-active-background");
             return;
         }
 
-        if (!_backgroundZoomTimer.IsEnabled)
-            _backgroundZoomTimer.Start();
+        SetBackgroundZoomRunning(true, "background-active");
     }
 
     private void StepBackgroundSlowZoom()
     {
         if (_activeBackgroundImage?.Source is null)
         {
-            _backgroundZoomTimer.Stop();
+            SetBackgroundZoomRunning(false, "source-missing-during-tick");
             return;
         }
 
@@ -2041,6 +2062,35 @@ public partial class ScreensaverSceneControl : UserControl
         }
 
         SetBackgroundScale(_activeBackgroundImage, _backgroundZoomScale, _backgroundZoomScale);
+    }
+
+    private void SetBackgroundZoomRunning(bool enabled, string reason)
+    {
+        bool isEnabled = _backgroundZoomTimer.IsEnabled;
+        if (enabled)
+        {
+            if (!isEnabled)
+            {
+                _backgroundZoomTimer.Start();
+                TraceSceneState(
+                    "BackgroundZoomStarted",
+                    new KeyValuePair<string, object?>("reason", reason),
+                    new KeyValuePair<string, object?>("scale", _backgroundZoomScale),
+                    new KeyValuePair<string, object?>("path", Path.GetFileName(_currentBackgroundPath)));
+            }
+
+            return;
+        }
+
+        if (!isEnabled)
+            return;
+
+        _backgroundZoomTimer.Stop();
+        TraceSceneState(
+            "BackgroundZoomStopped",
+            new KeyValuePair<string, object?>("reason", reason),
+            new KeyValuePair<string, object?>("scale", _backgroundZoomScale),
+            new KeyValuePair<string, object?>("path", Path.GetFileName(_currentBackgroundPath)));
     }
 
     private static BitmapImage CreateBackgroundBitmap(string path)

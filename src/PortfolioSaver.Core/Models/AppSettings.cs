@@ -15,7 +15,7 @@ public sealed class AppSettings
     public string BackgroundImageFolder { get; set; } = string.Empty;
     public bool UseCustomBackgroundImageFolder { get; set; }
     public string CustomBackgroundImageFolder { get; set; } = string.Empty;
-    public int BackgroundChangeSeconds { get; set; } = 60;
+    public int BackgroundChangeSeconds { get; set; } = 120;
     public bool ShuffleBackgrounds { get; set; } = true;
     public double DimOpacity { get; set; } = 0.55;
     public LayoutPreset LayoutPreset { get; set; } = LayoutPreset.UltrawideDefault;

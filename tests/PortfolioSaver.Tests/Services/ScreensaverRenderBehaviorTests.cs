@@ -214,9 +214,24 @@ public sealed class ScreensaverRenderBehaviorTests
 
         Assert.Contains("_backgroundZoomTimer.Tick += (_, _) => StepBackgroundSlowZoom();", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void StepBackgroundSlowZoom()", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"BackgroundTimerArmed\"", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"BackgroundRotationChosen\"", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"BackgroundTransitionComplete\"", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"BackgroundZoomStarted\"", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"BackgroundZoomStopped\"", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void SetBackgroundZoomRunning(bool enabled, string reason)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("AnimateBackgroundProperty(incoming, Image.OpacityProperty, 0d, 0.45d, duration, ease);", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("switch (_random.Next(3))", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("AnimateBackgroundTranslation(incoming", codeBehind, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Defaults_UseTwoMinuteBackgroundRotationBaseline()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+
+        Assert.Equal(120, settings.BackgroundChangeSeconds);
+        Assert.True(settings.ShuffleBackgrounds);
     }
 
     [Fact]

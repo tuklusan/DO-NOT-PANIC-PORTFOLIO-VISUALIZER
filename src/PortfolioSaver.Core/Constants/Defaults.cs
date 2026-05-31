@@ -55,7 +55,7 @@ public static class Defaults
         BackgroundImageFolder = GetManagedBackgroundCacheFolder(),
         UseCustomBackgroundImageFolder = false,
         CustomBackgroundImageFolder = string.Empty,
-        BackgroundChangeSeconds = 7200,
+        BackgroundChangeSeconds = 120,
         DimOpacity = 0.55,
         LayoutPreset = LayoutPreset.UltrawideDefault,
         Groups =
