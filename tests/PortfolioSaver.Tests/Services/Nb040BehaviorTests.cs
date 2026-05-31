@@ -165,6 +165,10 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
+            "RefreshSceneAsync bypassed progressive quote scene because the async runtime quote loop owns ordinary quote cadence.",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
             "Task<IReadOnlyList<QuoteSnapshot>> requestTask = _runtimeQuoteProvider.GetQuotesAsync([symbol], CancellationToken.None);",
             source,
             StringComparison.Ordinal);
@@ -174,6 +178,10 @@ public sealed class Nb040BehaviorTests
             StringComparison.Ordinal);
         Assert.DoesNotContain(
             "RunStartupWarmupAsync",
+            source,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "_refreshTimer.Tick += async (_, _) => await RefreshSceneAsync(preserveLayout: true, fullAncillaryRefresh: false);",
             source,
             StringComparison.Ordinal);
     }

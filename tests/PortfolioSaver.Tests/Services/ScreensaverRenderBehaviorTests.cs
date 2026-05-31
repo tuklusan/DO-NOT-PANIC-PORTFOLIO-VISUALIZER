@@ -833,7 +833,7 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void NewsFlasherControl_UsesLineCarryForwardBetweenTwoLineSegments()
+    public void NewsFlasherControl_CarriesPriorBottomLineWithoutRetypingIt()
     {
         RunOnSta(() =>
         {
@@ -849,23 +849,41 @@ public sealed class ScreensaverRenderBehaviorTests
 
             MethodInfo formatMethod = typeof(NewsFlasherControl).GetMethod("FormatHeadline", BindingFlags.Static | BindingFlags.NonPublic)
                 ?? throw new InvalidOperationException("NewsFlasherControl.FormatHeadline not found.");
-            MethodInfo buildSegmentsMethod = typeof(NewsFlasherControl).GetMethod("BuildDisplaySegments", BindingFlags.Instance | BindingFlags.NonPublic)
-                ?? throw new InvalidOperationException("NewsFlasherControl.BuildDisplaySegments not found.");
+            MethodInfo buildWrappedLinesMethod = typeof(NewsFlasherControl).GetMethod("BuildWrappedLines", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.BuildWrappedLines not found.");
+            MethodInfo prepareHeadlineMethod = typeof(NewsFlasherControl).GetMethod("PrepareHeadline", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.PrepareHeadline not found.");
+            MethodInfo stepAdvanceHeadlineMethod = typeof(NewsFlasherControl).GetMethod("StepAdvanceHeadline", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.StepAdvanceHeadline not found.");
+            FieldInfo segmentIndexField = typeof(NewsFlasherControl).GetField("_segmentIndex", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._segmentIndex not found.");
+            FieldInfo displayTopLineField = typeof(NewsFlasherControl).GetField("_displayTopLine", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._displayTopLine not found.");
+            FieldInfo displayBottomLineField = typeof(NewsFlasherControl).GetField("_displayBottomLine", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._displayBottomLine not found.");
+            FieldInfo visibleCharacterCountField = typeof(NewsFlasherControl).GetField("_visibleCharacterCount", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._visibleCharacterCount not found.");
+            TextBlock headlineBlock = (TextBlock)(control.FindName("ActiveHeadlineBlock")
+                ?? throw new InvalidOperationException("ActiveHeadlineBlock not found."));
 
             string text = Assert.IsType<string>(formatMethod.Invoke(null, ["alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima mike november"]));
-            IReadOnlyList<string> segments = Assert.IsAssignableFrom<IReadOnlyList<string>>(buildSegmentsMethod.Invoke(control, [text]));
+            IReadOnlyList<string> wrappedLines = Assert.IsAssignableFrom<IReadOnlyList<string>>(buildWrappedLinesMethod.Invoke(control, [text]));
+            Assert.True(wrappedLines.Count >= 3);
 
-            Assert.True(segments.Count >= 2);
-            Assert.Contains(segments.Zip(segments.Skip(1)), pair =>
-            {
-                string[] leftLines = pair.First.Split(Environment.NewLine);
-                string[] rightLines = pair.Second.Split(Environment.NewLine);
-                return leftLines.Length > 1 &&
-                       rightLines.Length > 0 &&
-                       string.Equals(leftLines[^1], rightLines[0], StringComparison.Ordinal);
-            });
+            NewsHeadlineViewModel headline = new() { Text = text };
+            prepareHeadlineMethod.Invoke(control, [headline]);
+
+            stepAdvanceHeadlineMethod.Invoke(control, [1]);
+
+            Assert.Equal(1, Assert.IsType<int>(segmentIndexField.GetValue(control)));
+            Assert.Equal(wrappedLines[1], Assert.IsType<string>(displayTopLineField.GetValue(control)));
+            Assert.Equal(wrappedLines[2], Assert.IsType<string>(displayBottomLineField.GetValue(control)));
+            Assert.Equal(0, Assert.IsType<int>(visibleCharacterCountField.GetValue(control)));
+            Assert.Equal(wrappedLines[1] + Environment.NewLine + TeleprinterCursorText(), headlineBlock.Text);
         });
     }
+
+    private static string TeleprinterCursorText() => " █";
 
     [Fact]
     public void TapeAndStatusBarLayout_UseSafeInsetsAndFixedHeightForMotionStability()

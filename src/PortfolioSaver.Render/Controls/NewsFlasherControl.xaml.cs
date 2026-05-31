@@ -31,8 +31,9 @@ public partial class NewsFlasherControl : UserControl
     private PlaybackPhase _phase = PlaybackPhase.Idle;
     private PlaybackPhase _lastTracedPhase = PlaybackPhase.Idle;
     private bool _pendingRefresh;
-    private bool _reuseTopLineOnNextSegment;
-    private IReadOnlyList<string> _activeSegments = [];
+    private IReadOnlyList<string> _wrappedLines = [];
+    private string _displayTopLine = string.Empty;
+    private string _displayBottomLine = string.Empty;
     private string _activeText = string.Empty;
     private Brush _activeForeground = Brushes.WhiteSmoke;
 
@@ -168,7 +169,7 @@ public partial class NewsFlasherControl : UserControl
     private void PrepareHeadline(NewsHeadlineViewModel headline)
     {
         _activeText = FormatHeadline(headline.Text);
-        _activeSegments = BuildDisplaySegments(_activeText);
+        _wrappedLines = BuildWrappedLines(_activeText);
         _segmentIndex = 0;
         _activeForeground = headline.Foreground;
         TraceLog.InfoState(
@@ -177,7 +178,7 @@ public partial class NewsFlasherControl : UserControl
             [
                 new("headline_index", _headlineIndex),
                 new("text_length", _activeText.Length),
-                new("segment_count", _activeSegments.Count),
+                new("segment_count", GetSegmentCount()),
                 new("viewport_width", Math.Round(ViewportHost.ActualWidth, 1))
             ]);
         PrepareCurrentSegment();
@@ -185,10 +186,13 @@ public partial class NewsFlasherControl : UserControl
 
     private void PrepareCurrentSegment()
     {
-        _activeText = _activeSegments.Count > 0
-            ? _activeSegments[Math.Clamp(_segmentIndex, 0, _activeSegments.Count - 1)]
+        _displayTopLine = _wrappedLines.Count > _segmentIndex
+            ? _wrappedLines[_segmentIndex]
             : string.Empty;
-        _visibleCharacterCount = GetPrefilledCharacterCount(_activeText, _reuseTopLineOnNextSegment);
+        _displayBottomLine = _wrappedLines.Count > _segmentIndex + 1
+            ? _wrappedLines[_segmentIndex + 1]
+            : string.Empty;
+        _visibleCharacterCount = 0;
         _pauseTicksRemaining = 0;
         _currentVerticalOffset = 0d;
         SetPhase(PlaybackPhase.Typing);
@@ -196,39 +200,45 @@ public partial class NewsFlasherControl : UserControl
         ActiveHeadlineBlock.Width = Math.Max(1d, ViewportHost.ActualWidth);
         Canvas.SetLeft(ActiveHeadlineBlock, 0d);
         Canvas.SetTop(ActiveHeadlineBlock, 0d);
-        SetDisplayedHeadlineText(_activeText[..Math.Min(_visibleCharacterCount, _activeText.Length)], includeCursor: true);
-        _activeHeadlineHeight = MeasureHeadlineHeight(_activeText);
-        _reuseTopLineOnNextSegment = false;
+        SetDisplayedHeadlineText(BuildVisibleText(includeCursor: true));
+        _activeHeadlineHeight = MeasureHeadlineHeight(GetFullSegmentText());
         TraceLog.InfoState(
             "NewsFlasher",
             "PrepareSegment",
             [
                 new("headline_index", _headlineIndex),
                 new("segment_index", _segmentIndex),
-                new("segment_length", _activeText.Length),
+                new("segment_length", GetFullSegmentText().Length),
                 new("measured_height", _activeHeadlineHeight)
             ]);
     }
 
     private void StepTyping()
     {
-        if (string.IsNullOrWhiteSpace(_activeText))
+        if (string.IsNullOrWhiteSpace(GetFullSegmentText()))
         {
             SetPhase(PlaybackPhase.AdvanceHeadline);
             return;
         }
 
-        _visibleCharacterCount = Math.Min(_activeText.Length, _visibleCharacterCount + TypewriterCharactersPerTick);
-        SetDisplayedHeadlineText(_activeText[.._visibleCharacterCount], includeCursor: _visibleCharacterCount < _activeText.Length);
+        if (_segmentIndex == 0 && string.IsNullOrEmpty(_displayTopLine))
+        {
+            SetPhase(PlaybackPhase.AdvanceHeadline);
+            return;
+        }
+
+        _visibleCharacterCount = Math.Min(GetTypingTargetLength(), _visibleCharacterCount + TypewriterCharactersPerTick);
+
+        SetDisplayedHeadlineText(BuildVisibleText(includeCursor: _visibleCharacterCount < GetTypingTargetLength()));
         ActiveHeadlineBlock.Foreground = _activeForeground;
         ActiveHeadlineBlock.Width = Math.Max(1d, ViewportHost.ActualWidth);
         Canvas.SetLeft(ActiveHeadlineBlock, 0d);
         Canvas.SetTop(ActiveHeadlineBlock, 0d);
 
-        if (_visibleCharacterCount < _activeText.Length)
+        if (_visibleCharacterCount < GetTypingTargetLength())
             return;
 
-        _activeHeadlineHeight = MeasureHeadlineHeight(_activeText);
+        _activeHeadlineHeight = MeasureHeadlineHeight(GetFullSegmentText());
         SetPhase(PlaybackPhase.PauseBeforeScroll);
         _pauseTicksRemaining = GetPauseTicks(DefaultRevealPauseSeconds);
     }
@@ -236,12 +246,12 @@ public partial class NewsFlasherControl : UserControl
     private void StepScrolling()
     {
         double pixelsPerTick = TelegraphVerticalScrollPixelsPerSecond * (_playbackTimer.Interval.TotalSeconds * Math.Max(0.7d, _flasher?.Speed ?? 1d));
-        double lineShift = _activeText.Contains(Environment.NewLine, StringComparison.Ordinal)
+        double lineShift = GetFullSegmentText().Contains(Environment.NewLine, StringComparison.Ordinal)
             ? VisibleLineHeight
             : 0d;
         double targetOffset = -lineShift;
         _currentVerticalOffset = Math.Max(targetOffset, _currentVerticalOffset - pixelsPerTick);
-        SetDisplayedHeadlineText(_activeText, includeCursor: false);
+        SetDisplayedHeadlineText(GetFullSegmentText());
         Canvas.SetLeft(ActiveHeadlineBlock, 0d);
         Canvas.SetTop(ActiveHeadlineBlock, _currentVerticalOffset);
 
@@ -256,7 +266,7 @@ public partial class NewsFlasherControl : UserControl
     {
         if (_pauseTicksRemaining > 0)
         {
-            SetDisplayedHeadlineText(_activeText, includeCursor);
+            SetDisplayedHeadlineText(includeCursor ? BuildVisibleText(includeCursor: true) : GetFullSegmentText());
             _pauseTicksRemaining--;
             return;
         }
@@ -270,21 +280,18 @@ public partial class NewsFlasherControl : UserControl
         {
             _pendingRefresh = false;
             _headlineIndex = 0;
-            _reuseTopLineOnNextSegment = false;
             SetPhase(PlaybackPhase.Idle);
             return;
         }
 
-        if (_segmentIndex + 1 < _activeSegments.Count)
+        if (_segmentIndex + 1 < GetSegmentCount())
         {
             _segmentIndex++;
-            _reuseTopLineOnNextSegment = true;
             PrepareCurrentSegment();
             return;
         }
 
         _headlineIndex = (_headlineIndex + 1) % Math.Max(1, headlineCount);
-        _reuseTopLineOnNextSegment = false;
         SetPhase(PlaybackPhase.Idle);
     }
 
@@ -298,8 +305,9 @@ public partial class NewsFlasherControl : UserControl
         _pauseTicksRemaining = 0;
         _segmentIndex = 0;
         _currentVerticalOffset = 0d;
-        _reuseTopLineOnNextSegment = false;
-        _activeSegments = [];
+        _wrappedLines = [];
+        _displayTopLine = string.Empty;
+        _displayBottomLine = string.Empty;
         _activeText = string.Empty;
         _activeHeadlineHeight = 0d;
         ClearDisplay();
@@ -360,34 +368,12 @@ public partial class NewsFlasherControl : UserControl
         return Math.Ceiling(formatted.Height);
     }
 
-    private List<string> BuildDisplaySegments(string text)
+    private int GetSegmentCount()
     {
-        if (string.IsNullOrWhiteSpace(text))
-            return [];
-
-        List<string> wrappedLines = BuildWrappedLines(text);
-        if (wrappedLines.Count == 0)
-            return [];
-
-        List<string> segments = [];
-        if (wrappedLines.Count == 1)
-            return [wrappedLines[0]];
-
-        for (int index = 0; index < wrappedLines.Count - 1; index++)
-        {
-            segments.Add($"{wrappedLines[index]}{Environment.NewLine}{wrappedLines[index + 1]}");
-        }
-
-        return segments;
-    }
-
-    private static int GetPrefilledCharacterCount(string text, bool reuseTopLine)
-    {
-        if (!reuseTopLine || string.IsNullOrWhiteSpace(text))
+        if (_wrappedLines.Count == 0)
             return 0;
 
-        int newlineIndex = text.IndexOf(Environment.NewLine, StringComparison.Ordinal);
-        return newlineIndex < 0 ? 0 : newlineIndex + Environment.NewLine.Length;
+        return _wrappedLines.Count == 1 ? 1 : _wrappedLines.Count - 1;
     }
 
     private List<string> BuildWrappedLines(string text)
@@ -434,11 +420,52 @@ public partial class NewsFlasherControl : UserControl
         return normalized.ToUpperInvariant();
     }
 
+    private int GetTypingTargetLength()
+    {
+        if (_segmentIndex == 0)
+            return GetFullSegmentText().Length;
+
+        return _displayBottomLine.Length;
+    }
+
+    private string GetFullSegmentText()
+    {
+        if (string.IsNullOrWhiteSpace(_displayTopLine))
+            return _displayBottomLine;
+
+        if (string.IsNullOrWhiteSpace(_displayBottomLine))
+            return _displayTopLine;
+
+        return $"{_displayTopLine}{Environment.NewLine}{_displayBottomLine}";
+    }
+
+    private string BuildVisibleText(bool includeCursor)
+    {
+        string visibleText;
+        if (_segmentIndex == 0)
+        {
+            string fullSegmentText = GetFullSegmentText();
+            visibleText = fullSegmentText[..Math.Min(_visibleCharacterCount, fullSegmentText.Length)];
+        }
+        else
+        {
+            string typedBottom = _displayBottomLine[..Math.Min(_visibleCharacterCount, _displayBottomLine.Length)];
+            visibleText = string.IsNullOrWhiteSpace(_displayTopLine)
+                ? typedBottom
+                : $"{_displayTopLine}{Environment.NewLine}{typedBottom}";
+        }
+
+        return includeCursor ? visibleText + TeleprinterCursor : visibleText;
+    }
+
+    private void SetDisplayedHeadlineText(string text)
+    {
+        ActiveHeadlineBlock.Text = text;
+    }
+
     private void SetDisplayedHeadlineText(string text, bool includeCursor)
     {
-        ActiveHeadlineBlock.Text = includeCursor
-            ? text + TeleprinterCursor
-            : text;
+        ActiveHeadlineBlock.Text = includeCursor ? text + TeleprinterCursor : text;
     }
 
     private double MeasureHeadlineWidth(string text)

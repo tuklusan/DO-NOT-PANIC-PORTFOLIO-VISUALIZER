@@ -185,6 +185,12 @@ public partial class ScreensaverSceneControl : UserControl
             return;
         }
 
+        if (preserveLayout && !fullAncillaryRefresh)
+        {
+            TraceScene("RefreshSceneAsync bypassed progressive quote scene because the async runtime quote loop owns ordinary quote cadence.");
+            return;
+        }
+
         if (_isRefreshing)
             return;
 
@@ -192,9 +198,7 @@ public partial class ScreensaverSceneControl : UserControl
         try
         {
             int currentRotationSeed = _graphRotationSeed;
-            ScreensaverSceneState state = fullAncillaryRefresh
-                ? await _startupCoordinator.BuildSceneAsync(currentRotationSeed)
-                : await _startupCoordinator.BuildProgressiveQuoteSceneAsync(currentRotationSeed);
+            ScreensaverSceneState state = await _startupCoordinator.BuildSceneAsync(currentRotationSeed);
             if (_isValidationPaused)
             {
                 TraceScene("RefreshSceneAsync discarded fetched scene because validation pause became active.");
@@ -718,7 +722,7 @@ public partial class ScreensaverSceneControl : UserControl
     {
         try
         {
-            await RefreshSceneAsync(preserveLayout: true, fullAncillaryRefresh: false);
+            await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);
             InitializeRuntimeQuoteLoop();
         }
         catch (Exception ex)
