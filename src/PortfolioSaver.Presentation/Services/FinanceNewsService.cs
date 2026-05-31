@@ -15,6 +15,9 @@ namespace PortfolioSaver.Screensaver.Services;
 public sealed class FinanceNewsService
 {
     internal const string ClosingQuoteHeadlinePrefix = "[[CLOSING_QUOTE]] ";
+    private const string SummaryItemStartMarker = "[[ITEM]]";
+    private const string SummaryItemEndMarker = "[[/ITEM]]";
+    private const string SummaryProseSeparator = "---";
     private const string CacheFileName = "finance-news-cache.json";
     private const string DefaultFeedUrl = "https://finance.yahoo.com/news/rss";
     private const string DeepSeekApiUrl = "https://api.deepseek.com/chat/completions";
@@ -146,13 +149,13 @@ public sealed class FinanceNewsService
         {
             model = DeepSeekModel,
             temperature = 0.2,
-            max_tokens = 500,
+            max_tokens = 900,
             messages = new object[]
             {
                 new
                 {
                     role = "system",
-                    content = "You are given freshly fetched internet headlines. Rewrite only the supplied facts into one compact paragraph suitable for a financial news ticker. Do not use bullets or numbered lists. Do not claim to have browsed the web yourself. Do not introduce, infer, update, correct, or embellish facts beyond the supplied text. Never include investment recommendations, stock-picking language, or advice about whether an asset is a buy, sell, or hold. Do not include any specific numerical values, prices, percentages, dates, or times in the rewritten paragraph."
+                    content = "You are given freshly fetched internet headlines. Rewrite only the supplied facts. Do not claim to have browsed the web yourself. Do not introduce, infer, update, correct, or embellish facts beyond the supplied text. Never include investment recommendations, stock-picking language, or advice about whether an asset is a buy, sell, or hold. Preserve a compact, display-friendly output. Use the exact marker format requested by the user prompt."
                 },
                 new
                 {
@@ -188,15 +191,12 @@ public sealed class FinanceNewsService
             return [];
         }
 
-        string normalized = NormalizeSummaryText(contentElement.GetString());
-        if (string.IsNullOrWhiteSpace(normalized))
+        List<string> summarizedItems = ParseSummarizedNewsItems(contentElement.GetString());
+        if (summarizedItems.Count == 0)
             return [];
 
-        return
-        [
-            normalized,
-            BuildClosingQuoteHeadline(settings.DeepSeekWritingStyle)
-        ];
+        summarizedItems.Add(BuildClosingQuoteHeadline(settings.DeepSeekWritingStyle));
+        return summarizedItems;
     }
 
     private static async Task<SummarizedNewsContext> FetchSummarizedNewsContextAsync(
@@ -243,28 +243,30 @@ public sealed class FinanceNewsService
             .ToList();
     }
 
-    private static string NormalizeSummaryText(string? text)
-    {
-        string candidate = (text ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(candidate))
-            return string.Empty;
-
-        candidate = Regex.Replace(candidate, @"\s+", " ");
-        return candidate.Trim();
-    }
-
     private static string BuildSummarizedNewsPrompt(DeepSeekWritingStyle writingStyle, SummarizedNewsContext context)
     {
         StringBuilder builder = new();
         builder.AppendLine("You are a dependable fiduciary and are presenting current financial news highlights to your customers.");
         builder.AppendLine(GetWritingStyleInstruction(writingStyle));
-        builder.Append("Summarize this live financial snapshot captured at ");
+        builder.Append("Restyle this live financial snapshot captured at ");
         builder.Append(context.CapturedAtUtc.ToString("yyyy-MM-dd HH:mm 'UTC'"));
-        builder.AppendLine(" in one paragraph.");
-        builder.AppendLine("Only restyle the supplied facts into a cohesive paragraph. Do not add, remove, alter, correct, or infer factual content.");
+        builder.AppendLine(" into short sequential items for the news scroller.");
+        builder.AppendLine("For each item, write three short haiku-style lines first, then one compact Adams-style prose line using only the supplied facts.");
+        builder.AppendLine("The haiku may sound bleak, officious, or absurdly bureaucratic in a Vogon-adjacent way, but it must still reflect the supplied facts.");
+        builder.AppendLine("The prose line must remain recognizably Douglas Adams in tone and also use only the supplied facts.");
+        builder.AppendLine("Only restyle the supplied facts. Do not add, remove, alter, correct, or infer factual content.");
         builder.AppendLine("Never include investment recommendations, stock-picking language, or advice about whether an asset is a buy, sell, or hold.");
-        builder.AppendLine("Do not include any specific numerical values, prices, percentages, dates, or times in the rewritten paragraph.");
+        builder.AppendLine("Do not include any specific numerical values, prices, percentages, dates, or times unless the source headline itself makes the number essential to the item's meaning.");
         builder.AppendLine("Ignore soft feature stories, local consumer pieces, and duplicate headlines unless they clearly move global markets.");
+        builder.AppendLine("Return between 4 and 6 items, using this exact machine-readable format and nothing else:");
+        builder.AppendLine("[[ITEM]]");
+        builder.AppendLine("haiku line 1");
+        builder.AppendLine("haiku line 2");
+        builder.AppendLine("haiku line 3");
+        builder.AppendLine("---");
+        builder.AppendLine("one compact prose line");
+        builder.AppendLine("[[/ITEM]]");
+        builder.AppendLine("Do not include titles, bullets, numbering, markdown, or any commentary outside those item blocks.");
         if (context.Headlines.Count > 0)
         {
             builder.AppendLine("Latest headlines:");
@@ -275,8 +277,69 @@ public sealed class FinanceNewsService
             }
         }
 
-        builder.Append("Write one compact paragraph and preserve the macro-financial meaning of the supplied headlines without adding fresh facts.");
+        builder.Append("Write only the item blocks and preserve the macro-financial meaning of the supplied headlines without adding fresh facts.");
         return builder.ToString();
+    }
+
+    internal static List<string> ParseSummarizedNewsItems(string? responseText)
+    {
+        string candidate = (responseText ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+            return [];
+
+        MatchCollection matches = Regex.Matches(
+            candidate,
+            $@"{Regex.Escape(SummaryItemStartMarker)}\s*(.*?)\s*{Regex.Escape(SummaryItemEndMarker)}",
+            RegexOptions.Singleline | RegexOptions.CultureInvariant);
+
+        List<string> items = [];
+        foreach (Match match in matches)
+        {
+            string block = match.Groups[1].Value;
+            string item = NormalizeSummarizedNewsItem(block);
+            if (!string.IsNullOrWhiteSpace(item))
+                items.Add(item);
+        }
+
+        return items;
+    }
+
+    private static string NormalizeSummarizedNewsItem(string? block)
+    {
+        if (string.IsNullOrWhiteSpace(block))
+            return string.Empty;
+
+        string normalizedBlock = block.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+        string[] parts = normalizedBlock.Split(
+            [Environment.NewLine + SummaryProseSeparator + Environment.NewLine, "\n" + SummaryProseSeparator + "\n", SummaryProseSeparator],
+            2,
+            StringSplitOptions.None);
+
+        string[] poeticLines = parts[0]
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(NormalizeSummaryLine)
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Take(3)
+            .ToArray();
+
+        if (poeticLines.Length == 0)
+            return string.Empty;
+
+        string prose = parts.Length > 1 ? NormalizeSummaryLine(parts[1]) : string.Empty;
+        return string.IsNullOrWhiteSpace(prose)
+            ? string.Join(Environment.NewLine, poeticLines)
+            : string.Join(Environment.NewLine, poeticLines.Append(prose));
+    }
+
+    private static string NormalizeSummaryLine(string? text)
+    {
+        string candidate = (text ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+            return string.Empty;
+
+        candidate = Regex.Replace(candidate, @"[\u0000-\u001F\u007F]+", " ");
+        candidate = Regex.Replace(candidate, @"\s+", " ");
+        return candidate.Trim();
     }
 
     private static string GetWritingStyleInstruction(DeepSeekWritingStyle writingStyle)

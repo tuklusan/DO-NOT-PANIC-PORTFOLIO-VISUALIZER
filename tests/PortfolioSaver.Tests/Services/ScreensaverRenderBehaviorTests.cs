@@ -767,8 +767,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("MaxHeight=\"38\"", newsXaml, StringComparison.Ordinal);
         Assert.Contains("LineStackingStrategy=\"BlockLineHeight\"", newsXaml, StringComparison.Ordinal);
         Assert.Contains("FormatHeadline", newsCode, StringComparison.Ordinal);
-        Assert.Contains("Regex.Replace(normalized, @\"[\\u0000-\\u001F\\u007F]+\", \" \")", newsCode, StringComparison.Ordinal);
-        Assert.Contains("Regex.Replace(normalized, @\"\\s+\", \" \")", newsCode, StringComparison.Ordinal);
+        Assert.Contains("normalized.Replace(\"\\r\\n\", \"\\n\", StringComparison.Ordinal).Replace('\\r', '\\n')", newsCode, StringComparison.Ordinal);
+        Assert.Contains("Regex.Replace(line, @\"[\\u0000-\\u0009\\u000B-\\u001F\\u007F]+\", \" \")", newsCode, StringComparison.Ordinal);
+        Assert.Contains("Regex.Replace(line, @\"[ \\t]+\", \" \")", newsCode, StringComparison.Ordinal);
         Assert.Contains("PlaybackPhase.Typing", newsCode, StringComparison.Ordinal);
         Assert.Contains("PlaybackPhase.Scrolling", newsCode, StringComparison.Ordinal);
         Assert.Contains("PlaybackPhase.PauseAfterScroll", newsCode, StringComparison.Ordinal);
@@ -896,6 +897,21 @@ public sealed class ScreensaverRenderBehaviorTests
             Assert.Equal(0, Assert.IsType<int>(visibleCharacterCountField.GetValue(control)));
             Assert.Equal(wrappedLines[1] + Environment.NewLine + TeleprinterCursorText(), headlineBlock.Text);
         });
+    }
+
+    [Fact]
+    public void NewsFlasherControl_FormatHeadline_PreservesExplicitLineBreaks()
+    {
+        MethodInfo formatMethod = typeof(NewsFlasherControl).GetMethod("FormatHeadline", BindingFlags.Static | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("NewsFlasherControl.FormatHeadline not found.");
+
+        string formatted = Assert.IsType<string>(formatMethod.Invoke(null, ["first line\r\nsecond\tline\r\n\r\nthird line"]));
+
+        Assert.Equal(
+            "FIRST LINE" + Environment.NewLine +
+            "SECOND LINE" + Environment.NewLine +
+            "THIRD LINE",
+            formatted);
     }
 
     private static string TeleprinterCursorText() => " █";

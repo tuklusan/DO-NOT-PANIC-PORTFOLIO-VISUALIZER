@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
@@ -70,7 +71,7 @@ public sealed class FinanceNewsServiceTests
                   "choices": [
                     {
                       "message": {
-                        "content": "Global stocks were mixed as traders weighed labor data, central-bank caution, and softer energy sentiment across regions."
+                        "content": "[[ITEM]]\nPaperwork storms gather.\nMarkets shuffle through the fog.\nClerks misplace their calm.\n---\nGlobal stocks were mixed as traders weighed labor data, central-bank caution, and softer energy sentiment across regions.\n[[/ITEM]]"
                       }
                     }
                   ]
@@ -105,16 +106,22 @@ public sealed class FinanceNewsServiceTests
         Assert.Equal(1, requestCount);
         Assert.Contains("You are a dependable fiduciary and are presenting current financial news highlights to your customers.", capturedBody, StringComparison.Ordinal);
         Assert.Contains("You write in the style of Douglas Adams.", capturedBody, StringComparison.Ordinal);
+        Assert.Contains("[[ITEM]]", capturedBody, StringComparison.Ordinal);
+        Assert.Contains("The haiku may sound bleak, officious, or absurdly bureaucratic in a Vogon-adjacent way", capturedBody, StringComparison.Ordinal);
         Assert.Contains("Oil prices fall after Iran sends updated peace proposal to mediators in Pakistan", capturedBody, StringComparison.Ordinal);
         Assert.Contains("Fed Officials Cite Inflation Concerns in Defending Dissents", capturedBody, StringComparison.Ordinal);
-        Assert.Contains("Only restyle the supplied facts into a cohesive paragraph.", capturedBody, StringComparison.Ordinal);
+        Assert.Contains("Only restyle the supplied facts.", capturedBody, StringComparison.Ordinal);
         Assert.Contains("Never include investment recommendations", capturedBody, StringComparison.Ordinal);
-        Assert.Contains("Do not include any specific numerical values, prices, percentages, dates, or times", capturedBody, StringComparison.Ordinal);
+        Assert.Contains("Do not include any specific numerical values, prices, percentages, dates, or times unless the source headline itself makes the number essential", capturedBody, StringComparison.Ordinal);
         Assert.DoesNotContain("Closing quotation:", capturedBody, StringComparison.Ordinal);
         Assert.DoesNotContain("79.61", capturedBody, StringComparison.Ordinal);
         Assert.DoesNotContain("79.61", first[0], StringComparison.Ordinal);
-        Assert.DoesNotContain(Environment.NewLine, first[0], StringComparison.Ordinal);
-        Assert.Equal("Global stocks were mixed as traders weighed labor data, central-bank caution, and softer energy sentiment across regions.", first[0]);
+        Assert.Equal(
+            "Paperwork storms gather." + Environment.NewLine +
+            "Markets shuffle through the fog." + Environment.NewLine +
+            "Clerks misplace their calm." + Environment.NewLine +
+            "Global stocks were mixed as traders weighed labor data, central-bank caution, and softer energy sentiment across regions.",
+            first[0]);
         Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", first[1]);
     }
 
@@ -146,7 +153,7 @@ public sealed class FinanceNewsServiceTests
                   "choices": [
                     {
                       "message": {
-                        "content": "Markets traded sideways as investors weighed soft manufacturing data against resilient labor figures and steady energy prices."
+                        "content": "[[ITEM]]\nLedgers hum at dusk.\nFactories cough in the haze.\nTraders sip bad tea.\n---\nMarkets traded sideways as investors weighed soft manufacturing data against resilient labor figures and steady energy prices.\n[[/ITEM]]"
                       }
                     }
                   ]
@@ -203,7 +210,7 @@ public sealed class FinanceNewsServiceTests
                   "choices": [
                     {
                       "message": {
-                        "content": "Markets grew cautious as policymakers weighed growth against stubborn price pressures"
+                        "content": "[[ITEM]]\nVelvet curtains shake.\nCouncils mutter into dust.\nRates haunt the antechamber.\n---\nMarkets grew cautious as policymakers weighed growth against stubborn price pressures.\n[[/ITEM]]"
                       }
                     }
                   ]
@@ -228,6 +235,46 @@ public sealed class FinanceNewsServiceTests
         Assert.Contains("You write in the style of William Shakespeare.", capturedBody, StringComparison.Ordinal);
         Assert.DoesNotContain("Closing quotation:", capturedBody, StringComparison.Ordinal);
         Assert.Equal("[[CLOSING_QUOTE]] \"All that glisters is not gold.\"", headlines[1]);
+    }
+
+    [Fact]
+    public void ParseSummarizedNewsItems_ExtractsHaikuThenProsePerItem()
+    {
+        MethodInfo parseMethod = typeof(FinanceNewsService).GetMethod(
+            "ParseSummarizedNewsItems",
+            BindingFlags.Static | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("FinanceNewsService.ParseSummarizedNewsItems not found.");
+
+        List<string> items = Assert.IsType<List<string>>(parseMethod.Invoke(null, ["""
+        [[ITEM]]
+        Clerks stamp the void.
+        Bond markets cough into fog.
+        Tea goes cold again.
+        ---
+        Bond markets drifted as traders weighed slower growth against stubborn inflation worries.
+        [[/ITEM]]
+        [[ITEM]]
+        Cargo drones complain.
+        Supply chains grumble at dusk.
+        Someone lost the forms.
+        ---
+        Shipping shares steadied after ports resumed partial operations and fuel fears eased.
+        [[/ITEM]]
+        """]));
+
+        Assert.Equal(2, items.Count);
+        Assert.Equal(
+            "Clerks stamp the void." + Environment.NewLine +
+            "Bond markets cough into fog." + Environment.NewLine +
+            "Tea goes cold again." + Environment.NewLine +
+            "Bond markets drifted as traders weighed slower growth against stubborn inflation worries.",
+            items[0]);
+        Assert.Equal(
+            "Cargo drones complain." + Environment.NewLine +
+            "Supply chains grumble at dusk." + Environment.NewLine +
+            "Someone lost the forms." + Environment.NewLine +
+            "Shipping shares steadied after ports resumed partial operations and fuel fears eased.",
+            items[1]);
     }
 
     [Fact]

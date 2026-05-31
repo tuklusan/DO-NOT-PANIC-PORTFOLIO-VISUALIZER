@@ -378,33 +378,42 @@ public partial class NewsFlasherControl : UserControl
 
     private List<string> BuildWrappedLines(string text)
     {
-        string[] words = text
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (words.Length == 0)
-            return [];
-
         List<string> lines = [];
-        string current = string.Empty;
-        foreach (string word in words)
+        string normalized = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+        string[] logicalLines = normalized.Split('\n', StringSplitOptions.None);
+        foreach (string logicalLine in logicalLines)
         {
-            string candidate = string.IsNullOrWhiteSpace(current)
-                ? word
-                : current + " " + word;
-
-            if (MeasureHeadlineWidth(candidate) <= Math.Max(1d, ViewportHost.ActualWidth))
-            {
-                current = candidate;
+            string trimmedLogicalLine = logicalLine.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedLogicalLine))
                 continue;
+
+            string[] words = trimmedLogicalLine
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (words.Length == 0)
+                continue;
+
+            string current = string.Empty;
+            foreach (string word in words)
+            {
+                string candidate = string.IsNullOrWhiteSpace(current)
+                    ? word
+                    : current + " " + word;
+
+                if (MeasureHeadlineWidth(candidate) <= Math.Max(1d, ViewportHost.ActualWidth))
+                {
+                    current = candidate;
+                    continue;
+                }
+
+                if (!string.IsNullOrWhiteSpace(current))
+                    lines.Add(current);
+
+                current = word;
             }
 
             if (!string.IsNullOrWhiteSpace(current))
                 lines.Add(current);
-
-            current = word;
         }
-
-        if (!string.IsNullOrWhiteSpace(current))
-            lines.Add(current);
 
         return lines;
     }
@@ -415,9 +424,14 @@ public partial class NewsFlasherControl : UserControl
         if (string.IsNullOrWhiteSpace(normalized))
             return string.Empty;
 
-        normalized = Regex.Replace(normalized, @"[\u0000-\u001F\u007F]+", " ");
-        normalized = Regex.Replace(normalized, @"\s+", " ");
-        return normalized.ToUpperInvariant();
+        normalized = normalized.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+        string[] lines = normalized.Split('\n', StringSplitOptions.None);
+        IEnumerable<string> cleanedLines = lines
+            .Select(line => Regex.Replace(line, @"[\u0000-\u0009\u000B-\u001F\u007F]+", " "))
+            .Select(line => Regex.Replace(line, @"[ \t]+", " ").Trim())
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Select(line => line.ToUpperInvariant());
+        return string.Join(Environment.NewLine, cleanedLines);
     }
 
     private int GetTypingTargetLength()
