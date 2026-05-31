@@ -24,6 +24,7 @@ public sealed class StartupCoordinator
 {
     private const int MinimumTapeItemCount = 18;
     private const int SequentialQuotePipelineDepth = 4;
+    private const int MaxSceneGraphCards = 16;
     private const string StatusFreshnessAnchorSymbol = "^SPX";
 
     private readonly ScreensaverSettingsService _settingsService = new();
@@ -236,7 +237,7 @@ public sealed class StartupCoordinator
             graphRotationSeed,
             symbolProfiles);
 
-        List<(TickerGroup Group, TickerItem Ticker)> graphPairs = SelectGraphTickerPairs(settings, graphRotationSeed).ToList();
+        List<(TickerGroup Group, TickerItem Ticker)> graphPairs = SelectGraphTickerPairs(settings).ToList();
         Dictionary<string, TickerHistorySnapshot> cachedBySymbol = new(StringComparer.OrdinalIgnoreCase);
         List<string> liveFetchSymbols = [];
 
@@ -385,56 +386,49 @@ public sealed class StartupCoordinator
         return results;
     }
 
-    private static IReadOnlyList<TickerItem> SelectGraphTickers(TickerGroup group, AppSettings settings, int rotationSeed)
+    private sealed record GraphCandidate(
+        TickerGroup Group,
+        TickerItem Ticker,
+        int GroupOrder,
+        int TickerOrder,
+        decimal Score,
+        bool HasLiveMoverScore);
+
+    private IReadOnlyList<(TickerGroup Group, TickerItem Ticker)> SelectGraphTickerPairs(AppSettings settings)
     {
-        List<TickerItem> enabledTickers = group.Tickers
-            .Where(ticker => ticker.Enabled)
+        List<GraphCandidate> candidates = settings.Groups
+            .Where(group => group.Enabled)
+            .SelectMany((group, groupOrder) => group.Tickers
+                .Where(ticker => ticker.Enabled && !string.IsNullOrWhiteSpace(ticker.Symbol))
+                .Select((ticker, tickerOrder) =>
+                {
+                    QuoteSnapshot? quote = _runtimeQuoteMemory.TryGetValue(ticker.Symbol, out QuoteSnapshot? cached)
+                        ? cached
+                        : null;
+                    decimal? changePercent = quote?.ChangePercent;
+                    return new GraphCandidate(
+                        group,
+                        ticker,
+                        groupOrder,
+                        tickerOrder,
+                        Math.Abs(changePercent ?? 0m),
+                        changePercent.HasValue);
+                }))
             .ToList();
 
-        if (enabledTickers.Count == 0)
+        if (candidates.Count == 0)
             return [];
 
-        int visibleCount = settings.MaxFloatingGraphsPerTape <= 0
-            ? enabledTickers.Count
-            : Math.Min(enabledTickers.Count, Math.Max(1, settings.MaxFloatingGraphsPerTape));
-
-        if (visibleCount >= enabledTickers.Count)
-            return enabledTickers;
-
-        int normalizedSeed = Math.Abs(rotationSeed);
-        int startIndex = normalizedSeed % enabledTickers.Count;
-        List<TickerItem> selected = [];
-        for (int i = 0; i < visibleCount; i++)
-            selected.Add(enabledTickers[(startIndex + i) % enabledTickers.Count]);
-
-        return selected;
-    }
-
-    private static IReadOnlyList<(TickerGroup Group, TickerItem Ticker)> SelectGraphTickerPairs(AppSettings settings, int graphRotationSeed)
-    {
-        const int maxSceneGraphCards = 12;
-        List<(TickerGroup Group, List<TickerItem> Tickers)> groupSelections = [];
-        int groupIndex = 0;
-        foreach (TickerGroup group in settings.Groups.Where(group => group.Enabled))
-        {
-            groupSelections.Add((group, SelectGraphTickers(group, settings, graphRotationSeed + groupIndex).ToList()));
-            groupIndex++;
-        }
-
-        List<(TickerGroup Group, TickerItem Ticker)> pairs = [];
-        int maxTickerCount = groupSelections.Count == 0 ? 0 : groupSelections.Max(selection => selection.Tickers.Count);
-        for (int tickerIndex = 0; tickerIndex < maxTickerCount; tickerIndex++)
-        {
-            foreach ((TickerGroup group, List<TickerItem> tickers) in groupSelections)
-            {
-                if (tickerIndex >= tickers.Count)
-                    continue;
-
-                pairs.Add((group, tickers[tickerIndex]));
-            }
-        }
-
-        return pairs.Take(maxSceneGraphCards).ToList();
+        return candidates
+            .OrderByDescending(candidate => candidate.HasLiveMoverScore)
+            .ThenByDescending(candidate => candidate.Score)
+            .ThenBy(candidate => candidate.GroupOrder)
+            .ThenBy(candidate => candidate.TickerOrder)
+            .GroupBy(candidate => candidate.Ticker.Symbol, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .Take(MaxSceneGraphCards)
+            .Select(candidate => (candidate.Group, candidate.Ticker))
+            .ToList();
     }
 
     private static bool HasEnabledHistorySource(string symbol)

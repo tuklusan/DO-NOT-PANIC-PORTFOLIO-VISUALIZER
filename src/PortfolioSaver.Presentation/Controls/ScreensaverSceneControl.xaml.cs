@@ -31,7 +31,8 @@ public partial class ScreensaverSceneControl : UserControl
 {
     private static readonly bool EnableMarketCritters = false;
     private const string PinnedNycExchangeKey = "NewYorkNasdaq";
-    private const int MaxVisibleGraphCards = 12;
+    private const int MaxVisibleGraphCards = 16;
+    private static readonly TimeSpan GraphSelectionRefreshInterval = TimeSpan.FromMinutes(10);
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly ObservableCollection<MarketSpriteViewModel> _marketSprites = [];
     private readonly ObservableCollection<TapeViewModel> _tapes = [];
@@ -88,6 +89,7 @@ public partial class ScreensaverSceneControl : UserControl
     private DateTimeOffset _lastStatusAncillaryRefreshUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastClockAncillaryRefreshUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastSceneHeartbeatUtc = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastGraphSelectionRefreshUtc = DateTimeOffset.MinValue;
     private bool _isValidationPaused;
     private readonly Dictionary<string, Task<IReadOnlyList<QuoteSnapshot>>> _inFlightQuoteRequests = new(StringComparer.OrdinalIgnoreCase);
     private List<string> _orderedRuntimeSymbols = [];
@@ -344,6 +346,7 @@ public partial class ScreensaverSceneControl : UserControl
 
         CancellationTokenSource cancellation = new();
         _graphWarmupCancellation = cancellation;
+        _lastGraphSelectionRefreshUtc = DateTimeOffset.UtcNow;
         _graphWarmupTask = WarmGraphsAsync(rotationSeed, preserveLayout, cancellation.Token);
     }
 
@@ -644,6 +647,8 @@ public partial class ScreensaverSceneControl : UserControl
         if (_isValidationPaused || _orderedRuntimeSymbols.Count == 0)
             return;
 
+        RefreshGraphSelectionIfDue();
+
         string? symbol = TakeNextRuntimeQuoteSymbol();
         if (string.IsNullOrWhiteSpace(symbol))
             return;
@@ -734,6 +739,25 @@ public partial class ScreensaverSceneControl : UserControl
     private double GetRefreshSeconds()
     {   
         return QuoteRefreshPolicy.GetRefreshPollingInterval(_settings, GetReferenceUtcNow()).TotalSeconds;
+    }
+
+    private void RefreshGraphSelectionIfDue()
+    {
+        if (!_settings.EnableFloatingGraphs)
+            return;
+
+        DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
+        if (_lastGraphSelectionRefreshUtc != DateTimeOffset.MinValue &&
+            nowUtc - _lastGraphSelectionRefreshUtc < GraphSelectionRefreshInterval)
+        {
+            return;
+        }
+
+        TraceSceneState(
+            "GraphSelectionRefreshDue",
+            new KeyValuePair<string, object?>("last_refresh_utc", _lastGraphSelectionRefreshUtc == DateTimeOffset.MinValue ? null : _lastGraphSelectionRefreshUtc),
+            new KeyValuePair<string, object?>("graph_count", _graphs.Count));
+        RestartGraphWarmup(_graphRotationSeed, preserveLayout: false);
     }
 
     private void ApplyResponsiveLayout()

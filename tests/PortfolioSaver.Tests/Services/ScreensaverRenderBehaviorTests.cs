@@ -1110,19 +1110,23 @@ public sealed class ScreensaverRenderBehaviorTests
             "Services",
             "StartupCoordinator.cs"));
 
-        Assert.Contains("private const int MaxVisibleGraphCards = 12;", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private const int MaxVisibleGraphCards = 16;", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("SeparateVisibleGraphCards(bounds);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("GraphCardSeparationGap", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("foreach (FloatingGraphViewModel graph in EnumerateVisibleGraphCards())", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ApplyGraphRefreshImpulse(graph, bounds);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ResetGraphRefreshImpulseIfNeeded(graph, bounds);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private static readonly TimeSpan GraphSelectionRefreshInterval = TimeSpan.FromMinutes(10);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RefreshGraphSelectionIfDue();", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("ApplyGraphMotionVariance(", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("ApplyGraphRefreshTravel(", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("graph.PlotWidth = Math.Max(106d, graphWidth - 62d);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Margin=\"2,3,12,0\"", floatingGraphXaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"24\"", floatingGraphXaml, StringComparison.Ordinal);
-        Assert.Contains("const int maxSceneGraphCards = 12;", startupCoordinator, StringComparison.Ordinal);
-        Assert.Contains("return pairs.Take(maxSceneGraphCards).ToList();", startupCoordinator, StringComparison.Ordinal);
+        Assert.Contains("private const int MaxSceneGraphCards = 16;", startupCoordinator, StringComparison.Ordinal);
+        Assert.Contains(".Take(MaxSceneGraphCards)", startupCoordinator, StringComparison.Ordinal);
+        Assert.Contains(".OrderByDescending(candidate => candidate.HasLiveMoverScore)", startupCoordinator, StringComparison.Ordinal);
+        Assert.Contains(".ThenByDescending(candidate => candidate.Score)", startupCoordinator, StringComparison.Ordinal);
         Assert.Contains("const int graphLookbackDays = 1;", startupCoordinator, StringComparison.Ordinal);
     }
 
