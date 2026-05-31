@@ -632,6 +632,7 @@
       "notes": [
         "Do not introduce a Python runtime, DDGS search interception, or unofficial scraping dependencies for this ticket.",
         "Keep the current supported product modes: RSS mode for no-key operation and DeepSeek summarized mode for keyed AI rewriting.",
+        "When summarized-news style selection is Shakespeare-based, the prompt text must explicitly say \"classical Shakespeare\" rather than merely \"Shakespeare\".",
         "Refactor the news-refresh path into its own .NET background update lane that fetches and prepares refreshed headlines without blocking the UI thread.",
         "The worker should prepare the next news payload off the UI thread and then apply only a minimal NewsFlasherViewModel patch on the UI thread.",
         "Do not route ordinary news refreshes through full scene rebuild or full ApplySceneState passes once the independent lane is in place.",
