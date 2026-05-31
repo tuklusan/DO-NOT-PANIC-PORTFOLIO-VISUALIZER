@@ -1608,6 +1608,15 @@ function Find-ConfigWindow {
             }
         }
 
+        $ownedWindow = Find-ConfigWindowOwned -Process $Process
+        if ($null -ne $ownedWindow) {
+            try {
+                Write-ConfigWindowTrace -Event 'FindConfigWindowOwnedMatch' -Details ("automation_id={0}; title={1}" -f [string]$ownedWindow.Current.AutomationId, [string]$ownedWindow.Current.Name)
+            }
+            catch {}
+            return $ownedWindow
+        }
+
         $namedTopLevel = Find-TopLevelWindowByNameLike -NameLike '*PORTFOLIO VISUALIZER Config*' -TimeoutSeconds 1
         if ($null -ne $namedTopLevel) {
             try {
@@ -1617,7 +1626,7 @@ function Find-ConfigWindow {
             return $namedTopLevel
         }
 
-        Start-Sleep -Milliseconds 40
+        Start-Sleep -Milliseconds 120
     } while ((Get-Date) -lt $deadline)
 
     Write-ConfigWindowTrace -Event 'FindConfigWindowTimeout' -Details ("process_id={0}; windows={1}" -f $Process.Id, (Get-TopLevelWindowSnapshot -ProcessId $Process.Id))
@@ -2440,9 +2449,9 @@ try {
             catch {}
         }
 
-        Start-Sleep -Milliseconds 60
+        Start-Sleep -Milliseconds 500
         Test-ConfigPhaseBudget -StartedAt $configPhaseStartedAt -Stage 'post-open-reacquire'
-        $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 8
+        $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 20
         if ($null -eq $window) { throw 'Could not locate config window via UI Automation.' }
         Write-ConfigWindowTrace -Event 'ConfigWindowReacquired' -Details ("title={0}; automation_id={1}" -f [string]$window.Current.Name, [string]$window.Current.AutomationId)
         if ([string]$window.Current.Name -like '*BETA-6*' -or

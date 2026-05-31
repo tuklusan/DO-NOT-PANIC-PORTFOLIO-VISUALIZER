@@ -145,7 +145,9 @@ public partial class MainWindow : Window
     {
         var window = new SettingsWindow
         {
-            Owner = this
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Topmost = true
         };
         void OnValidationActivityChanged(bool isValidating)
             => SceneHost?.SetValidationPause(isValidating);
@@ -155,6 +157,12 @@ public partial class MainWindow : Window
         SceneHost?.SetValidationPause(true);
         try
         {
+            window.Loaded += (_, _) =>
+            {
+                window.Activate();
+                window.Focus();
+                TraceLog.InfoState("Desktop.Config", "ConfigDialogLoaded", []);
+            };
             window.ShowDialog();
         }
         finally
