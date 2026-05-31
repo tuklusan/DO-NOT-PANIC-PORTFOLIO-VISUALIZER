@@ -8,6 +8,7 @@ using System.Xml.Linq;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Shared.Diagnostics;
 using PortfolioSaver.Shared.Helpers;
 
 namespace PortfolioSaver.Screensaver.Services;
@@ -59,8 +60,23 @@ public sealed class FinanceNewsService
             string.Equals(cache.ModeKey, GetModeKey(mode), StringComparison.OrdinalIgnoreCase)
                 ? cache.Headlines
                 : [];
+
+        TraceNewsState(
+            "NewsRefreshStart",
+            new KeyValuePair<string, object?>("mode", mode),
+            new KeyValuePair<string, object?>("network_available", networkAvailable),
+            new KeyValuePair<string, object?>("refresh_minutes", refreshInterval.TotalMinutes),
+            new KeyValuePair<string, object?>("cached_headline_count", matchingCachedHeadlines.Count),
+            new KeyValuePair<string, object?>("feed_url", requestUrl));
+
         if (!networkAvailable)
+        {
+            TraceNewsState(
+                "NewsNetworkUnavailable",
+                new KeyValuePair<string, object?>("mode", mode),
+                new KeyValuePair<string, object?>("fallback_headline_count", matchingCachedHeadlines.Count));
             return GetFallbackHeadlines(mode, matchingCachedHeadlines);
+        }
 
         if (cache.FetchTimestampUtc != DateTimeOffset.MinValue &&
             string.Equals(cache.ModeKey, GetModeKey(mode), StringComparison.OrdinalIgnoreCase) &&
@@ -68,8 +84,19 @@ public sealed class FinanceNewsService
             DateTimeOffset.UtcNow - cache.FetchTimestampUtc < refreshInterval &&
             cache.Headlines.Count > 0)
         {
+            TraceNewsState(
+                "NewsCacheHit",
+                new KeyValuePair<string, object?>("mode", mode),
+                new KeyValuePair<string, object?>("headline_count", cache.Headlines.Count),
+                new KeyValuePair<string, object?>("cache_age_seconds", (DateTimeOffset.UtcNow - cache.FetchTimestampUtc).TotalSeconds));
             return cache.Headlines;
         }
+
+        TraceNewsState(
+            "NewsCacheMiss",
+            new KeyValuePair<string, object?>("mode", mode),
+            new KeyValuePair<string, object?>("had_cache", cache.Headlines.Count > 0),
+            new KeyValuePair<string, object?>("request_url", requestUrl));
 
         try
         {
@@ -80,7 +107,18 @@ public sealed class FinanceNewsService
             };
 
             if (headlines.Count == 0)
+            {
+                TraceNewsState(
+                    "NewsFetchEmpty",
+                    new KeyValuePair<string, object?>("mode", mode),
+                    new KeyValuePair<string, object?>("fallback_headline_count", matchingCachedHeadlines.Count));
                 return GetFallbackHeadlines(mode, matchingCachedHeadlines);
+            }
+
+            TraceNewsState(
+                "NewsFetchComplete",
+                new KeyValuePair<string, object?>("mode", mode),
+                new KeyValuePair<string, object?>("headline_count", headlines.Count));
 
             NewsHeadlineCache refreshed = new()
             {
@@ -91,10 +129,23 @@ public sealed class FinanceNewsService
             };
 
             await SaveCacheAsync(refreshed, cancellationToken);
+            TraceNewsState(
+                "NewsCacheSaved",
+                new KeyValuePair<string, object?>("mode", mode),
+                new KeyValuePair<string, object?>("headline_count", refreshed.Headlines.Count),
+                new KeyValuePair<string, object?>("cache_path", _cachePath));
             return refreshed.Headlines;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch
         {
+            TraceNewsState(
+                "NewsFetchFailed",
+                new KeyValuePair<string, object?>("mode", mode),
+                new KeyValuePair<string, object?>("fallback_headline_count", matchingCachedHeadlines.Count));
             return GetFallbackHeadlines(mode, matchingCachedHeadlines);
         }
     }
@@ -129,7 +180,13 @@ public sealed class FinanceNewsService
         using HttpResponseMessage response = await httpClient.GetAsync(requestUrl, cancellationToken);
         response.EnsureSuccessStatusCode();
         string xml = await response.Content.ReadAsStringAsync(cancellationToken);
-        return ParseHeadlines(xml);
+        List<string> headlines = ParseHeadlines(xml);
+        TraceNewsState(
+            "NewsParseComplete",
+            new KeyValuePair<string, object?>("mode", NewsScrollerMode.RssFeed),
+            new KeyValuePair<string, object?>("headline_count", headlines.Count),
+            new KeyValuePair<string, object?>("request_url", requestUrl));
+        return headlines;
     }
 
     private async Task<List<string>> FetchSummarizedFinancialNewsAsync(
@@ -192,6 +249,12 @@ public sealed class FinanceNewsService
         }
 
         List<string> summarizedItems = ParseSummarizedNewsItems(contentElement.GetString());
+        TraceNewsState(
+            "NewsParseComplete",
+            new KeyValuePair<string, object?>("mode", NewsScrollerMode.SummarizedFinancialNews),
+            new KeyValuePair<string, object?>("source_headline_count", context.Headlines.Count),
+            new KeyValuePair<string, object?>("item_count", summarizedItems.Count),
+            new KeyValuePair<string, object?>("writing_style", settings.DeepSeekWritingStyle));
         if (summarizedItems.Count == 0)
             return [];
 
@@ -345,7 +408,7 @@ public sealed class FinanceNewsService
     private static string GetWritingStyleInstruction(DeepSeekWritingStyle writingStyle)
         => writingStyle switch
         {
-            DeepSeekWritingStyle.WilliamShakespeare => "You write in the style of William Shakespeare.",
+            DeepSeekWritingStyle.WilliamShakespeare => "You write in the style of classical Shakespeare.",
             _ => "You write in the style of Douglas Adams."
         };
 
@@ -406,6 +469,9 @@ public sealed class FinanceNewsService
         await JsonSerializer.SerializeAsync(stream, cache, JsonOptions, cancellationToken);
     }
 
+    public static TimeSpan GetRefreshInterval(AppSettings settings)
+        => GetRefreshInterval(settings.NewsScrollerMode, settings.NewsRefreshMinutes);
+
     private static TimeSpan GetRefreshInterval(NewsScrollerMode mode, int refreshMinutes)
     {
         int minimumMinutes = mode == NewsScrollerMode.SummarizedFinancialNews
@@ -433,6 +499,11 @@ public sealed class FinanceNewsService
             NewsScrollerMode.RssFeed => "rss",
             _ => "summarized-financial-news"
         };
+
+    private static void TraceNewsState(string eventName, params KeyValuePair<string, object?>[] fields)
+    {
+        TraceLog.InfoState("FinanceNewsService", eventName, fields);
+    }
 
     private sealed record SummarizedNewsContext(
         DateTimeOffset CapturedAtUtc,

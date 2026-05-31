@@ -232,7 +232,7 @@ public sealed class FinanceNewsServiceTests
         IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
 
         Assert.Equal(2, headlines.Count);
-        Assert.Contains("You write in the style of William Shakespeare.", capturedBody, StringComparison.Ordinal);
+        Assert.Contains("You write in the style of classical Shakespeare.", capturedBody, StringComparison.Ordinal);
         Assert.DoesNotContain("Closing quotation:", capturedBody, StringComparison.Ordinal);
         Assert.Equal("[[CLOSING_QUOTE]] \"All that glisters is not gold.\"", headlines[1]);
     }

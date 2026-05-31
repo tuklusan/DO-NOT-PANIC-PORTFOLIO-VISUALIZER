@@ -95,6 +95,9 @@ public partial class ScreensaverSceneControl : UserControl
     private readonly Dictionary<string, Task<IReadOnlyList<QuoteSnapshot>>> _inFlightQuoteRequests = new(StringComparer.OrdinalIgnoreCase);
     private List<string> _orderedRuntimeSymbols = [];
     private int _runtimeSymbolCursor;
+    private CancellationTokenSource? _newsRefreshCancellation;
+    private Task? _newsRefreshTask;
+    private int _newsRefreshInFlight;
 
     public ScreensaverSceneControl()
     {
@@ -147,6 +150,7 @@ public partial class ScreensaverSceneControl : UserControl
             RestartGraphWarmup(_graphRotationSeed, preserveLayout: false);
             await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);
             InitializeRuntimeQuoteLoop();
+            StartNewsRefreshLoop();
             StartCaptureSequenceIfRequested();
             StartDemoFlashSequence();
             TraceScene("OnLoaded completed.");
@@ -160,6 +164,7 @@ public partial class ScreensaverSceneControl : UserControl
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         StopRuntimeQuoteLoop();
+        CancelNewsRefreshLoop();
         _clockTimer.Stop();
         _refreshTimer.Stop();
         _backgroundTimer.Stop();
@@ -648,6 +653,114 @@ public partial class ScreensaverSceneControl : UserControl
         _inFlightQuoteRequests.Clear();
     }
 
+    private void StartNewsRefreshLoop()
+    {
+        CancelNewsRefreshLoop();
+        CancellationTokenSource cancellation = new();
+        _newsRefreshCancellation = cancellation;
+        _newsRefreshTask = RunNewsRefreshLoopAsync(cancellation.Token);
+    }
+
+    private void CancelNewsRefreshLoop()
+    {
+        if (_newsRefreshCancellation is null)
+            return;
+
+        try
+        {
+            _newsRefreshCancellation.Cancel();
+        }
+        catch
+        {
+        }
+
+        _newsRefreshCancellation.Dispose();
+        _newsRefreshCancellation = null;
+        _newsRefreshTask = null;
+    }
+
+    private async Task RunNewsRefreshLoopAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await RefreshNewsLaneAsync(force: true, cancellationToken);
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(GetNewsRefreshPollInterval(), cancellationToken);
+                await RefreshNewsLaneAsync(force: false, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            TraceScene($"RunNewsRefreshLoopAsync failed: {ex}");
+        }
+    }
+
+    private async Task RefreshNewsLaneAsync(bool force, CancellationToken cancellationToken)
+    {
+        if (_isValidationPaused && !force)
+            return;
+
+        if (System.Threading.Interlocked.Exchange(ref _newsRefreshInFlight, 1) != 0)
+            return;
+
+        try
+        {
+            AppSettings settingsSnapshot = await Dispatcher.InvokeAsync(
+                () => CloneNewsSettings(_settings),
+                DispatcherPriority.Background,
+                cancellationToken);
+            bool networkAvailable = _networkAvailabilityService.IsNetworkAvailable();
+
+            TraceSceneState(
+                "NewsRefreshStart",
+                new KeyValuePair<string, object?>("mode", settingsSnapshot.NewsScrollerMode),
+                new KeyValuePair<string, object?>("force", force),
+                new KeyValuePair<string, object?>("network_available", networkAvailable),
+                new KeyValuePair<string, object?>("poll_seconds", GetNewsRefreshPollInterval().TotalSeconds));
+
+            NewsFlasherViewModel refreshedNews = await _startupCoordinator.BuildNewsViewModelAsync(
+                settingsSnapshot,
+                networkAvailable,
+                cancellationToken);
+
+            await Dispatcher.InvokeAsync(() =>
+            {
+                bool changed = NewsChanged(refreshedNews);
+                if (changed)
+                    SyncNews(refreshedNews);
+
+                TraceSceneState(
+                    "NewsUiPatchComplete",
+                    new KeyValuePair<string, object?>("mode", settingsSnapshot.NewsScrollerMode),
+                    new KeyValuePair<string, object?>("changed", changed),
+                    new KeyValuePair<string, object?>("headline_count", refreshedNews.Headlines.Count));
+            }, DispatcherPriority.Background, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            TraceScene($"RefreshNewsLaneAsync failed: {ex}");
+        }
+        finally
+        {
+            System.Threading.Interlocked.Exchange(ref _newsRefreshInFlight, 0);
+        }
+    }
+
+    private TimeSpan GetNewsRefreshPollInterval()
+    {
+        TimeSpan refreshInterval = FinanceNewsService.GetRefreshInterval(_settings);
+        double pollSeconds = Math.Clamp(refreshInterval.TotalSeconds / 4d, 15d, 60d);
+        return TimeSpan.FromSeconds(pollSeconds);
+    }
+
     private void RefreshOrderedRuntimeSymbols()
     {
         _orderedRuntimeSymbols = _startupCoordinator.BuildOrderedRuntimeSymbols(_settings).ToList();
@@ -742,6 +855,7 @@ public partial class ScreensaverSceneControl : UserControl
         {
             await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);
             InitializeRuntimeQuoteLoop();
+            _ = RefreshNewsLaneAsync(force: true, CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -2520,6 +2634,16 @@ public partial class ScreensaverSceneControl : UserControl
         target.Foreground = source.Foreground;
         target.IsSupplemental = source.IsSupplemental;
     }
+
+    private static AppSettings CloneNewsSettings(AppSettings source) => new()
+    {
+        NewsScrollerMode = source.NewsScrollerMode,
+        DeepSeekWritingStyle = source.DeepSeekWritingStyle,
+        NewsFeedUrl = source.NewsFeedUrl,
+        NewsRefreshMinutes = source.NewsRefreshMinutes,
+        DeepSeekApiKey = source.DeepSeekApiKey,
+        HttpTimeoutSeconds = source.HttpTimeoutSeconds
+    };
 
     private void ApplyQuotesToGraphs()
     {

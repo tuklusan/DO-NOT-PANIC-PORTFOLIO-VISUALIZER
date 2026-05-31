@@ -165,17 +165,12 @@ public sealed class StartupCoordinator
             httpClient,
             networkAvailable,
             cancellationToken);
-        Task<IReadOnlyList<string>> headlinesTask = _financeNewsService.GetHeadlinesAsync(
-            httpClient,
-            settings,
-            networkAvailable,
-            cancellationToken);
+        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode);
 
-        await Task.WhenAll(quotesTask, backgroundsTask, headlinesTask);
+        await Task.WhenAll(quotesTask, backgroundsTask);
 
         Dictionary<string, QuoteSnapshot> quotes = await quotesTask;
         IReadOnlyList<string> backgroundPaths = await backgroundsTask;
-        IReadOnlyList<string> headlines = await headlinesTask;
 
         return BuildSceneState(settings, quotes, backgroundPaths, headlines, networkAvailable);
     }
@@ -214,6 +209,20 @@ public sealed class StartupCoordinator
     {
         foreach ((string symbol, QuoteSnapshot quote) in quotes)
             _runtimeQuoteMemory[symbol] = CloneQuote(quote);
+    }
+
+    public async Task<NewsFlasherViewModel> BuildNewsViewModelAsync(
+        AppSettings settings,
+        bool networkAvailable,
+        CancellationToken cancellationToken = default)
+    {
+        using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
+        IReadOnlyList<string> headlines = await _financeNewsService.GetHeadlinesAsync(
+            httpClient,
+            settings,
+            networkAvailable,
+            cancellationToken);
+        return BuildNews(headlines);
     }
 
     public async IAsyncEnumerable<FloatingGraphViewModel> LoadGraphsIncrementallyAsync(
