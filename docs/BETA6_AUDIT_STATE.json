@@ -616,6 +616,53 @@
         "Resolved on 2026-05-31 by limiting floating graph-cart selection to the top 16 biggest live movers in StartupCoordinator, refreshing the selection every 10 minutes, and proving the reselection trigger in VM bundle ux-deep-ssh-20260531-202724 via GraphSelectionRefreshDue.",
         "Background rotation/slow-zoom verification was completed in VM bundle ux-deep-ssh-20260531-214056 after lowering the product default background interval to 120 seconds, forcing a 20-second harness override, and tracing BackgroundTimerArmed, BackgroundRotationChosen, BackgroundTransitionComplete, and BackgroundZoomStarted events."
       ]
+    },
+    {
+      "id": "NB-048",
+      "source": "user_followup",
+      "title": "Move the Financial News scroller to an independent non-blocking update lane",
+      "priority": 2,
+      "area": "news_scroller_runtime",
+      "status": "open",
+      "evidence": [
+        "User requested a project-native version of the proposed financial-news threading ticket after reviewing a Python-centric capsule.",
+        "Current analysis showed that news fetch is already async but still flows through the broader scene-building path, which can contribute to UI jitter when ancillary updates are applied together."
+      ],
+      "tracking_number": "NB-048",
+      "notes": [
+        "Do not introduce a Python runtime, DDGS search interception, or unofficial scraping dependencies for this ticket.",
+        "Keep the current supported product modes: RSS mode for no-key operation and DeepSeek summarized mode for keyed AI rewriting.",
+        "Refactor the news-refresh path into its own .NET background update lane that fetches and prepares refreshed headlines without blocking the UI thread.",
+        "The worker should prepare the next news payload off the UI thread and then apply only a minimal NewsFlasherViewModel patch on the UI thread.",
+        "Do not route ordinary news refreshes through full scene rebuild or full ApplySceneState passes once the independent lane is in place.",
+        "Preserve the current teleprinter playback model and ensure that refreshed content swaps in cleanly without resetting unrelated UI surfaces.",
+        "Cache semantics should remain explicit and traceable, including the currently active mode, last refresh timestamp, and fallback behavior when network or DeepSeek is unavailable.",
+        "Add trace evidence for news-refresh start, fetch complete, parse complete, cache hit or miss, and UI patch complete so VM analysis can confirm the lane is non-blocking.",
+        "Acceptance requires VM-visible proof that the news scroller continues updating while the rest of the dashboard remains responsive and that a news refresh does not coincide with a full-screen layout stall."
+      ]
+    },
+    {
+      "id": "NB-049",
+      "source": "user_followup",
+      "title": "Move macro indicator refresh to its own non-blocking background update lane",
+      "priority": 2,
+      "area": "macro_runtime",
+      "status": "open",
+      "evidence": [
+        "User requested a project-native version of the proposed macro-thread ticket after reviewing a Python/yfinance capsule.",
+        "Current analysis showed that macro updates should be isolated from broader UI repaint work, but must remain aligned with the existing YFinance.NET client-server architecture."
+      ],
+      "tracking_number": "NB-049",
+      "notes": [
+        "Do not introduce isolated in-process Python yfinance instances or duplicate upstream ticker requests for this ticket.",
+        "Use the existing YFinance.NET TCP client-server path as the sole market-data source and let the server cache continue owning dedupe, freshness, and Yahoo pacing.",
+        "Refactor macro indicator refresh into an independent .NET background update lane that requests macro symbols without blocking unrelated UI activity.",
+        "The lane should patch only the macro-card view models and any directly related status-band fields when responses arrive.",
+        "Do not trigger full scene rebuilds, full tape sync, or unrelated graph/news/background work when only macro data has changed.",
+        "Preserve compatibility with the one-by-one asynchronous request model already in flight for market data, while allowing macro UI updates to be applied surgically as responses arrive.",
+        "Maintain standalone traces for macro request start, response receive, cache age if exposed, and macro-card UI patch completion so jitter analysis can isolate macro behavior.",
+        "Acceptance requires VM-visible proof that macro cards continue updating independently and that macro refreshes no longer correlate with whole-screen lock-ups or unrelated tape/news redraws."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
