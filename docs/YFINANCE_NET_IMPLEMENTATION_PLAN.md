@@ -121,7 +121,7 @@ Initial server requirements:
 - bind to TCP `14870`
 - allow any IP
 - bounded concurrent connections: `1024`
-- one request at a time per connection in initial revision
+- one ordinary runtime connection per UI session, with support for multiple in-flight requests on that connection
 
 ### 6.4 Request dispatcher
 The dispatcher should translate protocol operations into calls against the existing `YFinance.NET` library:
@@ -170,11 +170,11 @@ Current active seams to migrate from in-process calls to protocol calls:
 ### 7.4 Request discipline
 The UI client should:
 - keep a single active connection for ordinary runtime use
-- issue one request at a time
-- wait for terminal response
-- render
-- sleep about `500 ms`
-- continue
+- be able to send multiple requests without waiting for earlier responses
+- match responses by `requestId`
+- render incrementally as completed responses arrive
+- keep pacing under client control
+- avoid opening parallel runtime connections just to compensate for jitter
 
 No parallel client connections from the same UI runtime in the normal product path.
 
@@ -187,7 +187,7 @@ Desktop app startup sequence:
 4. open client connection
 5. send `hello`
 6. optionally send `health`
-7. begin ordinary sequential UI requests
+7. begin ordinary client-driven UI requests with controlled pipelining on the same connection
 
 ### 8.2 Desktop shutdown
 Desktop app shutdown sequence:
@@ -260,7 +260,7 @@ Acceptance:
 Deliver:
 - desktop-side transport seam
 - replace active in-process quote/history/timing/validation calls
-- maintain current sequential polling behavior
+- maintain client-owned pacing while enabling pipelined in-flight work to reduce UI jitter
 
 Acceptance:
 - desktop app still behaves correctly using only protocol-backed data access
@@ -303,6 +303,7 @@ Add integration tests for:
 4. timing request flow
 5. validate-symbols flow
 6. graceful goodbye shutdown
+7. out-of-order response handling for multiple in-flight requests on one connection
 
 ### 10.3 Harness and VM tests
 Extend harness to prove:
@@ -340,7 +341,7 @@ Likely modified areas:
 3. protocol stays framed JSON, not binary
 4. protocol stays product-owned, not Yahoo-shaped
 5. server remains cache owner
-6. UI remains sequential requester
+6. UI keeps one ordinary runtime connection but may pipeline multiple in-flight requests
 7. ICD stays current with implementation
 
 ## 14. Immediate next coding step

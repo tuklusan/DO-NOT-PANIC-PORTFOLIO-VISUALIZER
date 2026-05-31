@@ -160,6 +160,8 @@ internal static class YFinanceServerProgram
         string remote = tcpClient.Client.RemoteEndPoint?.ToString() ?? "unknown";
         YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ClientConnected", [new("remote", remote)]);
         await using NetworkStream stream = tcpClient.GetStream();
+        SemaphoreSlim writeGate = new(1, 1);
+        List<Task> inFlight = [];
         while (!cancellationToken.IsCancellationRequested)
         {
             byte[]? messageBytes = await LengthPrefixedProtocolStream.ReadAsync(stream, cancellationToken).ConfigureAwait(false);
@@ -173,26 +175,47 @@ internal static class YFinanceServerProgram
             {
                 YFinanceCircularTraceSink.Instance.WarnState("YFinanceServer", "RequestIntegrityRejected", [new("remote", remote), new("request_id", request.RequestId), new("operation", request.Operation), new("timestamp", request.Timestamp), new("payload_checksum", request.PayloadChecksum)]);
                 ProtocolResponse<EmptyPayload> integrityError = CreateError(request, ProtocolErrorCodes.ProtocolViolation, "Payload checksum mismatch.", false);
-                await LengthPrefixedProtocolStream.WriteAsync(stream, ProtocolJson.Serialize(integrityError), cancellationToken).ConfigureAwait(false);
+                await WriteResponseAsync(stream, writeGate, integrityError, remote, request, cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
             YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "RequestReceived", [new("remote", remote), new("request_id", request.RequestId), new("operation", request.Operation), new("timestamp", request.Timestamp), new("payload_checksum", request.PayloadChecksum)]);
-            object response = await DispatchAsync(request, client, options, startedUtc, getActiveConnections, cancellationToken).ConfigureAwait(false);
-            await LengthPrefixedProtocolStream.WriteAsync(stream, ProtocolJson.Serialize(response), cancellationToken).ConfigureAwait(false);
-            if (response is ProtocolEnvelope envelope)
+            Task requestTask = Task.Run(async () =>
             {
-                YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ResponseSent", [new("remote", remote), new("request_id", request.RequestId), new("operation", request.Operation), new("timestamp", envelope.Timestamp), new("payload_checksum", envelope.PayloadChecksum)]);
-            }
-            else
-            {
-                YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ResponseSent", [new("remote", remote), new("request_id", request.RequestId), new("operation", request.Operation)]);
-            }
+                object response = await DispatchAsync(request, client, options, startedUtc, getActiveConnections, cancellationToken).ConfigureAwait(false);
+                await WriteResponseAsync(stream, writeGate, response, remote, request, cancellationToken).ConfigureAwait(false);
+            }, cancellationToken);
+            inFlight.Add(requestTask);
             if (string.Equals(request.Operation, ProtocolOperations.Goodbye, StringComparison.Ordinal))
                 break;
         }
 
+        if (inFlight.Count > 0)
+            await Task.WhenAll(inFlight).ConfigureAwait(false);
+
         YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ClientDisconnected", [new("remote", remote)]);
+    }
+
+    private static async Task WriteResponseAsync(NetworkStream stream, SemaphoreSlim writeGate, object response, string remote, ProtocolRequest<JsonElement> request, CancellationToken cancellationToken)
+    {
+        await writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await LengthPrefixedProtocolStream.WriteAsync(stream, ProtocolJson.Serialize(response), cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            writeGate.Release();
+        }
+
+        if (response is ProtocolEnvelope envelope)
+        {
+            YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ResponseSent", [new("remote", remote), new("request_id", request.RequestId), new("operation", request.Operation), new("timestamp", envelope.Timestamp), new("payload_checksum", envelope.PayloadChecksum)]);
+        }
+        else
+        {
+            YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ResponseSent", [new("remote", remote), new("request_id", request.RequestId), new("operation", request.Operation)]);
+        }
     }
 
     private static async Task<object> DispatchAsync(ProtocolRequest<JsonElement> request, YFinanceClient client, ServerOptions options, DateTimeOffset startedUtc, Func<int> getActiveConnections, CancellationToken cancellationToken)

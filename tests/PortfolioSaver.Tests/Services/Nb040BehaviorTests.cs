@@ -46,7 +46,7 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
-    public async Task YFinanceRuntimeClientFactory_SerializesConcurrentClientWork()
+    public async Task YFinanceRuntimeClientFactory_AllowsConcurrentClientWork()
     {
         int concurrent = 0;
         int maxConcurrent = 0;
@@ -76,7 +76,7 @@ public sealed class Nb040BehaviorTests
         int[] results = await Task.WhenAll(first, second);
 
         Assert.Equal(new[] { 1, 2 }, results);
-        Assert.Equal(1, maxConcurrent);
+        Assert.True(maxConcurrent >= 2, $"Expected concurrent client work, observed max concurrency {maxConcurrent}.");
         Assert.Equal(0, concurrent);
     }
 
@@ -111,7 +111,7 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
-    public void StartupCoordinator_DedicatedRuntimeRequestsStaySingleSymbol()
+    public void StartupCoordinator_DedicatedRuntimeRequestsUsePipelinedSingleSymbolQueue()
     {
         string coordinatorPath = Path.Combine(
             GetRepoRoot(),
@@ -123,11 +123,19 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
-            "return [selected];",
+            "private const int SequentialQuotePipelineDepth = 4;",
             source,
             StringComparison.Ordinal);
         Assert.Contains(
-            "_sequentialRuntimeCursor = (_sequentialRuntimeCursor + 1) % sequenceSymbols.Count;",
+            "QueueQuotePipelineRequests(",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "DrainCompletedQuotePipeline(",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "yahooFinanceProvider.GetQuotesAsync([symbol], CancellationToken.None)",
             source,
             StringComparison.Ordinal);
         Assert.DoesNotContain(

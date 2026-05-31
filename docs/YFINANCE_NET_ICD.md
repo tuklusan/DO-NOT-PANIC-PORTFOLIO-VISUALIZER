@@ -86,7 +86,11 @@ The server must support multiple client connections with a maximum of `1024` con
 ### 4.3 Connection use by the UI client
 A single UI client must not open parallel connections to the server for ordinary runtime data retrieval.
 
-The UI should use one active logical request lane and sequential pacing.
+The UI should use one active TCP connection for ordinary runtime retrieval.
+
+Within that connection, the client may pipeline multiple in-flight requests using request IDs and must be prepared to process out-of-order responses.
+
+The client still owns pacing. Pipelining exists to remove UI jitter and keep rendering smooth, not to move scheduling responsibility into the server.
 
 ## 5. Framing and encoding
 ### 5.1 Framing
@@ -297,7 +301,7 @@ Suggested response payload:
 - `notFoundSymbols` : array of strings if needed
 - `cache`
 
-Note: the UI runtime loop is still expected to be sequential one-by-one for normal product behavior.
+Note: the UI runtime loop may still choose a one-symbol logical cadence for rendering purposes, but the transport is allowed to keep multiple requests in flight on the same connection.
 
 ### 9.7 `get_history`
 Purpose:
@@ -389,7 +393,7 @@ In owned mode:
 4. the UI sends `hello`
 5. the server returns a successful response
 6. the UI may send `health`
-7. the UI begins ordinary sequential requests
+7. the UI begins ordinary client-driven requests, optionally with controlled pipelining on the same connection
 
 ### 12.2 Owned mode launch contract
 The launch contract should support owner awareness, for example:
@@ -445,11 +449,11 @@ The server may expose a small admin/control surface for harness or maintenance c
 Once the caching server is functional, the UI should no longer carry Yahoo throttling responsibility.
 
 Expected UI behavior:
-1. request macros one by one
-2. request global exchanges one by one
-3. continue sequential retrieval one item at a time
-4. render after each response
-5. wait approximately `500 ms` after each UI update before the next request
+1. keep one ordinary runtime connection to the server
+2. request macros and global exchanges according to the UI’s chosen logical order
+3. allow multiple in-flight requests on that same connection when needed to smooth rendering
+4. process responses by `requestId` as they arrive, even if completion order differs from send order
+5. render incrementally as results arrive
 6. do not open parallel connections from the same UI session for normal runtime requests
 
 ## 16. Identity and privacy constraints

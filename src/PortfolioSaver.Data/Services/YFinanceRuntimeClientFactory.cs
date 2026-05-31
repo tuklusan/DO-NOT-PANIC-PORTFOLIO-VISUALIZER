@@ -11,7 +11,7 @@ namespace PortfolioSaver.Data.Services;
 public static class YFinanceRuntimeClientFactory
 {
     private static readonly object Sync = new();
-    private static readonly SemaphoreSlim ClientGate = new(1, 1);
+    private static readonly SemaphoreSlim HelloGate = new(1, 1);
     private static long _operationSequence;
     private static YFinanceServerClient? _sharedClient;
     private static bool _helloCompleted;
@@ -36,7 +36,7 @@ public static class YFinanceRuntimeClientFactory
         if (_helloCompleted)
             return;
 
-        await ClientGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await HelloGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             if (_helloCompleted)
@@ -55,33 +55,37 @@ public static class YFinanceRuntimeClientFactory
         }
         finally
         {
-            ClientGate.Release();
+            HelloGate.Release();
         }
     }
 
-    public static async Task<T> RunSerializedAsync<T>(string lane, Func<YFinanceServerClient, CancellationToken, Task<T>> action, CancellationToken cancellationToken = default)
-        => await RunSerializedAsync(lane, CreateOperationId(lane), action, cancellationToken).ConfigureAwait(false);
+    public static async Task<T> RunAsync<T>(string lane, Func<YFinanceServerClient, CancellationToken, Task<T>> action, CancellationToken cancellationToken = default)
+        => await RunAsync(lane, CreateOperationId(lane), action, cancellationToken).ConfigureAwait(false);
 
-    public static async Task<T> RunSerializedAsync<T>(string lane, string operationId, Func<YFinanceServerClient, CancellationToken, Task<T>> action, CancellationToken cancellationToken = default)
+    public static async Task<T> RunAsync<T>(string lane, string operationId, Func<YFinanceServerClient, CancellationToken, Task<T>> action, CancellationToken cancellationToken = default)
     {
         await EnsureServerReadyAsync("PortfolioSaver.Runtime", PortfolioVersion.SemanticVersion, cancellationToken).ConfigureAwait(false);
-        await ClientGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            TraceLog.InfoState("YFinanceRuntimeClientFactory", "SerializedClientEnter", [new("lane", lane), new("operation_id", operationId)]);
+            TraceLog.InfoState("YFinanceRuntimeClientFactory", "ClientOperationStart", [new("lane", lane), new("operation_id", operationId)]);
             return await action(GetSharedClient(), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            TraceLog.WarnState("YFinanceRuntimeClientFactory", "SerializedClientError", [new("lane", lane), new("operation_id", operationId), new("message", ex.Message)]);
+            TraceLog.WarnState("YFinanceRuntimeClientFactory", "ClientOperationError", [new("lane", lane), new("operation_id", operationId), new("message", ex.Message)]);
             throw;
         }
         finally
         {
-            TraceLog.InfoState("YFinanceRuntimeClientFactory", "SerializedClientExit", [new("lane", lane), new("operation_id", operationId)]);
-            ClientGate.Release();
+            TraceLog.InfoState("YFinanceRuntimeClientFactory", "ClientOperationComplete", [new("lane", lane), new("operation_id", operationId)]);
         }
     }
+
+    public static async Task<T> RunSerializedAsync<T>(string lane, Func<YFinanceServerClient, CancellationToken, Task<T>> action, CancellationToken cancellationToken = default)
+        => await RunAsync(lane, CreateOperationId(lane), action, cancellationToken).ConfigureAwait(false);
+
+    public static async Task<T> RunSerializedAsync<T>(string lane, string operationId, Func<YFinanceServerClient, CancellationToken, Task<T>> action, CancellationToken cancellationToken = default)
+        => await RunAsync(lane, operationId, action, cancellationToken).ConfigureAwait(false);
 
     public static string CreateOperationId(string lane)
         => $"{lane}-{Interlocked.Increment(ref _operationSequence):D8}";
