@@ -623,7 +623,7 @@
       "title": "Move the Financial News scroller to an independent non-blocking update lane",
       "priority": 2,
       "area": "news_scroller_runtime",
-      "status": "open",
+      "status": "resolved",
       "evidence": [
         "User requested a project-native version of the proposed financial-news threading ticket after reviewing a Python-centric capsule.",
         "Current analysis showed that news fetch is already async but still flows through the broader scene-building path, which can contribute to UI jitter when ancillary updates are applied together."
@@ -639,7 +639,13 @@
         "Preserve the current teleprinter playback model and ensure that refreshed content swaps in cleanly without resetting unrelated UI surfaces.",
         "Cache semantics should remain explicit and traceable, including the currently active mode, last refresh timestamp, and fallback behavior when network or DeepSeek is unavailable.",
         "Add trace evidence for news-refresh start, fetch complete, parse complete, cache hit or miss, and UI patch complete so VM analysis can confirm the lane is non-blocking.",
-        "Acceptance requires VM-visible proof that the news scroller continues updating while the rest of the dashboard remains responsive and that a news refresh does not coincide with a full-screen layout stall."
+        "Acceptance requires VM-visible proof that the news scroller continues updating while the rest of the dashboard remains responsive and that a news refresh does not coincide with a full-screen layout stall.",
+        "Resolved on 2026-06-01 by removing live news fetches from StartupCoordinator.BuildSceneAsync, keeping scene builds on cached headlines only, adding a dedicated background news-refresh loop in ScreensaverSceneControl, and patching only NewsFlasherViewModel on the UI thread via SyncNews rather than routing ordinary news refreshes through ApplySceneState.",
+        "Validation: dotnet build .\\\\PortfolioScreensaver.sln -c Release --nologo passed; dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo passed 189 / 189 including new Nb048BehaviorTests.",
+        "VM proof bundle ux-deep-rss-nb048-20260601-000807 captured the full independent RSS path: NewsRefreshStart at 20:08:47Z, FinanceNewsService NewsCacheMiss at 20:08:48Z, NewsParseComplete and NewsFetchComplete at 20:08:52Z, and NewsUiPatchComplete at 20:08:52Z.",
+        "The same RSS-seeded VM proof shows no ApplySceneState between the startup structural refresh and the NewsUiPatchComplete event; the next ApplySceneState does not occur until 20:09:34Z, about 42 seconds later, which demonstrates the news patch was not coupled to a scene-wide layout pass.",
+        "The same VM proof also shows ordinary quote work continuing independently with RuntimeQuoteRequestQueued at 20:09:30Z and RuntimeQuoteApplied events beginning at 20:09:31Z while the news lane remains separate, confirming the dashboard stays responsive during background news updates.",
+        "A second canonical published VM run, ux-deep-ssh-20260531-235533, also showed the new lane starting independently in summarized mode via Screensaver.Scene NewsRefreshStart and FinanceNewsService NewsCacheMiss/NewsParseComplete traces even though that run still hit separate pre-existing desktop/fullscreen harness failures unrelated to NB-048."
       ]
     },
     {
