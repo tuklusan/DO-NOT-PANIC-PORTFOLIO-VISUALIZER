@@ -833,7 +833,7 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void NewsFlasherControl_UsesNonOverlappingTwoLineSegments()
+    public void NewsFlasherControl_UsesLineCarryForwardBetweenTwoLineSegments()
     {
         RunOnSta(() =>
         {
@@ -856,7 +856,7 @@ public sealed class ScreensaverRenderBehaviorTests
             IReadOnlyList<string> segments = Assert.IsAssignableFrom<IReadOnlyList<string>>(buildSegmentsMethod.Invoke(control, [text]));
 
             Assert.True(segments.Count >= 2);
-            Assert.DoesNotContain(segments.Zip(segments.Skip(1)), pair =>
+            Assert.Contains(segments.Zip(segments.Skip(1)), pair =>
             {
                 string[] leftLines = pair.First.Split(Environment.NewLine);
                 string[] rightLines = pair.Second.Split(Environment.NewLine);

@@ -115,6 +115,27 @@ public sealed class StartupCoordinator
     public IReadOnlyList<TapeViewModel> BuildTapesForQuotes(AppSettings settings, IReadOnlyDictionary<string, QuoteSnapshot> quotes)
         => BuildTapeViewModels(settings, quotes);
 
+    public IReadOnlyList<string> BuildOrderedRuntimeSymbols(AppSettings settings)
+    {
+        List<string> portfolioSymbols = BuildInterleavedPortfolioSymbols(settings);
+        List<string> ancillarySymbols =
+        [
+            .. FloatingClockBuilder.GetWorldIndexSymbols(),
+            .. GetMacroIndicatorSymbols()
+        ];
+
+        List<string> orderedSymbols =
+        [
+            .. portfolioSymbols,
+            .. ancillarySymbols
+        ];
+
+        return orderedSymbols
+            .Where(symbol => !string.IsNullOrWhiteSpace(symbol))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     public async Task<ScreensaverSceneState> BuildSceneAsync(int graphRotationSeed = 0, CancellationToken cancellationToken = default)
     {
         ConsumePendingRuntimeQuoteSeeds();

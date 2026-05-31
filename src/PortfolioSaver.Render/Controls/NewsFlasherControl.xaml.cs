@@ -31,6 +31,7 @@ public partial class NewsFlasherControl : UserControl
     private PlaybackPhase _phase = PlaybackPhase.Idle;
     private PlaybackPhase _lastTracedPhase = PlaybackPhase.Idle;
     private bool _pendingRefresh;
+    private bool _reuseTopLineOnNextSegment;
     private IReadOnlyList<string> _activeSegments = [];
     private string _activeText = string.Empty;
     private Brush _activeForeground = Brushes.WhiteSmoke;
@@ -187,7 +188,7 @@ public partial class NewsFlasherControl : UserControl
         _activeText = _activeSegments.Count > 0
             ? _activeSegments[Math.Clamp(_segmentIndex, 0, _activeSegments.Count - 1)]
             : string.Empty;
-        _visibleCharacterCount = 0;
+        _visibleCharacterCount = GetPrefilledCharacterCount(_activeText, _reuseTopLineOnNextSegment);
         _pauseTicksRemaining = 0;
         _currentVerticalOffset = 0d;
         SetPhase(PlaybackPhase.Typing);
@@ -195,8 +196,9 @@ public partial class NewsFlasherControl : UserControl
         ActiveHeadlineBlock.Width = Math.Max(1d, ViewportHost.ActualWidth);
         Canvas.SetLeft(ActiveHeadlineBlock, 0d);
         Canvas.SetTop(ActiveHeadlineBlock, 0d);
-        SetDisplayedHeadlineText(string.Empty, includeCursor: true);
+        SetDisplayedHeadlineText(_activeText[..Math.Min(_visibleCharacterCount, _activeText.Length)], includeCursor: true);
         _activeHeadlineHeight = MeasureHeadlineHeight(_activeText);
+        _reuseTopLineOnNextSegment = false;
         TraceLog.InfoState(
             "NewsFlasher",
             "PrepareSegment",
@@ -268,6 +270,7 @@ public partial class NewsFlasherControl : UserControl
         {
             _pendingRefresh = false;
             _headlineIndex = 0;
+            _reuseTopLineOnNextSegment = false;
             SetPhase(PlaybackPhase.Idle);
             return;
         }
@@ -275,11 +278,13 @@ public partial class NewsFlasherControl : UserControl
         if (_segmentIndex + 1 < _activeSegments.Count)
         {
             _segmentIndex++;
+            _reuseTopLineOnNextSegment = true;
             PrepareCurrentSegment();
             return;
         }
 
         _headlineIndex = (_headlineIndex + 1) % Math.Max(1, headlineCount);
+        _reuseTopLineOnNextSegment = false;
         SetPhase(PlaybackPhase.Idle);
     }
 
@@ -293,6 +298,7 @@ public partial class NewsFlasherControl : UserControl
         _pauseTicksRemaining = 0;
         _segmentIndex = 0;
         _currentVerticalOffset = 0d;
+        _reuseTopLineOnNextSegment = false;
         _activeSegments = [];
         _activeText = string.Empty;
         _activeHeadlineHeight = 0d;
@@ -363,19 +369,25 @@ public partial class NewsFlasherControl : UserControl
         if (wrappedLines.Count == 0)
             return [];
 
+        List<string> segments = [];
         if (wrappedLines.Count == 1)
             return [wrappedLines[0]];
 
-        List<string> segments = [];
-        for (int index = 0; index < wrappedLines.Count; index += 2)
+        for (int index = 0; index < wrappedLines.Count - 1; index++)
         {
-            if (index + 1 < wrappedLines.Count)
-                segments.Add($"{wrappedLines[index]}{Environment.NewLine}{wrappedLines[index + 1]}");
-            else
-                segments.Add(wrappedLines[index]);
+            segments.Add($"{wrappedLines[index]}{Environment.NewLine}{wrappedLines[index + 1]}");
         }
 
         return segments;
+    }
+
+    private static int GetPrefilledCharacterCount(string text, bool reuseTopLine)
+    {
+        if (!reuseTopLine || string.IsNullOrWhiteSpace(text))
+            return 0;
+
+        int newlineIndex = text.IndexOf(Environment.NewLine, StringComparison.Ordinal);
+        return newlineIndex < 0 ? 0 : newlineIndex + Environment.NewLine.Length;
     }
 
     private List<string> BuildWrappedLines(string text)

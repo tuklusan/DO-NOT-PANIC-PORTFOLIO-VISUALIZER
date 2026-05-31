@@ -149,7 +149,7 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
-    public void ScreensaverRefreshTimer_UsesProgressiveQuoteOnlyPath()
+    public void ScreensaverRefreshTimer_UsesOneSecondAsyncQuoteDispatchPath()
     {
         string controlPath = Path.Combine(
             GetRepoRoot(),
@@ -157,19 +157,23 @@ public sealed class Nb040BehaviorTests
         string source = File.ReadAllText(Path.GetFullPath(controlPath));
 
         Assert.Contains(
-            "_refreshTimer.Tick += async (_, _) => await RefreshSceneAsync(preserveLayout: true, fullAncillaryRefresh: false);",
+            "_refreshTimer.Tick += (_, _) => DispatchNextRuntimeQuoteRequest();",
             source,
             StringComparison.Ordinal);
         Assert.Contains(
             "await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);",
             source,
             StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            "RunStartupWarmupAsync",
+        Assert.Contains(
+            "Task<IReadOnlyList<QuoteSnapshot>> requestTask = _runtimeQuoteProvider.GetQuotesAsync([symbol], CancellationToken.None);",
             source,
             StringComparison.Ordinal);
         Assert.Contains(
-            "await _startupCoordinator.BuildProgressiveQuoteSceneAsync(currentRotationSeed)",
+            "Dispatcher.InvokeAsync(() => ApplyCompletedRuntimeQuote(symbol, task))",
+            source,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "RunStartupWarmupAsync",
             source,
             StringComparison.Ordinal);
     }

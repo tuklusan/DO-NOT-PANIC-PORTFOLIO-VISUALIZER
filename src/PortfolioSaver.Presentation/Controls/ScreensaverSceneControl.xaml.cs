@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Globalization;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -10,6 +11,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Windows.Automation;
+using PortfolioSaver.Data.Interfaces;
+using PortfolioSaver.Data.Providers;
 using PortfolioSaver.Data.Services;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
@@ -46,6 +49,8 @@ public partial class ScreensaverSceneControl : UserControl
     private readonly WorldWeatherService _worldWeatherService = new();
     private readonly NtpTimeService _ntpTimeService = new();
     private readonly NetworkAvailabilityService _networkAvailabilityService = new();
+    private readonly HttpClient _runtimeQuoteHttpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(5));
+    private readonly IQuoteProvider _runtimeQuoteProvider;
     private Image? _activeBackgroundImage;
     private Image? _inactiveBackgroundImage;
 
@@ -84,10 +89,14 @@ public partial class ScreensaverSceneControl : UserControl
     private DateTimeOffset _lastClockAncillaryRefreshUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastSceneHeartbeatUtc = DateTimeOffset.MinValue;
     private bool _isValidationPaused;
+    private readonly Dictionary<string, Task<IReadOnlyList<QuoteSnapshot>>> _inFlightQuoteRequests = new(StringComparer.OrdinalIgnoreCase);
+    private List<string> _orderedRuntimeSymbols = [];
+    private int _runtimeSymbolCursor;
 
     public ScreensaverSceneControl()
     {
         InitializeComponent();
+        _runtimeQuoteProvider = new YahooFinanceQuoteProvider(_runtimeQuoteHttpClient);
         if (VersionWatermark is not null)
         {
             VersionWatermark.Text = PortfolioVersion.SemanticVersion;
@@ -111,7 +120,7 @@ public partial class ScreensaverSceneControl : UserControl
         Unloaded += OnUnloaded;
         SizeChanged += OnSizeChanged;
         _clockTimer.Tick += (_, _) => UpdateClocks();
-        _refreshTimer.Tick += async (_, _) => await RefreshSceneAsync(preserveLayout: true, fullAncillaryRefresh: false);
+        _refreshTimer.Tick += (_, _) => DispatchNextRuntimeQuoteRequest();
         _backgroundTimer.Tick += (_, _) => RotateBackground();
         _backgroundZoomTimer.Tick += (_, _) => StepBackgroundSlowZoom();
         _worldDataTimer.Tick += async (_, _) => await RefreshClockDataAsync(force: true);
@@ -133,8 +142,8 @@ public partial class ScreensaverSceneControl : UserControl
             ApplySceneState(_startupCoordinator.BuildBootstrapScene(), preserveLayout: false);
             _refreshTimer.Stop();
             RestartGraphWarmup(_graphRotationSeed, preserveLayout: false);
-            _ = RefreshClockDataAsync(force: true);
             await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);
+            InitializeRuntimeQuoteLoop();
             StartCaptureSequenceIfRequested();
             StartDemoFlashSequence();
             TraceScene("OnLoaded completed.");
@@ -147,6 +156,7 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        StopRuntimeQuoteLoop();
         _clockTimer.Stop();
         _refreshTimer.Stop();
         _backgroundTimer.Stop();
@@ -156,6 +166,7 @@ public partial class ScreensaverSceneControl : UserControl
         _motionTimer.Stop();
         CancelGraphWarmup();
         CancelCaptureSequence();
+        _runtimeQuoteHttpClient.Dispose();
         _initialized = false;
     }
 
@@ -288,6 +299,7 @@ public partial class ScreensaverSceneControl : UserControl
             _hasSeededLayout = preserveLayout && _graphs.All(graph => graph.X > 0 || graph.Y > 0);
             ApplyResponsiveLayout();
             SeedSpriteLayout(onlyMissingPositions: preserveLayout);
+            RefreshOrderedRuntimeSymbols();
         }
 
         UpdateClocks(forceAncillaryRefresh: structuralRefresh || fullAncillaryRefresh);
@@ -602,6 +614,74 @@ public partial class ScreensaverSceneControl : UserControl
             new KeyValuePair<string, object?>("background_rotation_enabled", _backgroundPaths.Count > 1));
     }
 
+    private void InitializeRuntimeQuoteLoop()
+    {
+        RefreshOrderedRuntimeSymbols();
+        TraceSceneState(
+            "RuntimeQuoteLoopInitialized",
+            new KeyValuePair<string, object?>("symbol_count", _orderedRuntimeSymbols.Count),
+            new KeyValuePair<string, object?>("symbols", _orderedRuntimeSymbols.Take(12).ToList()));
+    }
+
+    private void StopRuntimeQuoteLoop()
+    {
+        _inFlightQuoteRequests.Clear();
+    }
+
+    private void RefreshOrderedRuntimeSymbols()
+    {
+        _orderedRuntimeSymbols = _startupCoordinator.BuildOrderedRuntimeSymbols(_settings).ToList();
+        if (_runtimeSymbolCursor >= _orderedRuntimeSymbols.Count)
+            _runtimeSymbolCursor = 0;
+    }
+
+    private void DispatchNextRuntimeQuoteRequest()
+    {
+        if (_isValidationPaused || _orderedRuntimeSymbols.Count == 0)
+            return;
+
+        string? symbol = TakeNextRuntimeQuoteSymbol();
+        if (string.IsNullOrWhiteSpace(symbol))
+            return;
+
+        Task<IReadOnlyList<QuoteSnapshot>> requestTask = _runtimeQuoteProvider.GetQuotesAsync([symbol], CancellationToken.None);
+        _inFlightQuoteRequests[symbol] = requestTask;
+        TraceSceneState(
+            "RuntimeQuoteRequestQueued",
+            new KeyValuePair<string, object?>("symbol", symbol),
+            new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+
+        _ = requestTask.ContinueWith(
+            task => Dispatcher.InvokeAsync(() => ApplyCompletedRuntimeQuote(symbol, task)),
+            CancellationToken.None,
+            TaskContinuationOptions.None,
+            TaskScheduler.Default);
+    }
+
+    private string? TakeNextRuntimeQuoteSymbol()
+    {
+        if (_orderedRuntimeSymbols.Count == 0)
+            return null;
+
+        int scanned = 0;
+        while (scanned < _orderedRuntimeSymbols.Count)
+        {
+            if (_runtimeSymbolCursor >= _orderedRuntimeSymbols.Count)
+                _runtimeSymbolCursor = 0;
+
+            string symbol = _orderedRuntimeSymbols[_runtimeSymbolCursor];
+            _runtimeSymbolCursor = (_runtimeSymbolCursor + 1) % _orderedRuntimeSymbols.Count;
+            scanned++;
+
+            if (_inFlightQuoteRequests.ContainsKey(symbol))
+                continue;
+
+            return symbol;
+        }
+
+        return null;
+    }
+
     public void SetValidationPause(bool paused)
     {
         if (_isValidationPaused == paused)
@@ -625,6 +705,7 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void StopLiveTimers()
     {
+        StopRuntimeQuoteLoop();
         _clockTimer.Stop();
         _refreshTimer.Stop();
         _backgroundTimer.Stop();
@@ -638,6 +719,7 @@ public partial class ScreensaverSceneControl : UserControl
         try
         {
             await RefreshSceneAsync(preserveLayout: true, fullAncillaryRefresh: false);
+            InitializeRuntimeQuoteLoop();
         }
         catch (Exception ex)
         {
@@ -2435,6 +2517,58 @@ public partial class ScreensaverSceneControl : UserControl
         _statusViewModel.UpdatedTickerFieldForeground = Brushes.Gainsboro;
     }
 
+    private void ApplyCompletedRuntimeQuote(string symbol, Task<IReadOnlyList<QuoteSnapshot>> task)
+    {
+        _inFlightQuoteRequests.Remove(symbol);
+        if (_isValidationPaused)
+            return;
+
+        IReadOnlyList<QuoteSnapshot> quotes;
+        try
+        {
+            quotes = task.GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            TraceSceneState(
+                "RuntimeQuoteRequestFailed",
+                new KeyValuePair<string, object?>("symbol", symbol),
+                new KeyValuePair<string, object?>("message", ex.Message),
+                new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+            return;
+        }
+
+        if (quotes.Count == 0)
+            return;
+
+        Dictionary<string, QuoteSnapshot> deltaQuotes = new(StringComparer.OrdinalIgnoreCase);
+        foreach (QuoteSnapshot quote in quotes)
+            deltaQuotes[quote.Symbol] = quote;
+
+        _latestQuotes = MergeQuotes(_latestQuotes, deltaQuotes);
+        _startupCoordinator.PrimeRuntimeQuotes(deltaQuotes);
+
+        SyncTapes(_startupCoordinator.BuildTapesForQuotes(_settings, _latestQuotes));
+        UpdateStatusFreshnessText();
+        if (deltaQuotes.Keys.Any(IsMacroSymbol))
+            UpdateStatusMacroMeters(force: true);
+        else
+            UpdateStatusMacroMeters(force: false);
+
+        foreach (FloatingGraphViewModel graph in _graphs.Where(graph => deltaQuotes.ContainsKey(graph.Symbol)))
+            ApplyQuoteToGraph(graph);
+
+        if (deltaQuotes.Keys.Any(IsClockMarketSymbol))
+            ApplyClockMarketData(force: false);
+
+        TraceDisplayedTapeSample();
+        TraceSceneState(
+            "RuntimeQuoteApplied",
+            new KeyValuePair<string, object?>("requested_symbol", symbol),
+            new KeyValuePair<string, object?>("resolved_symbols", deltaQuotes.Keys.ToList()),
+            new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+    }
+
     private void SyncStatusViewModel(StatusBarViewModel source, bool forceMacroRefresh)
     {
         if (_statusViewModel is null)
@@ -2454,6 +2588,12 @@ public partial class ScreensaverSceneControl : UserControl
 
         UpdateStatusMacroMeters(force: forceMacroRefresh);
     }
+
+    private static bool IsMacroSymbol(string symbol)
+        => symbol is "^VIX" or "^IXIC" or "^TNX" or "^IRX" or "GC=F" or "BZ=F" or "DX-Y.NYB" or "BTC-USD";
+
+    private bool IsClockMarketSymbol(string symbol)
+        => _clockViewModel?.Cities.Any(city => string.Equals(city.ExchangeSymbol, symbol, StringComparison.OrdinalIgnoreCase)) ?? false;
 
 
     private static IReadOnlyDictionary<string, QuoteSnapshot> MergeQuotes(
