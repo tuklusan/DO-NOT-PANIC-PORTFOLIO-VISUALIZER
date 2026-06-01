@@ -284,9 +284,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Reset-PortfolioTraceRoot", script, StringComparison.Ordinal);
         Assert.Contains("$summary.DesktopPhaseStatus = \"Running\"", script, StringComparison.Ordinal);
         Assert.Contains("$effectiveCaptureIntervalSeconds = if ($ScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }", script, StringComparison.Ordinal);
-        Assert.Contains("$summary.RequestedCaptureIntervalSeconds = $CaptureIntervalSeconds", script, StringComparison.Ordinal);
-        Assert.Contains("$summary.EffectiveCaptureIntervalSeconds = $effectiveCaptureIntervalSeconds", script, StringComparison.Ordinal);
-        Assert.Contains("$summary.TargetCaptureFrames = $targetFrames", script, StringComparison.Ordinal);
+        Assert.Contains("RequestedCaptureIntervalSeconds = $CaptureIntervalSeconds", script, StringComparison.Ordinal);
+        Assert.Contains("EffectiveCaptureIntervalSeconds = $effectiveCaptureIntervalSeconds", script, StringComparison.Ordinal);
+        Assert.Contains("TargetCaptureFrames = $targetFrames", script, StringComparison.Ordinal);
         Assert.Contains("Capture interval raised from $CaptureIntervalSeconds to $effectiveCaptureIntervalSeconds seconds for long-run soak stability.", script, StringComparison.Ordinal);
         Assert.Contains("Start-Sleep -Seconds $effectiveCaptureIntervalSeconds", script, StringComparison.Ordinal);
         Assert.Contains("Write-SummaryFiles", script, StringComparison.Ordinal);
