@@ -695,8 +695,11 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void QueueMacroRefresh(string reason)
     {
-        System.Threading.Interlocked.Exchange(ref _macroLaneDirty, 1);
+        bool shouldSignal = System.Threading.Interlocked.Exchange(ref _macroLaneDirty, 1) == 0;
         TraceSceneState("MacroLaneRefreshQueued", new KeyValuePair<string, object?>("reason", reason));
+        if (!shouldSignal)
+            return;
+
         try
         {
             _macroLaneSignal.Release();
@@ -767,14 +770,18 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void QueueWorldMarketsRefresh(bool refreshAncillary, string reason)
     {
-        System.Threading.Interlocked.Exchange(ref _worldMarketsQuoteDirty, 1);
-        if (refreshAncillary)
-            System.Threading.Interlocked.Exchange(ref _worldMarketsAncillaryDirty, 1);
+        bool quoteWasDirty = System.Threading.Interlocked.Exchange(ref _worldMarketsQuoteDirty, 1) != 0;
+        bool ancillaryWasDirty = refreshAncillary
+            ? System.Threading.Interlocked.Exchange(ref _worldMarketsAncillaryDirty, 1) != 0
+            : System.Threading.Volatile.Read(ref _worldMarketsAncillaryDirty) != 0;
 
         TraceSceneState(
             "WorldMarketsRefreshQueued",
             new KeyValuePair<string, object?>("reason", reason),
             new KeyValuePair<string, object?>("refresh_ancillary", refreshAncillary));
+        if (quoteWasDirty || ancillaryWasDirty)
+            return;
+
         try
         {
             _worldMarketsLaneSignal.Release();
