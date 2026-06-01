@@ -293,7 +293,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Long-run soak mode enabled; fullscreen soak will switch to the legacy screensaver host after config apply.", script, StringComparison.Ordinal);
         Assert.Contains("$desktop = Start-Process -FilePath $screensaverExe -ArgumentList '/s' -PassThru", script, StringComparison.Ordinal);
         Assert.Contains("$summary.ScreensaverPhaseStatus = \"Running\"", script, StringComparison.Ordinal);
-        Assert.Contains("$summary.Notes += \"Fullscreen soak host launched from PortfolioSaver.Screensaver.\"", script, StringComparison.Ordinal);
+        Assert.Contains("$env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = '1'", script, StringComparison.Ordinal);
+        Assert.Contains("$summary.Notes += \"Fullscreen soak host launched from PortfolioSaver.Screensaver with input-exit disabled.\"", script, StringComparison.Ordinal);
+        Assert.Contains("Remove-Item Env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT", script, StringComparison.Ordinal);
         Assert.Contains("Visual host did not enter true fullscreen after long-run soak relaunch.", script, StringComparison.Ordinal);
         Assert.Contains("$summary.ScreensaverVersionCheck = \"SoftFailed\"", script, StringComparison.Ordinal);
         Assert.Contains("Screensaver version element containing the expected beta marker was not detected during long-run soak; continuing.", script, StringComparison.Ordinal);

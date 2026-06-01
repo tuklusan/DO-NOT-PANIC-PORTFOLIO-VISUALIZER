@@ -177,6 +177,7 @@ $script:vmBackgroundChangeSeconds = 20
 $isLongRunSoak = $ScreensaverDurationMinutes -ge 120
 $effectiveCaptureIntervalSeconds = if ($ScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }
 $targetFrames = [Math]::Max(1, [int][Math]::Ceiling(($ScreensaverDurationMinutes * 60.0) / $effectiveCaptureIntervalSeconds))
+$previousDisableInputExit = $null
 
 $script:configWindowTracePath = Join-Path $results 'config-window-events.log'
 Set-Content -LiteralPath $script:configWindowTracePath -Value '' -Encoding UTF8
@@ -2581,9 +2582,11 @@ try {
             catch {}
 
             Start-Sleep -Seconds 1
+            $previousDisableInputExit = $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT
+            $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = '1'
             $desktop = Start-Process -FilePath $screensaverExe -ArgumentList '/s' -PassThru
             $summary.ScreensaverPhaseStatus = "Running"
-            $summary.Notes += "Fullscreen soak host launched from PortfolioSaver.Screensaver."
+            $summary.Notes += "Fullscreen soak host launched from PortfolioSaver.Screensaver with input-exit disabled."
         }
     }
     catch {
@@ -2768,6 +2771,14 @@ try {
     finally {
         try { [System.Windows.Forms.SendKeys]::SendWait('{ESC}') } catch {}
         Start-Sleep -Seconds 1
+        if ($isLongRunSoak) {
+            if ($null -eq $previousDisableInputExit) {
+                Remove-Item Env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT -ErrorAction SilentlyContinue
+            }
+            else {
+                $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = $previousDisableInputExit
+            }
+        }
         Get-Process PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     }
 }

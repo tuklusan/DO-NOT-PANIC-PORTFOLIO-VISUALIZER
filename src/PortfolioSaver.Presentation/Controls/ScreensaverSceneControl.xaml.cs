@@ -2971,6 +2971,21 @@ public partial class ScreensaverSceneControl : UserControl
 
     private static BitmapImage CreateBackgroundBitmap(string path)
     {
+        if (File.Exists(path))
+        {
+            byte[] bytes = File.ReadAllBytes(path);
+            using MemoryStream memoryStream = new(bytes, writable: false);
+            BitmapImage fileBitmap = new();
+            fileBitmap.BeginInit();
+            fileBitmap.CacheOption = BitmapCacheOption.OnLoad;
+            fileBitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+            fileBitmap.StreamSource = memoryStream;
+            fileBitmap.EndInit();
+            if (fileBitmap.CanFreeze)
+                fileBitmap.Freeze();
+            return fileBitmap;
+        }
+
         BitmapImage bitmap = new();
         bitmap.BeginInit();
         bitmap.CacheOption = BitmapCacheOption.OnLoad;
