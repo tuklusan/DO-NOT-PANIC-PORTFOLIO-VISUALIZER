@@ -2978,7 +2978,6 @@ public partial class ScreensaverSceneControl : UserControl
             BitmapImage fileBitmap = new();
             fileBitmap.BeginInit();
             fileBitmap.CacheOption = BitmapCacheOption.OnLoad;
-            fileBitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
             fileBitmap.StreamSource = memoryStream;
             fileBitmap.EndInit();
             if (fileBitmap.CanFreeze)

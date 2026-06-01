@@ -222,6 +222,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("private void SetBackgroundZoomRunning(bool enabled, string reason)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("if (bitmap.CanFreeze)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private static Task<BitmapImage> CreateBackgroundBitmapAsync(string path)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("fileBitmap.StreamSource = memoryStream;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_backgroundTransitionInFlight", codeBehind, StringComparison.Ordinal);
         Assert.Contains("SetBackgroundZoomRunning(false, \"background-transitioning\");", codeBehind, StringComparison.Ordinal);
         Assert.Contains("TimeSpan duration = TimeSpan.FromMilliseconds(450);", codeBehind, StringComparison.Ordinal);
@@ -229,6 +230,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.DoesNotContain("AnimateBackgroundProperty(outgoing, Image.OpacityProperty", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("switch (_random.Next(3))", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("AnimateBackgroundTranslation(incoming", codeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("fileBitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;", codeBehind, StringComparison.Ordinal);
     }
 
     [Fact]
