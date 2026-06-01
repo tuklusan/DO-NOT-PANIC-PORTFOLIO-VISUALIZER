@@ -225,6 +225,11 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("byte[]? preloadedBytes = await PreloadBackgroundBytesAsync(backgroundPath).ConfigureAwait(true);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BitmapImage backgroundBitmap = CreateBackgroundBitmap(backgroundPath, preloadedBytes);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("fileBitmap.StreamSource = memoryStream;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private int _backgroundTransitionGeneration;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("int transitionGeneration = ++_backgroundTransitionGeneration;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("BackgroundTransitionSkipped", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private bool TryRecoverActiveBackgroundSource()", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("BackgroundSourceRecovered", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_backgroundTransitionInFlight", codeBehind, StringComparison.Ordinal);
         Assert.Contains("SetBackgroundZoomRunning(false, \"background-transitioning\");", codeBehind, StringComparison.Ordinal);
         Assert.Contains("TimeSpan duration = TimeSpan.FromMilliseconds(450);", codeBehind, StringComparison.Ordinal);
@@ -233,6 +238,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.DoesNotContain("switch (_random.Next(3))", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("AnimateBackgroundTranslation(incoming", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("fileBitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;", codeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("outgoing.Source = null;", codeBehind, StringComparison.Ordinal);
     }
 
     [Fact]

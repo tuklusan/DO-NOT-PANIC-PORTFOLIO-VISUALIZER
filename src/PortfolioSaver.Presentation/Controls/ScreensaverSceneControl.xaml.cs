@@ -46,6 +46,7 @@ public partial class ScreensaverSceneControl : UserControl
     private readonly DispatcherTimer _worldDataTimer = new();
     private DispatcherTimer? _backgroundTransitionCompletionTimer;
     private bool _backgroundTransitionInFlight;
+    private int _backgroundTransitionGeneration;
     private readonly DispatcherTimer _demoFlashTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private readonly DispatcherTimer _motionTimer = new() { Interval = TimeSpan.FromMilliseconds(33) };
     private readonly Random _random = new();
@@ -2568,6 +2569,9 @@ public partial class ScreensaverSceneControl : UserControl
 
     private async Task LoadBackgroundAsync(string? path)
     {
+        _backgroundTransitionCompletionTimer?.Stop();
+        _backgroundTransitionCompletionTimer = null;
+
         if (!IsSupportedBackgroundReference(path))
         {
             _backgroundTransitionInFlight = false;
@@ -2598,6 +2602,7 @@ public partial class ScreensaverSceneControl : UserControl
 
         if (_activeBackgroundImage.Source is null || string.IsNullOrWhiteSpace(_currentBackgroundPath))
         {
+            _backgroundTransitionInFlight = false;
             StopBackgroundAnimations(_activeBackgroundImage);
             StopBackgroundAnimations(_inactiveBackgroundImage);
             ResetBackgroundTransform(_activeBackgroundImage);
@@ -2855,6 +2860,7 @@ public partial class ScreensaverSceneControl : UserControl
             return;
 
         _backgroundTransitionInFlight = true;
+        int transitionGeneration = ++_backgroundTransitionGeneration;
         Image incoming = _inactiveBackgroundImage;
         Image outgoing = _activeBackgroundImage;
         StopBackgroundAnimations(incoming);
@@ -2872,18 +2878,29 @@ public partial class ScreensaverSceneControl : UserControl
         AnimateBackgroundProperty(incoming, Image.OpacityProperty, 0d, 0.45d, duration, ease);
 
         _backgroundTransitionCompletionTimer?.Stop();
-        _backgroundTransitionCompletionTimer = new DispatcherTimer { Interval = duration + TimeSpan.FromMilliseconds(100) };
-        _backgroundTransitionCompletionTimer.Tick += (_, _) =>
+        DispatcherTimer completionTimer = new() { Interval = duration + TimeSpan.FromMilliseconds(100) };
+        _backgroundTransitionCompletionTimer = completionTimer;
+        completionTimer.Tick += (_, _) =>
         {
-            _backgroundTransitionCompletionTimer?.Stop();
+            completionTimer.Stop();
+            if (!ReferenceEquals(_backgroundTransitionCompletionTimer, completionTimer) ||
+                transitionGeneration != _backgroundTransitionGeneration)
+            {
+                TraceSceneState(
+                    "BackgroundTransitionSkipped",
+                    new KeyValuePair<string, object?>("path", Path.GetFileName(path)),
+                    new KeyValuePair<string, object?>("transition_generation", transitionGeneration),
+                    new KeyValuePair<string, object?>("active_generation", _backgroundTransitionGeneration));
+                return;
+            }
+
             ResetBackgroundTransform(incoming);
             ResetBackgroundTransform(outgoing);
             SetBackgroundScale(incoming, _backgroundZoomScale, _backgroundZoomScale);
             incoming.Opacity = 0.45d;
-            outgoing.Opacity = 0d;
-            outgoing.Source = null;
             _activeBackgroundImage = incoming;
             _inactiveBackgroundImage = outgoing;
+            outgoing.Opacity = 0d;
             _backgroundTransitionInFlight = false;
             TraceSceneState(
                 "BackgroundTransitionComplete",
@@ -2892,7 +2909,7 @@ public partial class ScreensaverSceneControl : UserControl
             EnsureBackgroundSlowZoomRunning();
             _backgroundTransitionCompletionTimer = null;
         };
-        _backgroundTransitionCompletionTimer.Start();
+        completionTimer.Start();
     }
 
     private void ResetBackgroundZoomState()
@@ -2905,6 +2922,13 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void EnsureBackgroundSlowZoomRunning()
     {
+        if (TryRecoverActiveBackgroundSource())
+        {
+            TraceSceneState(
+                "BackgroundSourceRecovered",
+                new KeyValuePair<string, object?>("path", Path.GetFileName(_currentBackgroundPath)));
+        }
+
         if (_activeBackgroundImage?.Source is null)
         {
             SetBackgroundZoomRunning(false, "no-active-background");
@@ -2916,6 +2940,13 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void StepBackgroundSlowZoom()
     {
+        if (TryRecoverActiveBackgroundSource())
+        {
+            TraceSceneState(
+                "BackgroundSourceRecovered",
+                new KeyValuePair<string, object?>("path", Path.GetFileName(_currentBackgroundPath)));
+        }
+
         if (_activeBackgroundImage?.Source is null)
         {
             SetBackgroundZoomRunning(false, "source-missing-during-tick");
@@ -2939,6 +2970,22 @@ public partial class ScreensaverSceneControl : UserControl
         }
 
         SetBackgroundScale(_activeBackgroundImage, _backgroundZoomScale, _backgroundZoomScale);
+    }
+
+    private bool TryRecoverActiveBackgroundSource()
+    {
+        if (_activeBackgroundImage?.Source is not null || _inactiveBackgroundImage?.Source is null)
+            return false;
+
+        Image recovered = _inactiveBackgroundImage;
+        Image previous = _activeBackgroundImage!;
+        _activeBackgroundImage = recovered;
+        _inactiveBackgroundImage = previous;
+        _activeBackgroundImage.Opacity = 0.45d;
+        _inactiveBackgroundImage.Opacity = 0d;
+        ResetBackgroundTransform(_activeBackgroundImage);
+        SetBackgroundScale(_activeBackgroundImage, _backgroundZoomScale, _backgroundZoomScale);
+        return true;
     }
 
     private void SetBackgroundZoomRunning(bool enabled, string reason)
