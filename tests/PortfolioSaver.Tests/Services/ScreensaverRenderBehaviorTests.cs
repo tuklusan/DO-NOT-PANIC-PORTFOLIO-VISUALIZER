@@ -230,6 +230,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("BackgroundTransitionSkipped", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private bool TryRecoverActiveBackgroundSource()", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundSourceRecovered", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("outgoing.Source = incoming.Source;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_backgroundTransitionInFlight", codeBehind, StringComparison.Ordinal);
         Assert.Contains("SetBackgroundZoomRunning(false, \"background-transitioning\");", codeBehind, StringComparison.Ordinal);
         Assert.Contains("TimeSpan duration = TimeSpan.FromMilliseconds(450);", codeBehind, StringComparison.Ordinal);

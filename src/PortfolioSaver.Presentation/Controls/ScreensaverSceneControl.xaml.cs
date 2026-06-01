@@ -2898,6 +2898,7 @@ public partial class ScreensaverSceneControl : UserControl
             ResetBackgroundTransform(outgoing);
             SetBackgroundScale(incoming, _backgroundZoomScale, _backgroundZoomScale);
             incoming.Opacity = 0.45d;
+            outgoing.Source = incoming.Source;
             _activeBackgroundImage = incoming;
             _inactiveBackgroundImage = outgoing;
             outgoing.Opacity = 0d;
