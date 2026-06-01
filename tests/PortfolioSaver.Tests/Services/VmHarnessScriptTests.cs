@@ -90,6 +90,10 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("DisplayWidth = if ($DisplayWidth -gt 0) { $DisplayWidth } else { $null }", script, StringComparison.Ordinal);
         Assert.Contains("DisplayHeight = if ($DisplayHeight -gt 0) { $DisplayHeight } else { $null }", script, StringComparison.Ordinal);
         Assert.Contains("DisplayProfile = if (-not [string]::IsNullOrWhiteSpace($DisplayProfile)) { $DisplayProfile } else { $null }", script, StringComparison.Ordinal);
+        Assert.Contains("$effectiveCaptureIntervalSeconds = if ($GuestScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }", script, StringComparison.Ordinal);
+        Assert.Contains("$effectiveUxTimeoutSeconds = [Math]::Max($UxTimeoutSeconds, ($GuestScreensaverDurationMinutes * 60) + 1800)", script, StringComparison.Ordinal);
+        Assert.Contains("CaptureIntervalSeconds = $effectiveCaptureIntervalSeconds", script, StringComparison.Ordinal);
+        Assert.Contains("Using UX timeout budget of $effectiveUxTimeoutSeconds seconds with capture interval $effectiveCaptureIntervalSeconds seconds", script, StringComparison.Ordinal);
         Assert.Contains("PostProcess-ReferenceSpotChecks.ps1", script, StringComparison.Ordinal);
         Assert.Contains("LOCAL_RESULT_DIR=", script, StringComparison.Ordinal);
         Assert.Contains("Timed out waiting for remote desktop-session agent heartbeat", script, StringComparison.Ordinal);
@@ -279,6 +283,12 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("RuntimeDesktopResolution = Get-CurrentVirtualScreenSize", script, StringComparison.Ordinal);
         Assert.Contains("Reset-PortfolioTraceRoot", script, StringComparison.Ordinal);
         Assert.Contains("$summary.DesktopPhaseStatus = \"Running\"", script, StringComparison.Ordinal);
+        Assert.Contains("$effectiveCaptureIntervalSeconds = if ($ScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }", script, StringComparison.Ordinal);
+        Assert.Contains("$summary.RequestedCaptureIntervalSeconds = $CaptureIntervalSeconds", script, StringComparison.Ordinal);
+        Assert.Contains("$summary.EffectiveCaptureIntervalSeconds = $effectiveCaptureIntervalSeconds", script, StringComparison.Ordinal);
+        Assert.Contains("$summary.TargetCaptureFrames = $targetFrames", script, StringComparison.Ordinal);
+        Assert.Contains("Capture interval raised from $CaptureIntervalSeconds to $effectiveCaptureIntervalSeconds seconds for long-run soak stability.", script, StringComparison.Ordinal);
+        Assert.Contains("Start-Sleep -Seconds $effectiveCaptureIntervalSeconds", script, StringComparison.Ordinal);
         Assert.Contains("Write-SummaryFiles", script, StringComparison.Ordinal);
         Assert.DoesNotContain("VBOXSVR", script, StringComparison.Ordinal);
     }

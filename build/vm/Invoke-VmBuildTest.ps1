@@ -29,6 +29,8 @@ $bundle = $null
 $localAgentCommandPath = $null
 $uxResultName = 'ux-deep-ssh-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
 $vmCredParts = Get-VmSshCredentialPartsFromEnv
+$effectiveCaptureIntervalSeconds = if ($GuestScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }
+$effectiveUxTimeoutSeconds = [Math]::Max($UxTimeoutSeconds, ($GuestScreensaverDurationMinutes * 60) + 1800)
 
 if ($PushWorkspace) {
     & (Join-Path $PSScriptRoot 'Push-VmWorkspace.ps1') -VmHost $VmHost -VmPort $VmPort -RootPath $RootPath -Bootstrap:$Bootstrap
@@ -183,7 +185,7 @@ if (Test-Path '$remoteAgentStatus') {
                 ResultName = $uxResultName
                 ResultRootPath = (Join-Path $RootPath 'results')
                 ScreensaverDurationMinutes = $GuestScreensaverDurationMinutes
-                CaptureIntervalSeconds = $CaptureIntervalSeconds
+                CaptureIntervalSeconds = $effectiveCaptureIntervalSeconds
                 ValidationCompletionMode = $ValidationCompletionMode
                 DisplayWidth = if ($DisplayWidth -gt 0) { $DisplayWidth } else { $null }
                 DisplayHeight = if ($DisplayHeight -gt 0) { $DisplayHeight } else { $null }
@@ -215,7 +217,8 @@ if (Test-Path '$remoteAgentResult') {
             throw "Timed out waiting for agent command acknowledgement: $remoteAgentResult"
         }
 
-        $deadline = (Get-Date).AddSeconds($UxTimeoutSeconds)
+        Write-VmSshStep "Using UX timeout budget of $effectiveUxTimeoutSeconds seconds with capture interval $effectiveCaptureIntervalSeconds seconds"
+        $deadline = (Get-Date).AddSeconds($effectiveUxTimeoutSeconds)
         do {
             Start-Sleep -Seconds 15
             $pollCommand = @"

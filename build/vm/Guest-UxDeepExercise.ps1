@@ -173,6 +173,8 @@ $results = Join-Path $ResultRootPath $resultName
 New-Item -ItemType Directory -Force -Path $results | Out-Null
 
 $script:vmBackgroundChangeSeconds = 20
+$effectiveCaptureIntervalSeconds = if ($ScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }
+$targetFrames = [Math]::Max(1, [int][Math]::Ceiling(($ScreensaverDurationMinutes * 60.0) / $effectiveCaptureIntervalSeconds))
 
 $script:configWindowTracePath = Join-Path $results 'config-window-events.log'
 Set-Content -LiteralPath $script:configWindowTracePath -Value '' -Encoding UTF8
@@ -922,11 +924,17 @@ $summary = [ordered]@{
     FullScreenToggleStatus = "Pending"
     Notes = @()
     PlannedScreensaverDurationMinutes = $ScreensaverDurationMinutes
-    CaptureIntervalSeconds = $CaptureIntervalSeconds
+    RequestedCaptureIntervalSeconds = $CaptureIntervalSeconds
+    EffectiveCaptureIntervalSeconds = $effectiveCaptureIntervalSeconds
+    TargetCaptureFrames = $targetFrames
     RequestedDisplayProfile = $DisplayProfile
     RequestedDisplayWidth = if ($DisplayWidth -gt 0) { $DisplayWidth } else { $null }
     RequestedDisplayHeight = if ($DisplayHeight -gt 0) { $DisplayHeight } else { $null }
     SupportedDisplayModes = @()
+}
+
+if ($effectiveCaptureIntervalSeconds -ne $CaptureIntervalSeconds) {
+    $summary.Notes += "Capture interval raised from $CaptureIntervalSeconds to $effectiveCaptureIntervalSeconds seconds for long-run soak stability."
 }
 
 $summaryPath = Join-Path $results 'ux-deep-summary.json'
@@ -2675,7 +2683,6 @@ try {
         $summary.FullScreenToggleStatus = "Completed"
         Write-SummaryFiles
 
-        $targetFrames = [Math]::Max(1, [int][Math]::Ceiling(($ScreensaverDurationMinutes * 60.0) / $CaptureIntervalSeconds))
         for ($i = 1; $i -le $targetFrames; $i++) {
             if ($desktop.HasExited) {
                 throw "Desktop process exited early at frame $i (exit code: $($desktop.ExitCode))."
@@ -2686,7 +2693,7 @@ try {
             $summary.ScreensaverShots++
             $summary.DesktopShots++
             Write-SummaryFiles
-            Start-Sleep -Seconds $CaptureIntervalSeconds
+            Start-Sleep -Seconds $effectiveCaptureIntervalSeconds
         }
 
         $summary.DesktopPhaseStatus = "Completed"
