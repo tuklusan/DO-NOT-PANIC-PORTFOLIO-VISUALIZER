@@ -13,6 +13,8 @@ public sealed class Nb051BehaviorTests
         Assert.Contains("RunWorldMarketsLaneAsync", source, StringComparison.Ordinal);
         Assert.Contains("BuildWorldMarketsLaneSnapshotAsync", source, StringComparison.Ordinal);
         Assert.Contains("ApplyWorldMarketsLaneSnapshot", source, StringComparison.Ordinal);
+        Assert.Contains("WorldMarketsLaneMinimumRefreshInterval", source, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan remaining = WorldMarketsLaneMinimumRefreshInterval", source, StringComparison.Ordinal);
         Assert.Contains("\"WorldMarketsRefreshStart\"", source, StringComparison.Ordinal);
         Assert.Contains("\"WorldMarketsFetchComplete\"", source, StringComparison.Ordinal);
         Assert.Contains("\"WorldMarketsMergeComplete\"", source, StringComparison.Ordinal);

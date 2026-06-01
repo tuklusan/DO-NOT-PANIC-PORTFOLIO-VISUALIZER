@@ -33,6 +33,8 @@ public partial class ScreensaverSceneControl : UserControl
     private const string PinnedNycExchangeKey = "NewYorkNasdaq";
     private const int MaxVisibleGraphCards = 16;
     private static readonly TimeSpan GraphSelectionRefreshInterval = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan MacroLaneMinimumRefreshInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan WorldMarketsLaneMinimumRefreshInterval = TimeSpan.FromSeconds(2);
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly ObservableCollection<MarketSpriteViewModel> _marketSprites = [];
     private readonly ObservableCollection<TapeViewModel> _tapes = [];
@@ -89,6 +91,7 @@ public partial class ScreensaverSceneControl : UserControl
     private bool _crittersChasingDollar = true;
     private DateTimeOffset _lastMacroMeterRefreshUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastMacroTraceUtc = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastWorldMarketsLaneRefreshUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastClockMarketTraceUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastStatusAncillaryRefreshUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastClockAncillaryRefreshUtc = DateTimeOffset.MinValue;
@@ -719,18 +722,29 @@ public partial class ScreensaverSceneControl : UserControl
             while (!cancellationToken.IsCancellationRequested)
             {
                 await _macroLaneSignal.WaitAsync(cancellationToken);
-                if (System.Threading.Interlocked.Exchange(ref _macroLaneDirty, 0) == 0)
-                    continue;
-
-                MacroLaneSnapshot snapshot = await BuildMacroLaneSnapshotAsync(cancellationToken);
-                await Dispatcher.InvokeAsync(() =>
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    ApplyMacroLaneSnapshot(snapshot);
-                    TraceSceneState(
-                        "MacroUiPatchComplete",
-                        new KeyValuePair<string, object?>("meter_count", snapshot.Meters.Count),
-                        new KeyValuePair<string, object?>("missing_count", snapshot.MissingCount));
-                }, DispatcherPriority.Background, cancellationToken);
+                    if (System.Threading.Volatile.Read(ref _macroLaneDirty) == 0)
+                        break;
+
+                    TimeSpan remaining = MacroLaneMinimumRefreshInterval - (DateTimeOffset.UtcNow - _lastMacroMeterRefreshUtc);
+                    if (remaining > TimeSpan.Zero)
+                        await Task.Delay(remaining, cancellationToken);
+
+                    if (System.Threading.Interlocked.Exchange(ref _macroLaneDirty, 0) == 0)
+                        continue;
+
+                    MacroLaneSnapshot snapshot = await BuildMacroLaneSnapshotAsync(cancellationToken);
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        ApplyMacroLaneSnapshot(snapshot);
+                        TraceSceneState(
+                            "MacroUiPatchComplete",
+                            new KeyValuePair<string, object?>("meter_count", snapshot.Meters.Count),
+                            new KeyValuePair<string, object?>("missing_count", snapshot.MissingCount));
+                    }, DispatcherPriority.Background, cancellationToken);
+                    break;
+                }
             }
         }
         catch (OperationCanceledException)
@@ -801,21 +815,38 @@ public partial class ScreensaverSceneControl : UserControl
             while (!cancellationToken.IsCancellationRequested)
             {
                 await _worldMarketsLaneSignal.WaitAsync(cancellationToken);
-                bool refreshAncillary = System.Threading.Interlocked.Exchange(ref _worldMarketsAncillaryDirty, 0) != 0;
-                if (System.Threading.Interlocked.Exchange(ref _worldMarketsQuoteDirty, 0) == 0 && !refreshAncillary)
-                    continue;
-
-                WorldMarketsLaneSnapshot snapshot = await BuildWorldMarketsLaneSnapshotAsync(refreshAncillary, cancellationToken);
-                await Dispatcher.InvokeAsync(() =>
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    ApplyWorldMarketsLaneSnapshot(snapshot);
-                    TraceSceneState(
-                        "WorldMarketsUiPatchComplete",
-                        new KeyValuePair<string, object?>("city_count", snapshot.Cities.Count),
-                        new KeyValuePair<string, object?>("market_status_text", snapshot.PinnedStatusText),
-                        new KeyValuePair<string, object?>("weather_snapshot_count", snapshot.WeatherSnapshotCount),
-                        new KeyValuePair<string, object?>("calendar_count", snapshot.ExchangeCalendarCount));
-                }, DispatcherPriority.Background, cancellationToken);
+                    bool ancillaryPending = System.Threading.Volatile.Read(ref _worldMarketsAncillaryDirty) != 0;
+                    bool quotePending = System.Threading.Volatile.Read(ref _worldMarketsQuoteDirty) != 0;
+                    if (!ancillaryPending && !quotePending)
+                        break;
+
+                    if (!ancillaryPending)
+                    {
+                        TimeSpan remaining = WorldMarketsLaneMinimumRefreshInterval - (DateTimeOffset.UtcNow - _lastWorldMarketsLaneRefreshUtc);
+                        if (remaining > TimeSpan.Zero)
+                            await Task.Delay(remaining, cancellationToken);
+                    }
+
+                    bool refreshAncillary = System.Threading.Interlocked.Exchange(ref _worldMarketsAncillaryDirty, 0) != 0;
+                    if (System.Threading.Interlocked.Exchange(ref _worldMarketsQuoteDirty, 0) == 0 && !refreshAncillary)
+                        continue;
+
+                    WorldMarketsLaneSnapshot snapshot = await BuildWorldMarketsLaneSnapshotAsync(refreshAncillary, cancellationToken);
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        ApplyWorldMarketsLaneSnapshot(snapshot);
+                        TraceSceneState(
+                            "WorldMarketsUiPatchComplete",
+                            new KeyValuePair<string, object?>("city_count", snapshot.Cities.Count),
+                            new KeyValuePair<string, object?>("market_status_text", snapshot.PinnedStatusText),
+                            new KeyValuePair<string, object?>("weather_snapshot_count", snapshot.WeatherSnapshotCount),
+                            new KeyValuePair<string, object?>("calendar_count", snapshot.ExchangeCalendarCount));
+                    }, DispatcherPriority.Background, cancellationToken);
+                    _lastWorldMarketsLaneRefreshUtc = DateTimeOffset.UtcNow;
+                    break;
+                }
             }
         }
         catch (OperationCanceledException)

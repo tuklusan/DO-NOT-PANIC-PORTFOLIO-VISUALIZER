@@ -13,6 +13,8 @@ public sealed class Nb049BehaviorTests
         Assert.Contains("RunMacroLaneAsync", source, StringComparison.Ordinal);
         Assert.Contains("BuildMacroLaneSnapshotAsync", source, StringComparison.Ordinal);
         Assert.Contains("ApplyMacroLaneSnapshot", source, StringComparison.Ordinal);
+        Assert.Contains("MacroLaneMinimumRefreshInterval", source, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan remaining = MacroLaneMinimumRefreshInterval", source, StringComparison.Ordinal);
         Assert.Contains("\"MacroRefreshStart\"", source, StringComparison.Ordinal);
         Assert.Contains("\"MacroUiPatchComplete\"", source, StringComparison.Ordinal);
         Assert.Contains("QueueMacroRefresh(\"quote-delta\");", source, StringComparison.Ordinal);
