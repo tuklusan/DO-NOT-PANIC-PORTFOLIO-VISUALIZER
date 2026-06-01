@@ -91,6 +91,20 @@ public sealed class DesktopShellMigrationTests
     }
 
     [Fact]
+    public void DesktopApp_CanLaunchDirectlyIntoFullScreenViaStartupArgument()
+    {
+        string appXaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Desktop", "App.xaml"));
+        string appCode = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Desktop", "App.xaml.cs"));
+
+        Assert.DoesNotContain("StartupUri=", appXaml, StringComparison.Ordinal);
+        Assert.Contains("bool startFullScreen = e.Args.Any(arg => string.Equals(arg, \"--fullscreen\", StringComparison.OrdinalIgnoreCase));", appCode, StringComparison.Ordinal);
+        Assert.Contains("var window = new MainWindow();", appCode, StringComparison.Ordinal);
+        Assert.Contains("new Action(window.EnterFullScreen)", appCode, StringComparison.Ordinal);
+        Assert.Contains("MainWindow = window;", appCode, StringComparison.Ordinal);
+        Assert.Contains("window.Show();", appCode, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void LegacyScreensaverHost_UsesPresentationAssembly()
     {
         string fullScreenXaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Screensaver", "Windows", "FullScreenHostWindow.xaml"));

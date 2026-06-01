@@ -284,10 +284,17 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Reset-PortfolioTraceRoot", script, StringComparison.Ordinal);
         Assert.Contains("$summary.DesktopPhaseStatus = \"Running\"", script, StringComparison.Ordinal);
         Assert.Contains("$effectiveCaptureIntervalSeconds = if ($ScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }", script, StringComparison.Ordinal);
+        Assert.Contains("$isLongRunSoak = $ScreensaverDurationMinutes -ge 120", script, StringComparison.Ordinal);
         Assert.Contains("RequestedCaptureIntervalSeconds = $CaptureIntervalSeconds", script, StringComparison.Ordinal);
         Assert.Contains("EffectiveCaptureIntervalSeconds = $effectiveCaptureIntervalSeconds", script, StringComparison.Ordinal);
         Assert.Contains("TargetCaptureFrames = $targetFrames", script, StringComparison.Ordinal);
         Assert.Contains("Capture interval raised from $CaptureIntervalSeconds to $effectiveCaptureIntervalSeconds seconds for long-run soak stability.", script, StringComparison.Ordinal);
+        Assert.Contains("Long-run soak mode enabled; desktop will relaunch directly into fullscreen after config apply.", script, StringComparison.Ordinal);
+        Assert.Contains("$desktop = Start-Process -FilePath $desktopExe -ArgumentList '--fullscreen' -PassThru", script, StringComparison.Ordinal);
+        Assert.Contains("$summary.Notes += \"Desktop relaunched with --fullscreen for long-run soak.\"", script, StringComparison.Ordinal);
+        Assert.Contains("Desktop shell did not enter true fullscreen after relaunch.", script, StringComparison.Ordinal);
+        Assert.Contains("$summary.DesktopVersionCheck = \"SoftFailed\"", script, StringComparison.Ordinal);
+        Assert.Contains("Desktop version element containing the expected beta marker was not detected during long-run soak; continuing.", script, StringComparison.Ordinal);
         Assert.Contains("Start-Sleep -Seconds $effectiveCaptureIntervalSeconds", script, StringComparison.Ordinal);
         Assert.Contains("Write-SummaryFiles", script, StringComparison.Ordinal);
         Assert.DoesNotContain("VBOXSVR", script, StringComparison.Ordinal);

@@ -1,7 +1,9 @@
 using System.Windows;
+using System.Windows.Threading;
 using PortfolioSaver.Shared.Diagnostics;
 using PortfolioSaver.Shared.Integrity;
 using PortfolioSaver.Shared.Services;
+using PortfolioSaver.Desktop.Windows;
 
 namespace PortfolioSaver.Desktop;
 
@@ -33,7 +35,22 @@ public partial class App : Application
 
         TraceLog.Info("Desktop.App", $"Startup args: {string.Join(" ", e.Args)}");
         YFinanceServerProcessManager.EnsureOwnedServerAsync("PortfolioSaver.Desktop").GetAwaiter().GetResult();
+        bool startFullScreen = e.Args.Any(arg => string.Equals(arg, "--fullscreen", StringComparison.OrdinalIgnoreCase));
         base.OnStartup(e);
+
+        var window = new MainWindow();
+        if (startFullScreen)
+        {
+            window.Loaded += (_, _) =>
+            {
+                window.Dispatcher.BeginInvoke(
+                    DispatcherPriority.ApplicationIdle,
+                    new Action(window.EnterFullScreen));
+            };
+        }
+
+        MainWindow = window;
+        window.Show();
     }
 
     protected override void OnExit(ExitEventArgs e)
