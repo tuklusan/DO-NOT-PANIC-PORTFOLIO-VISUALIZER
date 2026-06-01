@@ -694,6 +694,29 @@
         "Ensure the future installer lifecycle requirement is treated as part of the ticket acceptance, not as an optional follow-up.",
         "Add or update tests, docs, and harness checks as needed so the finalized Local AppData storage contract is explicit and regression-resistant."
       ]
+    },
+    {
+      "id": "NB-051",
+      "tracking_number": "NB-051",
+      "priority": 2,
+      "area": "world_markets_runtime",
+      "title": "Move the World Markets ribbon to an independent non-blocking update lane",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested that the World Markets ribbon become independent of the rest of the scene, following the same architectural direction used to close NB-048 for the news scroller.",
+        "Current analysis already shows that ancillary scene updates are still too coupled, and the World Markets ribbon should be patchable without driving a broader ApplySceneState refresh."
+      ],
+      "notes": [
+        "Use the existing YFinance.NET client-server architecture and current exchange-timing data path; do not introduce any new market-data providers or side caches for this ticket.",
+        "Refactor the World Markets ribbon refresh into its own .NET background update lane so it can fetch and prepare updated market-ribbon state without blocking the UI thread.",
+        "Prepare the next World Markets payload off the UI thread and then apply only a minimal patch to the existing world-markets or floating-clock view model on the UI thread.",
+        "Do not route ordinary World Markets ribbon updates through full scene rebuild or full ApplySceneState passes once the independent lane is in place.",
+        "Preserve the current ribbon behavior for exchange cards, pinned NYC status consistency, timing labels, temperatures, and market-state rendering while moving the update ownership out of the monolithic scene refresh path.",
+        "Keep cache, timing, and fallback semantics explicit and traceable, including when live market timing, weather, or exchange snapshots are stale, unavailable, or reused from cache.",
+        "Add trace evidence for world-markets refresh start, fetch complete, timing-state merge complete, cache hit or miss where applicable, and UI patch complete so VM analysis can confirm the lane is non-blocking.",
+        "Acceptance requires VM-visible proof that the World Markets ribbon continues updating while the rest of the dashboard remains responsive and that a ribbon refresh does not coincide with a full-screen layout stall."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

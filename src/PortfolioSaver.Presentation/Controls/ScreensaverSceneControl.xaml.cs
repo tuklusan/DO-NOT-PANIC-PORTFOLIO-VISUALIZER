@@ -98,6 +98,15 @@ public partial class ScreensaverSceneControl : UserControl
     private CancellationTokenSource? _newsRefreshCancellation;
     private Task? _newsRefreshTask;
     private int _newsRefreshInFlight;
+    private readonly SemaphoreSlim _macroLaneSignal = new(0);
+    private readonly SemaphoreSlim _worldMarketsLaneSignal = new(0);
+    private CancellationTokenSource? _macroLaneCancellation;
+    private Task? _macroLaneTask;
+    private int _macroLaneDirty;
+    private CancellationTokenSource? _worldMarketsLaneCancellation;
+    private Task? _worldMarketsLaneTask;
+    private int _worldMarketsQuoteDirty;
+    private int _worldMarketsAncillaryDirty;
 
     public ScreensaverSceneControl()
     {
@@ -129,7 +138,7 @@ public partial class ScreensaverSceneControl : UserControl
         _refreshTimer.Tick += (_, _) => DispatchNextRuntimeQuoteRequest();
         _backgroundTimer.Tick += (_, _) => RotateBackground();
         _backgroundZoomTimer.Tick += (_, _) => StepBackgroundSlowZoom();
-        _worldDataTimer.Tick += async (_, _) => await RefreshClockDataAsync(force: true);
+        _worldDataTimer.Tick += (_, _) => QueueWorldMarketsRefresh(refreshAncillary: true, reason: "timer");
         _demoFlashTimer.Tick += (_, _) => RunDemoFlashPulse();
         _motionTimer.Tick += (_, _) => StepMotion();
     }
@@ -151,6 +160,8 @@ public partial class ScreensaverSceneControl : UserControl
             await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);
             InitializeRuntimeQuoteLoop();
             StartNewsRefreshLoop();
+            StartMacroLane();
+            StartWorldMarketsLane();
             StartCaptureSequenceIfRequested();
             StartDemoFlashSequence();
             TraceScene("OnLoaded completed.");
@@ -165,6 +176,8 @@ public partial class ScreensaverSceneControl : UserControl
     {
         StopRuntimeQuoteLoop();
         CancelNewsRefreshLoop();
+        CancelMacroLane();
+        CancelWorldMarketsLane();
         _clockTimer.Stop();
         _refreshTimer.Stop();
         _backgroundTimer.Stop();
@@ -316,11 +329,10 @@ public partial class ScreensaverSceneControl : UserControl
 
         UpdateClocks(forceAncillaryRefresh: structuralRefresh || fullAncillaryRefresh);
         ApplyWeatherToClock();
-        ApplyClockMarketData(force: structuralRefresh || fullAncillaryRefresh);
         if (structuralRefresh)
         {
             ConfigureTimers();
-            _ = RefreshClockDataAsync(force: true);
+            QueueWorldMarketsRefresh(refreshAncillary: true, reason: "structural-refresh");
         }
         TraceDisplayedTapeSample();
         TraceSceneStateSummary("ApplySceneStateComplete", preserveLayout);
@@ -651,6 +663,158 @@ public partial class ScreensaverSceneControl : UserControl
     private void StopRuntimeQuoteLoop()
     {
         _inFlightQuoteRequests.Clear();
+    }
+
+    private void StartMacroLane()
+    {
+        CancelMacroLane();
+        CancellationTokenSource cancellation = new();
+        _macroLaneCancellation = cancellation;
+        _macroLaneTask = RunMacroLaneAsync(cancellation.Token);
+        QueueMacroRefresh("startup");
+    }
+
+    private void CancelMacroLane()
+    {
+        if (_macroLaneCancellation is null)
+            return;
+
+        try
+        {
+            _macroLaneCancellation.Cancel();
+        }
+        catch
+        {
+        }
+
+        _macroLaneCancellation.Dispose();
+        _macroLaneCancellation = null;
+        _macroLaneTask = null;
+        System.Threading.Interlocked.Exchange(ref _macroLaneDirty, 0);
+    }
+
+    private void QueueMacroRefresh(string reason)
+    {
+        System.Threading.Interlocked.Exchange(ref _macroLaneDirty, 1);
+        TraceSceneState("MacroLaneRefreshQueued", new KeyValuePair<string, object?>("reason", reason));
+        try
+        {
+            _macroLaneSignal.Release();
+        }
+        catch (SemaphoreFullException)
+        {
+        }
+    }
+
+    private async Task RunMacroLaneAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await _macroLaneSignal.WaitAsync(cancellationToken);
+                if (System.Threading.Interlocked.Exchange(ref _macroLaneDirty, 0) == 0)
+                    continue;
+
+                MacroLaneSnapshot snapshot = await BuildMacroLaneSnapshotAsync(cancellationToken);
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    ApplyMacroLaneSnapshot(snapshot);
+                    TraceSceneState(
+                        "MacroUiPatchComplete",
+                        new KeyValuePair<string, object?>("meter_count", snapshot.Meters.Count),
+                        new KeyValuePair<string, object?>("missing_count", snapshot.MissingCount));
+                }, DispatcherPriority.Background, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            TraceScene($"RunMacroLaneAsync failed: {ex}");
+        }
+    }
+
+    private void StartWorldMarketsLane()
+    {
+        CancelWorldMarketsLane();
+        CancellationTokenSource cancellation = new();
+        _worldMarketsLaneCancellation = cancellation;
+        _worldMarketsLaneTask = RunWorldMarketsLaneAsync(cancellation.Token);
+        QueueWorldMarketsRefresh(refreshAncillary: true, reason: "startup");
+    }
+
+    private void CancelWorldMarketsLane()
+    {
+        if (_worldMarketsLaneCancellation is null)
+            return;
+
+        try
+        {
+            _worldMarketsLaneCancellation.Cancel();
+        }
+        catch
+        {
+        }
+
+        _worldMarketsLaneCancellation.Dispose();
+        _worldMarketsLaneCancellation = null;
+        _worldMarketsLaneTask = null;
+        System.Threading.Interlocked.Exchange(ref _worldMarketsQuoteDirty, 0);
+        System.Threading.Interlocked.Exchange(ref _worldMarketsAncillaryDirty, 0);
+    }
+
+    private void QueueWorldMarketsRefresh(bool refreshAncillary, string reason)
+    {
+        System.Threading.Interlocked.Exchange(ref _worldMarketsQuoteDirty, 1);
+        if (refreshAncillary)
+            System.Threading.Interlocked.Exchange(ref _worldMarketsAncillaryDirty, 1);
+
+        TraceSceneState(
+            "WorldMarketsRefreshQueued",
+            new KeyValuePair<string, object?>("reason", reason),
+            new KeyValuePair<string, object?>("refresh_ancillary", refreshAncillary));
+        try
+        {
+            _worldMarketsLaneSignal.Release();
+        }
+        catch (SemaphoreFullException)
+        {
+        }
+    }
+
+    private async Task RunWorldMarketsLaneAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await _worldMarketsLaneSignal.WaitAsync(cancellationToken);
+                bool refreshAncillary = System.Threading.Interlocked.Exchange(ref _worldMarketsAncillaryDirty, 0) != 0;
+                if (System.Threading.Interlocked.Exchange(ref _worldMarketsQuoteDirty, 0) == 0 && !refreshAncillary)
+                    continue;
+
+                WorldMarketsLaneSnapshot snapshot = await BuildWorldMarketsLaneSnapshotAsync(refreshAncillary, cancellationToken);
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    ApplyWorldMarketsLaneSnapshot(snapshot);
+                    TraceSceneState(
+                        "WorldMarketsUiPatchComplete",
+                        new KeyValuePair<string, object?>("city_count", snapshot.Cities.Count),
+                        new KeyValuePair<string, object?>("market_status_text", snapshot.PinnedStatusText),
+                        new KeyValuePair<string, object?>("weather_snapshot_count", snapshot.WeatherSnapshotCount),
+                        new KeyValuePair<string, object?>("calendar_count", snapshot.ExchangeCalendarCount));
+                }, DispatcherPriority.Background, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            TraceScene($"RunWorldMarketsLaneAsync failed: {ex}");
+        }
     }
 
     private void StartNewsRefreshLoop()
@@ -1256,11 +1420,7 @@ public partial class ScreensaverSceneControl : UserControl
             _statusViewModel.ClockText = FormatClockTimeWithZone(referenceUtc, TimeZoneInfo.Utc);
             UpdateStatusFreshnessText();
             if (refreshStatusAncillary)
-            {
-                _statusViewModel.MarketStatusText = BuildPinnedNewYorkStatusBandText(referenceUtc);
-                UpdateStatusMacroMeters(force: true);
                 _lastStatusAncillaryRefreshUtc = referenceUtc;
-            }
         }
     }
 
@@ -1364,70 +1524,8 @@ public partial class ScreensaverSceneControl : UserControl
 
     private async Task RefreshClockDataAsync(bool force)
     {
-        if (_isValidationPaused)
-            return;
-
-        if (_clockViewModel is null)
-            return;
-
-        DateTimeOffset utcNow = DateTimeOffset.UtcNow;
-        bool networkAvailable = _networkAvailabilityService.IsNetworkAvailable();
-
-        bool shouldRefreshNtp = force || utcNow - _lastNtpSyncUtc >= TimeSpan.FromMinutes(10);
-        if (shouldRefreshNtp)
-        {
-            if (networkAvailable)
-            {
-                NtpSyncResult syncResult = await _ntpTimeService.TryGetUtcNowAsync();
-                if (syncResult.Success)
-                {
-                    _ntpOffset = syncResult.UtcNow - DateTimeOffset.UtcNow;
-                    _lastNtpSyncUtc = utcNow;
-                    _clockViewModel.Subtitle = string.Empty;
-                }
-                else
-                {
-                    _ntpOffset = null;
-                    _lastNtpSyncUtc = utcNow;
-                    _clockViewModel.Subtitle = string.Empty;
-                }
-            }
-            else
-            {
-                _ntpOffset = null;
-                _clockViewModel.Subtitle = string.Empty;
-            }
-        }
-
-        bool shouldRefreshWeather = force || utcNow - _lastWeatherRefreshUtc >= TimeSpan.FromMinutes(10);
-        if (shouldRefreshWeather)
-        {
-            _weatherSnapshots = await _worldWeatherService.GetWeatherAsync(_clockViewModel.Cities, networkAvailable);
-            _lastWeatherRefreshUtc = utcNow;
-        }
-
-        bool shouldRefreshCalendars = force || utcNow - _lastMarketCalendarRefreshUtc >= TimeSpan.FromHours(Math.Max(1, _settings.MarketCalendarRefreshHours));
-        if (shouldRefreshCalendars)
-        {
-            IReadOnlyList<ExchangeCalendarRequest> requests = BuildCalendarRequests();
-            _exchangeCalendars = await _exchangeMarketCalendarService.GetCalendarSetAsync(
-                requests,
-                networkAvailable);
-            _lastMarketCalendarRefreshUtc = utcNow;
-        }
-
-        ApplyWeatherToClock();
-        UpdateClocks(forceAncillaryRefresh: true);
-        ApplyClockMarketData(force: true);
-        TraceSceneState(
-            "ClockDataRefresh",
-            new KeyValuePair<string, object?>("force", force),
-            new KeyValuePair<string, object?>("network_available", networkAvailable),
-            new KeyValuePair<string, object?>("ntp_refreshed", shouldRefreshNtp),
-            new KeyValuePair<string, object?>("weather_refreshed", shouldRefreshWeather),
-            new KeyValuePair<string, object?>("weather_snapshot_count", _weatherSnapshots.Count),
-            new KeyValuePair<string, object?>("calendar_refreshed", shouldRefreshCalendars),
-            new KeyValuePair<string, object?>("clock_subtitle", _clockViewModel.Subtitle));
+        await Task.Yield();
+        QueueWorldMarketsRefresh(refreshAncillary: force, reason: force ? "clock-data-force" : "clock-data");
     }
 
     private void UpdateClockEntries(DateTimeOffset referenceUtc, bool refreshAncillary)
@@ -1553,6 +1651,569 @@ public partial class ScreensaverSceneControl : UserControl
 
         return points;
     }
+
+    private async Task<MacroLaneSnapshot> BuildMacroLaneSnapshotAsync(CancellationToken cancellationToken)
+    {
+        IReadOnlyDictionary<string, QuoteSnapshot> quotes = await Dispatcher.InvokeAsync(
+            () => SnapshotQuotes(_latestQuotes),
+            DispatcherPriority.Background,
+            cancellationToken);
+
+        TraceSceneState(
+            "MacroRefreshStart",
+            new KeyValuePair<string, object?>("quote_count", quotes.Count));
+
+        List<MacroMeterState> meters =
+        [
+            BuildMacroMeterState("VIX", "^VIX", 60m, quotes, invertRiskColors: true),
+            BuildMacroMeterState("NASDAQ", "^IXIC", 25000m, quotes),
+            BuildMacroMeterState("UST10Y", "^TNX", 6m, quotes),
+            BuildMacroMeterState("UST3M", "^IRX", 6m, quotes),
+            BuildMacroMeterState("GOLD", "GC=F", 4000m, quotes),
+            BuildMacroMeterState("CRUDE", "BZ=F", 160m, quotes),
+            BuildMacroMeterState("DXY", "DX-Y.NYB", 120m, quotes, invertRiskColors: true),
+            BuildMacroMeterState("BTC", "BTC-USD", 200000m, quotes)
+        ];
+
+        TraceSceneState(
+            "MacroRefreshPrepared",
+            new KeyValuePair<string, object?>("meter_count", meters.Count),
+            new KeyValuePair<string, object?>("missing_count", meters.Count(meter => meter.IsMissing)));
+
+        return new MacroLaneSnapshot(meters, meters.Count(meter => meter.IsMissing));
+    }
+
+    private void ApplyMacroLaneSnapshot(MacroLaneSnapshot snapshot)
+    {
+        if (_isValidationPaused || _statusViewModel is null)
+            return;
+
+        EnsureMacroMetersInitialized();
+        for (int index = 0; index < snapshot.Meters.Count && index < _statusViewModel.MacroMeters.Count; index++)
+        {
+            MacroMeterViewModel target = _statusViewModel.MacroMeters[index];
+            MacroMeterState source = snapshot.Meters[index];
+            target.Label = source.Label;
+            target.ValueText = source.ValueText;
+            target.ChangeText = source.ChangeText;
+            target.AccentBrush = source.AccentBrush;
+            target.SetFill(source.Fill);
+        }
+
+        _lastMacroMeterRefreshUtc = DateTimeOffset.UtcNow;
+        TraceMacroSnapshot(force: true);
+    }
+
+    private static MacroMeterState BuildMacroMeterState(
+        string label,
+        string symbol,
+        decimal maxValue,
+        IReadOnlyDictionary<string, QuoteSnapshot> quotes,
+        bool invertRiskColors = false)
+    {
+        string valueText = "--";
+        string changeText = string.Empty;
+        Brush accentBrush = Brushes.SlateGray;
+        double fill = 0d;
+        bool isMissing = true;
+
+        if (quotes.TryGetValue(symbol, out QuoteSnapshot? quote))
+        {
+            decimal? last = quote.Last ?? quote.PreviousClose;
+            decimal? changePercent = quote.ChangePercent;
+            if (last is decimal lastValue)
+            {
+                valueText = lastValue.ToString("0.00");
+                changeText = changePercent is decimal percent
+                    ? $"{(percent >= 0 ? "+" : string.Empty)}{percent:0.0}%"
+                    : string.Empty;
+                Brush upBrush = invertRiskColors ? Brushes.OrangeRed : Brushes.LimeGreen;
+                Brush downBrush = invertRiskColors ? Brushes.LimeGreen : Brushes.OrangeRed;
+                accentBrush = quote.IsStale
+                    ? Brushes.Goldenrod
+                    : changePercent switch
+                    {
+                        > 0m => upBrush,
+                        < 0m => downBrush,
+                        _ => Brushes.Gainsboro
+                    };
+                fill = (double)Math.Clamp(lastValue / Math.Max(1m, maxValue), 0m, 1m);
+                isMissing = false;
+            }
+        }
+
+        return new MacroMeterState(label, valueText, changeText, accentBrush, fill, isMissing);
+    }
+
+    private async Task<WorldMarketsLaneSnapshot> BuildWorldMarketsLaneSnapshotAsync(bool refreshAncillary, CancellationToken cancellationToken)
+    {
+        WorldMarketsInputSnapshot input = await Dispatcher.InvokeAsync(
+            SnapshotWorldMarketsInput,
+            DispatcherPriority.Background,
+            cancellationToken);
+        if (input.ClockTitle is null)
+            return WorldMarketsLaneSnapshot.Empty;
+
+        bool networkAvailable = _networkAvailabilityService.IsNetworkAvailable();
+        TraceSceneState(
+            "WorldMarketsRefreshStart",
+            new KeyValuePair<string, object?>("refresh_ancillary", refreshAncillary),
+            new KeyValuePair<string, object?>("network_available", networkAvailable),
+            new KeyValuePair<string, object?>("city_count", input.Cities.Count));
+
+        Dictionary<string, WeatherSnapshot> weatherSnapshots = input.WeatherSnapshots;
+        ExchangeCalendarSet calendarSet = input.ExchangeCalendars;
+        TimeSpan? ntpOffset = input.NtpOffset;
+        DateTimeOffset lastNtpSyncUtc = input.LastNtpSyncUtc;
+        DateTimeOffset lastWeatherRefreshUtc = input.LastWeatherRefreshUtc;
+        DateTimeOffset lastMarketCalendarRefreshUtc = input.LastMarketCalendarRefreshUtc;
+        string subtitle = input.ClockSubtitle;
+
+        DateTimeOffset utcNow = DateTimeOffset.UtcNow;
+        bool refreshedNtp = false;
+        bool refreshedWeather = false;
+        bool refreshedCalendars = false;
+
+        if (refreshAncillary)
+        {
+            bool shouldRefreshNtp = utcNow - lastNtpSyncUtc >= TimeSpan.FromMinutes(10);
+            if (shouldRefreshNtp)
+            {
+                refreshedNtp = true;
+                if (networkAvailable)
+                {
+                    NtpSyncResult syncResult = await _ntpTimeService.TryGetUtcNowAsync();
+                    ntpOffset = syncResult.Success ? syncResult.UtcNow - DateTimeOffset.UtcNow : null;
+                }
+                else
+                {
+                    ntpOffset = null;
+                }
+
+                lastNtpSyncUtc = utcNow;
+                subtitle = string.Empty;
+            }
+
+            bool shouldRefreshWeather = utcNow - lastWeatherRefreshUtc >= TimeSpan.FromMinutes(10);
+            if (shouldRefreshWeather)
+            {
+                refreshedWeather = true;
+                weatherSnapshots = (await _worldWeatherService.GetWeatherAsync(
+                    input.Cities.Select(CloneCityForWeatherService),
+                    networkAvailable,
+                    cancellationToken)).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+                lastWeatherRefreshUtc = utcNow;
+            }
+
+            bool shouldRefreshCalendars = utcNow - lastMarketCalendarRefreshUtc >= TimeSpan.FromHours(Math.Max(1, input.MarketCalendarRefreshHours));
+            if (shouldRefreshCalendars)
+            {
+                refreshedCalendars = true;
+                calendarSet = await _exchangeMarketCalendarService.GetCalendarSetAsync(
+                    input.Cities
+                        .Where(city => city.ShowExchangeDetails && !string.IsNullOrWhiteSpace(city.CalendarExchangeCode))
+                        .Select(city => new ExchangeCalendarRequest
+                        {
+                            CityKey = city.Key,
+                            ExchangeCode = city.CalendarExchangeCode,
+                            ExchangeName = city.ExchangeName,
+                            ExchangeSymbol = city.ExchangeSymbol,
+                            TimeZoneId = city.PrimaryTimeZoneId,
+                            AlternateTimeZoneId = city.SecondaryTimeZoneId
+                        })
+                        .ToList(),
+                    networkAvailable);
+                lastMarketCalendarRefreshUtc = utcNow;
+            }
+        }
+
+        DateTimeOffset referenceUtc = ntpOffset.HasValue && DateTimeOffset.UtcNow - lastNtpSyncUtc <= TimeSpan.FromMinutes(20)
+            ? DateTimeOffset.UtcNow + ntpOffset.Value
+            : DateTimeOffset.UtcNow;
+
+        Dictionary<string, List<decimal>> updatedHistory = input.ClockIndexHistory.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value.ToList(),
+            StringComparer.OrdinalIgnoreCase);
+        List<WorldMarketCityState> cityStates = [];
+        List<string> missingSymbols = [];
+        int populatedCount = 0;
+
+        foreach (ClockCityViewModel city in input.Cities)
+        {
+            ClockCityViewModel working = CloneClockCity(city);
+            TimeZoneInfo zone = string.Equals(working.Key, "Local", StringComparison.OrdinalIgnoreCase)
+                ? TimeZoneInfo.Local
+                : ResolveTimeZone(working.PrimaryTimeZoneId, working.SecondaryTimeZoneId);
+            DateTimeOffset cityTime = TimeZoneInfo.ConvertTime(referenceUtc, zone);
+            working.TimeText = FormatClockTimeWithZone(cityTime, zone);
+            working.ZoneText = BuildClockFooterWithMarketStatus(working, zone, cityTime, referenceUtc, calendarSet);
+            ApplyClockCardTheme(working, cityTime);
+
+            if (!working.SupportsWeather)
+            {
+                working.WeatherGlyph = string.Empty;
+                working.WeatherText = "Clock only";
+            }
+            else if (weatherSnapshots.TryGetValue(working.Key, out WeatherSnapshot? snapshot))
+            {
+                working.WeatherGlyph = WorldWeatherService.GetGlyph(snapshot.WeatherCode, snapshot.IsDay);
+                working.WeatherText = $"{Math.Round(snapshot.TemperatureCelsius):0}C";
+            }
+            else
+            {
+                working.WeatherGlyph = string.Empty;
+                working.WeatherText = "Weather unavailable";
+            }
+
+            if (working.ShowExchangeDetails && !string.IsNullOrWhiteSpace(working.ExchangeSymbol))
+            {
+                input.Quotes.TryGetValue(working.ExchangeSymbol, out QuoteSnapshot? quote);
+                ApplyExchangeCardMarketStatus(working, quote, referenceUtc, calendarSet);
+
+                decimal? last = quote?.Last ?? quote?.PreviousClose;
+                decimal? changePercent = quote?.ChangePercent;
+                Brush changeBrush = changePercent switch
+                {
+                    > 0m => Brushes.LimeGreen,
+                    < 0m => Brushes.OrangeRed,
+                    _ => Brushes.Gainsboro
+                };
+
+                working.IndexValueText = last is decimal value ? value.ToString("0.00") : "--";
+                working.IndexChangeText = changePercent is decimal percent
+                    ? $"{(percent >= 0 ? "+" : string.Empty)}{percent:0.00}%"
+                    : "--";
+                working.IndexChangeForeground = changeBrush;
+                working.MiniGraphStroke = changeBrush;
+
+                if (last is decimal lastValue)
+                {
+                    populatedCount++;
+                    if (!updatedHistory.TryGetValue(working.ExchangeSymbol, out List<decimal>? history))
+                    {
+                        history = [];
+                        updatedHistory[working.ExchangeSymbol] = history;
+                    }
+
+                    bool shouldAppend = history.Count == 0 || Math.Abs(history[^1] - lastValue) > 0.0001m;
+                    if (shouldAppend)
+                    {
+                        history.Add(lastValue);
+                        while (history.Count > 24)
+                            history.RemoveAt(0);
+                    }
+
+                    IReadOnlyList<Point> points = BuildMiniGraphPointList(history, 72d, 12d);
+                    cityStates.Add(WorldMarketCityState.FromViewModel(working, points));
+                    continue;
+                }
+
+                missingSymbols.Add(working.ExchangeSymbol);
+            }
+
+            cityStates.Add(WorldMarketCityState.FromViewModel(working, []));
+        }
+
+        string pinnedStatusText = BuildPinnedNewYorkStatusBandText(input.Cities, input.Quotes, calendarSet, referenceUtc);
+        TraceSceneState(
+            "WorldMarketsFetchComplete",
+            new KeyValuePair<string, object?>("refresh_ancillary", refreshAncillary),
+            new KeyValuePair<string, object?>("network_available", networkAvailable),
+            new KeyValuePair<string, object?>("ntp_refreshed", refreshedNtp),
+            new KeyValuePair<string, object?>("weather_refreshed", refreshedWeather),
+            new KeyValuePair<string, object?>("calendar_refreshed", refreshedCalendars),
+            new KeyValuePair<string, object?>("weather_snapshot_count", weatherSnapshots.Count),
+            new KeyValuePair<string, object?>("calendar_count", calendarSet.CalendarsByCityKey.Count));
+        TraceSceneState(
+            "WorldMarketsMergeComplete",
+            new KeyValuePair<string, object?>("populated_exchange_count", populatedCount),
+            new KeyValuePair<string, object?>("missing_exchange_count", missingSymbols.Count),
+            new KeyValuePair<string, object?>("missing_exchange_symbols", missingSymbols.Take(10).ToList()));
+
+        return new WorldMarketsLaneSnapshot(
+            input.ClockTitle,
+            subtitle,
+            cityStates,
+            pinnedStatusText,
+            weatherSnapshots,
+            calendarSet,
+            updatedHistory,
+            ntpOffset,
+            lastNtpSyncUtc,
+            lastWeatherRefreshUtc,
+            lastMarketCalendarRefreshUtc,
+            weatherSnapshots.Count,
+            calendarSet.CalendarsByCityKey.Count);
+    }
+
+    private void ApplyWorldMarketsLaneSnapshot(WorldMarketsLaneSnapshot snapshot)
+    {
+        if (_isValidationPaused || _clockViewModel is null || _statusViewModel is null || snapshot.ClockTitle is null)
+            return;
+
+        _clockViewModel.Title = snapshot.ClockTitle;
+        _clockViewModel.Subtitle = snapshot.ClockSubtitle;
+        _statusViewModel.MarketStatusText = snapshot.PinnedStatusText;
+        _weatherSnapshots = snapshot.WeatherSnapshots;
+        _exchangeCalendars = snapshot.ExchangeCalendars;
+        _ntpOffset = snapshot.NtpOffset;
+        _lastNtpSyncUtc = snapshot.LastNtpSyncUtc;
+        _lastWeatherRefreshUtc = snapshot.LastWeatherRefreshUtc;
+        _lastMarketCalendarRefreshUtc = snapshot.LastMarketCalendarRefreshUtc;
+
+        ReplaceClockIndexHistory(snapshot.ClockIndexHistory);
+
+        foreach (WorldMarketCityState source in snapshot.Cities)
+        {
+            ClockCityViewModel? target = _clockViewModel.Cities.FirstOrDefault(city => string.Equals(city.Key, source.Key, StringComparison.OrdinalIgnoreCase));
+            if (target is null)
+                continue;
+
+            target.TimeText = source.TimeText;
+            target.ZoneText = source.ZoneText;
+            target.WeatherGlyph = source.WeatherGlyph;
+            target.WeatherText = source.WeatherText;
+            target.MarketStatusText = source.MarketStatusText;
+            target.MarketStatusForeground = source.MarketStatusForeground;
+            target.IndexValueText = source.IndexValueText;
+            target.IndexChangeText = source.IndexChangeText;
+            target.IndexChangeForeground = source.IndexChangeForeground;
+            target.MiniGraphStroke = source.MiniGraphStroke;
+            target.CardBackground = source.CardBackground;
+            target.CardBorderBrush = source.CardBorderBrush;
+            target.MiniGraphPoints = new PointCollection(source.MiniGraphPoints);
+        }
+    }
+
+    private static IReadOnlyDictionary<string, QuoteSnapshot> SnapshotQuotes(IReadOnlyDictionary<string, QuoteSnapshot> quotes)
+        => quotes.ToDictionary(
+            pair => pair.Key,
+            pair => CloneQuoteSnapshot(pair.Value),
+            StringComparer.OrdinalIgnoreCase);
+
+    private WorldMarketsInputSnapshot SnapshotWorldMarketsInput()
+    {
+        if (_clockViewModel is null)
+            return WorldMarketsInputSnapshot.Empty;
+
+        return new WorldMarketsInputSnapshot(
+            _clockViewModel.Title,
+            _clockViewModel.Subtitle,
+            _clockViewModel.Cities.Select(CloneClockCity).ToList(),
+            SnapshotQuotes(_latestQuotes),
+            CloneWeatherSnapshots(_weatherSnapshots),
+            CloneExchangeCalendarSet(_exchangeCalendars),
+            CloneClockIndexHistory(_clockIndexHistory),
+            _ntpOffset,
+            _lastNtpSyncUtc,
+            _lastWeatherRefreshUtc,
+            _lastMarketCalendarRefreshUtc,
+            _settings.MarketCalendarRefreshHours);
+    }
+
+    private static QuoteSnapshot CloneQuoteSnapshot(QuoteSnapshot snapshot)
+        => new()
+        {
+            Symbol = snapshot.Symbol,
+            Last = snapshot.Last,
+            Change = snapshot.Change,
+            ChangePercent = snapshot.ChangePercent,
+            PreviousClose = snapshot.PreviousClose,
+            Currency = snapshot.Currency,
+            MarketSession = snapshot.MarketSession,
+            ProviderTimestampUtc = snapshot.ProviderTimestampUtc,
+            FetchTimestampUtc = snapshot.FetchTimestampUtc,
+            IsStale = snapshot.IsStale
+        };
+
+    private static Dictionary<string, WeatherSnapshot> CloneWeatherSnapshots(IReadOnlyDictionary<string, WeatherSnapshot> snapshots)
+        => snapshots.ToDictionary(
+            pair => pair.Key,
+            pair => new WeatherSnapshot
+            {
+                CityKey = pair.Value.CityKey,
+                TemperatureCelsius = pair.Value.TemperatureCelsius,
+                WeatherCode = pair.Value.WeatherCode,
+                IsDay = pair.Value.IsDay,
+                FetchTimestampUtc = pair.Value.FetchTimestampUtc
+            },
+            StringComparer.OrdinalIgnoreCase);
+
+    private static ExchangeCalendarSet CloneExchangeCalendarSet(ExchangeCalendarSet source)
+    {
+        ExchangeCalendarSet clone = new()
+        {
+            GeneratedUtc = source.GeneratedUtc,
+            Source = source.Source
+        };
+        clone.Overlay(source);
+        return clone;
+    }
+
+    private static Dictionary<string, List<decimal>> CloneClockIndexHistory(IReadOnlyDictionary<string, List<decimal>> source)
+        => source.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value.ToList(),
+            StringComparer.OrdinalIgnoreCase);
+
+    private void ReplaceClockIndexHistory(IReadOnlyDictionary<string, List<decimal>> replacement)
+    {
+        _clockIndexHistory.Clear();
+        foreach ((string key, List<decimal> values) in replacement)
+            _clockIndexHistory[key] = values.ToList();
+    }
+
+    private static ClockCityViewModel CloneClockCity(ClockCityViewModel source)
+        => new()
+        {
+            Key = source.Key,
+            Label = source.Label,
+            PrimaryTimeZoneId = source.PrimaryTimeZoneId,
+            SecondaryTimeZoneId = source.SecondaryTimeZoneId,
+            TimeText = source.TimeText,
+            ZoneText = source.ZoneText,
+            WeatherGlyph = source.WeatherGlyph,
+            WeatherText = source.WeatherText,
+            FlagGlyph = source.FlagGlyph,
+            FlagCode = source.FlagCode,
+            SupportsWeather = source.SupportsWeather,
+            Latitude = source.Latitude,
+            Longitude = source.Longitude,
+            IsLocalSummary = source.IsLocalSummary,
+            ShowExchangeDetails = source.ShowExchangeDetails,
+            ExchangeName = source.ExchangeName,
+            ExchangeSymbol = source.ExchangeSymbol,
+            CalendarExchangeCode = source.CalendarExchangeCode,
+            MarketStatusText = source.MarketStatusText,
+            MarketStatusForeground = source.MarketStatusForeground,
+            IndexValueText = source.IndexValueText,
+            IndexChangeText = source.IndexChangeText,
+            IndexChangeForeground = source.IndexChangeForeground,
+            MiniGraphStroke = source.MiniGraphStroke,
+            MiniGraphPoints = new PointCollection(source.MiniGraphPoints),
+            CardBackground = source.CardBackground,
+            CardBorderBrush = source.CardBorderBrush
+        };
+
+    private static ClockCityViewModel CloneCityForWeatherService(ClockCityViewModel source)
+        => new()
+        {
+            Key = source.Key,
+            Label = source.Label,
+            SupportsWeather = source.SupportsWeather,
+            Latitude = source.Latitude,
+            Longitude = source.Longitude
+        };
+
+    private sealed record MacroMeterState(
+        string Label,
+        string ValueText,
+        string ChangeText,
+        Brush AccentBrush,
+        double Fill,
+        bool IsMissing);
+
+    private sealed record MacroLaneSnapshot(
+        IReadOnlyList<MacroMeterState> Meters,
+        int MissingCount);
+
+    private sealed record WorldMarketCityState(
+        string Key,
+        string TimeText,
+        string ZoneText,
+        string WeatherGlyph,
+        string WeatherText,
+        string MarketStatusText,
+        Brush MarketStatusForeground,
+        string IndexValueText,
+        string IndexChangeText,
+        Brush IndexChangeForeground,
+        Brush MiniGraphStroke,
+        Brush CardBackground,
+        Brush CardBorderBrush,
+        IReadOnlyList<Point> MiniGraphPoints)
+    {
+        public static WorldMarketCityState FromViewModel(ClockCityViewModel source, IReadOnlyList<Point> miniGraphPoints)
+            => new(
+                source.Key,
+                source.TimeText,
+                source.ZoneText,
+                source.WeatherGlyph,
+                source.WeatherText,
+                source.MarketStatusText,
+                source.MarketStatusForeground,
+                source.IndexValueText,
+                source.IndexChangeText,
+                source.IndexChangeForeground,
+                source.MiniGraphStroke,
+                source.CardBackground,
+                source.CardBorderBrush,
+                miniGraphPoints);
+    }
+
+    private sealed record WorldMarketsInputSnapshot(
+        string? ClockTitle,
+        string ClockSubtitle,
+        IReadOnlyList<ClockCityViewModel> Cities,
+        IReadOnlyDictionary<string, QuoteSnapshot> Quotes,
+        Dictionary<string, WeatherSnapshot> WeatherSnapshots,
+        ExchangeCalendarSet ExchangeCalendars,
+        Dictionary<string, List<decimal>> ClockIndexHistory,
+        TimeSpan? NtpOffset,
+        DateTimeOffset LastNtpSyncUtc,
+        DateTimeOffset LastWeatherRefreshUtc,
+        DateTimeOffset LastMarketCalendarRefreshUtc,
+        int MarketCalendarRefreshHours)
+    {
+        public static WorldMarketsInputSnapshot Empty { get; } = new(
+            null,
+            string.Empty,
+            [],
+            new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase),
+            new Dictionary<string, WeatherSnapshot>(StringComparer.OrdinalIgnoreCase),
+            new ExchangeCalendarSet(),
+            new Dictionary<string, List<decimal>>(StringComparer.OrdinalIgnoreCase),
+            null,
+            DateTimeOffset.MinValue,
+            DateTimeOffset.MinValue,
+            DateTimeOffset.MinValue,
+            1);
+    }
+
+    private sealed record WorldMarketsLaneSnapshot(
+        string? ClockTitle,
+        string ClockSubtitle,
+        IReadOnlyList<WorldMarketCityState> Cities,
+        string PinnedStatusText,
+        Dictionary<string, WeatherSnapshot> WeatherSnapshots,
+        ExchangeCalendarSet ExchangeCalendars,
+        Dictionary<string, List<decimal>> ClockIndexHistory,
+        TimeSpan? NtpOffset,
+        DateTimeOffset LastNtpSyncUtc,
+        DateTimeOffset LastWeatherRefreshUtc,
+        DateTimeOffset LastMarketCalendarRefreshUtc,
+        int WeatherSnapshotCount,
+        int ExchangeCalendarCount)
+    {
+        public static WorldMarketsLaneSnapshot Empty { get; } = new(
+            null,
+            string.Empty,
+            [],
+            "Market (New York): --",
+            new Dictionary<string, WeatherSnapshot>(StringComparer.OrdinalIgnoreCase),
+            new ExchangeCalendarSet(),
+            new Dictionary<string, List<decimal>>(StringComparer.OrdinalIgnoreCase),
+            null,
+            DateTimeOffset.MinValue,
+            DateTimeOffset.MinValue,
+            DateTimeOffset.MinValue,
+            0,
+            0);
+    }
+
+    private static IReadOnlyList<Point> BuildMiniGraphPointList(IReadOnlyList<decimal> values, double width, double height)
+        => BuildMiniGraphPoints(values, width, height).ToList();
 
     private void ApplyWeatherToClock()
     {
@@ -1699,6 +2360,29 @@ public partial class ScreensaverSceneControl : UserControl
         return $"{zoneFooter} | {statusText}";
     }
 
+    private string BuildClockFooterWithMarketStatus(
+        ClockCityViewModel city,
+        TimeZoneInfo zone,
+        DateTimeOffset cityTime,
+        DateTimeOffset referenceUtc,
+        ExchangeCalendarSet calendarSet)
+    {
+        string zoneFooter = GetClockFooter(city, zone, cityTime);
+        if (!city.ShowExchangeDetails)
+            return zoneFooter;
+
+        ExchangeTradingCalendar? calendar = calendarSet.TryGetByCityKey(city.Key);
+        if (calendar is null)
+            return zoneFooter;
+
+        ExchangeCalendarStatus status = _exchangeMarketCalendarService.ResolveStatus(calendar, referenceUtc);
+        string statusText = _exchangeMarketCalendarService.FormatCompactStatus(status);
+        if (string.IsNullOrWhiteSpace(zoneFooter))
+            return statusText;
+
+        return $"{zoneFooter} | {statusText}";
+    }
+
     private void ApplyExchangeCardMarketStatus(ClockCityViewModel city, QuoteSnapshot? quote, DateTimeOffset referenceUtc)
     {
         if (!city.ShowExchangeDetails)
@@ -1709,6 +2393,32 @@ public partial class ScreensaverSceneControl : UserControl
         }
 
         ExchangeTradingCalendar? calendar = _exchangeCalendars.TryGetByCityKey(city.Key);
+        if (calendar is null)
+        {
+            city.MarketStatusText = FormatExchangeCardStatusText(quote, null);
+            city.MarketStatusForeground = ResolveMarketStatusBrush(quote?.MarketSession, null);
+            return;
+        }
+
+        ExchangeCalendarStatus status = _exchangeMarketCalendarService.ResolveStatus(calendar, referenceUtc);
+        city.MarketStatusText = FormatExchangeCardStatusText(quote, status);
+        city.MarketStatusForeground = ResolveMarketStatusBrush(quote?.MarketSession, status);
+    }
+
+    private void ApplyExchangeCardMarketStatus(
+        ClockCityViewModel city,
+        QuoteSnapshot? quote,
+        DateTimeOffset referenceUtc,
+        ExchangeCalendarSet calendarSet)
+    {
+        if (!city.ShowExchangeDetails)
+        {
+            city.MarketStatusText = string.Empty;
+            city.MarketStatusForeground = Brushes.Gainsboro;
+            return;
+        }
+
+        ExchangeTradingCalendar? calendar = calendarSet.TryGetByCityKey(city.Key);
         if (calendar is null)
         {
             city.MarketStatusText = FormatExchangeCardStatusText(quote, null);
@@ -1752,6 +2462,40 @@ public partial class ScreensaverSceneControl : UserControl
 
         string countdownText = FormatPinnedStatusCountdown(effectiveSession, calendarStatus);
 
+        return FormatStatusBandText($"Market (New York): {sessionText} | {countdownText}");
+    }
+
+    private string BuildPinnedNewYorkStatusBandText(
+        IReadOnlyList<ClockCityViewModel> cities,
+        IReadOnlyDictionary<string, QuoteSnapshot> quotes,
+        ExchangeCalendarSet calendarSet,
+        DateTimeOffset referenceUtc)
+    {
+        ClockCityViewModel? city = cities.FirstOrDefault(candidate =>
+            candidate.ShowExchangeDetails &&
+            string.Equals(candidate.Key, PinnedNycExchangeKey, StringComparison.OrdinalIgnoreCase));
+        if (city is null || string.IsNullOrWhiteSpace(city.ExchangeSymbol))
+            return "Market (New York): --";
+
+        quotes.TryGetValue(city.ExchangeSymbol, out QuoteSnapshot? quote);
+        ExchangeTradingCalendar? calendar = calendarSet.TryGetByCityKey(city.Key);
+        if (quote is null || calendar is null)
+            return "Market (New York): --";
+
+        ExchangeCalendarStatus calendarStatus = _exchangeMarketCalendarService.ResolveStatus(calendar, referenceUtc);
+        MarketSession effectiveSession = quote.MarketSession == MarketSession.Unknown
+            ? calendarStatus.Session
+            : quote.MarketSession;
+        string sessionText = effectiveSession switch
+        {
+            MarketSession.Regular => "Regular",
+            MarketSession.PreMarket => "Pre-Market",
+            MarketSession.AfterHours => "After Hours",
+            MarketSession.Closed => "Closed",
+            _ => calendarStatus.IsOpen ? "Regular" : "Closed"
+        };
+
+        string countdownText = FormatPinnedStatusCountdown(effectiveSession, calendarStatus);
         return FormatStatusBandText($"Market (New York): {sessionText} | {countdownText}");
     }
 
@@ -2756,15 +3500,13 @@ public partial class ScreensaverSceneControl : UserControl
         SyncTapes(_startupCoordinator.BuildTapesForQuotes(_settings, _latestQuotes));
         UpdateStatusFreshnessText();
         if (deltaQuotes.Keys.Any(IsMacroSymbol))
-            UpdateStatusMacroMeters(force: true);
-        else
-            UpdateStatusMacroMeters(force: false);
+            QueueMacroRefresh("quote-delta");
 
         foreach (FloatingGraphViewModel graph in _graphs.Where(graph => deltaQuotes.ContainsKey(graph.Symbol)))
             ApplyQuoteToGraph(graph);
 
         if (deltaQuotes.Keys.Any(IsClockMarketSymbol))
-            ApplyClockMarketData(force: false);
+            QueueWorldMarketsRefresh(refreshAncillary: false, reason: "quote-delta");
 
         TraceDisplayedTapeSample();
         TraceSceneState(
@@ -2790,8 +3532,9 @@ public partial class ScreensaverSceneControl : UserControl
             _statusViewModel.ClockDateText = source.ClockDateText;
             _statusViewModel.ClockText = source.ClockText;
         }
-
-        UpdateStatusMacroMeters(force: forceMacroRefresh);
+        EnsureMacroMetersInitialized();
+        if (forceMacroRefresh)
+            QueueMacroRefresh("scene-sync");
     }
 
     private static bool IsMacroSymbol(string symbol)

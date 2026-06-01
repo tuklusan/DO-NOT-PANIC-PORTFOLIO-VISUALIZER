@@ -1416,11 +1416,10 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("_lastClockAncillaryRefreshUtc", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_lastStatusAncillaryRefreshUtc", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("UpdateClockEntries(referenceUtc, refreshClockAncillary);", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("UpdateClocks(forceAncillaryRefresh: true);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("QueueWorldMarketsRefresh(refreshAncillary: force, reason: force ? \"clock-data-force\" : \"clock-data\");", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void UpdateClockEntries(DateTimeOffset referenceUtc, bool refreshAncillary)", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.DoesNotContain("ApplyClockMarketData();", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("private void ApplyClockMarketData(bool force)", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("if (force || shouldAppend || city.MiniGraphPoints.Count == 0)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private async Task<WorldMarketsLaneSnapshot> BuildWorldMarketsLaneSnapshotAsync(bool refreshAncillary, CancellationToken cancellationToken)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void ApplyWorldMarketsLaneSnapshot(WorldMarketsLaneSnapshot snapshot)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("city.TimeText = FormatClockTimeWithZone(cityTime, zone);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("FormatClockTimeWithZone(", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_statusViewModel.ClockText = FormatClockTimeWithZone(", sceneCodeBehind, StringComparison.Ordinal);
