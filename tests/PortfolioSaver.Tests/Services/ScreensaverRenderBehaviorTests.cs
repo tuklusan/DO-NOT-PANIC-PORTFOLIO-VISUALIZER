@@ -220,6 +220,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("\"BackgroundZoomStarted\"", codeBehind, StringComparison.Ordinal);
         Assert.Contains("\"BackgroundZoomStopped\"", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void SetBackgroundZoomRunning(bool enabled, string reason)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("if (bitmap.CanFreeze)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("AnimateBackgroundProperty(incoming, Image.OpacityProperty, 0d, 0.45d, duration, ease);", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("switch (_random.Next(3))", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("AnimateBackgroundTranslation(incoming", codeBehind, StringComparison.Ordinal);

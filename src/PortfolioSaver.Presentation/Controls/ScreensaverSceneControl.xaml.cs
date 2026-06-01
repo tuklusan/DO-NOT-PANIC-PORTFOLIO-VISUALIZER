@@ -2961,7 +2961,8 @@ public partial class ScreensaverSceneControl : UserControl
         bitmap.CacheOption = BitmapCacheOption.OnLoad;
         bitmap.UriSource = new Uri(path, UriKind.Absolute);
         bitmap.EndInit();
-        bitmap.Freeze();
+        if (bitmap.CanFreeze)
+            bitmap.Freeze();
         return bitmap;
     }
 
