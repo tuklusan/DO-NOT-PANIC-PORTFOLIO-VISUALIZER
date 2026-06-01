@@ -231,7 +231,7 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         AppSettings settings = Defaults.CreateSettings();
 
-        Assert.Equal(120, settings.BackgroundChangeSeconds);
+        Assert.Equal(300, settings.BackgroundChangeSeconds);
         Assert.True(settings.ShuffleBackgrounds);
     }
 
