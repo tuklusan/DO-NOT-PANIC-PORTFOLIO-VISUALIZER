@@ -164,6 +164,7 @@ public static class NativeDisplaySettings {
 
 $root = $RootPath
 $desktopExe = Join-Path $root 'publish\desktop\PortfolioSaver.Desktop.exe'
+$screensaverExe = Join-Path $root 'publish\screensaver\PortfolioSaver.Screensaver.exe'
 if ([string]::IsNullOrWhiteSpace($ResultRootPath)) {
     $ResultRootPath = Join-Path $root 'results'
 }
@@ -939,7 +940,7 @@ if ($effectiveCaptureIntervalSeconds -ne $CaptureIntervalSeconds) {
     $summary.Notes += "Capture interval raised from $CaptureIntervalSeconds to $effectiveCaptureIntervalSeconds seconds for long-run soak stability."
 }
 if ($isLongRunSoak) {
-    $summary.Notes += "Long-run soak mode enabled; desktop will relaunch directly into fullscreen after config apply."
+    $summary.Notes += "Long-run soak mode enabled; fullscreen soak will switch to the legacy screensaver host after config apply."
 }
 
 $summaryPath = Join-Path $results 'ux-deep-summary.json'
@@ -2580,8 +2581,9 @@ try {
             catch {}
 
             Start-Sleep -Seconds 1
-            $desktop = Start-Process -FilePath $desktopExe -ArgumentList '--fullscreen' -PassThru
-            $summary.Notes += "Desktop relaunched with --fullscreen for long-run soak."
+            $desktop = Start-Process -FilePath $screensaverExe -ArgumentList '/s' -PassThru
+            $summary.ScreensaverPhaseStatus = "Running"
+            $summary.Notes += "Fullscreen soak host launched from PortfolioSaver.Screensaver."
         }
     }
     catch {
@@ -2631,16 +2633,21 @@ try {
             }
         }
         if ($null -ne $versionMatch) {
-            $summary.DesktopVersionCheck = "Passed"
-            $summary.Notes += ("Desktop version element observed: name='{0}' automation_id='{1}' help='{2}'" -f
+            if ($isLongRunSoak) {
+                $summary.ScreensaverVersionCheck = "Passed"
+            }
+            else {
+                $summary.DesktopVersionCheck = "Passed"
+            }
+            $summary.Notes += ("Visual host version element observed: name='{0}' automation_id='{1}' help='{2}'" -f
                 $versionMatch.Name,
                 $versionMatch.AutomationId,
                 $versionMatch.HelpText)
         }
         else {
             if ($isLongRunSoak) {
-                $summary.DesktopVersionCheck = "SoftFailed"
-                $summary.Notes += "Desktop version element containing the expected beta marker was not detected during long-run soak; continuing."
+                $summary.ScreensaverVersionCheck = "SoftFailed"
+                $summary.Notes += "Screensaver version element containing the expected beta marker was not detected during long-run soak; continuing."
             }
             else {
                 $summary.DesktopVersionCheck = "Failed"
@@ -2662,7 +2669,7 @@ try {
             $summary.DesktopShots++
             $summary.ScreensaverShots++
             if (-not $enteredFullScreen) {
-                throw "Desktop shell did not enter true fullscreen after relaunch."
+                throw "Visual host did not enter true fullscreen after long-run soak relaunch."
             }
             $summary.FullScreenToggleStatus = "Completed"
             Write-SummaryFiles
@@ -2745,10 +2752,16 @@ try {
         }
 
         $summary.DesktopPhaseStatus = "Completed"
+        if ($isLongRunSoak) {
+            $summary.ScreensaverPhaseStatus = "Completed"
+        }
         Write-SummaryFiles
     }
     catch {
         $summary.DesktopPhaseStatus = "Failed"
+        if ($isLongRunSoak -and $summary.ScreensaverPhaseStatus -eq "Running") {
+            $summary.ScreensaverPhaseStatus = "Failed"
+        }
         $summary.Notes += "Desktop phase error: $($_.Exception.Message)"
         Write-SummaryFiles
     }
