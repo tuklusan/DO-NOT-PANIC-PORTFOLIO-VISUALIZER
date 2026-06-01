@@ -335,7 +335,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 Symbol = "AAPL",
                 LastText = "190.00",
                 ChangeText = "+1.00%",
-                Points = [new Point(0, 12), new Point(10, 4)],
+                LatestSegmentPoints = [new Point(0, 12), new Point(10, 4)],
                 IsVisible = true
             };
 
