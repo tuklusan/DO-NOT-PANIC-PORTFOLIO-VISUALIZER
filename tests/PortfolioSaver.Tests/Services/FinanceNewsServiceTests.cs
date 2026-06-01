@@ -300,6 +300,56 @@ public sealed class FinanceNewsServiceTests
         Assert.Contains(headlines, headline => headline.Contains("Waiting for summarized financial news", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task GetHeadlinesAsync_SummarizedMode_CachesRssFallbackAfterDeepSeekFailure()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        int rssRequestCount = 0;
+        int deepSeekRequestCount = 0;
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                rssRequestCount++;
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    <rss><channel><item><title>Markets brace for a volatile week as oil and bonds diverge</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            deepSeekRequestCount++;
+            return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+            {
+                Content = new StringContent("service unavailable", Encoding.UTF8, "text/plain")
+            };
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
+            NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
+            NewsRefreshMinutes = 15,
+            DeepSeekApiKey = "test-deepseek-key"
+        };
+
+        IReadOnlyList<string> first = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+        IReadOnlyList<string> second = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+        Assert.Single(first);
+        Assert.Equal(first, second);
+        Assert.Equal(3, rssRequestCount);
+        Assert.Equal(1, deepSeekRequestCount);
+        Assert.Contains("Markets brace for a volatile week as oil and bonds diverge", first[0], StringComparison.Ordinal);
+    }
+
     private sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)

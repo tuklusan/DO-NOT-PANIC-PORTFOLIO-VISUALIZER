@@ -100,13 +100,13 @@ public sealed class FinanceNewsService
 
         try
         {
-            List<string> headlines = mode switch
+            NewsFetchResult fetchResult = mode switch
             {
-                NewsScrollerMode.RssFeed => await FetchRssHeadlinesAsync(httpClient, requestUrl, cancellationToken),
+                NewsScrollerMode.RssFeed => new(await FetchRssHeadlinesAsync(httpClient, requestUrl, cancellationToken), false),
                 _ => await FetchSummarizedFinancialNewsAsync(httpClient, settings, cancellationToken)
             };
 
-            if (headlines.Count == 0)
+            if (fetchResult.Headlines.Count == 0)
             {
                 TraceNewsState(
                     "NewsFetchEmpty",
@@ -118,14 +118,16 @@ public sealed class FinanceNewsService
             TraceNewsState(
                 "NewsFetchComplete",
                 new KeyValuePair<string, object?>("mode", mode),
-                new KeyValuePair<string, object?>("headline_count", headlines.Count));
+                new KeyValuePair<string, object?>("headline_count", fetchResult.Headlines.Count),
+                new KeyValuePair<string, object?>("used_fallback", fetchResult.UsedFallback));
 
             NewsHeadlineCache refreshed = new()
             {
                 FetchTimestampUtc = DateTimeOffset.UtcNow,
                 FeedUrl = requestUrl,
                 ModeKey = GetModeKey(mode),
-                Headlines = headlines
+                Headlines = fetchResult.Headlines,
+                UsedFallback = fetchResult.UsedFallback
             };
 
             await SaveCacheAsync(refreshed, cancellationToken);
@@ -189,77 +191,88 @@ public sealed class FinanceNewsService
         return headlines;
     }
 
-    private async Task<List<string>> FetchSummarizedFinancialNewsAsync(
+    private async Task<NewsFetchResult> FetchSummarizedFinancialNewsAsync(
         HttpClient httpClient,
         AppSettings settings,
         CancellationToken cancellationToken)
     {
         string apiKey = ResolveDeepSeekApiKey(settings.DeepSeekApiKey);
         if (string.IsNullOrWhiteSpace(apiKey))
-            return [];
+            return new([], false);
 
         SummarizedNewsContext context = await FetchSummarizedNewsContextAsync(httpClient, settings, cancellationToken);
         if (context.Headlines.Count == 0)
-            return [];
+            return new([], false);
 
-        var payload = new
+        try
         {
-            model = DeepSeekModel,
-            temperature = 0.2,
-            max_tokens = 900,
-            messages = new object[]
+            var payload = new
             {
-                new
+                model = DeepSeekModel,
+                temperature = 0.2,
+                max_tokens = 900,
+                messages = new object[]
                 {
-                    role = "system",
-                    content = "You are given freshly fetched internet headlines. Rewrite only the supplied facts. Do not claim to have browsed the web yourself. Do not introduce, infer, update, correct, or embellish facts beyond the supplied text. Never include investment recommendations, stock-picking language, or advice about whether an asset is a buy, sell, or hold. Preserve a compact, display-friendly output. Use the exact marker format requested by the user prompt."
-                },
-                new
-                {
-                    role = "user",
-                    content = BuildSummarizedNewsPrompt(settings.DeepSeekWritingStyle, context)
+                    new
+                    {
+                        role = "system",
+                        content = "You are given freshly fetched internet headlines. Rewrite only the supplied facts. Do not claim to have browsed the web yourself. Do not introduce, infer, update, correct, or embellish facts beyond the supplied text. Never include investment recommendations, stock-picking language, or advice about whether an asset is a buy, sell, or hold. Preserve a compact, display-friendly output. Use the exact marker format requested by the user prompt."
+                    },
+                    new
+                    {
+                        role = "user",
+                        content = BuildSummarizedNewsPrompt(settings.DeepSeekWritingStyle, context)
+                    }
                 }
+            };
+
+            using HttpRequestMessage request = new(HttpMethod.Post, DeepSeekApiUrl);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            request.Content = new StringContent(
+                JsonSerializer.Serialize(payload),
+                Encoding.UTF8,
+                "application/json");
+
+            using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+
+            if (!document.RootElement.TryGetProperty("choices", out JsonElement choicesElement) ||
+                choicesElement.ValueKind != JsonValueKind.Array ||
+                choicesElement.GetArrayLength() == 0)
+            {
+                return CreateSummarizedFallbackResult(context.Headlines, "empty-choices");
             }
-        };
 
-        using HttpRequestMessage request = new(HttpMethod.Post, DeepSeekApiUrl);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        request.Content = new StringContent(
-            JsonSerializer.Serialize(payload),
-            Encoding.UTF8,
-            "application/json");
+            JsonElement firstChoice = choicesElement[0];
+            if (!firstChoice.TryGetProperty("message", out JsonElement messageElement) ||
+                !messageElement.TryGetProperty("content", out JsonElement contentElement))
+            {
+                return CreateSummarizedFallbackResult(context.Headlines, "missing-message-content");
+            }
 
-        using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            List<string> summarizedItems = ParseSummarizedNewsItems(contentElement.GetString());
+            TraceNewsState(
+                "NewsParseComplete",
+                new KeyValuePair<string, object?>("mode", NewsScrollerMode.SummarizedFinancialNews),
+                new KeyValuePair<string, object?>("source_headline_count", context.Headlines.Count),
+                new KeyValuePair<string, object?>("item_count", summarizedItems.Count),
+                new KeyValuePair<string, object?>("writing_style", settings.DeepSeekWritingStyle));
+            if (summarizedItems.Count == 0)
+                return CreateSummarizedFallbackResult(context.Headlines, "empty-summary-items");
 
-        if (!document.RootElement.TryGetProperty("choices", out JsonElement choicesElement) ||
-            choicesElement.ValueKind != JsonValueKind.Array ||
-            choicesElement.GetArrayLength() == 0)
-        {
-            return [];
+            summarizedItems.Add(BuildClosingQuoteHeadline(settings.DeepSeekWritingStyle));
+            return new(summarizedItems, false);
         }
-
-        JsonElement firstChoice = choicesElement[0];
-        if (!firstChoice.TryGetProperty("message", out JsonElement messageElement) ||
-            !messageElement.TryGetProperty("content", out JsonElement contentElement))
+        catch (OperationCanceledException)
         {
-            return [];
+            throw;
         }
-
-        List<string> summarizedItems = ParseSummarizedNewsItems(contentElement.GetString());
-        TraceNewsState(
-            "NewsParseComplete",
-            new KeyValuePair<string, object?>("mode", NewsScrollerMode.SummarizedFinancialNews),
-            new KeyValuePair<string, object?>("source_headline_count", context.Headlines.Count),
-            new KeyValuePair<string, object?>("item_count", summarizedItems.Count),
-            new KeyValuePair<string, object?>("writing_style", settings.DeepSeekWritingStyle));
-        if (summarizedItems.Count == 0)
-            return [];
-
-        summarizedItems.Add(BuildClosingQuoteHeadline(settings.DeepSeekWritingStyle));
-        return summarizedItems;
+        catch
+        {
+            return CreateSummarizedFallbackResult(context.Headlines, "deepseek-request-failed");
+        }
     }
 
     private static async Task<SummarizedNewsContext> FetchSummarizedNewsContextAsync(
@@ -508,6 +521,26 @@ public sealed class FinanceNewsService
     private sealed record SummarizedNewsContext(
         DateTimeOffset CapturedAtUtc,
         IReadOnlyList<string> Headlines);
+
+    private sealed record NewsFetchResult(
+        IReadOnlyList<string> Headlines,
+        bool UsedFallback);
+
+    private static NewsFetchResult CreateSummarizedFallbackResult(IReadOnlyList<string> sourceHeadlines, string reason)
+    {
+        List<string> fallbackHeadlines = sourceHeadlines
+            .Where(headline => !string.IsNullOrWhiteSpace(headline))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(6)
+            .ToList();
+
+        TraceNewsState(
+            "NewsSummaryFallbackActivated",
+            new KeyValuePair<string, object?>("reason", reason),
+            new KeyValuePair<string, object?>("headline_count", fallbackHeadlines.Count));
+
+        return new(fallbackHeadlines, fallbackHeadlines.Count > 0);
+    }
 }
 
 public sealed class NewsHeadlineCache
@@ -515,5 +548,6 @@ public sealed class NewsHeadlineCache
     public DateTimeOffset FetchTimestampUtc { get; set; }
     public string FeedUrl { get; set; } = string.Empty;
     public string ModeKey { get; set; } = string.Empty;
+    public bool UsedFallback { get; set; }
     public List<string> Headlines { get; set; } = [];
 }
