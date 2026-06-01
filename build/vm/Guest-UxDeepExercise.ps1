@@ -173,8 +173,8 @@ $results = Join-Path $ResultRootPath $resultName
 
 New-Item -ItemType Directory -Force -Path $results | Out-Null
 
-$script:vmBackgroundChangeSeconds = 20
 $isLongRunSoak = $ScreensaverDurationMinutes -ge 120
+$script:vmBackgroundChangeSeconds = if ($isLongRunSoak) { 300 } else { 20 }
 $effectiveCaptureIntervalSeconds = if ($ScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }
 $targetFrames = [Math]::Max(1, [int][Math]::Ceiling(($ScreensaverDurationMinutes * 60.0) / $effectiveCaptureIntervalSeconds))
 $previousDisableInputExit = $null
