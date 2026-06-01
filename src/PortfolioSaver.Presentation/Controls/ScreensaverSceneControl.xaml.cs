@@ -2936,10 +2936,10 @@ public partial class ScreensaverSceneControl : UserControl
             incoming.Opacity = 0.45d;
             outgoing.Source = incomingBitmap;
             outgoing.Opacity = 0.45d;
-            incoming.Source = incomingBitmap;
+            incoming.Source = null;
             incoming.Opacity = 0d;
-            _activeBackgroundImage = outgoing;
-            _inactiveBackgroundImage = incoming;
+            _activeBackgroundImage = BackgroundImageA;
+            _inactiveBackgroundImage = BackgroundImageB;
             _backgroundTransitionInFlight = false;
             TraceSceneState(
                 "BackgroundTransitionComplete",
