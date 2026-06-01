@@ -33,8 +33,8 @@ public partial class ScreensaverSceneControl : UserControl
     private const string PinnedNycExchangeKey = "NewYorkNasdaq";
     private const int MaxVisibleGraphCards = 16;
     private static readonly TimeSpan GraphSelectionRefreshInterval = TimeSpan.FromMinutes(10);
-    private static readonly TimeSpan MacroLaneMinimumRefreshInterval = TimeSpan.FromSeconds(2);
-    private static readonly TimeSpan WorldMarketsLaneMinimumRefreshInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan MacroLaneMinimumRefreshInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan WorldMarketsLaneMinimumRefreshInterval = TimeSpan.FromSeconds(5);
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly ObservableCollection<MarketSpriteViewModel> _marketSprites = [];
     private readonly ObservableCollection<TapeViewModel> _tapes = [];
