@@ -249,6 +249,7 @@ public sealed class StartupCoordinator
         List<(TickerGroup Group, TickerItem Ticker)> graphPairs = SelectGraphTickerPairs(settings).ToList();
         Dictionary<string, TickerHistorySnapshot> cachedBySymbol = new(StringComparer.OrdinalIgnoreCase);
         List<string> liveFetchSymbols = [];
+        HashSet<string> yieldedSymbols = new(StringComparer.OrdinalIgnoreCase);
 
         foreach ((TickerGroup group, TickerItem ticker) in graphPairs)
         {
@@ -260,6 +261,7 @@ public sealed class StartupCoordinator
             {
                 cachedBySymbol[ticker.Symbol] = cached;
                 TraceGraph($"Graph warmup using cache for {ticker.Symbol} with {cached.Points.Count} points.");
+                yieldedSymbols.Add(ticker.Symbol);
                 yield return BuildGraph(group.Name, cached, settings);
             }
 
@@ -309,7 +311,21 @@ public sealed class StartupCoordinator
             }
 
             TraceGraph($"Graph warmup fetched live history for {ticker.Symbol} with {refreshed.Points.Count} points.");
+            yieldedSymbols.Add(ticker.Symbol);
             yield return BuildGraph(group.Name, refreshed, settings);
+        }
+
+        foreach ((TickerGroup group, TickerItem ticker) in graphPairs)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (yieldedSymbols.Contains(ticker.Symbol))
+                continue;
+
+            if (!TryCreateFallbackGraphSnapshot(ticker.Symbol, graphLookbackDays, out TickerHistorySnapshot? fallbackSnapshot))
+                continue;
+
+            TraceGraph($"Graph warmup using quote fallback for {ticker.Symbol}.");
+            yield return BuildGraph(group.Name, fallbackSnapshot, settings);
         }
     }
 
@@ -581,6 +597,43 @@ public sealed class StartupCoordinator
         graph.PlotHeight = 40;
         graph.BounceWithinViewport = settings.EnableBouncingGraphCards;
         return graph;
+    }
+
+    private bool TryCreateFallbackGraphSnapshot(string symbol, int lookbackDays, out TickerHistorySnapshot? snapshot)
+    {
+        snapshot = null;
+        if (!_runtimeQuoteMemory.TryGetValue(symbol, out QuoteSnapshot? quote))
+            return false;
+
+        decimal? last = quote.Last ?? quote.PreviousClose;
+        if (last is not decimal lastValue)
+            return false;
+
+        decimal anchorValue = quote.PreviousClose ?? lastValue;
+        DateTimeOffset nowUtc = quote.FetchTimestampUtc == DateTimeOffset.MinValue
+            ? DateTimeOffset.UtcNow
+            : quote.FetchTimestampUtc;
+
+        snapshot = new TickerHistorySnapshot
+        {
+            Symbol = symbol,
+            FetchTimestampUtc = nowUtc,
+            LookbackDays = lookbackDays,
+            Points =
+            [
+                new HistoricalPricePoint
+                {
+                    TimestampUtc = nowUtc.AddMinutes(-15),
+                    Close = anchorValue
+                },
+                new HistoricalPricePoint
+                {
+                    TimestampUtc = nowUtc,
+                    Close = lastValue
+                }
+            ]
+        };
+        return true;
     }
 
     private static bool SnapshotsEquivalent(TickerHistorySnapshot left, TickerHistorySnapshot right)
