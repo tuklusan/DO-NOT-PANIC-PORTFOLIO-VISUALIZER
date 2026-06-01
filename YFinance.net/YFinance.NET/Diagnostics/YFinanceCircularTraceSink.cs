@@ -46,11 +46,15 @@ public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
 
     private static string GetAppDataDirectory()
     {
-        string? overrideRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
-        if (!string.IsNullOrWhiteSpace(overrideRoot))
-            return Path.GetFullPath(overrideRoot.Trim());
+        string? localOverride = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        if (!string.IsNullOrWhiteSpace(localOverride))
+            return Path.GetFullPath(localOverride.Trim());
 
-        string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PortfolioSaver");
+        string? legacyOverride = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        if (!string.IsNullOrWhiteSpace(legacyOverride))
+            return Path.GetFullPath(legacyOverride.Trim());
+
+        string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PortfolioSaver");
         Directory.CreateDirectory(path);
         return path;
     }

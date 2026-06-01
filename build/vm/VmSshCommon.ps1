@@ -278,7 +278,7 @@ if (Test-Path `$repoRoot) {
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-`$traceRoot = Join-Path `$env:APPDATA 'PortfolioSaver\Trace'
+`$traceRoot = Join-Path `$env:LOCALAPPDATA 'PortfolioSaver\Trace'
 if (Test-Path `$traceRoot) {
     Remove-Item -LiteralPath `$traceRoot -Recurse -Force -ErrorAction SilentlyContinue
 }

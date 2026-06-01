@@ -133,7 +133,7 @@ public sealed class ConfigTextConsistencyTests
         Assert.True(tooltipCount >= 5, "Expected every visible help badge to carry a tooltip.");
         Assert.Contains("Market data now runs through YFinance.NET only.", xaml, StringComparison.Ordinal);
         Assert.Contains("Summarized Financial News uses the DeepSeek API key from the config screen, protected local secret storage, or environment overrides", xaml, StringComparison.Ordinal);
-        Assert.Contains("Managed exchange photos are cached under AppData.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Managed exchange photos are cached under Local AppData.", xaml, StringComparison.Ordinal);
         Assert.Contains("Ticker names auto-fill during Apply when validation can resolve them.", xaml, StringComparison.Ordinal);
         Assert.Contains("Advanced settings now cover the news scroller and the fixed YFinance.NET runtime profile.", xaml, StringComparison.Ordinal);
     }

@@ -70,6 +70,8 @@ For legacy parser/config routing checks:
 - Quotes load from the current YFinance.NET-backed Yahoo runtime lane.
 - One-by-one YFinance.NET work respects the 1-second pacing floor, and live caches/metadata should not stay older than 10 minutes.
 - History fetch does not run on every live quote refresh.
+- `%LocalAppData%\PortfolioSaver\settings.json` exists for the installed app settings root.
+- `%LocalAppData%\PortfolioSaver\provider-secrets.json` exists only when protected provider secrets have been saved.
 - `%LocalAppData%\PortfolioSaver\Caches\History` exists and purges files older than 14 days.
 - Summarized news uses DeepSeek no more often than every 15 minutes and falls back cleanly when the key is unavailable.
 

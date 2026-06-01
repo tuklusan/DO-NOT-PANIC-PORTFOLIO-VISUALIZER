@@ -50,8 +50,8 @@ Official MIT reference:
 
 ## Data, Caching, and Runtime Paths
 
-- Settings file: `%AppData%\PortfolioSaver\settings.json`
-- Protected secret store: `%AppData%\PortfolioSaver\provider-secrets.json`
+- Settings file: `%LocalAppData%\PortfolioSaver\settings.json`
+- Protected secret store: `%LocalAppData%\PortfolioSaver\provider-secrets.json`
 - News cache: `%LocalAppData%\PortfolioSaver\finance-news-cache.json`
 - Historical cache: `%LocalAppData%\PortfolioSaver\Caches\History`
 - Cache policy:

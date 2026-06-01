@@ -17,6 +17,8 @@ namespace YFinance.NET.Server.Hosting;
 
 internal static class YFinanceServerProgram
 {
+    private static readonly string TraceRoot = ResolveTraceRoot();
+
     public static int Run(string[] args)
     {
         ServerOptions options = ServerOptions.Parse(args);
@@ -227,7 +229,7 @@ internal static class YFinanceServerProgram
                 ProtocolOperations.Hello => CreateOk(request, HandleHello(request.Payload.Deserialize<HelloRequestDto>(ProtocolJson.SerializerOptions), options, getActiveConnections())),
                 ProtocolOperations.Goodbye => CreateOk(request, new EmptyPayload()),
                 ProtocolOperations.Health => CreateOk(request, new HealthResponseDto("ok", (DateTimeOffset.UtcNow - startedUtc).TotalSeconds, getActiveConnections(), 0, options.OwnedMode ? "owned" : "standalone")),
-                ProtocolOperations.GetServerStatus => CreateOk(request, new ServerStatusResponseDto("BETA-6", ProtocolConstants.Version, options.OwnedMode ? "owned" : "standalone", options.Port, getActiveConnections(), options.MaxConcurrentClients, 0, options.OwnerProcessId, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PortfolioSaver", "Trace", "yfinance.circular.log"))),
+                ProtocolOperations.GetServerStatus => CreateOk(request, new ServerStatusResponseDto("BETA-6", ProtocolConstants.Version, options.OwnedMode ? "owned" : "standalone", options.Port, getActiveConnections(), options.MaxConcurrentClients, 0, options.OwnerProcessId, Path.Combine(TraceRoot, "Trace", "yfinance.circular.log"))),
                 ProtocolOperations.GetQuote => CreateOk(request, await HandleGetQuoteAsync(request.Payload.Deserialize<GetQuoteRequestDto>(ProtocolJson.SerializerOptions), client, cancellationToken).ConfigureAwait(false)),
                 ProtocolOperations.GetQuotes => CreateOk(request, await HandleGetQuotesAsync(request.Payload.Deserialize<GetQuotesRequestDto>(ProtocolJson.SerializerOptions), client, cancellationToken).ConfigureAwait(false)),
                 ProtocolOperations.GetHistory => CreateOk(request, await HandleGetHistoryAsync(request.Payload.Deserialize<GetHistoryRequestDto>(ProtocolJson.SerializerOptions), client, cancellationToken).ConfigureAwait(false)),
@@ -340,4 +342,17 @@ internal static class YFinanceServerProgram
 
     private static bool IsRetryable(Exception ex)
         => ex is HttpRequestException or TaskCanceledException or TimeoutException;
+
+    private static string ResolveTraceRoot()
+    {
+        string? localOverride = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        if (!string.IsNullOrWhiteSpace(localOverride))
+            return Path.GetFullPath(localOverride.Trim());
+
+        string? legacyOverride = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        if (!string.IsNullOrWhiteSpace(legacyOverride))
+            return Path.GetFullPath(legacyOverride.Trim());
+
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PortfolioSaver");
+    }
 }

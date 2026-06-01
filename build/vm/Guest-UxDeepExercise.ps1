@@ -264,11 +264,14 @@ function Capture-Screen {
 }
 
 function Apply-HarnessSettingsOverrides {
-    $appDataRoot = if ([string]::IsNullOrWhiteSpace($env:PORTFOLIOSAVER_APPDATA_ROOT)) {
-        Join-Path $env:APPDATA 'PortfolioSaver'
+    $appDataRoot = if (-not [string]::IsNullOrWhiteSpace($env:PORTFOLIOSAVER_LOCALDATA_ROOT)) {
+        $env:PORTFOLIOSAVER_LOCALDATA_ROOT
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($env:PORTFOLIOSAVER_APPDATA_ROOT)) {
+        $env:PORTFOLIOSAVER_APPDATA_ROOT
     }
     else {
-        $env:PORTFOLIOSAVER_APPDATA_ROOT
+        Join-Path $env:LOCALAPPDATA 'PortfolioSaver'
     }
 
     New-Item -ItemType Directory -Force -Path $appDataRoot | Out-Null
@@ -980,7 +983,7 @@ function Write-TextFileWithRetry {
 }
 
 function Reset-PortfolioTraceRoot {
-    $traceRoot = Join-Path $env:APPDATA "PortfolioSaver\Trace"
+    $traceRoot = Join-Path $env:LOCALAPPDATA "PortfolioSaver\Trace"
     if (Test-Path $traceRoot) {
         Remove-Item -LiteralPath $traceRoot -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -1424,7 +1427,7 @@ function Write-ReferenceSpotCheck {
 }
 
 function Get-LatestDisplayedTapeSample {
-    $tracePath = Join-Path $env:APPDATA 'PortfolioSaver\Trace\trace.circular.log'
+    $tracePath = Join-Path $env:LOCALAPPDATA 'PortfolioSaver\Trace\trace.circular.log'
     if (-not (Test-Path $tracePath)) {
         return @()
     }
@@ -1481,7 +1484,7 @@ function Test-IsDisplayedSampleFullyLive {
 }
 
 function Get-PreferredDisplayedTapeSample {
-    $tracePath = Join-Path $env:APPDATA 'PortfolioSaver\Trace\trace.circular.log'
+    $tracePath = Join-Path $env:LOCALAPPDATA 'PortfolioSaver\Trace\trace.circular.log'
     if (-not (Test-Path $tracePath)) {
         return @()
     }
@@ -2787,7 +2790,7 @@ finally {
     Write-SummaryFiles
     Stop-Transcript | Out-Null
     try {
-        $traceRoot = Join-Path $env:APPDATA "PortfolioSaver\Trace"
+        $traceRoot = Join-Path $env:LOCALAPPDATA "PortfolioSaver\Trace"
         $localTraceTarget = Join-Path $results 'trace'
         if (Test-Path $traceRoot) {
             New-Item -ItemType Directory -Force -Path $localTraceTarget | Out-Null

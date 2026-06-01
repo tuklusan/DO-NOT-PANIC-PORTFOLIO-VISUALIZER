@@ -55,11 +55,20 @@ if (-not (Test-Path $sourceRoot)) {
 $installRoot = Get-NativeSystemDirectory
 $installRootDisplay = Join-Path $env:WINDIR "System32"
 $stateRoot = Join-Path $env:ProgramData "PortfolioSaverScreensaver"
+$localDataRoot = Join-Path $env:LOCALAPPDATA "PortfolioSaver"
 $manifestPath = Join-Path $stateRoot "installed-files.txt"
 $uninstallScriptTarget = Join-Path $stateRoot "Uninstall-PortfolioSaverScreensaver.ps1"
 $uninstallRegistryKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\PortfolioSaverScreensaver"
 
 New-Item -ItemType Directory -Force -Path $stateRoot | Out-Null
+foreach ($path in @(
+    $localDataRoot,
+    (Join-Path $localDataRoot "Trace"),
+    (Join-Path $localDataRoot "Backgrounds\ExchangePhotoCache"),
+    (Join-Path $localDataRoot "Caches\History")
+)) {
+    New-Item -ItemType Directory -Force -Path $path | Out-Null
+}
 
 $installedPaths = New-Object System.Collections.Generic.List[string]
 $directories = Get-ChildItem $sourceRoot -Recurse -Directory | Sort-Object FullName
