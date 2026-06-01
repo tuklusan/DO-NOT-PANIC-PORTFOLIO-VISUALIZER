@@ -203,7 +203,7 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void BackgroundTransition_UsesStableCrossfade_AndKeepsSlowZoomLoop()
+    public void BackgroundTransition_PreloadsBitmap_AndKeepsSlowZoomLoopLightweight()
     {
         string codeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
@@ -221,13 +221,18 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("\"BackgroundZoomStopped\"", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void SetBackgroundZoomRunning(bool enabled, string reason)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("if (bitmap.CanFreeze)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private static Task<BitmapImage> CreateBackgroundBitmapAsync(string path)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("_backgroundTransitionInFlight", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("SetBackgroundZoomRunning(false, \"background-transitioning\");", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan duration = TimeSpan.FromMilliseconds(450);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("AnimateBackgroundProperty(incoming, Image.OpacityProperty, 0d, 0.45d, duration, ease);", codeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("AnimateBackgroundProperty(outgoing, Image.OpacityProperty", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("switch (_random.Next(3))", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("AnimateBackgroundTranslation(incoming", codeBehind, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Defaults_UseTwoMinuteBackgroundRotationBaseline()
+    public void Defaults_UseFiveMinuteBackgroundRotationBaseline()
     {
         AppSettings settings = Defaults.CreateSettings();
 
