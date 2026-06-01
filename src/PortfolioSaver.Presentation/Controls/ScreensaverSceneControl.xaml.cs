@@ -33,8 +33,8 @@ public partial class ScreensaverSceneControl : UserControl
     private const string PinnedNycExchangeKey = "NewYorkNasdaq";
     private const int MaxVisibleGraphCards = 16;
     private static readonly TimeSpan GraphSelectionRefreshInterval = TimeSpan.FromMinutes(10);
-    private static readonly TimeSpan MacroLaneMinimumRefreshInterval = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan WorldMarketsLaneMinimumRefreshInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan MacroLaneMinimumRefreshInterval = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan WorldMarketsLaneMinimumRefreshInterval = TimeSpan.FromSeconds(15);
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly ObservableCollection<MarketSpriteViewModel> _marketSprites = [];
     private readonly ObservableCollection<TapeViewModel> _tapes = [];
@@ -2936,7 +2936,7 @@ public partial class ScreensaverSceneControl : UserControl
             incoming.Opacity = 0.45d;
             outgoing.Source = incomingBitmap;
             outgoing.Opacity = 0.45d;
-            incoming.Source = null;
+            incoming.Source = incomingBitmap;
             incoming.Opacity = 0d;
             _activeBackgroundImage = outgoing;
             _inactiveBackgroundImage = incoming;
@@ -3555,23 +3555,29 @@ public partial class ScreensaverSceneControl : UserControl
             return;
         }
 
-        if (quote.IsStale)
-        {
-            graph.IsVisible = false;
-            graph.LastText = string.Empty;
-            graph.ChangeText = string.Empty;
-            graph.ChangeForeground = Brushes.Gainsboro;
-            return;
-        }
-
-        graph.IsVisible = true;
-
         decimal? last = quote.Last ?? quote.PreviousClose;
         decimal? percent = quote.ChangePercent;
         string lastText = last is decimal lastValue ? lastValue.ToString("0.00") : string.Empty;
         string changeText = percent is decimal percentValue
             ? $"{(percentValue >= 0 ? "+" : string.Empty)}{percentValue:0.00}%"
             : string.Empty;
+
+        if (quote.IsStale)
+        {
+            graph.IsVisible = !string.IsNullOrWhiteSpace(lastText) ||
+                              graph.Points.Count > 1 ||
+                              graph.GreenSegments.Count > 0 ||
+                              graph.RedSegments.Count > 0;
+            if (!string.IsNullOrWhiteSpace(lastText))
+                graph.LastText = lastText;
+            if (!string.IsNullOrWhiteSpace(changeText))
+                graph.ChangeText = changeText;
+            graph.ChangeForeground = Brushes.Goldenrod;
+            graph.LatestSegmentBrush = Brushes.Goldenrod;
+            return;
+        }
+
+        graph.IsVisible = true;
         Brush changeBrush = percent switch
         {
             > 0m => Brushes.LimeGreen,
@@ -3651,13 +3657,13 @@ public partial class ScreensaverSceneControl : UserControl
 
         SyncTapes(_startupCoordinator.BuildTapesForQuotes(_settings, _latestQuotes));
         UpdateStatusFreshnessText();
-        if (deltaQuotes.Keys.Any(IsMacroSymbol))
+        if (HasMeaningfulMacroDelta(deltaQuotes))
             QueueMacroRefresh("quote-delta");
 
         foreach (FloatingGraphViewModel graph in _graphs.Where(graph => deltaQuotes.ContainsKey(graph.Symbol)))
             ApplyQuoteToGraph(graph);
 
-        if (deltaQuotes.Keys.Any(IsClockMarketSymbol))
+        if (HasMeaningfulWorldMarketDelta(deltaQuotes))
             QueueWorldMarketsRefresh(refreshAncillary: false, reason: "quote-delta");
 
         TraceDisplayedTapeSample();
@@ -3694,6 +3700,25 @@ public partial class ScreensaverSceneControl : UserControl
 
     private bool IsClockMarketSymbol(string symbol)
         => _clockViewModel?.Cities.Any(city => string.Equals(city.ExchangeSymbol, symbol, StringComparison.OrdinalIgnoreCase)) ?? false;
+
+    private bool HasMeaningfulMacroDelta(IReadOnlyDictionary<string, QuoteSnapshot> deltaQuotes)
+        => deltaQuotes.Any(pair => IsMacroSymbol(pair.Key) && HasMeaningfulQuoteDelta(pair.Key, pair.Value));
+
+    private bool HasMeaningfulWorldMarketDelta(IReadOnlyDictionary<string, QuoteSnapshot> deltaQuotes)
+        => deltaQuotes.Any(pair => IsClockMarketSymbol(pair.Key) && HasMeaningfulQuoteDelta(pair.Key, pair.Value));
+
+    private bool HasMeaningfulQuoteDelta(string symbol, QuoteSnapshot incoming)
+    {
+        if (!_latestQuotes.TryGetValue(symbol, out QuoteSnapshot? existing))
+            return true;
+
+        return existing.Last != incoming.Last ||
+               existing.PreviousClose != incoming.PreviousClose ||
+               existing.Change != incoming.Change ||
+               existing.ChangePercent != incoming.ChangePercent ||
+               existing.IsStale != incoming.IsStale ||
+               existing.MarketSession != incoming.MarketSession;
+    }
 
 
     private static IReadOnlyDictionary<string, QuoteSnapshot> MergeQuotes(

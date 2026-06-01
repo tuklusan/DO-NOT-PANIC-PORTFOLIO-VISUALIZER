@@ -231,7 +231,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("private bool TryRecoverActiveBackgroundSource()", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundSourceRecovered", codeBehind, StringComparison.Ordinal);
         Assert.Contains("outgoing.Source = incomingBitmap;", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("incoming.Source = null;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("incoming.Source = incomingBitmap;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private BitmapImage? _currentBackgroundBitmap;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_currentBackgroundBitmap = incomingBitmap;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("fallbackBitmap = CreateBackgroundBitmap(_currentBackgroundPath!);", codeBehind, StringComparison.Ordinal);
@@ -321,6 +321,53 @@ public sealed class ScreensaverRenderBehaviorTests
             applyQuoteMethod.Invoke(control, [graph]);
 
             Assert.Equal(1, graph.FlashSequence);
+        });
+    }
+
+    [Fact]
+    public void ApplyQuoteToGraph_StaleQuoteKeepsMoverVisibleUsingLastKnownData()
+    {
+        RunOnSta(() =>
+        {
+            ScreensaverSceneControl control = new();
+            FloatingGraphViewModel graph = new()
+            {
+                Symbol = "AAPL",
+                LastText = "190.00",
+                ChangeText = "+1.00%",
+                Points = [new Point(0, 12), new Point(10, 4)],
+                IsVisible = true
+            };
+
+            Dictionary<string, QuoteSnapshot> quotes = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["AAPL"] = new QuoteSnapshot
+                {
+                    Symbol = "AAPL",
+                    Last = 190m,
+                    ChangePercent = 1m,
+                    FetchTimestampUtc = DateTimeOffset.UtcNow.AddMinutes(-30),
+                    IsStale = true
+                }
+            };
+
+            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+                "_latestQuotes",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_latestQuotes field not found.");
+            latestQuotesField.SetValue(control, quotes);
+
+            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+                "ApplyQuoteToGraph",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
+            applyQuoteMethod.Invoke(control, [graph]);
+
+            Assert.True(graph.IsVisible);
+            Assert.Equal("190.00", graph.LastText);
+            Assert.Equal("+1.00%", graph.ChangeText);
+            Assert.Same(Brushes.Goldenrod, graph.ChangeForeground);
+            Assert.Same(Brushes.Goldenrod, graph.LatestSegmentBrush);
         });
     }
 
