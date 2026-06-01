@@ -126,7 +126,7 @@ public sealed class FinanceNewsService
                 FetchTimestampUtc = DateTimeOffset.UtcNow,
                 FeedUrl = requestUrl,
                 ModeKey = GetModeKey(mode),
-                Headlines = fetchResult.Headlines,
+                Headlines = fetchResult.Headlines.ToList(),
                 UsedFallback = fetchResult.UsedFallback
             };
 
