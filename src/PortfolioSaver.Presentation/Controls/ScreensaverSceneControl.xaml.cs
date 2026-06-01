@@ -2625,7 +2625,7 @@ public partial class ScreensaverSceneControl : UserControl
             _currentBackgroundBitmap = backgroundBitmap;
             BackgroundImageA.Source = backgroundBitmap;
             BackgroundImageA.Opacity = 0.45d;
-            BackgroundImageB.Source = null;
+            BackgroundImageB.Source = backgroundBitmap;
             BackgroundImageB.Opacity = 0d;
             _activeBackgroundImage = BackgroundImageA;
             _inactiveBackgroundImage = BackgroundImageB;
@@ -2644,7 +2644,7 @@ public partial class ScreensaverSceneControl : UserControl
             ResetBackgroundTransform(_inactiveBackgroundImage);
             _activeBackgroundImage.Source = backgroundBitmap;
             _activeBackgroundImage.Opacity = 0.45d;
-            _inactiveBackgroundImage.Source = null;
+            _inactiveBackgroundImage.Source = backgroundBitmap;
             _inactiveBackgroundImage.Opacity = 0d;
             ResetBackgroundZoomState();
             EnsureBackgroundSlowZoomRunning();
@@ -2936,7 +2936,7 @@ public partial class ScreensaverSceneControl : UserControl
             incoming.Opacity = 0.45d;
             outgoing.Source = incomingBitmap;
             outgoing.Opacity = 0.45d;
-            incoming.Source = null;
+            incoming.Source = incomingBitmap;
             incoming.Opacity = 0d;
             _activeBackgroundImage = BackgroundImageA;
             _inactiveBackgroundImage = BackgroundImageB;

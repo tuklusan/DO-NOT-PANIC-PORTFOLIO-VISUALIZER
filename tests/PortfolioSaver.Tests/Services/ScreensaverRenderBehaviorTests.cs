@@ -231,7 +231,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("private bool TryRecoverActiveBackgroundSource()", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundSourceRecovered", codeBehind, StringComparison.Ordinal);
         Assert.Contains("outgoing.Source = incomingBitmap;", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("incoming.Source = null;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("incoming.Source = incomingBitmap;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_activeBackgroundImage = BackgroundImageA;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_inactiveBackgroundImage = BackgroundImageB;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private BitmapImage? _currentBackgroundBitmap;", codeBehind, StringComparison.Ordinal);
