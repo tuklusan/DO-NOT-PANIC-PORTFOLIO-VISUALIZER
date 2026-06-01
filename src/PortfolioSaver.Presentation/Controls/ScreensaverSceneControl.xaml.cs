@@ -57,6 +57,7 @@ public partial class ScreensaverSceneControl : UserControl
     private readonly IQuoteProvider _runtimeQuoteProvider;
     private Image? _activeBackgroundImage;
     private Image? _inactiveBackgroundImage;
+    private BitmapImage? _currentBackgroundBitmap;
 
     private AppSettings _settings = new();
     private FloatingClockViewModel? _clockViewModel;
@@ -2575,6 +2576,7 @@ public partial class ScreensaverSceneControl : UserControl
         if (!IsSupportedBackgroundReference(path))
         {
             _backgroundTransitionInFlight = false;
+            _currentBackgroundBitmap = null;
             SetBackgroundZoomRunning(false, "background-cleared");
             if (_activeBackgroundImage is not null)
                 _activeBackgroundImage.Source = null;
@@ -2589,6 +2591,7 @@ public partial class ScreensaverSceneControl : UserControl
 
         if (_activeBackgroundImage is null || _inactiveBackgroundImage is null)
         {
+            _currentBackgroundBitmap = backgroundBitmap;
             BackgroundImageA.Source = backgroundBitmap;
             BackgroundImageA.Opacity = 0.45d;
             BackgroundImageB.Source = null;
@@ -2603,6 +2606,7 @@ public partial class ScreensaverSceneControl : UserControl
         if (_activeBackgroundImage.Source is null || string.IsNullOrWhiteSpace(_currentBackgroundPath))
         {
             _backgroundTransitionInFlight = false;
+            _currentBackgroundBitmap = backgroundBitmap;
             StopBackgroundAnimations(_activeBackgroundImage);
             StopBackgroundAnimations(_inactiveBackgroundImage);
             ResetBackgroundTransform(_activeBackgroundImage);
@@ -2860,6 +2864,7 @@ public partial class ScreensaverSceneControl : UserControl
             return;
 
         _backgroundTransitionInFlight = true;
+        _currentBackgroundBitmap = incomingBitmap;
         int transitionGeneration = ++_backgroundTransitionGeneration;
         Image incoming = _inactiveBackgroundImage;
         Image outgoing = _activeBackgroundImage;
@@ -2975,16 +2980,46 @@ public partial class ScreensaverSceneControl : UserControl
 
     private bool TryRecoverActiveBackgroundSource()
     {
-        if (_activeBackgroundImage?.Source is not null || _inactiveBackgroundImage?.Source is null)
+        if (_activeBackgroundImage?.Source is not null)
             return false;
 
-        Image recovered = _inactiveBackgroundImage;
-        Image previous = _activeBackgroundImage!;
-        _activeBackgroundImage = recovered;
-        _inactiveBackgroundImage = previous;
-        _activeBackgroundImage.Opacity = 0.45d;
-        _inactiveBackgroundImage.Opacity = 0d;
+        if (_inactiveBackgroundImage?.Source is not null)
+        {
+            Image recovered = _inactiveBackgroundImage;
+            Image previous = _activeBackgroundImage!;
+            _activeBackgroundImage = recovered;
+            _inactiveBackgroundImage = previous;
+            _activeBackgroundImage.Opacity = 0.45d;
+            _inactiveBackgroundImage.Opacity = 0d;
+            ResetBackgroundTransform(_activeBackgroundImage);
+            SetBackgroundScale(_activeBackgroundImage, _backgroundZoomScale, _backgroundZoomScale);
+            return true;
+        }
+
+        if (_activeBackgroundImage is null || _inactiveBackgroundImage is null)
+            return false;
+
+        BitmapImage? fallbackBitmap = _currentBackgroundBitmap;
+        if (fallbackBitmap is null && IsSupportedBackgroundReference(_currentBackgroundPath))
+        {
+            fallbackBitmap = CreateBackgroundBitmap(_currentBackgroundPath!);
+            _currentBackgroundBitmap = fallbackBitmap;
+        }
+
+        if (fallbackBitmap is null)
+            return false;
+
+        _backgroundTransitionCompletionTimer?.Stop();
+        _backgroundTransitionCompletionTimer = null;
+        _backgroundTransitionInFlight = false;
+        StopBackgroundAnimations(_activeBackgroundImage);
+        StopBackgroundAnimations(_inactiveBackgroundImage);
         ResetBackgroundTransform(_activeBackgroundImage);
+        ResetBackgroundTransform(_inactiveBackgroundImage);
+        _activeBackgroundImage.Source = fallbackBitmap;
+        _activeBackgroundImage.Opacity = 0.45d;
+        _inactiveBackgroundImage.Source = fallbackBitmap;
+        _inactiveBackgroundImage.Opacity = 0d;
         SetBackgroundScale(_activeBackgroundImage, _backgroundZoomScale, _backgroundZoomScale);
         return true;
     }
