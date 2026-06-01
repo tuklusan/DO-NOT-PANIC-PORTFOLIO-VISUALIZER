@@ -20,6 +20,7 @@ public sealed class Nb051BehaviorTests
         Assert.Contains("\"WorldMarketsMergeComplete\"", source, StringComparison.Ordinal);
         Assert.Contains("\"WorldMarketsUiPatchComplete\"", source, StringComparison.Ordinal);
         Assert.Contains("QueueWorldMarketsRefresh(refreshAncillary: false, reason: \"quote-delta\");", source, StringComparison.Ordinal);
+        Assert.Contains("HasMeaningfulWorldMarketDelta(previousQuotes, deltaQuotes)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ApplyClockMarketData(force: false)", source, StringComparison.Ordinal);
     }
 

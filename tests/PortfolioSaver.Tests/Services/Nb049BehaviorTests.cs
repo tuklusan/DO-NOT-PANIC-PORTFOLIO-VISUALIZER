@@ -18,6 +18,8 @@ public sealed class Nb049BehaviorTests
         Assert.Contains("\"MacroRefreshStart\"", source, StringComparison.Ordinal);
         Assert.Contains("\"MacroUiPatchComplete\"", source, StringComparison.Ordinal);
         Assert.Contains("QueueMacroRefresh(\"quote-delta\");", source, StringComparison.Ordinal);
+        Assert.Contains("IReadOnlyDictionary<string, QuoteSnapshot> previousQuotes = _latestQuotes;", source, StringComparison.Ordinal);
+        Assert.Contains("HasMeaningfulMacroDelta(previousQuotes, deltaQuotes)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("UpdateStatusMacroMeters(force: true);", source, StringComparison.Ordinal);
     }
 

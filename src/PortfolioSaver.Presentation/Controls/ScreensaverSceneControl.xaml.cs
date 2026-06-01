@@ -3652,18 +3652,19 @@ public partial class ScreensaverSceneControl : UserControl
         foreach (QuoteSnapshot quote in quotes)
             deltaQuotes[quote.Symbol] = quote;
 
+        IReadOnlyDictionary<string, QuoteSnapshot> previousQuotes = _latestQuotes;
         _latestQuotes = MergeQuotes(_latestQuotes, deltaQuotes);
         _startupCoordinator.PrimeRuntimeQuotes(deltaQuotes);
 
         SyncTapes(_startupCoordinator.BuildTapesForQuotes(_settings, _latestQuotes));
         UpdateStatusFreshnessText();
-        if (HasMeaningfulMacroDelta(deltaQuotes))
+        if (HasMeaningfulMacroDelta(previousQuotes, deltaQuotes))
             QueueMacroRefresh("quote-delta");
 
         foreach (FloatingGraphViewModel graph in _graphs.Where(graph => deltaQuotes.ContainsKey(graph.Symbol)))
             ApplyQuoteToGraph(graph);
 
-        if (HasMeaningfulWorldMarketDelta(deltaQuotes))
+        if (HasMeaningfulWorldMarketDelta(previousQuotes, deltaQuotes))
             QueueWorldMarketsRefresh(refreshAncillary: false, reason: "quote-delta");
 
         TraceDisplayedTapeSample();
@@ -3701,15 +3702,22 @@ public partial class ScreensaverSceneControl : UserControl
     private bool IsClockMarketSymbol(string symbol)
         => _clockViewModel?.Cities.Any(city => string.Equals(city.ExchangeSymbol, symbol, StringComparison.OrdinalIgnoreCase)) ?? false;
 
-    private bool HasMeaningfulMacroDelta(IReadOnlyDictionary<string, QuoteSnapshot> deltaQuotes)
-        => deltaQuotes.Any(pair => IsMacroSymbol(pair.Key) && HasMeaningfulQuoteDelta(pair.Key, pair.Value));
+    private bool HasMeaningfulMacroDelta(
+        IReadOnlyDictionary<string, QuoteSnapshot> existingQuotes,
+        IReadOnlyDictionary<string, QuoteSnapshot> deltaQuotes)
+        => deltaQuotes.Any(pair => IsMacroSymbol(pair.Key) && HasMeaningfulQuoteDelta(existingQuotes, pair.Key, pair.Value));
 
-    private bool HasMeaningfulWorldMarketDelta(IReadOnlyDictionary<string, QuoteSnapshot> deltaQuotes)
-        => deltaQuotes.Any(pair => IsClockMarketSymbol(pair.Key) && HasMeaningfulQuoteDelta(pair.Key, pair.Value));
+    private bool HasMeaningfulWorldMarketDelta(
+        IReadOnlyDictionary<string, QuoteSnapshot> existingQuotes,
+        IReadOnlyDictionary<string, QuoteSnapshot> deltaQuotes)
+        => deltaQuotes.Any(pair => IsClockMarketSymbol(pair.Key) && HasMeaningfulQuoteDelta(existingQuotes, pair.Key, pair.Value));
 
-    private bool HasMeaningfulQuoteDelta(string symbol, QuoteSnapshot incoming)
+    private static bool HasMeaningfulQuoteDelta(
+        IReadOnlyDictionary<string, QuoteSnapshot> existingQuotes,
+        string symbol,
+        QuoteSnapshot incoming)
     {
-        if (!_latestQuotes.TryGetValue(symbol, out QuoteSnapshot? existing))
+        if (!existingQuotes.TryGetValue(symbol, out QuoteSnapshot? existing))
             return true;
 
         return existing.Last != incoming.Last ||
