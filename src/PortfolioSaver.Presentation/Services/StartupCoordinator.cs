@@ -321,7 +321,8 @@ public sealed class StartupCoordinator
             if (yieldedSymbols.Contains(ticker.Symbol))
                 continue;
 
-            if (!TryCreateFallbackGraphSnapshot(ticker.Symbol, graphLookbackDays, out TickerHistorySnapshot? fallbackSnapshot))
+            if (!TryCreateFallbackGraphSnapshot(ticker.Symbol, graphLookbackDays, out TickerHistorySnapshot? fallbackSnapshot) ||
+                fallbackSnapshot is null)
                 continue;
 
             TraceGraph($"Graph warmup using quote fallback for {ticker.Symbol}.");
