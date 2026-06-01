@@ -2930,14 +2930,15 @@ public partial class ScreensaverSceneControl : UserControl
                 return;
             }
 
-            ResetBackgroundTransform(incoming);
-            ResetBackgroundTransform(outgoing);
-            SetBackgroundScale(incoming, _backgroundZoomScale, _backgroundZoomScale);
-            incoming.Opacity = 0.45d;
-            outgoing.Source = incomingBitmap;
-            outgoing.Opacity = 0.45d;
-            incoming.Source = incomingBitmap;
-            incoming.Opacity = 0d;
+            StopBackgroundAnimations(BackgroundImageA);
+            StopBackgroundAnimations(BackgroundImageB);
+            ResetBackgroundTransform(BackgroundImageA);
+            ResetBackgroundTransform(BackgroundImageB);
+            BackgroundImageA.Source = incomingBitmap;
+            BackgroundImageA.Opacity = 0.45d;
+            BackgroundImageB.Source = incomingBitmap;
+            BackgroundImageB.Opacity = 0d;
+            SetBackgroundScale(BackgroundImageA, _backgroundZoomScale, _backgroundZoomScale);
             _activeBackgroundImage = BackgroundImageA;
             _inactiveBackgroundImage = BackgroundImageB;
             _backgroundTransitionInFlight = false;
@@ -3013,44 +3014,35 @@ public partial class ScreensaverSceneControl : UserControl
 
     private bool TryRecoverActiveBackgroundSource()
     {
-        if (_activeBackgroundImage?.Source is not null)
+        if (_activeBackgroundImage?.Source is not null && _activeBackgroundImage.Opacity > 0.01d)
             return false;
-
-        if (_inactiveBackgroundImage?.Source is not null)
-        {
-            _activeBackgroundImage!.Source = _inactiveBackgroundImage.Source;
-            _activeBackgroundImage.Opacity = 0.45d;
-            _inactiveBackgroundImage.Opacity = 0d;
-            ResetBackgroundTransform(_activeBackgroundImage);
-            SetBackgroundScale(_activeBackgroundImage, _backgroundZoomScale, _backgroundZoomScale);
-            return true;
-        }
 
         if (_activeBackgroundImage is null || _inactiveBackgroundImage is null)
             return false;
 
-        BitmapImage? fallbackBitmap = _currentBackgroundBitmap;
-        if (fallbackBitmap is null && IsSupportedBackgroundReference(_currentBackgroundPath))
-        {
-            fallbackBitmap = CreateBackgroundBitmap(_currentBackgroundPath!);
-            _currentBackgroundBitmap = fallbackBitmap;
-        }
+        ImageSource? recoverySource = _activeBackgroundImage.Source
+            ?? _inactiveBackgroundImage.Source
+            ?? _currentBackgroundBitmap;
+        if (recoverySource is null && IsSupportedBackgroundReference(_currentBackgroundPath))
+            recoverySource = _currentBackgroundBitmap = CreateBackgroundBitmap(_currentBackgroundPath!);
 
-        if (fallbackBitmap is null)
+        if (recoverySource is null)
             return false;
 
         _backgroundTransitionCompletionTimer?.Stop();
         _backgroundTransitionCompletionTimer = null;
         _backgroundTransitionInFlight = false;
-        StopBackgroundAnimations(_activeBackgroundImage);
-        StopBackgroundAnimations(_inactiveBackgroundImage);
-        ResetBackgroundTransform(_activeBackgroundImage);
-        ResetBackgroundTransform(_inactiveBackgroundImage);
-        _activeBackgroundImage.Source = fallbackBitmap;
-        _activeBackgroundImage.Opacity = 0.45d;
-        _inactiveBackgroundImage.Source = fallbackBitmap;
-        _inactiveBackgroundImage.Opacity = 0d;
-        SetBackgroundScale(_activeBackgroundImage, _backgroundZoomScale, _backgroundZoomScale);
+        StopBackgroundAnimations(BackgroundImageA);
+        StopBackgroundAnimations(BackgroundImageB);
+        ResetBackgroundTransform(BackgroundImageA);
+        ResetBackgroundTransform(BackgroundImageB);
+        BackgroundImageA.Source = recoverySource;
+        BackgroundImageA.Opacity = 0.45d;
+        BackgroundImageB.Source = recoverySource;
+        BackgroundImageB.Opacity = 0d;
+        SetBackgroundScale(BackgroundImageA, _backgroundZoomScale, _backgroundZoomScale);
+        _activeBackgroundImage = BackgroundImageA;
+        _inactiveBackgroundImage = BackgroundImageB;
         return true;
     }
 
