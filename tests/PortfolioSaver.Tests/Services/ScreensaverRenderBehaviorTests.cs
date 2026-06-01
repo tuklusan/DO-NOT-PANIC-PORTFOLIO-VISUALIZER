@@ -221,7 +221,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("\"BackgroundZoomStopped\"", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void SetBackgroundZoomRunning(bool enabled, string reason)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("if (bitmap.CanFreeze)", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("private static Task<BitmapImage> CreateBackgroundBitmapAsync(string path)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private static async Task<byte[]?> PreloadBackgroundBytesAsync(string path)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("byte[]? preloadedBytes = await PreloadBackgroundBytesAsync(backgroundPath).ConfigureAwait(true);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("BitmapImage backgroundBitmap = CreateBackgroundBitmap(backgroundPath, preloadedBytes);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("fileBitmap.StreamSource = memoryStream;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_backgroundTransitionInFlight", codeBehind, StringComparison.Ordinal);
         Assert.Contains("SetBackgroundZoomRunning(false, \"background-transitioning\");", codeBehind, StringComparison.Ordinal);

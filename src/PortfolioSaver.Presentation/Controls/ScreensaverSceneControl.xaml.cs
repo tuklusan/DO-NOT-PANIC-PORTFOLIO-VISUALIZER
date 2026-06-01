@@ -2580,7 +2580,8 @@ public partial class ScreensaverSceneControl : UserControl
         }
 
         string backgroundPath = path!;
-        BitmapImage backgroundBitmap = await CreateBackgroundBitmapAsync(backgroundPath).ConfigureAwait(true);
+        byte[]? preloadedBytes = await PreloadBackgroundBytesAsync(backgroundPath).ConfigureAwait(true);
+        BitmapImage backgroundBitmap = CreateBackgroundBitmap(backgroundPath, preloadedBytes);
 
         if (_activeBackgroundImage is null || _inactiveBackgroundImage is null)
         {
@@ -2969,11 +2970,11 @@ public partial class ScreensaverSceneControl : UserControl
             new KeyValuePair<string, object?>("path", Path.GetFileName(_currentBackgroundPath)));
     }
 
-    private static BitmapImage CreateBackgroundBitmap(string path)
+    private static BitmapImage CreateBackgroundBitmap(string path, byte[]? preloadedBytes = null)
     {
-        if (File.Exists(path))
+        if (preloadedBytes is not null || File.Exists(path))
         {
-            byte[] bytes = File.ReadAllBytes(path);
+            byte[] bytes = preloadedBytes ?? File.ReadAllBytes(path);
             using MemoryStream memoryStream = new(bytes, writable: false);
             BitmapImage fileBitmap = new();
             fileBitmap.BeginInit();
@@ -2995,8 +2996,13 @@ public partial class ScreensaverSceneControl : UserControl
         return bitmap;
     }
 
-    private static Task<BitmapImage> CreateBackgroundBitmapAsync(string path)
-        => Task.Run(() => CreateBackgroundBitmap(path));
+    private static async Task<byte[]?> PreloadBackgroundBytesAsync(string path)
+    {
+        if (!File.Exists(path))
+            return null;
+
+        return await File.ReadAllBytesAsync(path).ConfigureAwait(false);
+    }
 
     private static bool IsSupportedBackgroundReference(string? path)
     {
