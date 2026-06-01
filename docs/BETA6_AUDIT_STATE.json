@@ -821,6 +821,27 @@
         "Reduce background work and trace churn from repeated fallback reparsing, especially during long fullscreen soaks where UI fluidity matters more than minute-by-minute news restyling retries.",
         "Acceptance requires a follow-up soak showing stable cache-hit or explicit fallback behavior rather than repeated minute-by-minute NewsCacheMiss -> RSS parse loops."
       ]
+    },
+    {
+      "id": "NB-057",
+      "tracking_number": "NB-057",
+      "priority": 2,
+      "area": "graph_cards",
+      "title": "Graph-card hydration remains too strict and leaves fewer than 16 visible movers during healthy market hours",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User reported that too few floating graph carts are visible while the market is open.",
+        "Current code selects the top 16 movers but still hides individual graph cards when their quote is stale or their hydration is incomplete, which can leave the scene visibly under-filled even during healthy trading sessions."
+      ],
+      "notes": [
+        "Review graph-card selection, hydration, and visibility rules end-to-end.",
+        "Preserve the top-16 biggest-movers selection requirement from NB-047.",
+        "Do not let transient stale or delayed quote hydration collapse the visible graph-cart population below the intended field fullness unless data is genuinely unavailable.",
+        "Prefer graceful degraded presentation using last-known data or pending-state visuals over hiding cards outright.",
+        "Add trace points so VM runs can prove how many graph cards were selected, hydrated, downgraded to stale visuals, or hidden at any given time.",
+        "Acceptance requires VM-visible proof that the floating graph-cart field stays appropriately populated during open-market runs."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
