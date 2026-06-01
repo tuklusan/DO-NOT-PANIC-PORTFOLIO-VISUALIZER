@@ -230,7 +230,8 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("BackgroundTransitionSkipped", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private bool TryRecoverActiveBackgroundSource()", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundSourceRecovered", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("outgoing.Source = incoming.Source;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("outgoing.Source = incomingBitmap;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("incoming.Source = null;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private BitmapImage? _currentBackgroundBitmap;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_currentBackgroundBitmap = incomingBitmap;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("fallbackBitmap = CreateBackgroundBitmap(_currentBackgroundPath!);", codeBehind, StringComparison.Ordinal);
@@ -239,6 +240,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("TimeSpan duration = TimeSpan.FromMilliseconds(450);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("AnimateBackgroundProperty(incoming, Image.OpacityProperty, 0d, 0.45d, duration, ease);", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("AnimateBackgroundProperty(outgoing, Image.OpacityProperty", codeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("outgoing.Source = incoming.Source;", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("switch (_random.Next(3))", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("AnimateBackgroundTranslation(incoming", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("fileBitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;", codeBehind, StringComparison.Ordinal);

@@ -2903,10 +2903,12 @@ public partial class ScreensaverSceneControl : UserControl
             ResetBackgroundTransform(outgoing);
             SetBackgroundScale(incoming, _backgroundZoomScale, _backgroundZoomScale);
             incoming.Opacity = 0.45d;
-            outgoing.Source = incoming.Source;
-            _activeBackgroundImage = incoming;
-            _inactiveBackgroundImage = outgoing;
-            outgoing.Opacity = 0d;
+            outgoing.Source = incomingBitmap;
+            outgoing.Opacity = 0.45d;
+            incoming.Source = null;
+            incoming.Opacity = 0d;
+            _activeBackgroundImage = outgoing;
+            _inactiveBackgroundImage = incoming;
             _backgroundTransitionInFlight = false;
             TraceSceneState(
                 "BackgroundTransitionComplete",
@@ -2985,10 +2987,7 @@ public partial class ScreensaverSceneControl : UserControl
 
         if (_inactiveBackgroundImage?.Source is not null)
         {
-            Image recovered = _inactiveBackgroundImage;
-            Image previous = _activeBackgroundImage!;
-            _activeBackgroundImage = recovered;
-            _inactiveBackgroundImage = previous;
+            _activeBackgroundImage!.Source = _inactiveBackgroundImage.Source;
             _activeBackgroundImage.Opacity = 0.45d;
             _inactiveBackgroundImage.Opacity = 0d;
             ResetBackgroundTransform(_activeBackgroundImage);
