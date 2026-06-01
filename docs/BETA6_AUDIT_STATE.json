@@ -725,6 +725,102 @@
         "VM proof bundle ux-deep-ssh-20260601-074415 captured the full independent lane: WorldMarketsRefreshStart at 03:52:05Z, WorldMarketsFetchComplete and WorldMarketsMergeComplete at 03:52:19Z, and WorldMarketsUiPatchComplete at 03:52:19Z, followed by repeated quote-driven WorldMarketsUiPatchComplete events such as 03:56:53Z and 03:56:59Z once all 18 exchanges were populated.",
         "The same VM trace shows only the expected startup ApplySceneState structural refreshes while later world-markets updates are emitted as WorldMarketsUiPatchComplete without accompanying scene-wide ApplySceneState calls, which verifies the ribbon refresh is independent of the rest of the dashboard."
       ]
+    },
+    {
+      "id": "NB-052",
+      "tracking_number": "NB-052",
+      "priority": 1,
+      "area": "background_runtime",
+      "title": "Background transition intermittently clears the active image during long fullscreen soak",
+      "status": "open",
+      "source": "soak_trace_analysis",
+      "evidence": [
+        "The real two-hour fullscreen soak completed in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260601-112106 and repeatedly captured black-background frames between otherwise valid backgrounds.",
+        "The trace repeatedly shows BackgroundTransitionComplete followed shortly afterward by BackgroundZoomStopped with reason=source-missing-during-tick, proving the active background source becomes null after successful transitions.",
+        "Representative trace examples include 2026-06-01T09:31:07.765Z -> 2026-06-01T09:31:09.840Z, 2026-06-01T09:32:27.773Z -> 2026-06-01T09:32:29.603Z, and 2026-06-01T09:33:07.876Z -> 2026-06-01T09:33:11.348Z in trace/trace.circular.log.",
+        "Representative screenshot evidence includes desktop-099.png with a valid skyline background, desktop-100.png with the background missing, and desktop-101.png with the background restored."
+      ],
+      "notes": [
+        "Investigate the background transition completion path in ScreensaverSceneControl so an older or stale completion callback cannot null the image that has become active.",
+        "Audit the lifecycle of _activeBackgroundImage, _inactiveBackgroundImage, outgoing.Source = null, and the timer-per-transition callback model for stale generation hazards.",
+        "Acceptance requires a long fullscreen VM soak with no source-missing-during-tick events and no black-background frames in the captured screenshots."
+      ]
+    },
+    {
+      "id": "NB-053",
+      "tracking_number": "NB-053",
+      "priority": 2,
+      "area": "vm_harness_backgrounds",
+      "title": "Long-soak VM harness overrides background rotation far below the product default",
+      "status": "open",
+      "source": "soak_trace_analysis",
+      "evidence": [
+        "The product default is now BackgroundChangeSeconds = 300 in src/PortfolioSaver.Core/Constants/Defaults.cs.",
+        "The two-hour soak harness explicitly overrides BackgroundChangeSeconds to 20 in build/vm/Guest-UxDeepExercise.ps1.",
+        "The soak trace confirms the override through HarnessSettingsOverrideApplied ... background_seconds=20 and repeated BackgroundRotationChosen events at approximately 20-second intervals."
+      ],
+      "notes": [
+        "Separate dedicated background-motion proof runs from ordinary long-soak runs so a standard fullscreen soak honors the product-default background rotation interval unless an explicit override was requested.",
+        "Keep a fast background-rotation override only for targeted visual-transition validation, not for default soak/performance evidence.",
+        "Acceptance requires a normal fullscreen soak that uses the product-default cadence while still preserving a separate short-interval background validation path."
+      ]
+    },
+    {
+      "id": "NB-054",
+      "tracking_number": "NB-054",
+      "priority": 1,
+      "area": "world_markets_runtime",
+      "title": "World Markets lane is still refreshing far too often and creating avoidable UI churn",
+      "status": "open",
+      "source": "soak_trace_analysis",
+      "evidence": [
+        "In the long-soak trace tail, WorldMarketsRefreshStart appears in dense bursts at sub-second to roughly two-second intervals even though the lane is supposed to be independent and the ancillary timer is configured in minutes.",
+        "Representative timestamps from trace/trace.circular.log include 09:30:47.149Z, 09:30:48.006Z, 09:30:48.818Z, 09:30:49.859Z, 09:30:50.328Z, 09:30:51.952Z, and 09:30:52.561Z.",
+        "The same tail contains 237 WorldMarketsRefreshStart and 237 WorldMarketsUiPatchComplete events, which is materially higher than needed for smooth ribbon behavior and directly competes with quote-driven rendering fluidity."
+      ],
+      "notes": [
+        "Throttle or coalesce world-markets lane wakeups so routine quote traffic does not force near-continuous world-ribbon recomputation.",
+        "Prefer patching only when a world-markets-visible value actually changed, and isolate slower ancillary state like weather or exchange timing from high-frequency quote cadence.",
+        "Acceptance requires a follow-up soak where World Markets updates remain independent but no longer fire in bursty sub-second clusters, and the screen feels visually steadier."
+      ]
+    },
+    {
+      "id": "NB-055",
+      "tracking_number": "NB-055",
+      "priority": 1,
+      "area": "macro_runtime",
+      "title": "Macro lane is still refreshing in bursty clusters that undercut UI fluidity",
+      "status": "open",
+      "source": "soak_trace_analysis",
+      "evidence": [
+        "The long-soak trace shows MacroRefreshStart repeatedly firing in tight bursts rather than on a measured macro-specific cadence.",
+        "Representative timestamps from trace/trace.circular.log include 09:31:04.930Z, 09:31:06.180Z, 09:31:07.295Z, 09:31:08.101Z, 09:31:08.785Z, 09:31:10.373Z, and 09:31:10.898Z.",
+        "The same tail contains 109 MacroRefreshStart and 109 MacroUiPatchComplete events, which is too chatty for a small macro card strip and likely contributes to avoidable render churn while quotes are already updating every second."
+      ],
+      "notes": [
+        "Coalesce macro refresh requests so macro cards patch only when a macro-visible symbol changes or on a deliberate macro cadence, not in back-to-back clusters.",
+        "Keep macro rendering surgical and avoid patch bursts that coincide with quote or graph-card updates.",
+        "Acceptance requires a follow-up soak with materially lower macro-lane wake frequency while preserving progressive macro value updates."
+      ]
+    },
+    {
+      "id": "NB-056",
+      "tracking_number": "NB-056",
+      "priority": 2,
+      "area": "news_runtime",
+      "title": "Summarized-news fallback repeatedly misses cache and reparses RSS instead of using a stable cached fallback mode",
+      "status": "open",
+      "source": "soak_trace_analysis",
+      "evidence": [
+        "In the long-soak trace, the scene requests NewsRefreshStart in SummarizedFinancialNews mode roughly every minute while FinanceNewsService repeatedly logs NewsCacheMiss with had_cache=true.",
+        "Those same refreshes then log NewsParseComplete with mode=RssFeed rather than a summarized result, showing the runtime is repeatedly reparsing fallback RSS instead of settling into a stable cached fallback path.",
+        "Representative timestamps include 09:31:44Z, 09:32:59Z, 09:34:14Z, and 09:35:27Z in trace/trace.circular.log."
+      ],
+      "notes": [
+        "Clarify fallback semantics for summarized-news mode when live AI summarization is unavailable so the app can enter a stable cached RSS fallback instead of refetching and reparsing every poll.",
+        "Reduce background work and trace churn from repeated fallback reparsing, especially during long fullscreen soaks where UI fluidity matters more than minute-by-minute news restyling retries.",
+        "Acceptance requires a follow-up soak showing stable cache-hit or explicit fallback behavior rather than repeated minute-by-minute NewsCacheMiss -> RSS parse loops."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
