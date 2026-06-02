@@ -8,6 +8,7 @@
         xmlns:enums="clr-namespace:PortfolioSaver.Core.Enums;assembly=PortfolioSaver.Core"
         mc:Ignorable="d"
         Title="DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-6"
+        Icon="/PortfolioSaver.Shared;component/Assets/Branding/dnppv-icon-rev-3.png"
         Width="940"
         Height="620"
         MinWidth="640"

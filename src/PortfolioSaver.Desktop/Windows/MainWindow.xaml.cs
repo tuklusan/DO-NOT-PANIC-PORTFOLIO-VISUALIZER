@@ -175,14 +175,12 @@ public partial class MainWindow : Window
 
     private void OnAboutClick(object sender, RoutedEventArgs e)
     {
-        MessageBox.Show(
-            $"{PortfolioVersion.DisplayName}{Environment.NewLine}{Environment.NewLine}" +
-            $"Publisher: {AppIdentity.PublisherName}{Environment.NewLine}" +
-            $"Version: {PortfolioVersion.SemanticVersion}{Environment.NewLine}" +
-            "License: MIT LICENSE",
-            PortfolioVersion.ProductName,
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        AboutWindow window = new()
+        {
+            Owner = this,
+            Topmost = Topmost
+        };
+        window.ShowDialog();
     }
 
     private void OnWindowKeyDown(object sender, KeyEventArgs e)

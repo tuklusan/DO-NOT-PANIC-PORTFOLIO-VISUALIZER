@@ -8,6 +8,7 @@
     <StartupObject>PortfolioSaver.Screensaver.Program</StartupObject>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <Platforms>AnyCPU;x64</Platforms>
+    <ApplicationIcon>..\PortfolioSaver.Shared\Assets\Branding\dnppv-icon-rev-3.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\PortfolioSaver.Presentation\PortfolioSaver.Presentation.csproj" />
