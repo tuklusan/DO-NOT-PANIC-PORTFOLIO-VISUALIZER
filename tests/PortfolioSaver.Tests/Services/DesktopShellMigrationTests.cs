@@ -19,6 +19,8 @@ public sealed class DesktopShellMigrationTests
 
         Assert.Contains("<TargetFramework>net10.0-windows</TargetFramework>", csproj, StringComparison.Ordinal);
         Assert.Contains("<ApplicationIcon>..\\PortfolioSaver.Shared\\Assets\\Branding\\dnppv-icon-rev-3.ico</ApplicationIcon>", csproj, StringComparison.Ordinal);
+        Assert.Contains("<Resource Include=\"..\\PortfolioSaver.Shared\\Assets\\Branding\\dnppv-icon-rev-3.ico\" Link=\"Assets\\Branding\\dnppv-icon-rev-3.ico\" />", csproj, StringComparison.Ordinal);
+        Assert.Contains("<Resource Include=\"..\\PortfolioSaver.Shared\\Assets\\Branding\\dnppv-icon-rev-3-splash.png\" Link=\"Assets\\Branding\\dnppv-icon-rev-3-splash.png\" />", csproj, StringComparison.Ordinal);
         Assert.Contains("PortfolioSaver.Presentation", csproj, StringComparison.Ordinal);
         Assert.Contains("PortfolioSaver.Settings", csproj, StringComparison.Ordinal);
     }
@@ -41,7 +43,7 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("AutomationProperties.AutomationId=\"OptionsSettingsMenuItem\"", xaml, StringComparison.Ordinal);
         Assert.Contains("PortfolioSaver.Presentation", xaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SceneHost\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Icon=\"pack://application:,,,/PortfolioSaver.Shared;component/Assets/Branding/dnppv-icon-rev-3.png\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Icon=\"/Assets/Branding/dnppv-icon-rev-3.ico\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Width=\"1180\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Height=\"720\"", xaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"1180\"", xaml, StringComparison.Ordinal);
@@ -117,9 +119,10 @@ public sealed class DesktopShellMigrationTests
 
         Assert.Contains("assembly=PortfolioSaver.Presentation", fullScreenXaml, StringComparison.Ordinal);
         Assert.Contains("assembly=PortfolioSaver.Presentation", previewXaml, StringComparison.Ordinal);
-        Assert.Contains("pack://application:,,,/PortfolioSaver.Shared;component/Assets/Branding/dnppv-icon-rev-3.png", fullScreenXaml, StringComparison.Ordinal);
-        Assert.Contains("pack://application:,,,/PortfolioSaver.Shared;component/Assets/Branding/dnppv-icon-rev-3.png", previewXaml, StringComparison.Ordinal);
+        Assert.Contains("Icon=\"/Assets/Branding/dnppv-icon-rev-3.ico\"", fullScreenXaml, StringComparison.Ordinal);
+        Assert.Contains("Icon=\"/Assets/Branding/dnppv-icon-rev-3.ico\"", previewXaml, StringComparison.Ordinal);
         Assert.Contains("<ApplicationIcon>..\\PortfolioSaver.Shared\\Assets\\Branding\\dnppv-icon-rev-3.ico</ApplicationIcon>", csproj, StringComparison.Ordinal);
+        Assert.Contains("<Resource Include=\"..\\PortfolioSaver.Shared\\Assets\\Branding\\dnppv-icon-rev-3.ico\" Link=\"Assets\\Branding\\dnppv-icon-rev-3.ico\" />", csproj, StringComparison.Ordinal);
         Assert.Contains("PortfolioSaver.Presentation", csproj, StringComparison.Ordinal);
     }
 
@@ -129,7 +132,7 @@ public sealed class DesktopShellMigrationTests
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Desktop", "Windows", "AboutWindow.xaml"));
         string code = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Desktop", "Windows", "AboutWindow.xaml.cs"));
 
-        Assert.Contains("pack://application:,,,/PortfolioSaver.Shared;component/Assets/Branding/dnppv-icon-rev-3-splash.png", xaml, StringComparison.Ordinal);
+        Assert.Contains("Source=\"/Assets/Branding/dnppv-icon-rev-3-splash.png\"", xaml, StringComparison.Ordinal);
         Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER", xaml, StringComparison.Ordinal);
         Assert.Contains("BETA-6 desktop baseline", xaml, StringComparison.Ordinal);
         Assert.Contains("Publisher: {AppIdentity.PublisherName}", code, StringComparison.Ordinal);

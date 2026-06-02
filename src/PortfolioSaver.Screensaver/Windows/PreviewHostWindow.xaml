@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:PortfolioSaver.Screensaver.Controls;assembly=PortfolioSaver.Presentation"
         mc:Ignorable="d"
         Title="Preview"
-        Icon="pack://application:,,,/PortfolioSaver.Shared;component/Assets/Branding/dnppv-icon-rev-3.png"
+        Icon="/Assets/Branding/dnppv-icon-rev-3.ico"
         Width="400"
         Height="300"
         WindowStyle="None"

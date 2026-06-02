@@ -14,4 +14,8 @@
     <ProjectReference Include="..\PortfolioSaver.Settings\PortfolioSaver.Settings.csproj" />
     <ProjectReference Include="..\PortfolioSaver.Shared\PortfolioSaver.Shared.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="..\PortfolioSaver.Shared\Assets\Branding\dnppv-icon-rev-3.ico" Link="Assets\Branding\dnppv-icon-rev-3.ico" />
+    <Resource Include="..\PortfolioSaver.Shared\Assets\Branding\dnppv-icon-rev-3-splash.png" Link="Assets\Branding\dnppv-icon-rev-3-splash.png" />
+  </ItemGroup>
 </Project>
