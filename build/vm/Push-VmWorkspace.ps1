@@ -83,31 +83,40 @@ if (`$LASTEXITCODE -ne 0) {
     Invoke-VmPwshCommand -Bundle $bundle -Command $expandCommand -TimeOutSeconds 1800 | Out-Null
 
     $remoteRepoRoot = Join-Path $RootPath 'repo'
+    $remoteOverlayRoot = Join-Path $RootPath 'artifacts\overlay'
+    $remoteVmToolsTargetRoot = Join-Path $remoteRepoRoot 'build\vm'
+    Ensure-VmDirectory -Bundle $bundle -RemotePath $remoteOverlayRoot
     foreach ($relativePath in $essentialOverlayFiles) {
         $localOverlayPath = Join-Path $repoRoot $relativePath
         if (-not (Test-Path $localOverlayPath)) {
             continue
         }
 
-        $remoteOverlayDirectory = Join-Path $remoteRepoRoot (Split-Path -Path $relativePath -Parent)
-        if ([string]::IsNullOrWhiteSpace($remoteOverlayDirectory) -or $remoteOverlayDirectory.EndsWith('\.')) {
-            $remoteOverlayDirectory = $remoteRepoRoot
-        }
-
-        Ensure-VmDirectory -Bundle $bundle -RemotePath $remoteOverlayDirectory
-        $remoteOverlayPath = Join-Path $remoteOverlayDirectory (Split-Path -Path $relativePath -Leaf)
-        Send-VmItem -Bundle $bundle -LocalPath $localOverlayPath -RemoteDestination $remoteOverlayPath
+        Send-VmItem -Bundle $bundle -LocalPath $localOverlayPath -RemoteDestination $remoteOverlayRoot
     }
 
     $vmToolsLocalRoot = Join-Path $repoRoot 'build\vm'
-    $vmToolsRemoteRoot = Join-Path $remoteRepoRoot 'build\vm'
     $vmToolFiles = Get-ChildItem -LiteralPath $vmToolsLocalRoot -File -Force -ErrorAction SilentlyContinue |
         Where-Object { $_.Extension -in @('.ps1', '.json', '.md') }
-    Ensure-VmDirectory -Bundle $bundle -RemotePath $vmToolsRemoteRoot
     foreach ($vmToolFile in $vmToolFiles) {
-        $remoteVmToolPath = Join-Path $vmToolsRemoteRoot $vmToolFile.Name
-        Send-VmItem -Bundle $bundle -LocalPath $vmToolFile.FullName -RemoteDestination $remoteVmToolPath
+        Send-VmItem -Bundle $bundle -LocalPath $vmToolFile.FullName -RemoteDestination $remoteOverlayRoot
     }
+
+    $applyOverlayCommand = @"
+`$overlayRoot = '$remoteOverlayRoot'
+`$repoRoot = '$remoteRepoRoot'
+`$vmTargetRoot = '$remoteVmToolsTargetRoot'
+if (Test-Path (Join-Path `$overlayRoot 'global.json')) {
+    Copy-Item -LiteralPath (Join-Path `$overlayRoot 'global.json') -Destination (Join-Path `$repoRoot 'global.json') -Force
+}
+New-Item -ItemType Directory -Force -Path `$vmTargetRoot | Out-Null
+Get-ChildItem -LiteralPath `$overlayRoot -File -Force -ErrorAction SilentlyContinue |
+    Where-Object { `$_.Name -ne 'global.json' } |
+    ForEach-Object {
+        Copy-Item -LiteralPath `$_.FullName -Destination (Join-Path `$vmTargetRoot `$_.Name) -Force
+    }
+"@
+    Invoke-VmPwshCommand -Bundle $bundle -Command $applyOverlayCommand -TimeOutSeconds 120 | Out-Null
 
     if ($IncludePublishArtifacts -and (Test-Path $publishRoot)) {
         $publishArchive = Join-Path $tempRoot 'publish-safe-temp.zip'
