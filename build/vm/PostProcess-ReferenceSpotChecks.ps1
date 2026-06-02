@@ -106,7 +106,7 @@ function Parse-DisplayedTapeSamples {
         }
     }
 
-    return ,@($records)
+    return @($records)
 }
 
 function Test-IsDisplayedSampleFullyLive {
@@ -228,7 +228,7 @@ function Build-ComparisonEntries {
         $comparisons += [pscustomobject]$entry
     }
 
-    return ,@($comparisons)
+    return @($comparisons)
 }
 
 $traceRoot = Join-Path $ResultRoot 'trace'
