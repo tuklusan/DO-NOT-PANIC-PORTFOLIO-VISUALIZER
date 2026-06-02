@@ -453,7 +453,11 @@ public sealed class FinanceNewsService
         {
             string trimmedRawLine = rawLine.Trim();
             if (string.IsNullOrWhiteSpace(trimmedRawLine))
+            {
+                if (currentLines.Count >= 4)
+                    FlushStructuredLooseBlock(items, currentLines);
                 continue;
+            }
 
             if (IsStructuralSummaryLine(trimmedRawLine))
             {
