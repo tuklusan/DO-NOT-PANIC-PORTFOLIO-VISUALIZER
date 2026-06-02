@@ -7,7 +7,7 @@
         xmlns:vm="clr-namespace:PortfolioSaver.Desktop.ViewModels"
         mc:Ignorable="d"
         Title="DO NOT PANIC PORTFOLIO VISUALIZER"
-        Icon="/PortfolioSaver.Shared;component/Assets/Branding/dnppv-icon-rev-3.png"
+        Icon="pack://application:,,,/PortfolioSaver.Shared;component/Assets/Branding/dnppv-icon-rev-3.png"
         Width="1180"
         Height="720"
         MinWidth="1180"

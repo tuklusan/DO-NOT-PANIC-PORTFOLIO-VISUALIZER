@@ -32,9 +32,9 @@ public sealed class ConfigTextConsistencyTests
         string progressXaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "ValidationProgressWindow.xaml"));
 
         Assert.Contains("Title=\"DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-6\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Icon=\"/PortfolioSaver.Shared;component/Assets/Branding/dnppv-icon-rev-3.png\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Icon=\"pack://application:,,,/PortfolioSaver.Shared;component/Assets/Branding/dnppv-icon-rev-3.png\"", xaml, StringComparison.Ordinal);
         Assert.Contains("<ApplicationIcon>..\\PortfolioSaver.Shared\\Assets\\Branding\\dnppv-icon-rev-3.ico</ApplicationIcon>", configProject, StringComparison.Ordinal);
-        Assert.Contains("dnppv-icon-rev-3.png", progressXaml, StringComparison.Ordinal);
+        Assert.Contains("pack://application:,,,/PortfolioSaver.Shared;component/Assets/Branding/dnppv-icon-rev-3.png", progressXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Floating benchmark cards", xaml, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Benchmark refresh", xaml, StringComparison.OrdinalIgnoreCase);
     }

@@ -251,8 +251,8 @@ Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensa
 
         $pullOutput = & (Join-Path $PSScriptRoot 'Pull-VmResults.ps1') -VmHost $VmHost -VmPort $VmPort -RootPath $RootPath -RemotePath (Join-Path $RootPath ("results\$uxResultName"))
         $pullOutput | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { Write-Host $_ }
-        $localResultDirLine = @($pullOutput | Where-Object { $_ -like 'LOCAL_RESULT_DIR=*' } | Select-Object -Last 1)
-        if ($localResultDirLine.Count -gt 0) {
+        $localResultDirLine = [string[]]@($pullOutput | Where-Object { $_ -like 'LOCAL_RESULT_DIR=*' } | Select-Object -Last 1)
+        if ($localResultDirLine.Length -gt 0) {
             $localResultDir = ([string]$localResultDirLine[0]).Substring('LOCAL_RESULT_DIR='.Length)
             if (-not [string]::IsNullOrWhiteSpace($localResultDir) -and (Test-Path $localResultDir)) {
                 & (Join-Path $PSScriptRoot 'PostProcess-ReferenceSpotChecks.ps1') -ResultRoot $localResultDir
