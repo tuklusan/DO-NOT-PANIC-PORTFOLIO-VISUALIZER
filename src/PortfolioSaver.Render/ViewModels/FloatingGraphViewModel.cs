@@ -25,6 +25,7 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
     private bool _isVisible = true;
     private int _flashSequence;
     private long _quoteUpdateToken;
+    private decimal? _rawLastValue;
     private double _nominalVelocityX;
     private double _nominalVelocityY;
     private double? _refreshTravelTargetY;
@@ -152,6 +153,12 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
     {
         get => _quoteUpdateToken;
         set => SetProperty(ref _quoteUpdateToken, value);
+    }
+
+    public decimal? RawLastValue
+    {
+        get => _rawLastValue;
+        set => SetProperty(ref _rawLastValue, value);
     }
 
     public double NominalVelocityX

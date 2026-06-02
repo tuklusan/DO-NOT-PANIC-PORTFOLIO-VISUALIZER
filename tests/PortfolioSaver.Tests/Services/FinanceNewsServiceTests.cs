@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
@@ -408,6 +409,77 @@ public sealed class FinanceNewsServiceTests
         Assert.Equal(3, rssRequestCount);
         Assert.Equal(1, deepSeekRequestCount);
         Assert.Contains("Markets brace for a volatile week as oil and bonds diverge", first[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetHeadlinesAsync_SummarizedMode_RetainsStyledCacheWhenRefreshFallsBack()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        int deepSeekRequestCount = 0;
+        bool failDeepSeek = false;
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    <rss><channel><item><title>Markets brace for a volatile week as oil and bonds diverge</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            deepSeekRequestCount++;
+            if (failDeepSeek)
+            {
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+                {
+                    Content = new StringContent("service unavailable", Encoding.UTF8, "text/plain")
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "content": "[[ITEM]]\nPaperwork storms gather.\nMarkets shuffle through the fog.\nClerks misplace their calm.\n---\nGlobal stocks were mixed as traders weighed labor data, central-bank caution, and softer energy sentiment across regions.\n[[/ITEM]]"
+                      }
+                    }
+                  ]
+                }
+                """, Encoding.UTF8, "application/json")
+            };
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
+            NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
+            NewsRefreshMinutes = 15,
+            DeepSeekApiKey = "test-deepseek-key"
+        };
+
+        IReadOnlyList<string> first = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+        NewsHeadlineCache cache = JsonSerializer.Deserialize<NewsHeadlineCache>(await File.ReadAllTextAsync(cachePath))
+            ?? throw new InvalidOperationException("Cached news payload was not written.");
+        cache.FetchTimestampUtc = DateTimeOffset.UtcNow.AddMinutes(-20);
+        await File.WriteAllTextAsync(cachePath, JsonSerializer.Serialize(cache));
+
+        failDeepSeek = true;
+        IReadOnlyList<string> second = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+        Assert.Equal(2, deepSeekRequestCount);
+        Assert.Equal(first, second);
+        Assert.DoesNotContain(second, headline => headline.Contains("Markets brace for a volatile week as oil and bonds diverge", StringComparison.Ordinal));
     }
 
     private sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler

@@ -17,6 +17,7 @@ public partial class NewsFlasherControl : UserControl
     private const double VisibleLineHeight = 19d;
     private const double DefaultRevealPauseSeconds = 0.35d;
     private const double DefaultPostScrollPauseSeconds = 0.25d;
+    private const double DefaultBetweenHeadlinePauseSeconds = 1.6d;
     private const double TelegraphVerticalScrollPixelsPerSecond = 42d;
     private const int TypewriterCharactersPerTick = 2;
     private const string TeleprinterCursor = " █";
@@ -153,6 +154,9 @@ public partial class NewsFlasherControl : UserControl
                 StepScrolling();
                 break;
             case PlaybackPhase.PauseAfterScroll:
+                StepPause(GetPostScrollNextPhase(), includeCursor: false);
+                break;
+            case PlaybackPhase.PauseBetweenHeadlines:
                 StepPause(PlaybackPhase.AdvanceHeadline, includeCursor: false);
                 break;
             case PlaybackPhase.AdvanceHeadline:
@@ -257,8 +261,13 @@ public partial class NewsFlasherControl : UserControl
 
         if (_currentVerticalOffset <= targetOffset + 0.1d)
         {
-            SetPhase(PlaybackPhase.PauseAfterScroll);
-            _pauseTicksRemaining = GetPauseTicks(DefaultPostScrollPauseSeconds);
+            PlaybackPhase nextPhase = GetPostScrollNextPhase();
+            SetPhase(nextPhase == PlaybackPhase.PauseBetweenHeadlines
+                ? PlaybackPhase.PauseBetweenHeadlines
+                : PlaybackPhase.PauseAfterScroll);
+            _pauseTicksRemaining = GetPauseTicks(nextPhase == PlaybackPhase.PauseBetweenHeadlines
+                ? DefaultBetweenHeadlinePauseSeconds
+                : DefaultPostScrollPauseSeconds);
         }
     }
 
@@ -294,6 +303,11 @@ public partial class NewsFlasherControl : UserControl
         _headlineIndex = (_headlineIndex + 1) % Math.Max(1, headlineCount);
         SetPhase(PlaybackPhase.Idle);
     }
+
+    private PlaybackPhase GetPostScrollNextPhase()
+        => _segmentIndex + 1 < GetSegmentCount()
+            ? PlaybackPhase.AdvanceHeadline
+            : PlaybackPhase.PauseBetweenHeadlines;
 
     private void ResetPlayback()
     {
@@ -531,6 +545,7 @@ public partial class NewsFlasherControl : UserControl
         PauseBeforeScroll,
         Scrolling,
         PauseAfterScroll,
+        PauseBetweenHeadlines,
         AdvanceHeadline
     }
 }

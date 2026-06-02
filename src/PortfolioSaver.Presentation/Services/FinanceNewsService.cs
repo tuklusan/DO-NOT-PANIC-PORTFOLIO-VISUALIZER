@@ -113,6 +113,18 @@ public sealed class FinanceNewsService
                 return GetFallbackHeadlines(mode, matchingCachedHeadlines);
             }
 
+            if (mode == NewsScrollerMode.SummarizedFinancialNews &&
+                fetchResult.UsedFallback &&
+                matchingCachedHeadlines.Count > 0)
+            {
+                TraceNewsState(
+                    "NewsStyledCacheRetained",
+                    new KeyValuePair<string, object?>("mode", mode),
+                    new KeyValuePair<string, object?>("headline_count", matchingCachedHeadlines.Count),
+                    new KeyValuePair<string, object?>("fallback_headline_count", fetchResult.Headlines.Count));
+                return matchingCachedHeadlines;
+            }
+
             TraceNewsState(
                 "NewsFetchComplete",
                 new KeyValuePair<string, object?>("mode", mode),

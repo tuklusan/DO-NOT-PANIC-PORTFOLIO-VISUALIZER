@@ -380,6 +380,51 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void ApplyQuoteToGraph_PercentOnlyChange_DoesNotTriggerCardFlash()
+    {
+        RunOnSta(() =>
+        {
+            ScreensaverSceneControl control = new();
+            FloatingGraphViewModel graph = new()
+            {
+                Symbol = "AAPL",
+                LastText = "190.00",
+                ChangeText = "+1.00%",
+                RawLastValue = 190m,
+                IsVisible = true
+            };
+
+            Dictionary<string, QuoteSnapshot> quotes = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["AAPL"] = new QuoteSnapshot
+                {
+                    Symbol = "AAPL",
+                    Last = 190m,
+                    ChangePercent = 1.25m,
+                    FetchTimestampUtc = DateTimeOffset.UtcNow,
+                    IsStale = false
+                }
+            };
+
+            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+                "_latestQuotes",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_latestQuotes field not found.");
+            latestQuotesField.SetValue(control, quotes);
+
+            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+                "ApplyQuoteToGraph",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
+            applyQuoteMethod.Invoke(control, [graph]);
+
+            Assert.Equal(0, graph.FlashSequence);
+            Assert.Equal("+1.25%", graph.ChangeText);
+            Assert.Equal(190m, graph.RawLastValue);
+        });
+    }
+
+    [Fact]
     public void ApplyQuoteToGraph_AlignsLatestSegmentBrushWithLatestQuoteDirection()
     {
         RunOnSta(() =>
@@ -850,7 +895,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("PlaybackPhase.Typing", newsCode, StringComparison.Ordinal);
         Assert.Contains("PlaybackPhase.Scrolling", newsCode, StringComparison.Ordinal);
         Assert.Contains("PlaybackPhase.PauseAfterScroll", newsCode, StringComparison.Ordinal);
+        Assert.Contains("PlaybackPhase.PauseBetweenHeadlines", newsCode, StringComparison.Ordinal);
         Assert.Contains("PlaybackPhase.AdvanceHeadline", newsCode, StringComparison.Ordinal);
+        Assert.Contains("DefaultBetweenHeadlinePauseSeconds = 1.6d", newsCode, StringComparison.Ordinal);
         Assert.Contains("TeleprinterCursor", newsCode, StringComparison.Ordinal);
         Assert.Contains("Canvas.SetTop(ActiveHeadlineBlock, _currentVerticalOffset);", newsCode, StringComparison.Ordinal);
         Assert.Contains("MeasureHeadlineHeight", newsCode, StringComparison.Ordinal);
@@ -973,6 +1020,62 @@ public sealed class ScreensaverRenderBehaviorTests
             Assert.Equal(wrappedLines[2], Assert.IsType<string>(displayBottomLineField.GetValue(control)));
             Assert.Equal(0, Assert.IsType<int>(visibleCharacterCountField.GetValue(control)));
             Assert.Equal(wrappedLines[1] + Environment.NewLine + TeleprinterCursorText(), headlineBlock.Text);
+        });
+    }
+
+    [Fact]
+    public void NewsFlasherControl_PausesAfterFinalSegmentBeforeNextHeadline()
+    {
+        RunOnSta(() =>
+        {
+            NewsFlasherControl control = new()
+            {
+                Width = 420,
+                Height = 54
+            };
+            NewsFlasherViewModel viewModel = new()
+            {
+                Speed = 1d
+            };
+            viewModel.Headlines.Add(new NewsHeadlineViewModel { Text = "ALPHA BRAVO" });
+            viewModel.Headlines.Add(new NewsHeadlineViewModel { Text = "CHARLIE DELTA" });
+
+            control.DataContext = viewModel;
+            control.Measure(new Size(420, 54));
+            control.Arrange(new Rect(0, 0, 420, 54));
+            control.UpdateLayout();
+
+            MethodInfo subscribeMethod = typeof(NewsFlasherControl).GetMethod("SubscribeToFlasher", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.SubscribeToFlasher not found.");
+            MethodInfo resetMethod = typeof(NewsFlasherControl).GetMethod("ResetPlayback", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.ResetPlayback not found.");
+            MethodInfo tickMethod = typeof(NewsFlasherControl).GetMethod("OnPlaybackTick", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.OnPlaybackTick not found.");
+            FieldInfo phaseField = typeof(NewsFlasherControl).GetField("_phase", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._phase not found.");
+            FieldInfo pauseTicksField = typeof(NewsFlasherControl).GetField("_pauseTicksRemaining", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._pauseTicksRemaining not found.");
+            FieldInfo headlineIndexField = typeof(NewsFlasherControl).GetField("_headlineIndex", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._headlineIndex not found.");
+
+            subscribeMethod.Invoke(control, [viewModel]);
+            resetMethod.Invoke(control, []);
+
+            bool sawPauseBetweenHeadlines = false;
+            for (int tick = 0; tick < 120; tick++)
+            {
+                tickMethod.Invoke(control, [control, EventArgs.Empty]);
+                string phaseName = phaseField.GetValue(control)?.ToString() ?? string.Empty;
+                if (string.Equals(phaseName, "PauseBetweenHeadlines", StringComparison.Ordinal))
+                {
+                    sawPauseBetweenHeadlines = true;
+                    break;
+                }
+            }
+
+            Assert.True(sawPauseBetweenHeadlines);
+            Assert.True(Assert.IsType<int>(pauseTicksField.GetValue(control)) > 0);
+            Assert.Equal(0, Assert.IsType<int>(headlineIndexField.GetValue(control)));
         });
     }
 

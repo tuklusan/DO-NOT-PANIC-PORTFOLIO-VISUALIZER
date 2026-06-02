@@ -3642,8 +3642,7 @@ public partial class ScreensaverSceneControl : UserControl
         };
 
         bool hadPriorSymbol = !string.IsNullOrWhiteSpace(graph.Symbol);
-        bool valueChanged = !string.Equals(graph.LastText, lastText, StringComparison.Ordinal) ||
-                            !string.Equals(graph.ChangeText, changeText, StringComparison.Ordinal);
+        bool rawPriceChanged = graph.RawLastValue != last;
         long quoteUpdateToken = quote.FetchTimestampUtc.UtcTicks;
 
         graph.LastText = lastText;
@@ -3651,11 +3650,13 @@ public partial class ScreensaverSceneControl : UserControl
         graph.ChangeForeground = changeBrush;
         graph.LatestSegmentBrush = changeBrush;
         graph.QuoteUpdateToken = quoteUpdateToken;
+        graph.RawLastValue = last;
 
-        if (hadPriorSymbol && valueChanged && !string.IsNullOrWhiteSpace(lastText))
+        if (hadPriorSymbol && rawPriceChanged && !string.IsNullOrWhiteSpace(lastText))
         {
             ApplyRefreshMotionCue(graph, percent);
             graph.TriggerCardFlash(changeBrush);
+            TraceGraph($"GraphCardFlash symbol={graph.Symbol} raw_last={(last?.ToString("0.####") ?? "--")} percent={(percent?.ToString("0.####") ?? "--")} reason=raw-price-change");
         }
     }
 
