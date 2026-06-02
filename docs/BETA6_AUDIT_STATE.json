@@ -955,6 +955,43 @@
         "The revision-3 splash asset now drives a dedicated desktop About window so the branding is visible in a real product surface rather than only stored as a future candidate.",
         "Proof: DesktopShellMigrationTests and ConfigTextConsistencyTests now verify the icon wiring, splash-based About window, and shared branding asset paths."
       ]
+    },
+    {
+      "id": "NB-063",
+      "tracking_number": "NB-063",
+      "priority": 2,
+      "area": "news_scroller",
+      "title": "Preserve Vogon finance-news formatting across refreshes and add a per-item reader pause",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User reported that Finance News seems to lose Vogon Poetry after the first refresh and needs a pause after every item so the human reader can finish reading before the next item shows up."
+      ],
+      "notes": [
+        "Investigate why summarized-news playback appears to lose the intended Vogon-haiku-plus-Adams-item structure after the first live refresh.",
+        "Ensure the same structured Vogon presentation is preserved on initial load and on all subsequent refreshes.",
+        "Add a deliberate pause after each completed news item before the next item begins typing or scrolling.",
+        "Make the pause long enough for a human reader to finish reading without making the band feel stalled.",
+        "Prove both formatting persistence and per-item pause behavior with local verification plus VM-visible traces or screenshots."
+      ]
+    },
+    {
+      "id": "NB-064",
+      "tracking_number": "NB-064",
+      "priority": 2,
+      "area": "graph_cards",
+      "title": "Tighten graph-card flash trigger to require actual raw price change",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User observed graph cards such as VOO and QUAL continuing to flash even when the visible behavior looked like percent-only churn rather than meaningful price movement."
+      ],
+      "notes": [
+        "Current graph-card flashing is triggered by displayed LastText or ChangeText differences, which allows percent-only text churn to retrigger card flashes.",
+        "Change the flash trigger to something stricter, with the minimum required behavior being: flash only on actual raw price change, not percent-only text churn.",
+        "Keep any desired motion cue logic separate if needed, but stop the prominent card flash from firing on percent-only or formatting-only deltas.",
+        "Add focused tests and trace-visible proof so repeated quote passes for stable symbols do not keep flashing the same graph cards unnecessarily."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
