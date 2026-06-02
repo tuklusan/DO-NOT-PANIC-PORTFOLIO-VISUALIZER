@@ -413,6 +413,15 @@ public sealed class FinanceNewsService
         if (string.IsNullOrWhiteSpace(normalized))
             yield break;
 
+        List<string> structuredItems = ParseStructuredLooseSummarizedNewsItems(normalized);
+        if (structuredItems.Count > 0)
+        {
+            foreach (string item in structuredItems)
+                yield return item;
+
+            yield break;
+        }
+
         string[] paragraphBlocks = Regex.Split(normalized, @"\n\s*\n")
             .Select(block => block.Trim())
             .Where(block => !string.IsNullOrWhiteSpace(block))
@@ -433,6 +442,52 @@ public sealed class FinanceNewsService
         string itemFromWholeBody = NormalizeLooseSummarizedNewsBlock(normalized);
         if (!string.IsNullOrWhiteSpace(itemFromWholeBody))
             yield return itemFromWholeBody;
+    }
+
+    private static List<string> ParseStructuredLooseSummarizedNewsItems(string normalized)
+    {
+        List<string> items = [];
+        List<string> currentLines = [];
+
+        foreach (string rawLine in normalized.Split('\n'))
+        {
+            string trimmedRawLine = rawLine.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedRawLine))
+                continue;
+
+            if (IsStructuralSummaryLine(trimmedRawLine))
+            {
+                FlushStructuredLooseBlock(items, currentLines);
+                continue;
+            }
+
+            string normalizedLine = NormalizeSummaryLine(trimmedRawLine);
+            if (string.IsNullOrWhiteSpace(normalizedLine))
+                continue;
+
+            if (LooksLikeMarkdownTitleLine(trimmedRawLine, normalizedLine))
+            {
+                FlushStructuredLooseBlock(items, currentLines);
+                continue;
+            }
+
+            currentLines.Add(normalizedLine);
+        }
+
+        FlushStructuredLooseBlock(items, currentLines);
+        return items;
+    }
+
+    private static void FlushStructuredLooseBlock(List<string> items, List<string> currentLines)
+    {
+        if (currentLines.Count == 0)
+            return;
+
+        string item = NormalizeLooseSummarizedNewsBlock(string.Join(Environment.NewLine, currentLines));
+        if (!string.IsNullOrWhiteSpace(item))
+            items.Add(item);
+
+        currentLines.Clear();
     }
 
     private static string NormalizeLooseSummarizedNewsBlock(string? block)
