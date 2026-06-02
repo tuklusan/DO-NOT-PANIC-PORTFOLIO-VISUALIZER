@@ -43,7 +43,7 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("AutomationProperties.AutomationId=\"OptionsSettingsMenuItem\"", xaml, StringComparison.Ordinal);
         Assert.Contains("PortfolioSaver.Presentation", xaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SceneHost\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Icon=\"/Assets/Branding/dnppv-icon-rev-3.ico\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Icon=\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Width=\"1180\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Height=\"720\"", xaml, StringComparison.Ordinal);
         Assert.Contains("MinWidth=\"1180\"", xaml, StringComparison.Ordinal);
@@ -119,8 +119,8 @@ public sealed class DesktopShellMigrationTests
 
         Assert.Contains("assembly=PortfolioSaver.Presentation", fullScreenXaml, StringComparison.Ordinal);
         Assert.Contains("assembly=PortfolioSaver.Presentation", previewXaml, StringComparison.Ordinal);
-        Assert.Contains("Icon=\"/Assets/Branding/dnppv-icon-rev-3.ico\"", fullScreenXaml, StringComparison.Ordinal);
-        Assert.Contains("Icon=\"/Assets/Branding/dnppv-icon-rev-3.ico\"", previewXaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Icon=\"", fullScreenXaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Icon=\"", previewXaml, StringComparison.Ordinal);
         Assert.Contains("<ApplicationIcon>..\\PortfolioSaver.Shared\\Assets\\Branding\\dnppv-icon-rev-3.ico</ApplicationIcon>", csproj, StringComparison.Ordinal);
         Assert.Contains("<Resource Include=\"..\\PortfolioSaver.Shared\\Assets\\Branding\\dnppv-icon-rev-3.ico\" Link=\"Assets\\Branding\\dnppv-icon-rev-3.ico\" />", csproj, StringComparison.Ordinal);
         Assert.Contains("PortfolioSaver.Presentation", csproj, StringComparison.Ordinal);

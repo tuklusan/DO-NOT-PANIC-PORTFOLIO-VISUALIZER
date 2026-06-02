@@ -6,7 +6,6 @@
         xmlns:local="clr-namespace:PortfolioSaver.Screensaver.Controls;assembly=PortfolioSaver.Presentation"
         mc:Ignorable="d"
         Title="Portfolio Screensaver"
-        Icon="/Assets/Branding/dnppv-icon-rev-3.ico"
         WindowStyle="None"
         WindowState="Maximized"
         ResizeMode="NoResize"
