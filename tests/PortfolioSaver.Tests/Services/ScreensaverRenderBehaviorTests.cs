@@ -234,7 +234,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("private void CanonicalizeBackgroundLayers(ImageSource source)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("activeImage.Source = source;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("standbyImage.Source = CreateStandbyBackgroundSource(source);", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("FinalizeBackgroundTransition(incoming, outgoing, incomingBitmap);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("CanonicalizeBackgroundLayers(incomingBitmap);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_activeBackgroundImage = activeImage;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_inactiveBackgroundImage = standbyImage;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private static ImageSource CreateStandbyBackgroundSource(ImageSource source)", codeBehind, StringComparison.Ordinal);

@@ -2924,7 +2924,7 @@ public partial class ScreensaverSceneControl : UserControl
                 return;
             }
 
-            FinalizeBackgroundTransition(incoming, outgoing, incomingBitmap);
+            CanonicalizeBackgroundLayers(incomingBitmap);
             TraceSceneState(
                 "BackgroundTransitionComplete",
                 new KeyValuePair<string, object?>("path", Path.GetFileName(path)),
