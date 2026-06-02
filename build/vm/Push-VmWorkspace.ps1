@@ -90,21 +90,23 @@ if (`$LASTEXITCODE -ne 0) {
         }
 
         $remoteOverlayDirectory = Join-Path $remoteRepoRoot (Split-Path -Path $relativePath -Parent)
-        if ([string]::IsNullOrWhiteSpace($remoteOverlayDirectory)) {
+        if ([string]::IsNullOrWhiteSpace($remoteOverlayDirectory) -or $remoteOverlayDirectory.EndsWith('\.')) {
             $remoteOverlayDirectory = $remoteRepoRoot
         }
 
         Ensure-VmDirectory -Bundle $bundle -RemotePath $remoteOverlayDirectory
-        Send-VmItem -Bundle $bundle -LocalPath $localOverlayPath -RemoteDestination $remoteOverlayDirectory
+        $remoteOverlayPath = Join-Path $remoteOverlayDirectory (Split-Path -Path $relativePath -Leaf)
+        Send-VmItem -Bundle $bundle -LocalPath $localOverlayPath -RemoteDestination $remoteOverlayPath
     }
 
     $vmToolsLocalRoot = Join-Path $repoRoot 'build\vm'
     $vmToolsRemoteRoot = Join-Path $remoteRepoRoot 'build\vm'
     $vmToolFiles = Get-ChildItem -LiteralPath $vmToolsLocalRoot -File -Force -ErrorAction SilentlyContinue |
         Where-Object { $_.Extension -in @('.ps1', '.json', '.md') }
+    Ensure-VmDirectory -Bundle $bundle -RemotePath $vmToolsRemoteRoot
     foreach ($vmToolFile in $vmToolFiles) {
-        Ensure-VmDirectory -Bundle $bundle -RemotePath $vmToolsRemoteRoot
-        Send-VmItem -Bundle $bundle -LocalPath $vmToolFile.FullName -RemoteDestination $vmToolsRemoteRoot
+        $remoteVmToolPath = Join-Path $vmToolsRemoteRoot $vmToolFile.Name
+        Send-VmItem -Bundle $bundle -LocalPath $vmToolFile.FullName -RemoteDestination $remoteVmToolPath
     }
 
     if ($IncludePublishArtifacts -and (Test-Path $publishRoot)) {
