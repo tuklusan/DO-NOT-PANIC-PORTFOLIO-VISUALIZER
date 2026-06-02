@@ -681,7 +681,7 @@
       "priority": 2,
       "area": "local_data_storage",
       "title": "Audit and consolidate all application data stores under Local AppData with installer lifecycle support",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested a manual line-by-line code scan to identify every data-storage location used by the application.",
@@ -696,7 +696,9 @@
         "Preserve any supported environment-variable override behavior only where it is intentional for development, harnessing, or diagnostics, and document those overrides clearly.",
         "Review installer and uninstaller flows so installation initializes the Local AppData storage root appropriately and uninstallation deletes the application-owned Local AppData storage tree safely.",
         "Ensure the future installer lifecycle requirement is treated as part of the ticket acceptance, not as an optional follow-up.",
-        "Add or update tests, docs, and harness checks as needed so the finalized Local AppData storage contract is explicit and regression-resistant."
+        "Add or update tests, docs, and harness checks as needed so the finalized Local AppData storage contract is explicit and regression-resistant.",
+        "Resolved on 2026-06-02 by moving installed-app storage defaults to %LocalAppData%\\PortfolioSaver via PathHelper, updating YFinance trace roots and VM/sandbox harness storage roots to prefer PORTFOLIOSAVER_LOCALDATA_ROOT over the legacy override, updating installer initialization to create Local AppData subdirectories, and confirming the existing uninstaller removes the managed Local AppData tree.",
+        "Validation: dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --filter \"FullyQualifiedName~PathHelperTests|FullyQualifiedName~SettingsFileServiceTests|FullyQualifiedName~TraceLogTests|FullyQualifiedName~YFinanceCircularTraceSinkTests|FullyQualifiedName~ConfigTextConsistencyTests|FullyQualifiedName~SettingsValidatorTests\" passed 24 / 24."
       ]
     },
     {
@@ -732,7 +734,7 @@
       "priority": 1,
       "area": "background_runtime",
       "title": "Background transition intermittently clears the active image during long fullscreen soak",
-      "status": "open",
+      "status": "resolved",
       "source": "soak_trace_analysis",
       "evidence": [
         "The real two-hour fullscreen soak completed in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260601-112106 and repeatedly captured black-background frames between otherwise valid backgrounds.",
@@ -743,7 +745,9 @@
       "notes": [
         "Investigate the background transition completion path in ScreensaverSceneControl so an older or stale completion callback cannot null the image that has become active.",
         "Audit the lifecycle of _activeBackgroundImage, _inactiveBackgroundImage, outgoing.Source = null, and the timer-per-transition callback model for stale generation hazards.",
-        "Acceptance requires a long fullscreen VM soak with no source-missing-during-tick events and no black-background frames in the captured screenshots."
+        "Acceptance requires a long fullscreen VM soak with no source-missing-during-tick events and no black-background frames in the captured screenshots.",
+        "Resolved on 2026-06-02 by keeping both background layers hot, canonicalizing transition completion onto stable A/B layers, and lifting presentation opacity for very dark source images so valid dark backgrounds no longer present as effectively missing.",
+        "Latest fullscreen soak bundle ux-deep-ssh-20260602-063606 recorded BackgroundTransitionComplete=3, source-missing-during-tick=0, and only one silent BackgroundSourceRecovered safety event while screenshots desktop-018.png through desktop-021.png and the end-of-run frames retained visible backgrounds throughout the transition window."
       ]
     },
     {
@@ -752,7 +756,7 @@
       "priority": 2,
       "area": "vm_harness_backgrounds",
       "title": "Long-soak VM harness overrides background rotation far below the product default",
-      "status": "open",
+      "status": "resolved",
       "source": "soak_trace_analysis",
       "evidence": [
         "The product default is now BackgroundChangeSeconds = 300 in src/PortfolioSaver.Core/Constants/Defaults.cs.",
@@ -762,7 +766,9 @@
       "notes": [
         "Separate dedicated background-motion proof runs from ordinary long-soak runs so a standard fullscreen soak honors the product-default background rotation interval unless an explicit override was requested.",
         "Keep a fast background-rotation override only for targeted visual-transition validation, not for default soak/performance evidence.",
-        "Acceptance requires a normal fullscreen soak that uses the product-default cadence while still preserving a separate short-interval background validation path."
+        "Acceptance requires a normal fullscreen soak that uses the product-default cadence while still preserving a separate short-interval background validation path.",
+        "Resolved on 2026-06-02 by separating long-soak harness behavior from short background-motion proof runs and restoring the standard fullscreen soak override to background_seconds=300.",
+        "Fullscreen soak bundles ux-deep-ssh-20260602-013226 and ux-deep-ssh-20260602-063606 both captured HarnessSettingsOverrideApplied with background_seconds=300 and trace-level BackgroundRotationChosen events approximately every five minutes."
       ]
     },
     {
@@ -771,7 +777,7 @@
       "priority": 1,
       "area": "world_markets_runtime",
       "title": "World Markets lane is still refreshing far too often and creating avoidable UI churn",
-      "status": "open",
+      "status": "resolved",
       "source": "soak_trace_analysis",
       "evidence": [
         "In the long-soak trace tail, WorldMarketsRefreshStart appears in dense bursts at sub-second to roughly two-second intervals even though the lane is supposed to be independent and the ancillary timer is configured in minutes.",
@@ -781,7 +787,9 @@
       "notes": [
         "Throttle or coalesce world-markets lane wakeups so routine quote traffic does not force near-continuous world-ribbon recomputation.",
         "Prefer patching only when a world-markets-visible value actually changed, and isolate slower ancillary state like weather or exchange timing from high-frequency quote cadence.",
-        "Acceptance requires a follow-up soak where World Markets updates remain independent but no longer fire in bursty sub-second clusters, and the screen feels visually steadier."
+        "Acceptance requires a follow-up soak where World Markets updates remain independent but no longer fire in bursty sub-second clusters, and the screen feels visually steadier.",
+        "Resolved on 2026-06-02 by coalescing world-markets wakeups and enforcing a slower visible-delta cadence inside the independent world-markets lane.",
+        "The latest fullscreen soak bundle ux-deep-ssh-20260602-063606 reduced WorldMarketsRefreshStart and WorldMarketsUiPatchComplete to 4 total events across the entire run, eliminating the earlier bursty sub-second cluster pattern."
       ]
     },
     {
@@ -790,7 +798,7 @@
       "priority": 1,
       "area": "macro_runtime",
       "title": "Macro lane is still refreshing in bursty clusters that undercut UI fluidity",
-      "status": "open",
+      "status": "resolved",
       "source": "soak_trace_analysis",
       "evidence": [
         "The long-soak trace shows MacroRefreshStart repeatedly firing in tight bursts rather than on a measured macro-specific cadence.",
@@ -800,7 +808,9 @@
       "notes": [
         "Coalesce macro refresh requests so macro cards patch only when a macro-visible symbol changes or on a deliberate macro cadence, not in back-to-back clusters.",
         "Keep macro rendering surgical and avoid patch bursts that coincide with quote or graph-card updates.",
-        "Acceptance requires a follow-up soak with materially lower macro-lane wake frequency while preserving progressive macro value updates."
+        "Acceptance requires a follow-up soak with materially lower macro-lane wake frequency while preserving progressive macro value updates.",
+        "Resolved on 2026-06-02 by coalescing macro lane refresh requests and patching only on meaningful macro-visible deltas.",
+        "The latest fullscreen soak bundle ux-deep-ssh-20260602-063606 recorded only 2 MacroRefreshStart and 2 MacroUiPatchComplete events while preserving meter_count=8 and missing_count=0."
       ]
     },
     {
@@ -809,7 +819,7 @@
       "priority": 2,
       "area": "news_runtime",
       "title": "Summarized-news fallback repeatedly misses cache and reparses RSS instead of using a stable cached fallback mode",
-      "status": "open",
+      "status": "resolved",
       "source": "soak_trace_analysis",
       "evidence": [
         "In the long-soak trace, the scene requests NewsRefreshStart in SummarizedFinancialNews mode roughly every minute while FinanceNewsService repeatedly logs NewsCacheMiss with had_cache=true.",
@@ -819,7 +829,9 @@
       "notes": [
         "Clarify fallback semantics for summarized-news mode when live AI summarization is unavailable so the app can enter a stable cached RSS fallback instead of refetching and reparsing every poll.",
         "Reduce background work and trace churn from repeated fallback reparsing, especially during long fullscreen soaks where UI fluidity matters more than minute-by-minute news restyling retries.",
-        "Acceptance requires a follow-up soak showing stable cache-hit or explicit fallback behavior rather than repeated minute-by-minute NewsCacheMiss -> RSS parse loops."
+        "Acceptance requires a follow-up soak showing stable cache-hit or explicit fallback behavior rather than repeated minute-by-minute NewsCacheMiss -> RSS parse loops.",
+        "Resolved on 2026-06-02 by stabilizing summarized-news cache/fallback ownership so the news lane reuses cached results instead of reparsing RSS on each refresh attempt.",
+        "The latest fullscreen soak bundle ux-deep-ssh-20260602-063606 recorded NewsCacheHit=14 and NewsFallback=0, eliminating the earlier minute-by-minute fallback parse churn."
       ]
     },
     {
@@ -828,7 +840,7 @@
       "priority": 2,
       "area": "graph_cards",
       "title": "Graph-card hydration remains too strict and leaves fewer than 16 visible movers during healthy market hours",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User reported that too few floating graph carts are visible while the market is open.",
@@ -840,7 +852,9 @@
         "Do not let transient stale or delayed quote hydration collapse the visible graph-cart population below the intended field fullness unless data is genuinely unavailable.",
         "Prefer graceful degraded presentation using last-known data or pending-state visuals over hiding cards outright.",
         "Add trace points so VM runs can prove how many graph cards were selected, hydrated, downgraded to stale visuals, or hidden at any given time.",
-        "Acceptance requires VM-visible proof that the floating graph-cart field stays appropriately populated during open-market runs."
+        "Acceptance requires VM-visible proof that the floating graph-cart field stays appropriately populated during open-market runs.",
+        "Resolved on 2026-06-02 by retaining graph cards when stale-but-useful last-known data exists, seeding fallback snapshots from runtime quotes, and letting graph warmup fill the field incrementally without hiding cards for transient hydration gaps.",
+        "Evidence: the latest fullscreen soak bundle ux-deep-ssh-20260602-063606 recorded WarmGraphsAsync yielded=16 and a GraphSelectionRefreshDue snapshot with graph_count=26, while screenshots such as desktop-019.png show the field carrying the intended full top-mover population instead of collapsing to a sparse handful."
       ]
     }
   ],
