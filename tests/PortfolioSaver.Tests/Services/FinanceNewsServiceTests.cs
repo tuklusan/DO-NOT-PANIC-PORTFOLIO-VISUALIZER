@@ -13,6 +13,8 @@ namespace PortfolioSaver.Tests.Services;
 
 public sealed class FinanceNewsServiceTests
 {
+    private static readonly JsonSerializerOptions CacheJsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
+
     [Fact]
     public async Task GetHeadlinesAsync_SummarizedMode_UsesRestylingOnlyPrompt_AndCachesAtFifteenMinuteFloor()
     {
@@ -469,10 +471,10 @@ public sealed class FinanceNewsServiceTests
         };
 
         IReadOnlyList<string> first = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
-        NewsHeadlineCache cache = JsonSerializer.Deserialize<NewsHeadlineCache>(await File.ReadAllTextAsync(cachePath))
+        NewsHeadlineCache cache = JsonSerializer.Deserialize<NewsHeadlineCache>(await File.ReadAllTextAsync(cachePath), CacheJsonOptions)
             ?? throw new InvalidOperationException("Cached news payload was not written.");
         cache.FetchTimestampUtc = DateTimeOffset.UtcNow.AddMinutes(-20);
-        await File.WriteAllTextAsync(cachePath, JsonSerializer.Serialize(cache));
+        await File.WriteAllTextAsync(cachePath, JsonSerializer.Serialize(cache, CacheJsonOptions));
 
         failDeepSeek = true;
         IReadOnlyList<string> second = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
