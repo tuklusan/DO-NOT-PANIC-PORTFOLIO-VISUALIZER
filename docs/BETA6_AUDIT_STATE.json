@@ -856,6 +856,74 @@
         "Resolved on 2026-06-02 by retaining graph cards when stale-but-useful last-known data exists, seeding fallback snapshots from runtime quotes, and letting graph warmup fill the field incrementally without hiding cards for transient hydration gaps.",
         "Evidence: the latest fullscreen soak bundle ux-deep-ssh-20260602-063606 recorded WarmGraphsAsync yielded=16 and a GraphSelectionRefreshDue snapshot with graph_count=26, while screenshots such as desktop-019.png show the field carrying the intended full top-mover population instead of collapsing to a sparse handful."
       ]
+    },
+    {
+      "id": "NB-058",
+      "tracking_number": "NB-058",
+      "priority": 2,
+      "area": "market_status_ui",
+      "title": "Suppress top-left \"Timing unavailable\" when countdown timing is unknown",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested that the top-left New York market status block not display the literal text \"Timing unavailable\".",
+        "Current behavior shows \"Timing unavailable\" whenever the market session is known but the next change timestamp cannot be derived."
+      ],
+      "notes": [
+        "Adjust the pinned top-left New York status formatting so the countdown line is blank when no countdown target is available.",
+        "Preserve the existing session label such as Regular, Pre-Market, After Hours, or Closed.",
+        "Do not introduce a replacement placeholder like N/A, --, or Unknown on that line; leave it empty.",
+        "Ensure the world-markets ribbon and pinned NYC card remain visually consistent with the same underlying exchange timing semantics.",
+        "Add focused tests for the no-countdown case and prove the top-left block renders without the old wording."
+      ]
+    },
+    {
+      "id": "NB-059",
+      "tracking_number": "NB-059",
+      "priority": 1,
+      "area": "deepseek_configuration",
+      "title": "Future-proof DeepSeek configuration and model usage beyond API key and endpoint only",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested a future-proofing analysis of the current DeepSeek configuration surface, which today exposes the API key and endpoint URL.",
+        "The reviewed design discussion concluded that endpoint plus key alone is insufficient because model identifiers can change or be retired independently of the endpoint.",
+        "The same discussion also highlighted the architectural value of keeping the model identifier configurable so the app can move between DeepSeek-hosted and OpenAI-compatible local or alternate backends without recompilation."
+      ],
+      "notes": [
+        "Review the entire DeepSeek configuration and invocation path end to end, including settings UI, persistence, normalization, defaults, request construction, and fallback behavior.",
+        "Add an explicit configurable Model ID field alongside API key and Endpoint URL so model selection is not hardcoded in application code.",
+        "Ship with a documented OpenAI-compatible default endpoint URL appropriate for the current DeepSeek production API surface.",
+        "Separate base endpoint handling from request route construction so the client uses the configured endpoint root and appends chat-completion routes internally rather than requiring full path entry by the user.",
+        "Audit all current DeepSeek call sites to ensure they consume the configured model identifier rather than a hardcoded legacy model name.",
+        "Preserve the ability to target alternate OpenAI-compatible backends in the future, including local-hosted inference endpoints, by keeping endpoint and model settings provider-agnostic.",
+        "Update configuration help text, docs, and tests so the three-field contract of API key, endpoint URL, and model ID is explicit and regression-resistant.",
+        "Acceptance requires a verified configuration path showing that changing only endpoint and model ID can redirect summarized-news generation to a different OpenAI-compatible backend without source changes."
+      ]
+    },
+    {
+      "id": "NB-060",
+      "tracking_number": "NB-060",
+      "priority": 1,
+      "area": "runtime_fetch_order",
+      "title": "Enforce staged runtime fetch order across macros, world markets, and tape symbols",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User requested a strict visible fill order for runtime market data rather than the current mixed progressive behavior.",
+        "The requested order is macros first, world markets second, and portfolio tapes third.",
+        "User also called out the need to analyze New York data reuse between the top market area and the bottom world-markets scroller."
+      ],
+      "notes": [
+        "Refactor runtime scheduling so macro symbols are requested and rendered first, one by one, at roughly one-second intervals.",
+        "After macros complete, request and render world-market entries one by one at roughly one-second intervals.",
+        "Analyze whether world-market weather should travel with the same staged pass or remain on a separate ancillary cadence, and document that decision.",
+        "Review and rationalize New York data reuse between the top macro or pinned status area and the bottom world-markets scroller so the staged order does not introduce duplicate fetches or inconsistent state.",
+        "After the world-markets phase, continue tape-by-tape and ticker-by-ticker through the portfolio symbol universe.",
+        "Avoid batch fills or whole-scene redraw behavior; the visible effect should be progressive staged population.",
+        "Add trace evidence that clearly shows macro phase, world-markets phase, and tape phase sequencing.",
+        "Acceptance requires VM-visible proof that the screen fills in the requested order."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
