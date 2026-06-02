@@ -863,7 +863,7 @@
       "priority": 2,
       "area": "market_status_ui",
       "title": "Suppress top-left \"Timing unavailable\" when countdown timing is unknown",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested that the top-left New York market status block not display the literal text \"Timing unavailable\".",
@@ -874,7 +874,9 @@
         "Preserve the existing session label such as Regular, Pre-Market, After Hours, or Closed.",
         "Do not introduce a replacement placeholder like N/A, --, or Unknown on that line; leave it empty.",
         "Ensure the world-markets ribbon and pinned NYC card remain visually consistent with the same underlying exchange timing semantics.",
-        "Add focused tests for the no-countdown case and prove the top-left block renders without the old wording."
+        "Add focused tests for the no-countdown case and prove the top-left block renders without the old wording.",
+        "Resolved on 2026-06-02 by changing the pinned New York countdown formatter to emit a blank countdown line whenever no countdown target is available, preserving the market-session label without the old \"Timing unavailable\" wording.",
+        "Proof: focused local regression passed in PortfolioSaver.Tests via Nb058Nb060BehaviorTests.FormatPinnedStatusCountdown_ReturnsBlank_WhenCountdownUnavailable and ConfigTextConsistency/desktop regression slices remained green."
       ]
     },
     {
@@ -883,7 +885,7 @@
       "priority": 1,
       "area": "deepseek_configuration",
       "title": "Future-proof DeepSeek configuration and model usage beyond API key and endpoint only",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested a future-proofing analysis of the current DeepSeek configuration surface, which today exposes the API key and endpoint URL.",
@@ -898,7 +900,10 @@
         "Audit all current DeepSeek call sites to ensure they consume the configured model identifier rather than a hardcoded legacy model name.",
         "Preserve the ability to target alternate OpenAI-compatible backends in the future, including local-hosted inference endpoints, by keeping endpoint and model settings provider-agnostic.",
         "Update configuration help text, docs, and tests so the three-field contract of API key, endpoint URL, and model ID is explicit and regression-resistant.",
-        "Acceptance requires a verified configuration path showing that changing only endpoint and model ID can redirect summarized-news generation to a different OpenAI-compatible backend without source changes."
+        "Acceptance requires a verified configuration path showing that changing only endpoint and model ID can redirect summarized-news generation to a different OpenAI-compatible backend without source changes.",
+        "Resolved on 2026-06-02 by extending AppSettings, Defaults, and AppSettingsNormalizer with a three-field OpenAI-compatible summarized-news contract: API key, endpoint URL, and model ID.",
+        "FinanceNewsService now consumes the configured endpoint base and model ID, appends the chat/completions route internally, and defaults to https://api.deepseek.com/v1 with deepseek-v4-flash while remaining backend-agnostic.",
+        "Proof: FinanceNewsServiceTests now verify both the default DeepSeek route and a redirected OpenAI-compatible endpoint/model pair, and the Advanced config tab now documents the three-field contract explicitly."
       ]
     },
     {
@@ -907,7 +912,7 @@
       "priority": 1,
       "area": "runtime_fetch_order",
       "title": "Enforce staged runtime fetch order across macros, world markets, and tape symbols",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested a strict visible fill order for runtime market data rather than the current mixed progressive behavior.",
@@ -922,7 +927,10 @@
         "After the world-markets phase, continue tape-by-tape and ticker-by-ticker through the portfolio symbol universe.",
         "Avoid batch fills or whole-scene redraw behavior; the visible effect should be progressive staged population.",
         "Add trace evidence that clearly shows macro phase, world-markets phase, and tape phase sequencing.",
-        "Acceptance requires VM-visible proof that the screen fills in the requested order."
+        "Acceptance requires VM-visible proof that the screen fills in the requested order.",
+        "Resolved on 2026-06-02 by restaging StartupCoordinator.BuildOrderedRuntimeSymbols so the one-by-one runtime loop requests macros first, world-market symbols second, and portfolio tape symbols third.",
+        "The staged order preserves New York quote reuse naturally because ^IXIC appears in the macro phase before the world-markets phase and the ordered runtime symbol list remains distincted case-insensitively.",
+        "Proof: Nb058Nb060BehaviorTests.BuildOrderedRuntimeSymbols_StagesMacrosThenWorldMarketsThenTapeSymbols now locks the staged order contract in the test suite."
       ]
     },
     {
@@ -931,7 +939,7 @@
       "priority": 2,
       "area": "branding_assets",
       "title": "Incorporate revision-3 branding images into app icon, splash, installer, and About surfaces",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User provided finalized revision-3 branding images and asked that they be placed into the project for future incorporation.",
@@ -942,7 +950,10 @@
         "Use src/PortfolioSaver.Shared/Assets/Branding/dnppv-icon-rev-3-splash.png as the candidate source for splash screens, installer banners, About dialog branding, or related product-facing surfaces.",
         "Audit existing icon, executable, installer, manifest, About, and branding surfaces to determine where the new assets should be wired in now versus staged for later adoption.",
         "Preserve the original asset files in-repo as canonical branding sources rather than leaving them in ad hoc root-level locations.",
-        "Acceptance requires the relevant product-facing surfaces to be updated or an explicit adoption plan to be documented where immediate wiring is intentionally deferred."
+        "Acceptance requires the relevant product-facing surfaces to be updated or an explicit adoption plan to be documented where immediate wiring is intentionally deferred.",
+        "Resolved on 2026-06-02 by generating dnppv-icon-rev-3.ico from the approved revision-3 PNG, wiring it into Desktop, Config, Screensaver, and Installer application metadata, and using the shared PNG icon in the window chrome for runtime surfaces.",
+        "The revision-3 splash asset now drives a dedicated desktop About window so the branding is visible in a real product surface rather than only stored as a future candidate.",
+        "Proof: DesktopShellMigrationTests and ConfigTextConsistencyTests now verify the icon wiring, splash-based About window, and shared branding asset paths."
       ]
     }
   ],

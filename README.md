@@ -28,12 +28,13 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
 
 - Rich settings UI for:
   - YFinance.NET runtime status and refresh controls
-  - DeepSeek API key for summarized financial news
+  - DeepSeek API key, endpoint URL, and model ID for summarized financial news
   - Ticker tapes and graph overlays
   - Refresh intervals (portfolio, off-hours, news, backgrounds)
 - Real-time and apply-time symbol validation flow
 - Auto-name support for symbols when provider metadata resolves display names
 - Bundled help/about/license reference content shipped with the config app assets
+- Revision-3 branding assets are now wired into desktop/config/screensaver icons and the desktop About dialog splash surface
 
 ## Installer and Licensing UX
 
