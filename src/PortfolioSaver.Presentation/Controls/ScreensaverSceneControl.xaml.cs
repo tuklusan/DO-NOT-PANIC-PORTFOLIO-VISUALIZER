@@ -86,6 +86,7 @@ public partial class ScreensaverSceneControl : UserControl
     private ExchangeCalendarSet _exchangeCalendars = new();
     private double _backgroundZoomScale = 1.01d;
     private double _backgroundZoomDirection = 1d;
+    private double _currentBackgroundOpacity = 0.45d;
     private int _demoFlashTicks;
     private DateTimeOffset _lastCritterTargetSwapUtc = DateTimeOffset.MinValue;
     private bool _crittersChasingDollar = true;
@@ -2619,12 +2620,13 @@ public partial class ScreensaverSceneControl : UserControl
         string backgroundPath = path!;
         byte[]? preloadedBytes = await PreloadBackgroundBytesAsync(backgroundPath).ConfigureAwait(true);
         BitmapImage backgroundBitmap = CreateBackgroundBitmap(backgroundPath, preloadedBytes);
+        _currentBackgroundOpacity = GetBackgroundPresentationOpacity(backgroundBitmap);
 
         if (_activeBackgroundImage is null || _inactiveBackgroundImage is null)
         {
             _currentBackgroundBitmap = backgroundBitmap;
             BackgroundImageA.Source = backgroundBitmap;
-            BackgroundImageA.Opacity = 0.45d;
+            BackgroundImageA.Opacity = _currentBackgroundOpacity;
             BackgroundImageB.Source = backgroundBitmap;
             BackgroundImageB.Opacity = 0d;
             _activeBackgroundImage = BackgroundImageA;
@@ -2643,7 +2645,7 @@ public partial class ScreensaverSceneControl : UserControl
             ResetBackgroundTransform(_activeBackgroundImage);
             ResetBackgroundTransform(_inactiveBackgroundImage);
             _activeBackgroundImage.Source = backgroundBitmap;
-            _activeBackgroundImage.Opacity = 0.45d;
+            _activeBackgroundImage.Opacity = _currentBackgroundOpacity;
             _inactiveBackgroundImage.Source = backgroundBitmap;
             _inactiveBackgroundImage.Opacity = 0d;
             ResetBackgroundZoomState();
@@ -2911,7 +2913,7 @@ public partial class ScreensaverSceneControl : UserControl
 
         IEasingFunction ease = new CubicEase { EasingMode = EasingMode.EaseOut };
         TimeSpan duration = TimeSpan.FromMilliseconds(450);
-        AnimateBackgroundProperty(incoming, Image.OpacityProperty, 0d, 0.45d, duration, ease);
+        AnimateBackgroundProperty(incoming, Image.OpacityProperty, 0d, _currentBackgroundOpacity, duration, ease);
 
         _backgroundTransitionCompletionTimer?.Stop();
         DispatcherTimer completionTimer = new() { Interval = duration + TimeSpan.FromMilliseconds(100) };
@@ -2935,7 +2937,7 @@ public partial class ScreensaverSceneControl : UserControl
             ResetBackgroundTransform(BackgroundImageA);
             ResetBackgroundTransform(BackgroundImageB);
             BackgroundImageA.Source = incomingBitmap;
-            BackgroundImageA.Opacity = 0.45d;
+            BackgroundImageA.Opacity = _currentBackgroundOpacity;
             BackgroundImageB.Source = incomingBitmap;
             BackgroundImageB.Opacity = 0d;
             SetBackgroundScale(BackgroundImageA, _backgroundZoomScale, _backgroundZoomScale);
@@ -2966,7 +2968,8 @@ public partial class ScreensaverSceneControl : UserControl
         {
             TraceSceneState(
                 "BackgroundSourceRecovered",
-                new KeyValuePair<string, object?>("path", Path.GetFileName(_currentBackgroundPath)));
+                new KeyValuePair<string, object?>("path", Path.GetFileName(_currentBackgroundPath)),
+                new KeyValuePair<string, object?>("opacity", _currentBackgroundOpacity));
         }
 
         if (_activeBackgroundImage?.Source is null)
@@ -2984,7 +2987,8 @@ public partial class ScreensaverSceneControl : UserControl
         {
             TraceSceneState(
                 "BackgroundSourceRecovered",
-                new KeyValuePair<string, object?>("path", Path.GetFileName(_currentBackgroundPath)));
+                new KeyValuePair<string, object?>("path", Path.GetFileName(_currentBackgroundPath)),
+                new KeyValuePair<string, object?>("opacity", _currentBackgroundOpacity));
         }
 
         if (_activeBackgroundImage?.Source is null)
@@ -3037,7 +3041,7 @@ public partial class ScreensaverSceneControl : UserControl
         ResetBackgroundTransform(BackgroundImageA);
         ResetBackgroundTransform(BackgroundImageB);
         BackgroundImageA.Source = recoverySource;
-        BackgroundImageA.Opacity = 0.45d;
+        BackgroundImageA.Opacity = _currentBackgroundOpacity;
         BackgroundImageB.Source = recoverySource;
         BackgroundImageB.Opacity = 0d;
         SetBackgroundScale(BackgroundImageA, _backgroundZoomScale, _backgroundZoomScale);
@@ -3099,6 +3103,59 @@ public partial class ScreensaverSceneControl : UserControl
         if (bitmap.CanFreeze)
             bitmap.Freeze();
         return bitmap;
+    }
+
+    private static double GetBackgroundPresentationOpacity(BitmapSource bitmap)
+    {
+        try
+        {
+            BitmapSource sampleSource = bitmap;
+            if (bitmap.PixelWidth > 48 || bitmap.PixelHeight > 48)
+            {
+                double scaleX = 48d / Math.Max(1d, bitmap.PixelWidth);
+                double scaleY = 48d / Math.Max(1d, bitmap.PixelHeight);
+                sampleSource = new TransformedBitmap(bitmap, new ScaleTransform(scaleX, scaleY));
+            }
+
+            if (sampleSource.Format != PixelFormats.Bgra32)
+                sampleSource = new FormatConvertedBitmap(sampleSource, PixelFormats.Bgra32, null, 0);
+
+            int stride = sampleSource.PixelWidth * 4;
+            byte[] pixels = new byte[stride * sampleSource.PixelHeight];
+            sampleSource.CopyPixels(pixels, stride, 0);
+
+            double luminanceTotal = 0d;
+            int pixelCount = 0;
+            for (int index = 0; index < pixels.Length; index += 4)
+            {
+                byte blue = pixels[index];
+                byte green = pixels[index + 1];
+                byte red = pixels[index + 2];
+                byte alpha = pixels[index + 3];
+                if (alpha == 0)
+                    continue;
+
+                double luminance = ((0.2126d * red) + (0.7152d * green) + (0.0722d * blue)) / 255d;
+                luminanceTotal += luminance;
+                pixelCount++;
+            }
+
+            if (pixelCount == 0)
+                return 0.45d;
+
+            double averageLuminance = luminanceTotal / pixelCount;
+            return averageLuminance switch
+            {
+                < 0.10d => 0.78d,
+                < 0.16d => 0.68d,
+                < 0.24d => 0.58d,
+                _ => 0.45d
+            };
+        }
+        catch
+        {
+            return 0.45d;
+        }
     }
 
     private static async Task<byte[]?> PreloadBackgroundBytesAsync(string path)
