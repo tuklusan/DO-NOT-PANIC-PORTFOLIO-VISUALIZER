@@ -3030,7 +3030,7 @@ public partial class ScreensaverSceneControl : UserControl
         ResetBackgroundTransform(standbyImage);
         activeImage.Source = source;
         activeImage.Opacity = _currentBackgroundOpacity;
-        standbyImage.Source = source;
+        standbyImage.Source = CreateStandbyBackgroundSource(source);
         standbyImage.Opacity = 0d;
         SetBackgroundScale(activeImage, _backgroundZoomScale, _backgroundZoomScale);
         _activeBackgroundImage = activeImage;
@@ -3095,6 +3095,19 @@ public partial class ScreensaverSceneControl : UserControl
         if (bitmap.CanFreeze)
             bitmap.Freeze();
         return bitmap;
+    }
+
+    private static ImageSource CreateStandbyBackgroundSource(ImageSource source)
+    {
+        if (source is BitmapSource bitmapSource)
+        {
+            BitmapSource clone = bitmapSource.CloneCurrentValue();
+            if (clone.CanFreeze)
+                clone.Freeze();
+            return clone;
+        }
+
+        return source;
     }
 
     private static double GetBackgroundPresentationOpacity(BitmapSource bitmap)
