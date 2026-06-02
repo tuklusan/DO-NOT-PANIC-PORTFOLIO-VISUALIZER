@@ -376,6 +376,49 @@ public sealed class FinanceNewsServiceTests
     }
 
     [Fact]
+    public void ParseSummarizedNewsItems_SalvagesMarkdownTitledBlocks()
+    {
+        MethodInfo parseMethod = typeof(FinanceNewsService).GetMethod(
+            "ParseSummarizedNewsItems",
+            BindingFlags.Static | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("FinanceNewsService.ParseSummarizedNewsItems not found.");
+
+        List<string> items = Assert.IsType<List<string>>(parseMethod.Invoke(null, ["""
+        **WEF Warning**
+
+        Markets brace themselves.
+        Volatility shock awaits.
+        Geopolitical tears.
+
+        *Surveyed economists warned that stock, debt, and yield volatility could all intensify as geopolitical strain rises.*
+
+        ---
+
+        **Dollar's Quiet Fading**
+
+        Gold and Bitcoin rise.
+        Central banks look elsewhere.
+        Dollar fears the dark.
+
+        *Bitcoin and gold were described as signs of experimentation outside dollar-based settlement systems.*
+        """]));
+
+        Assert.Equal(2, items.Count);
+        Assert.Equal(
+            "Markets brace themselves." + Environment.NewLine +
+            "Volatility shock awaits." + Environment.NewLine +
+            "Geopolitical tears." + Environment.NewLine +
+            "Surveyed economists warned that stock, debt, and yield volatility could all intensify as geopolitical strain rises.",
+            items[0]);
+        Assert.Equal(
+            "Gold and Bitcoin rise." + Environment.NewLine +
+            "Central banks look elsewhere." + Environment.NewLine +
+            "Dollar fears the dark." + Environment.NewLine +
+            "Bitcoin and gold were described as signs of experimentation outside dollar-based settlement systems.",
+            items[1]);
+    }
+
+    [Fact]
     public async Task GetHeadlinesAsync_SummarizedMode_WithoutApiKey_UsesSummaryFallback()
     {
         string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");

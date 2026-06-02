@@ -277,7 +277,14 @@ public sealed class FinanceNewsService
                 new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
                 new KeyValuePair<string, object?>("model_id", modelId));
             if (summarizedItems.Count == 0)
+            {
+                TraceNewsState(
+                    "NewsParseEmptyPreview",
+                    new KeyValuePair<string, object?>("mode", NewsScrollerMode.SummarizedFinancialNews),
+                    new KeyValuePair<string, object?>("content_preview", BuildResponsePreview(contentElement.GetString())),
+                    new KeyValuePair<string, object?>("response_length", contentElement.GetString()?.Length ?? 0));
                 return CreateSummarizedFallbackResult(context.Headlines, "empty-summary-items");
+            }
 
             summarizedItems.Add(BuildClosingQuoteHeadline(settings.DeepSeekWritingStyle));
             return new(summarizedItems, false);
@@ -437,13 +444,25 @@ public sealed class FinanceNewsService
         if (normalizedBlock.Contains(SummaryProseSeparator, StringComparison.Ordinal))
             return NormalizeSummarizedNewsItem(normalizedBlock);
 
-        string[] lines = normalizedBlock
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(NormalizeSummaryLine)
-            .Where(line => !string.IsNullOrWhiteSpace(line))
-            .ToArray();
+        string[] rawLines = normalizedBlock.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        List<string> lines = [];
+        for (int i = 0; i < rawLines.Length; i++)
+        {
+            string rawLine = rawLines[i];
+            if (IsStructuralSummaryLine(rawLine))
+                continue;
 
-        if (lines.Length < 4)
+            string normalizedLine = NormalizeSummaryLine(rawLine);
+            if (string.IsNullOrWhiteSpace(normalizedLine))
+                continue;
+
+            if (lines.Count == 0 && LooksLikeMarkdownTitleLine(rawLine, normalizedLine))
+                continue;
+
+            lines.Add(normalizedLine);
+        }
+
+        if (lines.Count < 4)
             return string.Empty;
 
         string[] poeticLines = lines.Take(3).ToArray();
@@ -486,9 +505,48 @@ public sealed class FinanceNewsService
         if (string.IsNullOrWhiteSpace(candidate))
             return string.Empty;
 
+        candidate = Regex.Replace(candidate, @"^\s*#{1,6}\s*", string.Empty);
+        candidate = Regex.Replace(candidate, @"^\s*[-*•]+\s+", string.Empty);
+        candidate = Regex.Replace(candidate, @"^\*{1,3}\s*(.+?)\s*\*{1,3}$", "$1");
+        candidate = Regex.Replace(candidate, @"^_{1,3}\s*(.+?)\s*_{1,3}$", "$1");
         candidate = Regex.Replace(candidate, @"[\u0000-\u001F\u007F]+", " ");
         candidate = Regex.Replace(candidate, @"\s+", " ");
         return candidate.Trim();
+    }
+
+    private static bool IsStructuralSummaryLine(string rawLine)
+    {
+        string candidate = (rawLine ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+            return true;
+
+        return candidate == SummaryProseSeparator ||
+               Regex.IsMatch(candidate, @"^[-*_]{3,}$", RegexOptions.CultureInvariant);
+    }
+
+    private static bool LooksLikeMarkdownTitleLine(string rawLine, string normalizedLine)
+    {
+        string candidate = (rawLine ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(candidate) || string.IsNullOrWhiteSpace(normalizedLine))
+            return false;
+
+        if (Regex.IsMatch(candidate, @"^\*{2}.+\*{2}$", RegexOptions.CultureInvariant) ||
+            Regex.IsMatch(candidate, @"^_{2}.+_{2}$", RegexOptions.CultureInvariant) ||
+            candidate.StartsWith("#", StringComparison.Ordinal))
+            return true;
+
+        return false;
+    }
+
+    private static string BuildResponsePreview(string? responseText)
+    {
+        string candidate = (responseText ?? string.Empty)
+            .Replace("\r\n", " ", StringComparison.Ordinal)
+            .Replace('\r', ' ')
+            .Replace('\n', ' ')
+            .Trim();
+        candidate = Regex.Replace(candidate, @"\s+", " ");
+        return candidate.Length <= 240 ? candidate : candidate[..240];
     }
 
     private static string GetWritingStyleInstruction(DeepSeekWritingStyle writingStyle)
