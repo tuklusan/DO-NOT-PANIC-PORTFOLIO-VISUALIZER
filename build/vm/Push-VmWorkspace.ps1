@@ -17,6 +17,9 @@ $archivePath = Join-Path $tempRoot 'repo-snapshot.tar'
 $publishRoot = Join-Path $repoRoot 'build\artifacts\publish-safe-temp'
 $localManifest = Join-Path $repoRoot 'build\vm\artifacts\host-runs'
 $localTestSecretsPath = Join-Path $repoRoot 'build\vm\test-secrets.json'
+$essentialOverlayFiles = @(
+    'global.json'
+)
 $bundle = $null
 
 try {
@@ -78,6 +81,31 @@ if (`$LASTEXITCODE -ne 0) {
 "@
     Write-VmSshStep "Expanding repository snapshot inside guest workspace"
     Invoke-VmPwshCommand -Bundle $bundle -Command $expandCommand -TimeOutSeconds 1800 | Out-Null
+
+    $remoteRepoRoot = Join-Path $RootPath 'repo'
+    foreach ($relativePath in $essentialOverlayFiles) {
+        $localOverlayPath = Join-Path $repoRoot $relativePath
+        if (-not (Test-Path $localOverlayPath)) {
+            continue
+        }
+
+        $remoteOverlayDirectory = Join-Path $remoteRepoRoot (Split-Path -Path $relativePath -Parent)
+        if ([string]::IsNullOrWhiteSpace($remoteOverlayDirectory)) {
+            $remoteOverlayDirectory = $remoteRepoRoot
+        }
+
+        Ensure-VmDirectory -Bundle $bundle -RemotePath $remoteOverlayDirectory
+        Send-VmItem -Bundle $bundle -LocalPath $localOverlayPath -RemoteDestination $remoteOverlayDirectory
+    }
+
+    $vmToolsLocalRoot = Join-Path $repoRoot 'build\vm'
+    $vmToolsRemoteRoot = Join-Path $remoteRepoRoot 'build\vm'
+    $vmToolFiles = Get-ChildItem -LiteralPath $vmToolsLocalRoot -File -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Extension -in @('.ps1', '.json', '.md') }
+    foreach ($vmToolFile in $vmToolFiles) {
+        Ensure-VmDirectory -Bundle $bundle -RemotePath $vmToolsRemoteRoot
+        Send-VmItem -Bundle $bundle -LocalPath $vmToolFile.FullName -RemoteDestination $vmToolsRemoteRoot
+    }
 
     if ($IncludePublishArtifacts -and (Test-Path $publishRoot)) {
         $publishArchive = Join-Path $tempRoot 'publish-safe-temp.zip'
