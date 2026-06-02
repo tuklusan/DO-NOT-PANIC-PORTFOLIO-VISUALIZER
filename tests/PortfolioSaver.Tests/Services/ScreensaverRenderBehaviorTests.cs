@@ -230,14 +230,13 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("BackgroundTransitionSkipped", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private bool TryRecoverActiveBackgroundSource()", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundSourceRecovered", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("outgoing.Source = incomingBitmap;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundImageA.Source = incomingBitmap;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundImageB.Source = incomingBitmap;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_activeBackgroundImage = BackgroundImageA;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_inactiveBackgroundImage = BackgroundImageB;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private BitmapImage? _currentBackgroundBitmap;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_currentBackgroundBitmap = incomingBitmap;", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("fallbackBitmap = CreateBackgroundBitmap(_currentBackgroundPath!);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("recoverySource = _currentBackgroundBitmap = CreateBackgroundBitmap(_currentBackgroundPath!);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_backgroundTransitionInFlight", codeBehind, StringComparison.Ordinal);
         Assert.Contains("SetBackgroundZoomRunning(false, \"background-transitioning\");", codeBehind, StringComparison.Ordinal);
         Assert.Contains("TimeSpan duration = TimeSpan.FromMilliseconds(450);", codeBehind, StringComparison.Ordinal);
