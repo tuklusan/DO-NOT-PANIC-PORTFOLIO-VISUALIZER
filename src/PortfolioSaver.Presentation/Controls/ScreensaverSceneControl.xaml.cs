@@ -3656,7 +3656,7 @@ public partial class ScreensaverSceneControl : UserControl
         {
             ApplyRefreshMotionCue(graph, percent);
             graph.TriggerCardFlash(changeBrush);
-            TraceGraph($"GraphCardFlash symbol={graph.Symbol} raw_last={(last?.ToString("0.####") ?? "--")} percent={(percent?.ToString("0.####") ?? "--")} reason=raw-price-change");
+            TraceScene($"GraphCardFlash symbol={graph.Symbol} raw_last={(last?.ToString("0.####") ?? "--")} percent={(percent?.ToString("0.####") ?? "--")} reason=raw-price-change");
         }
     }
 
