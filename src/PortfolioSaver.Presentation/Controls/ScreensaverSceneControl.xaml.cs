@@ -2924,7 +2924,7 @@ public partial class ScreensaverSceneControl : UserControl
                 return;
             }
 
-            CanonicalizeBackgroundLayers(incomingBitmap);
+            FinalizeBackgroundTransition(incoming, outgoing, incomingBitmap);
             TraceSceneState(
                 "BackgroundTransitionComplete",
                 new KeyValuePair<string, object?>("path", Path.GetFileName(path)),
@@ -3019,22 +3019,27 @@ public partial class ScreensaverSceneControl : UserControl
         return sourceWasMissing;
     }
 
-    private void CanonicalizeBackgroundLayers(ImageSource source)
+    private void FinalizeBackgroundTransition(Image activeImage, Image standbyImage, ImageSource source)
     {
         _backgroundTransitionCompletionTimer?.Stop();
         _backgroundTransitionCompletionTimer = null;
         _backgroundTransitionInFlight = false;
-        StopBackgroundAnimations(BackgroundImageA);
-        StopBackgroundAnimations(BackgroundImageB);
-        ResetBackgroundTransform(BackgroundImageA);
-        ResetBackgroundTransform(BackgroundImageB);
-        BackgroundImageA.Source = source;
-        BackgroundImageA.Opacity = _currentBackgroundOpacity;
-        BackgroundImageB.Source = source;
-        BackgroundImageB.Opacity = 0d;
-        SetBackgroundScale(BackgroundImageA, _backgroundZoomScale, _backgroundZoomScale);
-        _activeBackgroundImage = BackgroundImageA;
-        _inactiveBackgroundImage = BackgroundImageB;
+        StopBackgroundAnimations(activeImage);
+        StopBackgroundAnimations(standbyImage);
+        ResetBackgroundTransform(activeImage);
+        ResetBackgroundTransform(standbyImage);
+        activeImage.Source = source;
+        activeImage.Opacity = _currentBackgroundOpacity;
+        standbyImage.Source = source;
+        standbyImage.Opacity = 0d;
+        SetBackgroundScale(activeImage, _backgroundZoomScale, _backgroundZoomScale);
+        _activeBackgroundImage = activeImage;
+        _inactiveBackgroundImage = standbyImage;
+    }
+
+    private void CanonicalizeBackgroundLayers(ImageSource source)
+    {
+        FinalizeBackgroundTransition(BackgroundImageA, BackgroundImageB, source);
     }
 
     private void SetBackgroundZoomRunning(bool enabled, string reason)

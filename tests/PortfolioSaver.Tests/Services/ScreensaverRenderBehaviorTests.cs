@@ -230,11 +230,13 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("BackgroundTransitionSkipped", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private bool TryRecoverActiveBackgroundSource()", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundSourceRecovered", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void FinalizeBackgroundTransition(Image activeImage, Image standbyImage, ImageSource source)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void CanonicalizeBackgroundLayers(ImageSource source)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundImageA.Source = source;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundImageB.Source = source;", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("_activeBackgroundImage = BackgroundImageA;", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("_inactiveBackgroundImage = BackgroundImageB;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("FinalizeBackgroundTransition(incoming, outgoing, incomingBitmap);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("_activeBackgroundImage = activeImage;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("_inactiveBackgroundImage = standbyImage;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private BitmapImage? _currentBackgroundBitmap;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private double _currentBackgroundOpacity = 0.45d;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_currentBackgroundBitmap = incomingBitmap;", codeBehind, StringComparison.Ordinal);
