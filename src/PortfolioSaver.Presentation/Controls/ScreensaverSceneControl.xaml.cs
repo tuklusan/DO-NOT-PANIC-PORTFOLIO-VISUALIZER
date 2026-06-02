@@ -2625,12 +2625,7 @@ public partial class ScreensaverSceneControl : UserControl
         if (_activeBackgroundImage is null || _inactiveBackgroundImage is null)
         {
             _currentBackgroundBitmap = backgroundBitmap;
-            BackgroundImageA.Source = backgroundBitmap;
-            BackgroundImageA.Opacity = _currentBackgroundOpacity;
-            BackgroundImageB.Source = backgroundBitmap;
-            BackgroundImageB.Opacity = 0d;
-            _activeBackgroundImage = BackgroundImageA;
-            _inactiveBackgroundImage = BackgroundImageB;
+            CanonicalizeBackgroundLayers(backgroundBitmap);
             ResetBackgroundZoomState();
             EnsureBackgroundSlowZoomRunning();
             return;
@@ -2644,10 +2639,7 @@ public partial class ScreensaverSceneControl : UserControl
             StopBackgroundAnimations(_inactiveBackgroundImage);
             ResetBackgroundTransform(_activeBackgroundImage);
             ResetBackgroundTransform(_inactiveBackgroundImage);
-            _activeBackgroundImage.Source = backgroundBitmap;
-            _activeBackgroundImage.Opacity = _currentBackgroundOpacity;
-            _inactiveBackgroundImage.Source = backgroundBitmap;
-            _inactiveBackgroundImage.Opacity = 0d;
+            CanonicalizeBackgroundLayers(backgroundBitmap);
             ResetBackgroundZoomState();
             EnsureBackgroundSlowZoomRunning();
             return;
@@ -2932,18 +2924,7 @@ public partial class ScreensaverSceneControl : UserControl
                 return;
             }
 
-            StopBackgroundAnimations(BackgroundImageA);
-            StopBackgroundAnimations(BackgroundImageB);
-            ResetBackgroundTransform(BackgroundImageA);
-            ResetBackgroundTransform(BackgroundImageB);
-            BackgroundImageA.Source = incomingBitmap;
-            BackgroundImageA.Opacity = _currentBackgroundOpacity;
-            BackgroundImageB.Source = incomingBitmap;
-            BackgroundImageB.Opacity = 0d;
-            SetBackgroundScale(BackgroundImageA, _backgroundZoomScale, _backgroundZoomScale);
-            _activeBackgroundImage = BackgroundImageA;
-            _inactiveBackgroundImage = BackgroundImageB;
-            _backgroundTransitionInFlight = false;
+            CanonicalizeBackgroundLayers(incomingBitmap);
             TraceSceneState(
                 "BackgroundTransitionComplete",
                 new KeyValuePair<string, object?>("path", Path.GetFileName(path)),
@@ -3033,6 +3014,13 @@ public partial class ScreensaverSceneControl : UserControl
         if (recoverySource is null)
             return false;
 
+        bool sourceWasMissing = _activeBackgroundImage?.Source is null;
+        CanonicalizeBackgroundLayers(recoverySource);
+        return sourceWasMissing;
+    }
+
+    private void CanonicalizeBackgroundLayers(ImageSource source)
+    {
         _backgroundTransitionCompletionTimer?.Stop();
         _backgroundTransitionCompletionTimer = null;
         _backgroundTransitionInFlight = false;
@@ -3040,14 +3028,13 @@ public partial class ScreensaverSceneControl : UserControl
         StopBackgroundAnimations(BackgroundImageB);
         ResetBackgroundTransform(BackgroundImageA);
         ResetBackgroundTransform(BackgroundImageB);
-        BackgroundImageA.Source = recoverySource;
+        BackgroundImageA.Source = source;
         BackgroundImageA.Opacity = _currentBackgroundOpacity;
-        BackgroundImageB.Source = recoverySource;
+        BackgroundImageB.Source = source;
         BackgroundImageB.Opacity = 0d;
         SetBackgroundScale(BackgroundImageA, _backgroundZoomScale, _backgroundZoomScale);
         _activeBackgroundImage = BackgroundImageA;
         _inactiveBackgroundImage = BackgroundImageB;
-        return true;
     }
 
     private void SetBackgroundZoomRunning(bool enabled, string reason)
