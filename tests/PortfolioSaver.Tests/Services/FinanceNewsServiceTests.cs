@@ -513,10 +513,17 @@ public sealed class FinanceNewsServiceTests
 
         failDeepSeek = true;
         IReadOnlyList<string> second = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+        Assert.Equal(2, deepSeekRequestCount);
+        IReadOnlyList<string> third = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
 
         Assert.Equal(2, deepSeekRequestCount);
         Assert.Equal(first, second);
+        Assert.Equal(second, third);
         Assert.DoesNotContain(second, headline => headline.Contains("Markets brace for a volatile week as oil and bonds diverge", StringComparison.Ordinal));
+
+        NewsHeadlineCache refreshedCache = JsonSerializer.Deserialize<NewsHeadlineCache>(await File.ReadAllTextAsync(cachePath), CacheJsonOptions)
+            ?? throw new InvalidOperationException("Refreshed news payload was not written.");
+        Assert.True(refreshedCache.FetchTimestampUtc > cache.FetchTimestampUtc);
     }
 
     private sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler

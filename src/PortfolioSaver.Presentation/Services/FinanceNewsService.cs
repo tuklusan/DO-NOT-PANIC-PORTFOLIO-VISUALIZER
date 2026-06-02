@@ -117,11 +117,14 @@ public sealed class FinanceNewsService
                 fetchResult.UsedFallback &&
                 matchingCachedHeadlines.Count > 0)
             {
+                cache.FetchTimestampUtc = DateTimeOffset.UtcNow;
+                await SaveCacheAsync(cache, cancellationToken);
                 TraceNewsState(
                     "NewsStyledCacheRetained",
                     new KeyValuePair<string, object?>("mode", mode),
                     new KeyValuePair<string, object?>("headline_count", matchingCachedHeadlines.Count),
-                    new KeyValuePair<string, object?>("fallback_headline_count", fetchResult.Headlines.Count));
+                    new KeyValuePair<string, object?>("fallback_headline_count", fetchResult.Headlines.Count),
+                    new KeyValuePair<string, object?>("cache_timestamp_refreshed", true));
                 return matchingCachedHeadlines;
             }
 
