@@ -216,4 +216,28 @@ public sealed class AppSettingsNormalizerTests
 
         Assert.Equal(DeepSeekWritingStyle.DouglasAdams, normalized.DeepSeekWritingStyle);
     }
+
+    [Fact]
+    public void Normalize_DefaultsDeepSeekEndpointAndModelWhenBlank()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.DeepSeekEndpointUrl = "   ";
+        settings.DeepSeekModelId = " ";
+
+        AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+        Assert.Equal(Defaults.DefaultDeepSeekEndpointUrl, normalized.DeepSeekEndpointUrl);
+        Assert.Equal(Defaults.DefaultDeepSeekModelId, normalized.DeepSeekModelId);
+    }
+
+    [Fact]
+    public void Normalize_CanonicalizesDeepSeekChatCompletionsEndpointToBaseUrl()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.DeepSeekEndpointUrl = "https://localhost:11434/v1/chat/completions/";
+
+        AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+        Assert.Equal("https://localhost:11434/v1", normalized.DeepSeekEndpointUrl);
+    }
 }

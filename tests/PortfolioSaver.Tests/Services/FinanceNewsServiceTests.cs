@@ -61,7 +61,7 @@ public sealed class FinanceNewsServiceTests
 
             requestCount++;
             capturedBody = request.Content is null ? string.Empty : request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-            Assert.Equal("https://api.deepseek.com/chat/completions", requestUrl);
+            Assert.Equal("https://api.deepseek.com/v1/chat/completions", requestUrl);
             Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
             Assert.Equal("test-deepseek-key", request.Headers.Authorization?.Parameter);
             return new HttpResponseMessage(HttpStatusCode.OK)
@@ -88,7 +88,9 @@ public sealed class FinanceNewsServiceTests
             DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
             NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
             NewsRefreshMinutes = 5,
-            DeepSeekApiKey = "test-deepseek-key"
+            DeepSeekApiKey = "test-deepseek-key",
+            DeepSeekEndpointUrl = Defaults.DefaultDeepSeekEndpointUrl,
+            DeepSeekModelId = Defaults.DefaultDeepSeekModelId
         };
 
         IReadOnlyList<string> first = await service.GetHeadlinesAsync(
@@ -123,6 +125,64 @@ public sealed class FinanceNewsServiceTests
             "Global stocks were mixed as traders weighed labor data, central-bank caution, and softer energy sentiment across regions.",
             first[0]);
         Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", first[1]);
+    }
+
+    [Fact]
+    public async Task GetHeadlinesAsync_SummarizedMode_UsesConfiguredEndpointAndModel()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        string? capturedBody = null;
+        string? capturedRequestUrl = null;
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    <rss><channel><item><title>Dollar holds steady as commodity markets regroup</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            capturedRequestUrl = requestUrl;
+            capturedBody = request.Content is null ? string.Empty : request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "content": "[[ITEM]]\nSatchels mark the forms.\nCopper sighs in patient fog.\nClerks await the bell.\n---\nCurrencies and commodities steadied as traders reassessed growth fears against calmer funding markets.\n[[/ITEM]]"
+                      }
+                    }
+                  ]
+                }
+                """, Encoding.UTF8, "application/json")
+            };
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
+            NewsRefreshMinutes = 15,
+            DeepSeekApiKey = "test-deepseek-key",
+            DeepSeekEndpointUrl = "https://localhost:11434/v1/chat/completions",
+            DeepSeekModelId = "llama3"
+        };
+
+        IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+        Assert.Equal(2, headlines.Count);
+        Assert.Equal("https://localhost:11434/v1/chat/completions", capturedRequestUrl);
+        Assert.Contains("\"model\":\"llama3\"", capturedBody, StringComparison.Ordinal);
     }
 
     [Fact]

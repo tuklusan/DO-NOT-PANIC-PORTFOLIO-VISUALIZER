@@ -118,17 +118,15 @@ public sealed class StartupCoordinator
 
     public IReadOnlyList<string> BuildOrderedRuntimeSymbols(AppSettings settings)
     {
+        List<string> macroSymbols = GetMacroIndicatorSymbols().ToList();
+        List<string> worldMarketSymbols = FloatingClockBuilder.GetWorldIndexSymbols().ToList();
         List<string> portfolioSymbols = BuildInterleavedPortfolioSymbols(settings);
-        List<string> ancillarySymbols =
-        [
-            .. FloatingClockBuilder.GetWorldIndexSymbols(),
-            .. GetMacroIndicatorSymbols()
-        ];
 
         List<string> orderedSymbols =
         [
-            .. portfolioSymbols,
-            .. ancillarySymbols
+            .. macroSymbols,
+            .. worldMarketSymbols,
+            .. portfolioSymbols
         ];
 
         return orderedSymbols

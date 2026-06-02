@@ -479,7 +479,30 @@
                                                  MinWidth="128"
                                                  infra:BindablePasswordBox.BoundPassword="{Binding Settings.DeepSeekApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
-                                <TextBlock Text="Summarized mode sends curated live global financial headlines to DeepSeek for style-only rewriting, then plays the results back one bulletin at a time in a teleprinter-style band with uppercase courier text, typed character by character, paused, cleared, and only scrolled when the item is too long. The DeepSeek key is kept out of settings.json, restored from protected local storage when saved locally, and still respects environment overrides when present." Style="{StaticResource SectionNoteStyle}" />
+                                <Grid Margin="0,4,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" MinWidth="156" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="DeepSeek endpoint URL:" Style="{StaticResource FieldLabelStyle}" />
+                                    <TextBox Grid.Column="1"
+                                             MinWidth="128"
+                                             IsEnabled="{Binding IsSummarizedFinancialNewsSelected}"
+                                             Text="{Binding Settings.DeepSeekEndpointUrl, UpdateSourceTrigger=PropertyChanged}" />
+                                </Grid>
+                                <Grid Margin="0,4,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" MinWidth="156" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="DeepSeek model ID:" Style="{StaticResource FieldLabelStyle}" />
+                                    <TextBox Grid.Column="1"
+                                             MinWidth="128"
+                                             IsEnabled="{Binding IsSummarizedFinancialNewsSelected}"
+                                             Text="{Binding Settings.DeepSeekModelId, UpdateSourceTrigger=PropertyChanged}" />
+                                </Grid>
+                                <TextBlock Text="Summarized mode sends curated live global financial headlines to a configurable OpenAI-compatible chat endpoint for style-only rewriting, then plays the results back one bulletin at a time in a teleprinter-style band with uppercase courier text, typed character by character, paused, cleared, and only scrolled when the item is too long. The three-field contract is API key, endpoint URL, and model ID." Style="{StaticResource SectionNoteStyle}" />
+                                <TextBlock Text="The DeepSeek key is kept out of settings.json, restored from protected local storage when saved locally, and still respects environment overrides when present. The default endpoint ships as https://api.deepseek.com/v1 and the default model ID ships as deepseek-v4-flash, but both remain editable for future compatible backends." Style="{StaticResource SectionNoteStyle}" />
                                 <TextBlock Text="RSS mode validates the feed during Apply and falls back to the default finance feed when needed." Style="{StaticResource SectionNoteStyle}" />
                             </StackPanel>
                         </Border>

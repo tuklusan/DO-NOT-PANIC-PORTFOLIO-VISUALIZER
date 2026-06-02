@@ -1,3 +1,4 @@
+using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 
 namespace PortfolioSaver.Core.Models;
@@ -23,6 +24,8 @@ public sealed class AppSettings
     // DeepSeek remains user-configurable for summarized news and can still be overlaid from
     // protected local storage or environment variables.
     public string DeepSeekApiKey { get; set; } = string.Empty;
+    public string DeepSeekEndpointUrl { get; set; } = Defaults.DefaultDeepSeekEndpointUrl;
+    public string DeepSeekModelId { get; set; } = Defaults.DefaultDeepSeekModelId;
     public int MarketCalendarRefreshHours { get; set; } = 12;
 
     public bool EnableFloatingGraphs { get; set; } = true;

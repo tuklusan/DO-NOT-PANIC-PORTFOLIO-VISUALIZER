@@ -21,8 +21,6 @@ public sealed class FinanceNewsService
     private const string SummaryProseSeparator = "---";
     private const string CacheFileName = "finance-news-cache.json";
     private const string DefaultFeedUrl = "https://finance.yahoo.com/news/rss";
-    private const string DeepSeekApiUrl = "https://api.deepseek.com/chat/completions";
-    private const string DeepSeekModel = "deepseek-v4-flash";
     private const string CnbcWorldFeedUrl = "https://www.cnbc.com/id/19832390/device/rss/rss.html";
     private const string BbcBusinessFeedUrl = "https://feeds.bbci.co.uk/news/business/rss.xml";
     private const string NytEconomyFeedUrl = "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml";
@@ -206,9 +204,11 @@ public sealed class FinanceNewsService
 
         try
         {
+            string endpointUrl = ResolveDeepSeekEndpointUrl(settings.DeepSeekEndpointUrl);
+            string modelId = ResolveDeepSeekModelId(settings.DeepSeekModelId);
             var payload = new
             {
-                model = DeepSeekModel,
+                model = modelId,
                 temperature = 0.2,
                 max_tokens = 900,
                 messages = new object[]
@@ -226,7 +226,7 @@ public sealed class FinanceNewsService
                 }
             };
 
-            using HttpRequestMessage request = new(HttpMethod.Post, DeepSeekApiUrl);
+            using HttpRequestMessage request = new(HttpMethod.Post, BuildDeepSeekChatCompletionsUri(endpointUrl));
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
             request.Content = new StringContent(
                 JsonSerializer.Serialize(payload),
@@ -258,7 +258,9 @@ public sealed class FinanceNewsService
                 new KeyValuePair<string, object?>("mode", NewsScrollerMode.SummarizedFinancialNews),
                 new KeyValuePair<string, object?>("source_headline_count", context.Headlines.Count),
                 new KeyValuePair<string, object?>("item_count", summarizedItems.Count),
-                new KeyValuePair<string, object?>("writing_style", settings.DeepSeekWritingStyle));
+                new KeyValuePair<string, object?>("writing_style", settings.DeepSeekWritingStyle),
+                new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                new KeyValuePair<string, object?>("model_id", modelId));
             if (summarizedItems.Count == 0)
                 return CreateSummarizedFallbackResult(context.Headlines, "empty-summary-items");
 
@@ -457,6 +459,31 @@ public sealed class FinanceNewsService
 
         return (_deepSeekApiKeyResolver() ?? string.Empty).Trim();
     }
+
+    private static string ResolveDeepSeekEndpointUrl(string? explicitEndpointUrl)
+    {
+        string candidate = (explicitEndpointUrl ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+            return Defaults.DefaultDeepSeekEndpointUrl;
+
+        string normalized = candidate.TrimEnd('/');
+        const string chatPath = "/chat/completions";
+        if (normalized.EndsWith(chatPath, StringComparison.OrdinalIgnoreCase))
+            normalized = normalized[..^chatPath.Length];
+
+        return normalized;
+    }
+
+    private static string ResolveDeepSeekModelId(string? explicitModelId)
+    {
+        string candidate = (explicitModelId ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(candidate)
+            ? Defaults.DefaultDeepSeekModelId
+            : candidate;
+    }
+
+    private static Uri BuildDeepSeekChatCompletionsUri(string endpointUrl)
+        => new(new Uri($"{endpointUrl.TrimEnd('/')}/", UriKind.Absolute), "chat/completions");
 
     private static IReadOnlyList<string> GetFallbackHeadlines(NewsScrollerMode mode, IReadOnlyList<string> cached)
         => cached.Count > 0

@@ -185,6 +185,8 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("Content=\"Douglas Adams\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"William Shakespeare\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"DeepSeek style:\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"DeepSeek endpoint URL:\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"DeepSeek model ID:\"", xaml, StringComparison.Ordinal);
         Assert.Contains("IsEnabled=\"{Binding IsSummarizedFinancialNewsSelected}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("IsEnabled=\"{Binding IsRssFeedSelected}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("DeepSeek API key:", xaml, StringComparison.Ordinal);
@@ -193,6 +195,9 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("The old per-provider API key and policy grid has been intentionally retired from the config surface.", xaml, StringComparison.Ordinal);
         Assert.Contains("teleprinter-style band with uppercase courier text, typed character by character, paused, cleared, and only scrolled when the item is too long", xaml, StringComparison.Ordinal);
         Assert.Contains("style-only rewriting", xaml, StringComparison.Ordinal);
+        Assert.Contains("The three-field contract is API key, endpoint URL, and model ID.", xaml, StringComparison.Ordinal);
+        Assert.Contains("default endpoint ships as https://api.deepseek.com/v1", xaml, StringComparison.Ordinal);
+        Assert.Contains("default model ID ships as deepseek-v4-flash", xaml, StringComparison.Ordinal);
     }
 
     private static string GetRepoRoot()

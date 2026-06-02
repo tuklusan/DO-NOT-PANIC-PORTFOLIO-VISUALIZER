@@ -45,6 +45,8 @@ public static class AppSettingsNormalizer
             normalized.DeepSeekApiKey,
             "DEEPSEEK_API_KEY",
             "PORTFOLIOSAVER_DEEPSEEK_API_KEY");
+        normalized.DeepSeekEndpointUrl = NormalizeDeepSeekEndpointUrl(normalized.DeepSeekEndpointUrl);
+        normalized.DeepSeekModelId = NormalizeDeepSeekModelId(normalized.DeepSeekModelId);
 
         normalized.MarketCalendarRefreshHours = Clamp(
             normalized.MarketCalendarRefreshHours,
@@ -254,6 +256,31 @@ public static class AppSettingsNormalizer
         }
 
         return Defaults.DefaultNewsFeedUrl;
+    }
+
+    private static string NormalizeDeepSeekEndpointUrl(string currentValue)
+    {
+        string candidate = (currentValue ?? string.Empty).Trim();
+        if (Uri.TryCreate(candidate, UriKind.Absolute, out Uri? uri) &&
+            (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp))
+        {
+            string normalized = uri.ToString().TrimEnd('/');
+            const string chatPath = "/chat/completions";
+            if (normalized.EndsWith(chatPath, StringComparison.OrdinalIgnoreCase))
+                normalized = normalized[..^chatPath.Length];
+
+            return normalized;
+        }
+
+        return Defaults.DefaultDeepSeekEndpointUrl;
+    }
+
+    private static string NormalizeDeepSeekModelId(string currentValue)
+    {
+        string candidate = (currentValue ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(candidate)
+            ? Defaults.DefaultDeepSeekModelId
+            : candidate;
     }
 
     private static NewsScrollerMode NormalizeNewsScrollerMode(NewsScrollerMode currentValue)

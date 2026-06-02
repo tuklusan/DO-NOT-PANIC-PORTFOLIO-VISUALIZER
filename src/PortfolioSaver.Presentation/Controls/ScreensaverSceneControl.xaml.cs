@@ -2544,7 +2544,7 @@ public partial class ScreensaverSceneControl : UserControl
     private static string FormatPinnedStatusCountdown(MarketSession session, ExchangeCalendarStatus status)
     {
         if (!status.HasCountdown)
-            return "Timing unavailable";
+            return string.Empty;
 
         return status.CountdownTo switch
         {
@@ -2552,7 +2552,7 @@ public partial class ScreensaverSceneControl : UserControl
             ExchangeCountdownTarget.SessionEnd when session == MarketSession.AfterHours => $"After-hours ends in {FormatHoursAndMinutes(status.Countdown)}",
             ExchangeCountdownTarget.SessionEnd => $"Session ends in {FormatHoursAndMinutes(status.Countdown)}",
             ExchangeCountdownTarget.Open => $"Opening in {FormatDaysHoursAndMinutes(status.Countdown)}",
-            _ => "Timing unavailable"
+            _ => string.Empty
         };
     }
 
@@ -3587,6 +3587,8 @@ public partial class ScreensaverSceneControl : UserControl
         NewsFeedUrl = source.NewsFeedUrl,
         NewsRefreshMinutes = source.NewsRefreshMinutes,
         DeepSeekApiKey = source.DeepSeekApiKey,
+        DeepSeekEndpointUrl = source.DeepSeekEndpointUrl,
+        DeepSeekModelId = source.DeepSeekModelId,
         HttpTimeoutSeconds = source.HttpTimeoutSeconds
     };
 
