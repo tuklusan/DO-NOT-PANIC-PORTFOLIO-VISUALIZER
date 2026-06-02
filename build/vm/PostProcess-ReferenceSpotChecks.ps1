@@ -106,7 +106,7 @@ function Parse-DisplayedTapeSamples {
         }
     }
 
-    return @($records)
+    return ,@($records)
 }
 
 function Test-IsDisplayedSampleFullyLive {
@@ -228,7 +228,7 @@ function Build-ComparisonEntries {
         $comparisons += [pscustomobject]$entry
     }
 
-    return @($comparisons)
+    return ,@($comparisons)
 }
 
 $traceRoot = Join-Path $ResultRoot 'trace'
@@ -242,7 +242,7 @@ $combinedTracePath = Join-Path $ResultRoot 'combined-trace-tail.txt'
 
 $traceText = Read-CircularTraceText -LogPath $tracePath -IndexPath $indexPath
 $yfinanceTraceText = Read-CircularTraceText -LogPath $yfinanceTracePath -IndexPath $yfinanceIndexPath
-$samples = Parse-DisplayedTapeSamples -TraceText $traceText
+$samples = @(Parse-DisplayedTapeSamples -TraceText $traceText)
 
 $sampleRecords = @()
 $comparisonRecords = @()
