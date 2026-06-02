@@ -247,6 +247,7 @@ $samples = @(Parse-DisplayedTapeSamples -TraceText $traceText)
 $sampleRecords = @()
 $comparisonRecords = @()
 $preferredSample = if ($samples.Count -gt 0) { Get-PreferredDisplayedTapeSample -Samples $samples } else { $null }
+if ($null -ne $preferredSample) {
 foreach ($sample in @($preferredSample)) {
     $symbols = @($sample.DisplayedSample | Select-Object -ExpandProperty Symbol -Unique)
     $reference = Get-ReferenceResults -Symbols $symbols
@@ -269,6 +270,7 @@ foreach ($sample in @($preferredSample)) {
         SampleSelection = if (Test-IsDisplayedSampleFullyLive -SampleRecord $sample) { 'latest-fully-live' } else { 'latest-available' }
         Comparisons = @(Build-ComparisonEntries -DisplayedSample $sample.DisplayedSample -ReferenceResults $reference.Results)
     }
+}
 }
 
 $sampleRecords | ForEach-Object { $_ | ConvertTo-Json -Compress -Depth 6 } | Set-Content -LiteralPath $spotCheckPath -Encoding UTF8
