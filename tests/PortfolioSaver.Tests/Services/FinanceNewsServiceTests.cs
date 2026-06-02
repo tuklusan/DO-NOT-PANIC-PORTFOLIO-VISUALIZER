@@ -341,6 +341,41 @@ public sealed class FinanceNewsServiceTests
     }
 
     [Fact]
+    public void ParseSummarizedNewsItems_SalvagesMarkerlessHaikuBlocks()
+    {
+        MethodInfo parseMethod = typeof(FinanceNewsService).GetMethod(
+            "ParseSummarizedNewsItems",
+            BindingFlags.Static | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("FinanceNewsService.ParseSummarizedNewsItems not found.");
+
+        List<string> items = Assert.IsType<List<string>>(parseMethod.Invoke(null, ["""
+        Clerks stamp the void.
+        Bond markets cough into fog.
+        Tea goes cold again.
+        Bond markets drifted as traders weighed slower growth against stubborn inflation worries.
+
+        Cargo drones complain.
+        Supply chains grumble at dusk.
+        Someone lost the forms.
+        Shipping shares steadied after ports resumed partial operations and fuel fears eased.
+        """]));
+
+        Assert.Equal(2, items.Count);
+        Assert.Equal(
+            "Clerks stamp the void." + Environment.NewLine +
+            "Bond markets cough into fog." + Environment.NewLine +
+            "Tea goes cold again." + Environment.NewLine +
+            "Bond markets drifted as traders weighed slower growth against stubborn inflation worries.",
+            items[0]);
+        Assert.Equal(
+            "Cargo drones complain." + Environment.NewLine +
+            "Supply chains grumble at dusk." + Environment.NewLine +
+            "Someone lost the forms." + Environment.NewLine +
+            "Shipping shares steadied after ports resumed partial operations and fuel fears eased.",
+            items[1]);
+    }
+
+    [Fact]
     public async Task GetHeadlinesAsync_SummarizedMode_WithoutApiKey_UsesSummaryFallback()
     {
         string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");

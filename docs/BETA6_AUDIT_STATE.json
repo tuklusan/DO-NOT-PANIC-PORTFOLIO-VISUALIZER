@@ -992,6 +992,24 @@
         "Keep any desired motion cue logic separate if needed, but stop the prominent card flash from firing on percent-only or formatting-only deltas.",
         "Add focused tests and trace-visible proof so repeated quote passes for stable symbols do not keep flashing the same graph cards unnecessarily."
       ]
+    },
+    {
+      "id": "NB-065",
+      "tracking_number": "NB-065",
+      "priority": 2,
+      "area": "news_scroller",
+      "title": "Harden summarized-news parsing against markerless DeepSeek responses",
+      "status": "open",
+      "source": "vm_trace_followup",
+      "evidence": [
+        "The 60-minute VM run ux-deep-ssh-20260602-225758 recorded NewsSummaryFallbackActivated / reason=empty-summary-items, followed by NewsStyledCacheRetained, showing the model sometimes returns text that does not match the exact [[ITEM]] marker contract."
+      ],
+      "notes": [
+        "Add a parser fallback path for markerless or partially malformed summarized-news responses so valid stylized content can still be turned into teleprinter items without dropping into fallback.",
+        "Keep the strict marker path as the first preference, but salvage plausible haiku-plus-prose groupings when the response is structurally close but not perfectly machine-formatted.",
+        "Retain cache-preservation behavior as the final safety net, but reduce or eliminate empty-summary-items events in normal runs.",
+        "Prove the hardening with local tests and 1-hour VM traces."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

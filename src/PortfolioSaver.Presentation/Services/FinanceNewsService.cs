@@ -391,7 +391,63 @@ public sealed class FinanceNewsService
                 items.Add(item);
         }
 
+        if (items.Count == 0)
+            items.AddRange(ParseLooseSummarizedNewsItems(candidate));
+
         return items;
+    }
+
+    private static IEnumerable<string> ParseLooseSummarizedNewsItems(string candidate)
+    {
+        string normalized = candidate.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+            yield break;
+
+        string[] paragraphBlocks = Regex.Split(normalized, @"\n\s*\n")
+            .Select(block => block.Trim())
+            .Where(block => !string.IsNullOrWhiteSpace(block))
+            .ToArray();
+
+        if (paragraphBlocks.Length > 1)
+        {
+            foreach (string block in paragraphBlocks)
+            {
+                string item = NormalizeLooseSummarizedNewsBlock(block);
+                if (!string.IsNullOrWhiteSpace(item))
+                    yield return item;
+            }
+
+            yield break;
+        }
+
+        string itemFromWholeBody = NormalizeLooseSummarizedNewsBlock(normalized);
+        if (!string.IsNullOrWhiteSpace(itemFromWholeBody))
+            yield return itemFromWholeBody;
+    }
+
+    private static string NormalizeLooseSummarizedNewsBlock(string? block)
+    {
+        if (string.IsNullOrWhiteSpace(block))
+            return string.Empty;
+
+        string normalizedBlock = block.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Trim();
+        if (normalizedBlock.Contains(SummaryProseSeparator, StringComparison.Ordinal))
+            return NormalizeSummarizedNewsItem(normalizedBlock);
+
+        string[] lines = normalizedBlock
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(NormalizeSummaryLine)
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .ToArray();
+
+        if (lines.Length < 4)
+            return string.Empty;
+
+        string[] poeticLines = lines.Take(3).ToArray();
+        string prose = NormalizeSummaryLine(string.Join(" ", lines.Skip(3)));
+        return string.IsNullOrWhiteSpace(prose)
+            ? string.Join(Environment.NewLine, poeticLines)
+            : string.Join(Environment.NewLine, poeticLines.Append(prose));
     }
 
     private static string NormalizeSummarizedNewsItem(string? block)
