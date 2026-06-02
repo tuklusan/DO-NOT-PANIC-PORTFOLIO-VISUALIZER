@@ -924,6 +924,26 @@
         "Add trace evidence that clearly shows macro phase, world-markets phase, and tape phase sequencing.",
         "Acceptance requires VM-visible proof that the screen fills in the requested order."
       ]
+    },
+    {
+      "id": "NB-062",
+      "tracking_number": "NB-062",
+      "priority": 2,
+      "area": "branding_assets",
+      "title": "Incorporate revision-3 branding images into app icon, splash, installer, and About surfaces",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User provided finalized revision-3 branding images and asked that they be placed into the project for future incorporation.",
+        "The images were moved into the shared project asset path src/PortfolioSaver.Shared/Assets/Branding/dnppv-icon-rev-3.png and src/PortfolioSaver.Shared/Assets/Branding/dnppv-icon-rev-3-splash.png."
+      ],
+      "notes": [
+        "Use src/PortfolioSaver.Shared/Assets/Branding/dnppv-icon-rev-3.png as the primary candidate source for the application icon pipeline, including .ico generation if adopted.",
+        "Use src/PortfolioSaver.Shared/Assets/Branding/dnppv-icon-rev-3-splash.png as the candidate source for splash screens, installer banners, About dialog branding, or related product-facing surfaces.",
+        "Audit existing icon, executable, installer, manifest, About, and branding surfaces to determine where the new assets should be wired in now versus staged for later adoption.",
+        "Preserve the original asset files in-repo as canonical branding sources rather than leaving them in ad hoc root-level locations.",
+        "Acceptance requires the relevant product-facing surfaces to be updated or an explicit adoption plan to be documented where immediate wiring is intentionally deferred."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
