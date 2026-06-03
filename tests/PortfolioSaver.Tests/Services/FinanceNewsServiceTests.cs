@@ -503,7 +503,7 @@ public sealed class FinanceNewsServiceTests
     }
 
     [Fact]
-    public async Task GetHeadlinesAsync_SummarizedMode_CachesRssFallbackAfterDeepSeekFailure()
+    public async Task GetHeadlinesAsync_SummarizedMode_CachesStructuredFallbackAfterDeepSeekFailure()
     {
         string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
         int rssRequestCount = 0;
@@ -545,15 +545,17 @@ public sealed class FinanceNewsServiceTests
         IReadOnlyList<string> first = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
         IReadOnlyList<string> second = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
 
-        Assert.Single(first);
+        Assert.Equal(2, first.Count);
         Assert.Equal(first, second);
         Assert.Equal(3, rssRequestCount);
         Assert.Equal(1, deepSeekRequestCount);
-        Assert.Contains("Markets brace for a volatile week as oil and bonds diverge", first[0], StringComparison.Ordinal);
+        Assert.Contains(Environment.NewLine, first[0], StringComparison.Ordinal);
+        Assert.Contains("Markets brace for a", first[0], StringComparison.Ordinal);
+        Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", first[1]);
     }
 
     [Fact]
-    public async Task GetHeadlinesAsync_SummarizedMode_RetainsStyledCacheWhenRefreshFallsBack()
+    public async Task GetHeadlinesAsync_SummarizedMode_ReplacesExpiredCacheWithStructuredFallbackWhenRefreshFails()
     {
         string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
         int deepSeekRequestCount = 0;
@@ -621,9 +623,10 @@ public sealed class FinanceNewsServiceTests
         IReadOnlyList<string> third = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
 
         Assert.Equal(2, deepSeekRequestCount);
-        Assert.Equal(first, second);
+        Assert.NotEqual(first, second);
         Assert.Equal(second, third);
-        Assert.DoesNotContain(second, headline => headline.Contains("Markets brace for a volatile week as oil and bonds diverge", StringComparison.Ordinal));
+        Assert.Contains(Environment.NewLine, second[0], StringComparison.Ordinal);
+        Assert.Contains("Markets brace for a", second[0], StringComparison.Ordinal);
 
         NewsHeadlineCache refreshedCache = JsonSerializer.Deserialize<NewsHeadlineCache>(await File.ReadAllTextAsync(cachePath), CacheJsonOptions)
             ?? throw new InvalidOperationException("Refreshed news payload was not written.");
