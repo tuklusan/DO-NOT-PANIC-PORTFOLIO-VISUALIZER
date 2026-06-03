@@ -241,53 +241,92 @@ public sealed class FinanceNewsService
                 }
             };
 
-            using HttpRequestMessage request = new(HttpMethod.Post, BuildDeepSeekChatCompletionsUri(endpointUrl));
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-            request.Content = new StringContent(
-                JsonSerializer.Serialize(payload),
-                Encoding.UTF8,
-                "application/json");
-
-            using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
-            response.EnsureSuccessStatusCode();
-            await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-
-            if (!document.RootElement.TryGetProperty("choices", out JsonElement choicesElement) ||
-                choicesElement.ValueKind != JsonValueKind.Array ||
-                choicesElement.GetArrayLength() == 0)
+            const int maxAttempts = 2;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                return CreateSummarizedFallbackResult(context.Headlines, "empty-choices");
-            }
+                using HttpRequestMessage request = new(HttpMethod.Post, BuildDeepSeekChatCompletionsUri(endpointUrl));
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+                request.Content = new StringContent(
+                    JsonSerializer.Serialize(payload),
+                    Encoding.UTF8,
+                    "application/json");
 
-            JsonElement firstChoice = choicesElement[0];
-            if (!firstChoice.TryGetProperty("message", out JsonElement messageElement) ||
-                !messageElement.TryGetProperty("content", out JsonElement contentElement))
-            {
-                return CreateSummarizedFallbackResult(context.Headlines, "missing-message-content");
-            }
+                using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
+                response.EnsureSuccessStatusCode();
+                await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
 
-            List<string> summarizedItems = ParseSummarizedNewsItems(contentElement.GetString());
-            TraceNewsState(
-                "NewsParseComplete",
-                new KeyValuePair<string, object?>("mode", NewsScrollerMode.SummarizedFinancialNews),
-                new KeyValuePair<string, object?>("source_headline_count", context.Headlines.Count),
-                new KeyValuePair<string, object?>("item_count", summarizedItems.Count),
-                new KeyValuePair<string, object?>("writing_style", settings.DeepSeekWritingStyle),
-                new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                new KeyValuePair<string, object?>("model_id", modelId));
-            if (summarizedItems.Count == 0)
-            {
+                if (!document.RootElement.TryGetProperty("choices", out JsonElement choicesElement) ||
+                    choicesElement.ValueKind != JsonValueKind.Array ||
+                    choicesElement.GetArrayLength() == 0)
+                {
+                    if (attempt < maxAttempts)
+                    {
+                        TraceNewsState(
+                            "NewsSummaryRetryRequested",
+                            new KeyValuePair<string, object?>("reason", "empty-choices"),
+                            new KeyValuePair<string, object?>("attempt", attempt),
+                            new KeyValuePair<string, object?>("max_attempts", maxAttempts));
+                        continue;
+                    }
+
+                    return CreateSummarizedFallbackResult(context.Headlines, "empty-choices");
+                }
+
+                JsonElement firstChoice = choicesElement[0];
+                if (!firstChoice.TryGetProperty("message", out JsonElement messageElement) ||
+                    !messageElement.TryGetProperty("content", out JsonElement contentElement))
+                {
+                    if (attempt < maxAttempts)
+                    {
+                        TraceNewsState(
+                            "NewsSummaryRetryRequested",
+                            new KeyValuePair<string, object?>("reason", "missing-message-content"),
+                            new KeyValuePair<string, object?>("attempt", attempt),
+                            new KeyValuePair<string, object?>("max_attempts", maxAttempts));
+                        continue;
+                    }
+
+                    return CreateSummarizedFallbackResult(context.Headlines, "missing-message-content");
+                }
+
+                string? content = contentElement.GetString();
+                List<string> summarizedItems = ParseSummarizedNewsItems(content);
                 TraceNewsState(
-                    "NewsParseEmptyPreview",
+                    "NewsParseComplete",
                     new KeyValuePair<string, object?>("mode", NewsScrollerMode.SummarizedFinancialNews),
-                    new KeyValuePair<string, object?>("content_preview", BuildResponsePreview(contentElement.GetString())),
-                    new KeyValuePair<string, object?>("response_length", contentElement.GetString()?.Length ?? 0));
-                return CreateSummarizedFallbackResult(context.Headlines, "empty-summary-items");
+                    new KeyValuePair<string, object?>("source_headline_count", context.Headlines.Count),
+                    new KeyValuePair<string, object?>("item_count", summarizedItems.Count),
+                    new KeyValuePair<string, object?>("writing_style", settings.DeepSeekWritingStyle),
+                    new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                    new KeyValuePair<string, object?>("model_id", modelId),
+                    new KeyValuePair<string, object?>("attempt", attempt));
+                if (summarizedItems.Count == 0)
+                {
+                    TraceNewsState(
+                        "NewsParseEmptyPreview",
+                        new KeyValuePair<string, object?>("mode", NewsScrollerMode.SummarizedFinancialNews),
+                        new KeyValuePair<string, object?>("content_preview", BuildResponsePreview(content)),
+                        new KeyValuePair<string, object?>("response_length", content?.Length ?? 0),
+                        new KeyValuePair<string, object?>("attempt", attempt));
+                    if (attempt < maxAttempts)
+                    {
+                        TraceNewsState(
+                            "NewsSummaryRetryRequested",
+                            new KeyValuePair<string, object?>("reason", "empty-summary-items"),
+                            new KeyValuePair<string, object?>("attempt", attempt),
+                            new KeyValuePair<string, object?>("max_attempts", maxAttempts));
+                        continue;
+                    }
+
+                    return CreateSummarizedFallbackResult(context.Headlines, "empty-summary-items");
+                }
+
+                summarizedItems.Add(BuildClosingQuoteHeadline(settings.DeepSeekWritingStyle));
+                return new(summarizedItems, false);
             }
 
-            summarizedItems.Add(BuildClosingQuoteHeadline(settings.DeepSeekWritingStyle));
-            return new(summarizedItems, false);
+            return CreateSummarizedFallbackResult(context.Headlines, "retry-exhausted");
         }
         catch (OperationCanceledException)
         {

@@ -569,6 +569,65 @@ public sealed class FinanceNewsServiceTests
         Assert.True(refreshedCache.FetchTimestampUtc > cache.FetchTimestampUtc);
     }
 
+    [Fact]
+    public async Task GetHeadlinesAsync_SummarizedMode_RetriesOnceAfterEmptySummaryResponse()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        int deepSeekRequestCount = 0;
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    <rss><channel><item><title>Markets brace for a volatile week as oil and bonds diverge</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            deepSeekRequestCount++;
+            string content = deepSeekRequestCount == 1
+                ? string.Empty
+                : "[[ITEM]]\nClerks stamp the void.\nBond markets cough into fog.\nTea goes cold again.\n---\nBond markets drifted as traders weighed slower growth against stubborn inflation worries.\n[[/ITEM]]";
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent($$"""
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "content": {{JsonSerializer.Serialize(content)}}
+                      }
+                    }
+                  ]
+                }
+                """, Encoding.UTF8, "application/json")
+            };
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
+            NewsRefreshMinutes = 15,
+            DeepSeekApiKey = "test-deepseek-key"
+        };
+
+        IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+        Assert.Equal(2, deepSeekRequestCount);
+        Assert.Equal(2, headlines.Count);
+        Assert.Contains("Clerks stamp the void.", headlines[0], StringComparison.Ordinal);
+        Assert.Equal("[[CLOSING_QUOTE]] \"Time is an illusion. Lunchtime doubly so.\"", headlines[1]);
+    }
+
     private sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
