@@ -60,6 +60,7 @@ public partial class ScreensaverSceneControl : UserControl
     private Image? _activeBackgroundImage;
     private Image? _inactiveBackgroundImage;
     private BitmapImage? _currentBackgroundBitmap;
+    private ImageSource? _committedBackgroundSource;
 
     private AppSettings _settings = new();
     private FloatingClockViewModel? _clockViewModel;
@@ -2609,6 +2610,7 @@ public partial class ScreensaverSceneControl : UserControl
         {
             _backgroundTransitionInFlight = false;
             _currentBackgroundBitmap = null;
+            _committedBackgroundSource = null;
             SetBackgroundZoomRunning(false, "background-cleared");
             if (_activeBackgroundImage is not null)
                 _activeBackgroundImage.Source = null;
@@ -3006,6 +3008,7 @@ public partial class ScreensaverSceneControl : UserControl
             return false;
 
         ImageSource? recoverySource = _activeBackgroundImage.Source
+            ?? _committedBackgroundSource
             ?? _inactiveBackgroundImage.Source
             ?? _currentBackgroundBitmap;
         if (recoverySource is null && IsSupportedBackgroundReference(_currentBackgroundPath))
@@ -3028,9 +3031,12 @@ public partial class ScreensaverSceneControl : UserControl
         StopBackgroundAnimations(standbyImage);
         ResetBackgroundTransform(activeImage);
         ResetBackgroundTransform(standbyImage);
-        activeImage.Source = source;
+        ImageSource committedSource = CreateStandbyBackgroundSource(source);
+        ImageSource standbySource = CreateStandbyBackgroundSource(source);
+        _committedBackgroundSource = committedSource;
+        activeImage.Source = committedSource;
         activeImage.Opacity = _currentBackgroundOpacity;
-        standbyImage.Source = CreateStandbyBackgroundSource(source);
+        standbyImage.Source = standbySource;
         standbyImage.Opacity = 0d;
         SetBackgroundScale(activeImage, _backgroundZoomScale, _backgroundZoomScale);
         _activeBackgroundImage = activeImage;
