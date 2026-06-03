@@ -8,7 +8,7 @@ namespace PortfolioSaver.Core.Constants;
 public static class Defaults
 {
     public const string DefaultNewsFeedUrl = "https://finance.yahoo.com/news/rss";
-    public const string DefaultDeepSeekEndpointUrl = "https://api.deepseek.com/v1";
+    public const string DefaultDeepSeekEndpointUrl = "https://api.deepseek.com";
     public const string DefaultDeepSeekModelId = "deepseek-v4-flash";
     public const int MinRefreshSeconds = 5;
     public const int MaxRefreshSeconds = 4 * 60 * 60;

@@ -903,7 +903,7 @@
         "Update configuration help text, docs, and tests so the three-field contract of API key, endpoint URL, and model ID is explicit and regression-resistant.",
         "Acceptance requires a verified configuration path showing that changing only endpoint and model ID can redirect summarized-news generation to a different OpenAI-compatible backend without source changes.",
         "Resolved on 2026-06-02 by extending AppSettings, Defaults, and AppSettingsNormalizer with a three-field OpenAI-compatible summarized-news contract: API key, endpoint URL, and model ID.",
-        "FinanceNewsService now consumes the configured endpoint base and model ID, appends the chat/completions route internally, and defaults to https://api.deepseek.com/v1 with deepseek-v4-flash while remaining backend-agnostic.",
+        "FinanceNewsService now consumes the configured endpoint base and model ID, appends the chat/completions route internally, and defaults to https://api.deepseek.com with deepseek-v4-flash while remaining backend-agnostic.",
         "Proof: FinanceNewsServiceTests now verify both the default DeepSeek route and a redirected OpenAI-compatible endpoint/model pair, and the Advanced config tab now documents the three-field contract explicitly."
       ]
     },
@@ -1016,6 +1016,28 @@
         "Prove the hardening with local tests and 1-hour VM traces.",
         "Resolved on 2026-06-03 by teaching the parser to accept markdown-style and markerless structured outputs, retrying empty summary responses once, and replacing the old raw/cache fallback with a deterministic local structured fallback when DeepSeek still returns empty content after retry.",
         "Proof bundles: build/vm/artifacts/ssh-runs/ux-deep-ssh-20260603-144107 and build/vm/artifacts/ssh-runs/ux-deep-ssh-20260603-153156 completed without NewsSummaryFallbackActivated, while the latter also showed successful retry recovery without user-visible degradation."
+      ]
+    },
+    {
+      "id": "NB-066",
+      "tracking_number": "NB-066",
+      "priority": 2,
+      "area": "deepseek_configuration",
+      "title": "Re-audit DeepSeek configuration against the latest official API docs and future-proof the configurable call surface",
+      "status": "resolved",
+      "source": "user_followup",
+      "evidence": [
+        "User requested a fresh research pass against the latest official DeepSeek documentation to verify that the current configurable API approach remains future-proof and defaults to the current latest supported DeepSeek mechanism."
+      ],
+      "notes": [
+        "Research the latest official DeepSeek API documentation before making any product decision, and treat the docs as the source of truth for endpoint shape, supported models, compatibility modes, and deprecation timelines.",
+        "Current official docs as of 2026-06-03 show the OpenAI-compatible base URL as https://api.deepseek.com, current recommended model IDs as deepseek-v4-flash and deepseek-v4-pro, and the legacy aliases deepseek-chat and deepseek-reasoner scheduled for retirement on 2026-07-24.",
+        "Analyze whether the current three-field configuration contract (API key, endpoint URL, model ID) is still sufficient for future-proof configurable API calls, including alternate OpenAI-compatible backends and any provider-specific routing nuances that should be normalized rather than exposed raw to users.",
+        "The official docs now justify shipping the OpenAI-compatible base URL as https://api.deepseek.com rather than the older /v1 compatibility base, while keeping deepseek-v4-flash as the default model ID.",
+        "Audit all runtime and settings call sites for hardcoded DeepSeek assumptions beyond those three fields, including path joining, deprecated model aliases, fallback logic, and any UI/help text that may already be stale.",
+        "If the latest docs make it necessary, implement code and default configuration changes so the product ships with the current officially recommended DeepSeek API mechanism rather than legacy compatibility aliases.",
+        "Update tests, help text, and documentation to lock the new DeepSeek contract and record the relevant official-doc citation points used for the decision.",
+        "Resolved on 2026-06-03 by keeping the existing three-field contract (API key, endpoint URL, model ID), updating the shipped default endpoint to https://api.deepseek.com, retaining deepseek-v4-flash as the default model ID, and confirming that special beta features can continue to be expressed through custom endpoints only when intentionally configured."
       ]
     }
   ],

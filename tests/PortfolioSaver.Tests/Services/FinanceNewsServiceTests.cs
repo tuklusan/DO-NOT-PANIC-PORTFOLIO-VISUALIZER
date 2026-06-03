@@ -64,7 +64,7 @@ public sealed class FinanceNewsServiceTests
 
             requestCount++;
             capturedBody = request.Content is null ? string.Empty : request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-            Assert.Equal("https://api.deepseek.com/v1/chat/completions", requestUrl);
+            Assert.Equal("https://api.deepseek.com/chat/completions", requestUrl);
             Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
             Assert.Equal("test-deepseek-key", request.Headers.Authorization?.Parameter);
             return new HttpResponseMessage(HttpStatusCode.OK)

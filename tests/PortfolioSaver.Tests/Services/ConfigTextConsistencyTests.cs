@@ -201,7 +201,7 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("teleprinter-style band with uppercase courier text, typed character by character, paused, cleared, and only scrolled when the item is too long", xaml, StringComparison.Ordinal);
         Assert.Contains("style-only rewriting", xaml, StringComparison.Ordinal);
         Assert.Contains("The three-field contract is API key, endpoint URL, and model ID.", xaml, StringComparison.Ordinal);
-        Assert.Contains("default endpoint ships as https://api.deepseek.com/v1", xaml, StringComparison.Ordinal);
+        Assert.Contains("default endpoint ships as https://api.deepseek.com", xaml, StringComparison.Ordinal);
         Assert.Contains("default model ID ships as deepseek-v4-flash", xaml, StringComparison.Ordinal);
     }
 
