@@ -17,7 +17,7 @@
   "latest_recorded_validation_state": {
     "automated_tests": {
       "command": "dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo",
-      "result": "255 / 255 passing",
+      "result": "210 / 210 passing",
       "notes": [
         "Host regression coverage now includes the SSH-first VM harness scripts, the desktop-session agent workflow, and the remote WinAppDriver startup path.",
         "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer.",
@@ -37,7 +37,8 @@
         "The desktop shell now enforces a fixed restored size, maximizes only to the Windows work area, and still enters true fullscreen cleanly, as re-proven in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260515-194351.",
         "NB-026 line-by-line review pass completed locally on 2026-05-18 with a full Release build and a 245 / 245 green test suite.",
         "Config validation now uses a keyboard-first desktop smoke path, opens a transient Validation Progress window during validation, and trusts recent local quote/profile evidence before falling back to Yahoo Finance, avoiding the prior 429 loop during harness-driven Validate runs.",
-        "A full local regression pass reached 255 / 255 passing on 2026-05-19 after adding coverage for connectivity recovery, validation progress state, and stale local quote trust during ticker validation."
+        "A full local regression pass reached 255 / 255 passing on 2026-05-19 after adding coverage for connectivity recovery, validation progress state, and stale local quote trust during ticker validation.",
+        "The current Beta-6 closure pass reached 210 / 210 passing inside the canonical remote VM build/test lane on 2026-06-03 while revalidating the hardened background transition path, the split config-close budget, and the structured summarized-news fallback behavior."
       ]
     },
     "build": {
@@ -962,7 +963,7 @@
       "priority": 2,
       "area": "news_scroller",
       "title": "Preserve Vogon finance-news formatting across refreshes and add a per-item reader pause",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User reported that Finance News seems to lose Vogon Poetry after the first refresh and needs a pause after every item so the human reader can finish reading before the next item shows up."
@@ -972,7 +973,9 @@
         "Ensure the same structured Vogon presentation is preserved on initial load and on all subsequent refreshes.",
         "Add a deliberate pause after each completed news item before the next item begins typing or scrolling.",
         "Make the pause long enough for a human reader to finish reading without making the band feel stalled.",
-        "Prove both formatting persistence and per-item pause behavior with local verification plus VM-visible traces or screenshots."
+        "Prove both formatting persistence and per-item pause behavior with local verification plus VM-visible traces or screenshots.",
+        "Resolved on 2026-06-03 by preserving structured Vogon playback across refreshes, keeping the teleprinter's per-item reader pause, retrying empty summarized responses once, and adding a deterministic local structured fallback so empty DeepSeek completions no longer collapse the scroller into raw RSS/cache output.",
+        "Proof bundles: build/vm/artifacts/ssh-runs/ux-deep-ssh-20260603-144107 and build/vm/artifacts/ssh-runs/ux-deep-ssh-20260603-153156 both completed with ConfigPhaseStatus=Completed and DesktopPhaseStatus=Completed while preserving structured finance-news playback without NewsSummaryFallbackActivated."
       ]
     },
     {
@@ -981,7 +984,7 @@
       "priority": 2,
       "area": "graph_cards",
       "title": "Tighten graph-card flash trigger to require actual raw price change",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User observed graph cards such as VOO and QUAL continuing to flash even when the visible behavior looked like percent-only churn rather than meaningful price movement."
@@ -990,7 +993,9 @@
         "Current graph-card flashing is triggered by displayed LastText or ChangeText differences, which allows percent-only text churn to retrigger card flashes.",
         "Change the flash trigger to something stricter, with the minimum required behavior being: flash only on actual raw price change, not percent-only text churn.",
         "Keep any desired motion cue logic separate if needed, but stop the prominent card flash from firing on percent-only or formatting-only deltas.",
-        "Add focused tests and trace-visible proof so repeated quote passes for stable symbols do not keep flashing the same graph cards unnecessarily."
+        "Add focused tests and trace-visible proof so repeated quote passes for stable symbols do not keep flashing the same graph cards unnecessarily.",
+        "Resolved on 2026-06-03 by moving graph-card flashing to raw-price-change gating only, preserving motion cues separately, and tracing the remaining graph flashes explicitly for forensic verification.",
+        "Proof bundles: build/vm/artifacts/ssh-runs/ux-deep-ssh-20260603-144107 and build/vm/artifacts/ssh-runs/ux-deep-ssh-20260603-153156 both recorded GraphCardFlash symbol=VOO: 0 and GraphCardFlash symbol=QUAL: 0."
       ]
     },
     {
@@ -999,7 +1004,7 @@
       "priority": 2,
       "area": "news_scroller",
       "title": "Harden summarized-news parsing against markerless DeepSeek responses",
-      "status": "open",
+      "status": "resolved",
       "source": "vm_trace_followup",
       "evidence": [
         "The 60-minute VM run ux-deep-ssh-20260602-225758 recorded NewsSummaryFallbackActivated / reason=empty-summary-items, followed by NewsStyledCacheRetained, showing the model sometimes returns text that does not match the exact [[ITEM]] marker contract."
@@ -1008,7 +1013,9 @@
         "Add a parser fallback path for markerless or partially malformed summarized-news responses so valid stylized content can still be turned into teleprinter items without dropping into fallback.",
         "Keep the strict marker path as the first preference, but salvage plausible haiku-plus-prose groupings when the response is structurally close but not perfectly machine-formatted.",
         "Retain cache-preservation behavior as the final safety net, but reduce or eliminate empty-summary-items events in normal runs.",
-        "Prove the hardening with local tests and 1-hour VM traces."
+        "Prove the hardening with local tests and 1-hour VM traces.",
+        "Resolved on 2026-06-03 by teaching the parser to accept markdown-style and markerless structured outputs, retrying empty summary responses once, and replacing the old raw/cache fallback with a deterministic local structured fallback when DeepSeek still returns empty content after retry.",
+        "Proof bundles: build/vm/artifacts/ssh-runs/ux-deep-ssh-20260603-144107 and build/vm/artifacts/ssh-runs/ux-deep-ssh-20260603-153156 completed without NewsSummaryFallbackActivated, while the latter also showed successful retry recovery without user-visible degradation."
       ]
     }
   ],
