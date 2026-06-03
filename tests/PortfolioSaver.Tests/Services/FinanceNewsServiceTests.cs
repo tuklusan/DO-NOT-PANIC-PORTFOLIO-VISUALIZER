@@ -625,7 +625,7 @@ public sealed class FinanceNewsServiceTests
         Assert.Equal(2, deepSeekRequestCount);
         Assert.Equal(2, headlines.Count);
         Assert.Contains("Clerks stamp the void.", headlines[0], StringComparison.Ordinal);
-        Assert.Equal("[[CLOSING_QUOTE]] \"Time is an illusion. Lunchtime doubly so.\"", headlines[1]);
+        Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", headlines[1]);
     }
 
     private sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
