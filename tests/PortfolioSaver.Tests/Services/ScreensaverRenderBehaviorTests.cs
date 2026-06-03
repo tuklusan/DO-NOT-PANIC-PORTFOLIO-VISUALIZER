@@ -228,7 +228,10 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("private int _backgroundTransitionGeneration;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("int transitionGeneration = ++_backgroundTransitionGeneration;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundTransitionSkipped", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private bool TryPromoteCommittedBackgroundSource()", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private bool TryRecoverActiveBackgroundSource()", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("bool promotedCommittedSource = TryPromoteCommittedBackgroundSource();", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("if (!promotedCommittedSource && TryRecoverActiveBackgroundSource())", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundSourceRecovered", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void FinalizeBackgroundTransition(Image activeImage, Image standbyImage, ImageSource source)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void CanonicalizeBackgroundLayers(ImageSource source)", codeBehind, StringComparison.Ordinal);

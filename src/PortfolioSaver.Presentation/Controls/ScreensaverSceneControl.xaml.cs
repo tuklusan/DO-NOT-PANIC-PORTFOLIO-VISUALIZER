@@ -2947,7 +2947,8 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void EnsureBackgroundSlowZoomRunning()
     {
-        if (TryRecoverActiveBackgroundSource())
+        bool promotedCommittedSource = TryPromoteCommittedBackgroundSource();
+        if (!promotedCommittedSource && TryRecoverActiveBackgroundSource())
         {
             TraceSceneState(
                 "BackgroundSourceRecovered",
@@ -2966,7 +2967,8 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void StepBackgroundSlowZoom()
     {
-        if (TryRecoverActiveBackgroundSource())
+        bool promotedCommittedSource = TryPromoteCommittedBackgroundSource();
+        if (!promotedCommittedSource && TryRecoverActiveBackgroundSource())
         {
             TraceSceneState(
                 "BackgroundSourceRecovered",
@@ -2997,6 +2999,18 @@ public partial class ScreensaverSceneControl : UserControl
         }
 
         SetBackgroundScale(_activeBackgroundImage, _backgroundZoomScale, _backgroundZoomScale);
+    }
+
+    private bool TryPromoteCommittedBackgroundSource()
+    {
+        if (_activeBackgroundImage is null || _committedBackgroundSource is null)
+            return false;
+
+        if (_activeBackgroundImage.Source is not null)
+            return false;
+
+        CanonicalizeBackgroundLayers(_committedBackgroundSource);
+        return true;
     }
 
     private bool TryRecoverActiveBackgroundSource()
