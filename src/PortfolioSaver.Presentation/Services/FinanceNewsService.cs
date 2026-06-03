@@ -242,6 +242,7 @@ public sealed class FinanceNewsService
             };
 
             const int maxAttempts = 2;
+            string? retryReason = null;
             for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
                 using HttpRequestMessage request = new(HttpMethod.Post, BuildDeepSeekChatCompletionsUri(endpointUrl));
@@ -262,11 +263,7 @@ public sealed class FinanceNewsService
                 {
                     if (attempt < maxAttempts)
                     {
-                        TraceNewsState(
-                            "NewsSummaryRetryRequested",
-                            new KeyValuePair<string, object?>("reason", "empty-choices"),
-                            new KeyValuePair<string, object?>("attempt", attempt),
-                            new KeyValuePair<string, object?>("max_attempts", maxAttempts));
+                        retryReason = "empty-choices";
                         continue;
                     }
 
@@ -279,11 +276,7 @@ public sealed class FinanceNewsService
                 {
                     if (attempt < maxAttempts)
                     {
-                        TraceNewsState(
-                            "NewsSummaryRetryRequested",
-                            new KeyValuePair<string, object?>("reason", "missing-message-content"),
-                            new KeyValuePair<string, object?>("attempt", attempt),
-                            new KeyValuePair<string, object?>("max_attempts", maxAttempts));
+                        retryReason = "missing-message-content";
                         continue;
                     }
 
@@ -303,23 +296,28 @@ public sealed class FinanceNewsService
                     new KeyValuePair<string, object?>("attempt", attempt));
                 if (summarizedItems.Count == 0)
                 {
+                    if (attempt < maxAttempts)
+                    {
+                        retryReason = "empty-summary-items";
+                        continue;
+                    }
+
                     TraceNewsState(
                         "NewsParseEmptyPreview",
                         new KeyValuePair<string, object?>("mode", NewsScrollerMode.SummarizedFinancialNews),
                         new KeyValuePair<string, object?>("content_preview", BuildResponsePreview(content)),
                         new KeyValuePair<string, object?>("response_length", content?.Length ?? 0),
                         new KeyValuePair<string, object?>("attempt", attempt));
-                    if (attempt < maxAttempts)
-                    {
-                        TraceNewsState(
-                            "NewsSummaryRetryRequested",
-                            new KeyValuePair<string, object?>("reason", "empty-summary-items"),
-                            new KeyValuePair<string, object?>("attempt", attempt),
-                            new KeyValuePair<string, object?>("max_attempts", maxAttempts));
-                        continue;
-                    }
-
                     return CreateSummarizedFallbackResult(context.Headlines, "empty-summary-items");
+                }
+
+                if (!string.IsNullOrWhiteSpace(retryReason))
+                {
+                    TraceNewsState(
+                        "NewsSummaryRetryRecovered",
+                        new KeyValuePair<string, object?>("reason", retryReason),
+                        new KeyValuePair<string, object?>("final_attempt", attempt),
+                        new KeyValuePair<string, object?>("item_count", summarizedItems.Count));
                 }
 
                 summarizedItems.Add(BuildClosingQuoteHeadline(settings.DeepSeekWritingStyle));
