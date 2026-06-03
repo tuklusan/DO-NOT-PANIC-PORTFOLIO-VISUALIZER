@@ -205,6 +205,10 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$settings['BackgroundChangeSeconds'] = $script:vmBackgroundChangeSeconds", script, StringComparison.Ordinal);
         Assert.Contains("$settings['ShuffleBackgrounds'] = $true", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'HarnessSettingsOverrideApplied'", script, StringComparison.Ordinal);
+        Assert.Contains("$configInteractionStartedAt = $null", script, StringComparison.Ordinal);
+        Assert.Contains("$configInteractionStartedAt = [datetime]::UtcNow", script, StringComparison.Ordinal);
+        Assert.Contains("Test-ConfigPhaseBudget -StartedAt $configInteractionStartedAt -Stage (\"tab-{0}\" -f $rawTabName)", script, StringComparison.Ordinal);
+        Assert.Contains("Test-ConfigPhaseBudget -StartedAt $configInteractionStartedAt -Stage 'validate-close'", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Send-KeySequence -Keys @('{TAB}') -DelayMilliseconds 28", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Send-KeySequence -Keys @('{PGUP}','{HOME}') -DelayMilliseconds 70", script, StringComparison.Ordinal);
         Assert.DoesNotContain("$clickedTab = Click-AutomationElementCenter -Element $tab", script, StringComparison.Ordinal);

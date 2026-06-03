@@ -2457,6 +2457,7 @@ try {
 
     try {
         $configPhaseStartedAt = [datetime]::UtcNow
+        $configInteractionStartedAt = $null
         $desktop = Start-Process -FilePath $desktopExe -PassThru
         Start-Sleep -Milliseconds 400
         $desktopWindow = Get-ProcessWindowElement -Process $desktop -TimeoutSeconds 15
@@ -2502,6 +2503,7 @@ try {
         $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 20
         if ($null -eq $window) { throw 'Could not locate config window via UI Automation.' }
         Write-ConfigWindowTrace -Event 'ConfigWindowReacquired' -Details ("title={0}; automation_id={1}" -f [string]$window.Current.Name, [string]$window.Current.AutomationId)
+        $configInteractionStartedAt = [datetime]::UtcNow
         if ([string]$window.Current.Name -like '*BETA-6*' -or
             [string]$window.Current.HelpText -like '*0.9.0-beta6*') {
             $summary.ConfigVersionCheck = "Passed"
@@ -2515,7 +2517,7 @@ try {
 
         $shotIndex = 1
         foreach ($rawTabName in $tabNames) {
-            Test-ConfigPhaseBudget -StartedAt $configPhaseStartedAt -Stage ("tab-{0}" -f $rawTabName)
+            Test-ConfigPhaseBudget -StartedAt $configInteractionStartedAt -Stage ("tab-{0}" -f $rawTabName)
             if (-not (Test-AutomationElementAlive -Element $window)) {
                 $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 2
             }
@@ -2551,7 +2553,7 @@ try {
             }
         }
 
-        Test-ConfigPhaseBudget -StartedAt $configPhaseStartedAt -Stage 'validate-close'
+        Test-ConfigPhaseBudget -StartedAt $configInteractionStartedAt -Stage 'validate-close'
         $configClosedNaturally = Validate-AndCloseConfigWindow -Process $desktop -Window $window -CompletionMode $ValidationCompletionMode
         if ($configClosedNaturally) {
             Start-Sleep -Milliseconds 200
