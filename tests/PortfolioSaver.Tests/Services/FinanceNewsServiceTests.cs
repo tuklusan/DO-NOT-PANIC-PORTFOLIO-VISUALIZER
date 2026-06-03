@@ -301,6 +301,67 @@ public sealed class FinanceNewsServiceTests
     }
 
     [Fact]
+    public async Task GetHeadlinesAsync_SummarizedMode_UsesLocalStructuredFallbackWhenDeepSeekReturnsEmptyContent()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        int deepSeekRequestCount = 0;
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    <rss><channel>
+                      <item><title>Oil prices drift lower as traders weigh shipping risks and policy signals</title></item>
+                      <item><title>European shares steady while central banks hold to a cautious tone</title></item>
+                    </channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            deepSeekRequestCount++;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "content": ""
+                      }
+                    }
+                  ]
+                }
+                """, Encoding.UTF8, "application/json")
+            };
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
+            NewsRefreshMinutes = 15,
+            DeepSeekApiKey = "test-deepseek-key",
+            DeepSeekEndpointUrl = Defaults.DefaultDeepSeekEndpointUrl,
+            DeepSeekModelId = Defaults.DefaultDeepSeekModelId
+        };
+
+        IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+        Assert.Equal(2, deepSeekRequestCount);
+        Assert.True(headlines.Count >= 2);
+        Assert.Contains(Environment.NewLine, headlines[0], StringComparison.Ordinal);
+        Assert.StartsWith("In a development filed under cosmic market paperwork,", headlines[0].Split(Environment.NewLine).Last(), StringComparison.Ordinal);
+        Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", headlines[^1]);
+    }
+
+    [Fact]
     public void ParseSummarizedNewsItems_ExtractsHaikuThenProsePerItem()
     {
         MethodInfo parseMethod = typeof(FinanceNewsService).GetMethod(

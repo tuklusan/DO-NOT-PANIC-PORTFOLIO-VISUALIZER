@@ -115,6 +115,7 @@ public sealed class FinanceNewsService
 
             if (mode == NewsScrollerMode.SummarizedFinancialNews &&
                 fetchResult.UsedFallback &&
+                fetchResult.PreserveCachedStyle &&
                 matchingCachedHeadlines.Count > 0)
             {
                 cache.FetchTimestampUtc = DateTimeOffset.UtcNow;
@@ -267,7 +268,7 @@ public sealed class FinanceNewsService
                         continue;
                     }
 
-                    return CreateSummarizedFallbackResult(context.Headlines, "empty-choices");
+                    return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "empty-choices");
                 }
 
                 JsonElement firstChoice = choicesElement[0];
@@ -280,7 +281,7 @@ public sealed class FinanceNewsService
                         continue;
                     }
 
-                    return CreateSummarizedFallbackResult(context.Headlines, "missing-message-content");
+                    return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "missing-message-content");
                 }
 
                 string? content = contentElement.GetString();
@@ -308,7 +309,7 @@ public sealed class FinanceNewsService
                         new KeyValuePair<string, object?>("content_preview", BuildResponsePreview(content)),
                         new KeyValuePair<string, object?>("response_length", content?.Length ?? 0),
                         new KeyValuePair<string, object?>("attempt", attempt));
-                    return CreateSummarizedFallbackResult(context.Headlines, "empty-summary-items");
+                    return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "empty-summary-items");
                 }
 
                 if (!string.IsNullOrWhiteSpace(retryReason))
@@ -324,7 +325,7 @@ public sealed class FinanceNewsService
                 return new(summarizedItems, false);
             }
 
-            return CreateSummarizedFallbackResult(context.Headlines, "retry-exhausted");
+            return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "retry-exhausted");
         }
         catch (OperationCanceledException)
         {
@@ -332,7 +333,7 @@ public sealed class FinanceNewsService
         }
         catch
         {
-            return CreateSummarizedFallbackResult(context.Headlines, "deepseek-request-failed");
+            return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "deepseek-request-failed");
         }
     }
 
@@ -776,9 +777,13 @@ public sealed class FinanceNewsService
 
     private sealed record NewsFetchResult(
         IReadOnlyList<string> Headlines,
-        bool UsedFallback);
+        bool UsedFallback,
+        bool PreserveCachedStyle = false);
 
-    private static NewsFetchResult CreateSummarizedFallbackResult(IReadOnlyList<string> sourceHeadlines, string reason)
+    private static NewsFetchResult CreateSummarizedFallbackResult(
+        IReadOnlyList<string> sourceHeadlines,
+        DeepSeekWritingStyle writingStyle,
+        string reason)
     {
         List<string> fallbackHeadlines = sourceHeadlines
             .Where(headline => !string.IsNullOrWhiteSpace(headline))
@@ -786,13 +791,81 @@ public sealed class FinanceNewsService
             .Take(6)
             .ToList();
 
+        List<string> structuredFallback = BuildLocalStructuredFallbackHeadlines(fallbackHeadlines, writingStyle);
         TraceNewsState(
-            "NewsSummaryFallbackActivated",
+            "NewsSummaryLocalFallbackUsed",
             new KeyValuePair<string, object?>("reason", reason),
-            new KeyValuePair<string, object?>("headline_count", fallbackHeadlines.Count));
+            new KeyValuePair<string, object?>("source_headline_count", fallbackHeadlines.Count),
+            new KeyValuePair<string, object?>("item_count", structuredFallback.Count));
 
-        return new(fallbackHeadlines, fallbackHeadlines.Count > 0);
+        return new(structuredFallback, structuredFallback.Count > 0);
     }
+
+    private static List<string> BuildLocalStructuredFallbackHeadlines(
+        IReadOnlyList<string> sourceHeadlines,
+        DeepSeekWritingStyle writingStyle)
+    {
+        List<string> items = [];
+        foreach (string headline in sourceHeadlines
+                     .Where(headline => !string.IsNullOrWhiteSpace(headline))
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .Take(4))
+        {
+            string normalizedHeadline = NormalizeSummaryLine(headline);
+            if (string.IsNullOrWhiteSpace(normalizedHeadline))
+                continue;
+
+            string[] poeticLines = BuildFallbackPoeticLines(normalizedHeadline);
+            string prose = BuildFallbackProseLine(normalizedHeadline, writingStyle);
+            items.Add(string.Join(Environment.NewLine, poeticLines.Append(prose)));
+        }
+
+        if (items.Count > 0)
+            items.Add(BuildClosingQuoteHeadline(writingStyle));
+
+        return items;
+    }
+
+    private static string[] BuildFallbackPoeticLines(string headline)
+    {
+        string[] words = headline
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(NormalizeSummaryLine)
+            .Where(word => !string.IsNullOrWhiteSpace(word))
+            .ToArray();
+
+        if (words.Length == 0)
+            return ["Markets mutter low.", "Paperwork stalks the tape.", "Clerks await the bell."];
+
+        List<string> lines = [];
+        int index = 0;
+        for (int lineIndex = 0; lineIndex < 3; lineIndex++)
+        {
+            int remainingWords = words.Length - index;
+            if (remainingWords <= 0)
+                break;
+
+            int remainingLines = 3 - lineIndex;
+            int takeCount = Math.Max(1, (int)Math.Ceiling(remainingWords / (double)remainingLines));
+            takeCount = Math.Min(4, takeCount);
+            lines.Add(string.Join(' ', words.Skip(index).Take(takeCount)));
+            index += takeCount;
+        }
+
+        while (lines.Count < 3)
+        {
+            lines.Add(lines[^1]);
+        }
+
+        return lines.Take(3).ToArray();
+    }
+
+    private static string BuildFallbackProseLine(string headline, DeepSeekWritingStyle writingStyle)
+        => writingStyle switch
+        {
+            DeepSeekWritingStyle.WilliamShakespeare => $"Attend these tidings: {headline}",
+            _ => $"In a development filed under cosmic market paperwork, {headline}"
+        };
 }
 
 public sealed class NewsHeadlineCache
