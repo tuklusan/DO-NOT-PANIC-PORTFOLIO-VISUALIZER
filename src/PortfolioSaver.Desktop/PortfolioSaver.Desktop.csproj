@@ -18,4 +18,10 @@
     <Resource Include="..\PortfolioSaver.Shared\Assets\Branding\dnppv-icon-rev-3.ico" Link="Assets\Branding\dnppv-icon-rev-3.ico" />
     <Resource Include="..\PortfolioSaver.Shared\Assets\Branding\dnppv-icon-rev-3-splash.png" Link="Assets\Branding\dnppv-icon-rev-3-splash.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\PortfolioSaver.Screensaver\Assets\ExchangeBackgrounds\new-york-stock-exchange.jpg" Link="Assets\ExchangeBackgrounds\new-york-stock-exchange.jpg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\PortfolioSaver.Screensaver\Assets\ExchangeBackgrounds\london-skyline-public-domain.jpg" Link="Assets\ExchangeBackgrounds\london-skyline-public-domain.jpg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\PortfolioSaver.Screensaver\Assets\ExchangeBackgrounds\shanghai-skyline-public-domain.jpg" Link="Assets\ExchangeBackgrounds\shanghai-skyline-public-domain.jpg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\PortfolioSaver.Screensaver\Assets\ExchangeBackgrounds\exchange-photo-attribution.txt" Link="Assets\ExchangeBackgrounds\exchange-photo-attribution.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

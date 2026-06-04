@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using Forms = System.Windows.Forms;
 using System.Windows.Threading;
 using PortfolioSaver.Config.Commands;
 using PortfolioSaver.Config.Services;
@@ -69,6 +70,7 @@ public sealed class MainWindowViewModel : BindableBase
         CancelCommand = new RelayCommand(ExecuteCancel, () => CanExecuteCancel());
         RetryNetworkCommand = new RelayCommand(RetryConnectivity);
         AddGroupCommand = new RelayCommand(AddGroup, () => IsConfigActive);
+        ChooseBackgroundFolderCommand = new RelayCommand(ChooseBackgroundFolder);
 
         _stateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _stateTimer.Tick += async (_, _) => await OnStateTimerTickAsync();
@@ -217,6 +219,7 @@ public sealed class MainWindowViewModel : BindableBase
     public RelayCommand CancelCommand { get; }
     public RelayCommand RetryNetworkCommand { get; }
     public RelayCommand AddGroupCommand { get; }
+    public RelayCommand ChooseBackgroundFolderCommand { get; }
 
     public bool CanCloseWindow()
     {
@@ -409,6 +412,31 @@ public sealed class MainWindowViewModel : BindableBase
             if (!completedValidatedState)
                 EndValidationRun();
         }
+    }
+
+    private void ChooseBackgroundFolder()
+    {
+        if (!Settings.UseCustomBackgroundImageFolder)
+            return;
+
+        using Forms.FolderBrowserDialog dialog = new()
+        {
+            Description = "Choose a background image folder",
+            UseDescriptionForTitle = true,
+            SelectedPath = Directory.Exists(Settings.CustomBackgroundImageFolder)
+                ? Settings.CustomBackgroundImageFolder
+                : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures)
+        };
+
+        if (dialog.ShowDialog() != Forms.DialogResult.OK ||
+            string.IsNullOrWhiteSpace(dialog.SelectedPath))
+        {
+            return;
+        }
+
+        Settings.CustomBackgroundImageFolder = dialog.SelectedPath;
+        RaisePropertyChanged(nameof(Settings));
+        InvalidateValidationState("Configuration changed. Click Validate.");
     }
 
     private async Task<YahooSymbolValidationResult> ValidateSymbolsAgainstSourcesAsync(AppSettings settings, IReadOnlyList<string> enabledSymbols)

@@ -41,6 +41,8 @@ public sealed class StartupCoordinator
     private readonly Func<bool> _isNetworkAvailable;
     private readonly Func<HttpClient, IQuoteProvider> _createYahooProvider;
 
+    public event Action? BackgroundCacheWarmupCompleted;
+
     public StartupCoordinator(
         Func<bool>? networkAvailability = null,
         Func<HttpClient, IQuoteProvider>? yahooProviderFactory = null,
@@ -50,6 +52,7 @@ public sealed class StartupCoordinator
     {
         _isNetworkAvailable = networkAvailability ?? _networkAvailabilityService.IsNetworkAvailable;
         _createYahooProvider = yahooProviderFactory ?? (client => new YahooFinanceQuoteProvider(client));
+        _exchangePhotoCacheService.BackgroundCacheWarmupCompleted += () => BackgroundCacheWarmupCompleted?.Invoke();
     }
 
     public ScreensaverSceneState BuildBootstrapScene()
@@ -103,6 +106,7 @@ public sealed class StartupCoordinator
             Graphs = [],
             Clock = settings.EnableFloatingClock ? _floatingClockBuilder.BuildDefault() : null,
             BackgroundPaths = backgroundPaths,
+            BackgroundAttributions = _exchangePhotoCacheService.GetAttributionsForBackgrounds(backgroundPaths),
             ShowNetworkWaitingOverlay = showNetworkWaitingOverlay,
             NetworkWaitingTitle = networkAvailable
                 ? "Loading market data"
@@ -135,6 +139,13 @@ public sealed class StartupCoordinator
             .ToList();
     }
 
+
+    public (IReadOnlyList<string> Paths, IReadOnlyDictionary<string, string> Attributions) GetCurrentBackgroundCatalog()
+    {
+        AppSettings settings = _settingsService.Load();
+        IReadOnlyList<string> paths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
+        return (paths, _exchangePhotoCacheService.GetAttributionsForBackgrounds(paths));
+    }
     public async Task<ScreensaverSceneState> BuildSceneAsync(int graphRotationSeed = 0, CancellationToken cancellationToken = default)
     {
         ConsumePendingRuntimeQuoteSeeds();
@@ -1068,6 +1079,7 @@ public sealed class StartupCoordinator
             Graphs = [],
             Clock = clock,
             BackgroundPaths = backgroundPaths,
+            BackgroundAttributions = _exchangePhotoCacheService.GetAttributionsForBackgrounds(backgroundPaths),
             ShowNetworkWaitingOverlay = showNetworkWaitingOverlay,
             NetworkWaitingTitle = "Waiting for network",
             NetworkWaitingDetail = $"Retrying live quotes and exchange photos every {FormatRefreshCadenceText(settings)}."

@@ -10,28 +10,86 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class ExchangePhotoCacheServiceTests
 {
     [Fact]
-    public void GetImmediateBackgrounds_UsesCustomFolderWhenEnabled()
+    public void GetImmediateBackgrounds_UsesOnlyCustomFolderWhenEnabled()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
         string customFolder = Path.Combine(tempRoot, "custom");
-        Directory.CreateDirectory(customFolder);
+        string nestedFolder = Path.Combine(customFolder, "nested");
+        Directory.CreateDirectory(nestedFolder);
         string imagePath = Path.Combine(customFolder, "custom-one.jpg");
+        string nestedImagePath = Path.Combine(nestedFolder, "custom-two.jpg");
         File.WriteAllBytes(imagePath, CreateMinimalJpegBytes());
+        File.WriteAllBytes(nestedImagePath, CreateMinimalJpegBytes());
 
         AppSettings settings = Defaults.CreateSettings();
         settings.UseCustomBackgroundImageFolder = true;
         settings.CustomBackgroundImageFolder = customFolder;
-        settings.BackgroundIncludeSubfolders = false;
+        settings.BackgroundIncludeSubfolders = true;
 
         ExchangePhotoCacheService service = new();
         IReadOnlyList<string> images = service.GetImmediateBackgrounds(settings);
 
-        Assert.Single(images);
-        Assert.Equal(imagePath, images[0], ignoreCase: true);
+        Assert.Equal(2, images.Count);
+        Assert.Contains(imagePath, images, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains(nestedImagePath, images, StringComparer.OrdinalIgnoreCase);
+        Assert.All(images, path => Assert.StartsWith(customFolder, path, StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
-    public async Task GetAvailableBackgroundsAsync_DownloadsMissingImagesOneByOneAndWritesAttribution()
+    public void GetImmediateBackgrounds_DefaultModeDeletesTmpFilesAndReturnsLocalFilesOnly()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        string cacheFolder = Path.Combine(tempRoot, "cache");
+        Directory.CreateDirectory(cacheFolder);
+        string existingPath = Path.Combine(cacheFolder, "existing.jpg");
+        string partialPath = Path.Combine(cacheFolder, "partial.jpg.TMP");
+        File.WriteAllBytes(existingPath, CreateMinimalJpegBytes());
+        File.WriteAllBytes(partialPath, CreateMinimalJpegBytes());
+        File.SetLastWriteTimeUtc(partialPath, DateTime.UtcNow.AddMinutes(-15));
+
+        AppSettings settings = Defaults.CreateSettings();
+        settings.UseCustomBackgroundImageFolder = false;
+        settings.BackgroundImageFolder = cacheFolder;
+
+        ExchangePhotoCacheService service = new();
+        IReadOnlyList<string> images = service.GetImmediateBackgrounds(settings);
+
+        Assert.False(File.Exists(partialPath));
+        Assert.Contains(existingPath, images, StringComparer.OrdinalIgnoreCase);
+        Assert.All(images, path =>
+        {
+            Assert.True(File.Exists(path));
+            Assert.False(Uri.TryCreate(path, UriKind.Absolute, out Uri? uri) &&
+                         (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps));
+        });
+    }
+
+    [Fact]
+    public void GetImmediateBackgrounds_DefaultModeKeepsFreshTmpFiles()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        string cacheFolder = Path.Combine(tempRoot, "cache");
+        Directory.CreateDirectory(cacheFolder);
+        string existingPath = Path.Combine(cacheFolder, "existing.jpg");
+        string partialPath = Path.Combine(cacheFolder, "active-download.jpg.TMP");
+        File.WriteAllBytes(existingPath, CreateMinimalJpegBytes());
+        File.WriteAllBytes(partialPath, CreateMinimalJpegBytes());
+        File.SetLastWriteTimeUtc(partialPath, DateTime.UtcNow);
+
+        AppSettings settings = Defaults.CreateSettings();
+        settings.UseCustomBackgroundImageFolder = false;
+        settings.BackgroundImageFolder = cacheFolder;
+
+        ExchangePhotoCacheService service = new();
+        IReadOnlyList<string> images = service.GetImmediateBackgrounds(settings);
+
+        Assert.True(File.Exists(partialPath));
+        Assert.Contains(existingPath, images, StringComparer.OrdinalIgnoreCase);
+        Assert.DoesNotContain(partialPath, images, StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task WarmDefaultManifestCacheAsync_DownloadsMissingImagesWithTmpThenFinalRename()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
         string cacheFolder = Path.Combine(tempRoot, "cache");
@@ -42,33 +100,145 @@ public sealed class ExchangePhotoCacheServiceTests
         settings.BackgroundImageFolder = cacheFolder;
 
         using HttpClient httpClient = new(new StaticImageHandler());
-        ExchangePhotoCacheService service = new();
+        ExchangePhotoCacheService service = new(() => httpClient);
 
-        _ = await service.GetAvailableBackgroundsAsync(settings, httpClient, networkAvailable: true);
-        int firstCount = Directory.EnumerateFiles(cacheFolder, "*.jpg", SearchOption.TopDirectoryOnly).Count();
-
-        _ = await service.GetAvailableBackgroundsAsync(settings, httpClient, networkAvailable: true);
-        int secondCount = Directory.EnumerateFiles(cacheFolder, "*.jpg", SearchOption.TopDirectoryOnly).Count();
+        await service.WarmDefaultManifestCacheAsync(settings);
 
         string attributionPath = Path.Combine(cacheFolder, "exchange-photo-attribution.txt");
         Assert.True(File.Exists(attributionPath));
-        Assert.True(firstCount >= 1);
-        Assert.Equal(firstCount + 1, secondCount);
-        Assert.Contains("https://commons.wikimedia.org/wiki/Special:Redirect/file/London_Skyline_%28199638369%29.jpeg", _ = await service.GetAvailableBackgroundsAsync(settings, httpClient, networkAvailable: true));
+        Assert.Contains("Download manifest:", File.ReadAllText(attributionPath), StringComparison.Ordinal);
+        Assert.True(Directory.EnumerateFiles(cacheFolder, "*.jpg", SearchOption.TopDirectoryOnly).Count() >= 4);
+        Assert.Empty(Directory.EnumerateFiles(cacheFolder, "*.TMP", SearchOption.TopDirectoryOnly));
     }
 
+    [Fact]
+    public async Task WarmDefaultManifestCacheAsync_SerializesConcurrentWarmups()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        string cacheFolder = Path.Combine(tempRoot, "cache");
+        Directory.CreateDirectory(cacheFolder);
+
+        AppSettings settings = Defaults.CreateSettings();
+        settings.UseCustomBackgroundImageFolder = false;
+        settings.BackgroundImageFolder = cacheFolder;
+
+        ConcurrentTrackingImageHandler handler = new(TimeSpan.FromMilliseconds(15));
+        ExchangePhotoCacheService service = new(() => new HttpClient(handler, disposeHandler: false));
+
+        await Task.WhenAll(
+            service.WarmDefaultManifestCacheAsync(settings),
+            service.WarmDefaultManifestCacheAsync(settings));
+
+        Assert.True(handler.MaxConcurrentRequests <= 1, $"Expected serialized downloads, saw {handler.MaxConcurrentRequests} concurrent requests.");
+        Assert.Empty(Directory.EnumerateFiles(cacheFolder, "*.TMP", SearchOption.TopDirectoryOnly));
+    }
+
+    [Fact]
+    public async Task GetAvailableBackgroundsAsync_StartsWarmupButReturnsOnlyImmediateLocalFiles()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        string cacheFolder = Path.Combine(tempRoot, "cache");
+        Directory.CreateDirectory(cacheFolder);
+        string existingPath = Path.Combine(cacheFolder, "existing.jpg");
+        File.WriteAllBytes(existingPath, CreateMinimalJpegBytes());
+
+        AppSettings settings = Defaults.CreateSettings();
+        settings.UseCustomBackgroundImageFolder = false;
+        settings.BackgroundImageFolder = cacheFolder;
+
+        using HttpClient httpClient = new(new StaticImageHandler());
+        ExchangePhotoCacheService service = new(() => httpClient);
+
+        IReadOnlyList<string> images = await service.GetAvailableBackgroundsAsync(settings, httpClient, networkAvailable: true);
+
+        Assert.Contains(existingPath, images, StringComparer.OrdinalIgnoreCase);
+        Assert.All(images, path => Assert.True(File.Exists(path), path));
+        Assert.DoesNotContain(images, path => path.StartsWith("http", StringComparison.OrdinalIgnoreCase));
+    }
+
+
+    [Fact]
+    public void GetAttributionsForBackgrounds_MapsBundledAndDownloadedCacheFiles()
+    {
+        string cacheFolder = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        string starterPath = Path.Combine(cacheFolder, "new-york-stock-exchange.jpg");
+        string downloadedPath = Path.Combine(cacheFolder, "frankfurt-skyline-2022.jpg");
+        string customPath = Path.Combine(cacheFolder, "family-photo.jpg");
+
+        ExchangePhotoCacheService service = new();
+        IReadOnlyDictionary<string, string> attributions = service.GetAttributionsForBackgrounds([starterPath, downloadedPath, customPath]);
+
+        Assert.Equal(2, attributions.Count);
+        Assert.Contains("Jean-Christophe BENOIST", attributions[starterPath], StringComparison.Ordinal);
+        Assert.Contains("Jorg Braukmann", attributions[downloadedPath], StringComparison.Ordinal);
+        Assert.False(attributions.ContainsKey(customPath));
+    }
+
+    [Fact]
+    public async Task WarmDefaultManifestCacheAsync_RejectsNonJpegDownloads()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        string cacheFolder = Path.Combine(tempRoot, "cache");
+        Directory.CreateDirectory(cacheFolder);
+
+        AppSettings settings = Defaults.CreateSettings();
+        settings.UseCustomBackgroundImageFolder = false;
+        settings.BackgroundImageFolder = cacheFolder;
+
+        using HttpClient httpClient = new(new StaticImageHandler([0x4E, 0x4F, 0x50, 0x45]));
+        ExchangePhotoCacheService service = new(() => httpClient);
+
+        await service.WarmDefaultManifestCacheAsync(settings);
+
+        Assert.Empty(Directory.EnumerateFiles(cacheFolder, "*.TMP", SearchOption.TopDirectoryOnly));
+        Assert.False(File.Exists(Path.Combine(cacheFolder, "shanghai-skyline-2007.jpg")));
+    }
     private static byte[] CreateMinimalJpegBytes()
         => [0xFF, 0xD8, 0xFF, 0xD9];
 
-    private sealed class StaticImageHandler : HttpMessageHandler
+    private sealed class StaticImageHandler(byte[]? responseBytes = null) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             HttpResponseMessage response = new(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(CreateMinimalJpegBytes())
+                Content = new ByteArrayContent(responseBytes ?? CreateMinimalJpegBytes())
             };
             return Task.FromResult(response);
+        }
+    }
+
+    private sealed class ConcurrentTrackingImageHandler(TimeSpan delay) : HttpMessageHandler
+    {
+        private int _currentRequests;
+        private int _maxConcurrentRequests;
+
+        public int MaxConcurrentRequests => _maxConcurrentRequests;
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            int current = Interlocked.Increment(ref _currentRequests);
+            try
+            {
+                int snapshot;
+                do
+                {
+                    snapshot = _maxConcurrentRequests;
+                    if (current <= snapshot)
+                        break;
+                }
+                while (Interlocked.CompareExchange(ref _maxConcurrentRequests, current, snapshot) != snapshot);
+
+                await Task.Delay(delay, cancellationToken);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent(CreateMinimalJpegBytes())
+                };
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _currentRequests);
+            }
         }
     }
 }

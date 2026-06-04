@@ -40,6 +40,6 @@ public sealed class AppSettings
     public bool EnableFloatingClock { get; set; } = true;
     public int ClockRefreshSeconds { get; set; } = 1;
 
-    public bool BackgroundIncludeSubfolders { get; set; }
+    public bool BackgroundIncludeSubfolders { get; set; } = true;
     public List<TickerGroup> Groups { get; set; } = [];
 }

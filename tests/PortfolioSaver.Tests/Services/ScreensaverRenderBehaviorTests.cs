@@ -1177,7 +1177,12 @@ public sealed class ScreensaverRenderBehaviorTests
 
         Assert.Contains("x:Name=\"VersionWatermark\"", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("SANYALnet Labs DO NOT PANIC Portfolio Visualizer", sceneXaml, StringComparison.Ordinal);
+        Assert.Contains("FooterAttributionWatermark", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("&#169; Supratim Sanyal. MIT License.", sceneXaml, StringComparison.Ordinal);
+        Assert.Contains("BackgroundAttributions", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("UpdateFooterAttribution(backgroundPath);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("QueueBackgroundCatalogRescan", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("BackgroundCatalogRescanned", codeBehind, StringComparison.Ordinal);
         Assert.Contains("FontSize=\"19\"", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("DropShadowEffect", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("VersionWatermark.Text = PortfolioVersion.SemanticVersion;", sceneCodeBehind, StringComparison.Ordinal);

@@ -80,14 +80,11 @@ function Write-TestSettings {
     New-Item -ItemType Directory -Force -Path $settingsRoot | Out-Null
 
     $settings = [ordered]@{
-        RefreshSecondsPortfolio = 10
-        RefreshSecondsBenchmarks = 10
-        RefreshSecondsOffHours = 10
         HttpTimeoutSeconds = 10
         BackgroundImageFolder = $managedCacheRoot
         UseCustomBackgroundImageFolder = $UseCustomBackgroundFolder
         CustomBackgroundImageFolder = $CustomBackgroundFolder
-        BackgroundChangeSeconds = 10
+        BackgroundChangeSeconds = 120
         ShuffleBackgrounds = $true
         DimOpacity = 0.55
         DeepSeekApiKey = ""
@@ -101,7 +98,7 @@ function Write-TestSettings {
         FloatingGraphVelocityMax = 48
         EnableFloatingClock = $true
         ClockRefreshSeconds = 1
-        BackgroundIncludeSubfolders = $false
+        BackgroundIncludeSubfolders = $true
         Groups = @(
             @{
                 Name = "Tape 1"

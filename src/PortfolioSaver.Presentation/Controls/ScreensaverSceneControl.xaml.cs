@@ -32,6 +32,7 @@ public partial class ScreensaverSceneControl : UserControl
     private static readonly bool EnableMarketCritters = false;
     private const string PinnedNycExchangeKey = "NewYorkNasdaq";
     private const int MaxVisibleGraphCards = 16;
+    private const string FooterBaseText = "\u00A9 Supratim Sanyal. MIT License.";
     private static readonly TimeSpan GraphSelectionRefreshInterval = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan MacroLaneMinimumRefreshInterval = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan WorldMarketsLaneMinimumRefreshInterval = TimeSpan.FromSeconds(15);
@@ -68,6 +69,7 @@ public partial class ScreensaverSceneControl : UserControl
     private StatusBarViewModel? _statusViewModel;
     private readonly NewsFlasherViewModel _newsViewModel = new();
     private List<string> _backgroundPaths = [];
+    private IReadOnlyDictionary<string, string> _backgroundAttributions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyDictionary<string, QuoteSnapshot> _latestQuotes = new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase);
     private string? _currentBackgroundPath;
     private DateTime _lastMotionTick = DateTime.UtcNow;
@@ -147,10 +149,35 @@ public partial class ScreensaverSceneControl : UserControl
         _backgroundTimer.Tick += async (_, _) => await RotateBackgroundAsync();
         _backgroundZoomTimer.Tick += (_, _) => StepBackgroundSlowZoom();
         _worldDataTimer.Tick += (_, _) => QueueWorldMarketsRefresh(refreshAncillary: true, reason: "timer");
+        _startupCoordinator.BackgroundCacheWarmupCompleted += QueueBackgroundCatalogRescan;
         _demoFlashTimer.Tick += (_, _) => RunDemoFlashPulse();
         _motionTimer.Tick += (_, _) => StepMotion();
     }
 
+
+    private void QueueBackgroundCatalogRescan()
+    {
+        if (!_initialized)
+            return;
+
+        _ = Dispatcher.BeginInvoke(new Action(() =>
+        {
+            (IReadOnlyList<string> paths, IReadOnlyDictionary<string, string> attributions) = _startupCoordinator.GetCurrentBackgroundCatalog();
+            _backgroundAttributions = attributions;
+            _backgroundPaths = paths
+                .Where(IsSupportedBackgroundReference)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (string.IsNullOrWhiteSpace(_currentBackgroundPath) || !_backgroundPaths.Contains(_currentBackgroundPath, StringComparer.OrdinalIgnoreCase))
+                _currentBackgroundPath = null;
+            else
+                UpdateFooterAttribution(_currentBackgroundPath);
+            ConfigureTimers();
+            TraceSceneState(
+                "BackgroundCatalogRescanned",
+                new KeyValuePair<string, object?>("background_count", _backgroundPaths.Count));
+        }), DispatcherPriority.Background);
+    }
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         if (_initialized)
@@ -182,6 +209,7 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        _startupCoordinator.BackgroundCacheWarmupCompleted -= QueueBackgroundCatalogRescan;
         StopRuntimeQuoteLoop();
         CancelNewsRefreshLoop();
         CancelMacroLane();
@@ -256,6 +284,7 @@ public partial class ScreensaverSceneControl : UserControl
         bool structuralRefresh = !preserveLayout;
         _settings = state.Settings;
         _latestQuotes = MergeQuotes(_latestQuotes, state.Quotes);
+        _backgroundAttributions = state.BackgroundAttributions;
         SyncStatusViewModel(state.Status, forceMacroRefresh: structuralRefresh || fullAncillaryRefresh);
         SyncTapes(_startupCoordinator.BuildTapesForQuotes(_settings, _latestQuotes));
         if (structuralRefresh || NewsChanged(state.News))
@@ -2616,10 +2645,12 @@ public partial class ScreensaverSceneControl : UserControl
                 _activeBackgroundImage.Source = null;
             if (_inactiveBackgroundImage is not null)
                 _inactiveBackgroundImage.Source = null;
+            UpdateFooterAttribution(null);
             return;
         }
 
         string backgroundPath = path!;
+        UpdateFooterAttribution(backgroundPath);
         byte[]? preloadedBytes = await PreloadBackgroundBytesAsync(backgroundPath).ConfigureAwait(true);
         BitmapImage backgroundBitmap = CreateBackgroundBitmap(backgroundPath, preloadedBytes);
         _currentBackgroundOpacity = GetBackgroundPresentationOpacity(backgroundBitmap);
@@ -2649,6 +2680,25 @@ public partial class ScreensaverSceneControl : UserControl
 
         BeginBackgroundTransition(backgroundPath, backgroundBitmap);
     }
+
+
+    private void UpdateFooterAttribution(string? backgroundPath)
+    {
+        if (string.IsNullOrWhiteSpace(backgroundPath) ||
+            !_backgroundAttributions.TryGetValue(backgroundPath, out string? attribution) ||
+            string.IsNullOrWhiteSpace(attribution))
+        {
+            if (FooterAttributionWatermark is not null)
+                FooterAttributionWatermark.Text = FooterBaseText;
+            return;
+        }
+
+        if (FooterAttributionWatermark is not null)
+            FooterAttributionWatermark.Text = FooterBaseText + " | Image: " + FormatFooterAttribution(attribution);
+    }
+
+    private static string FormatFooterAttribution(string attribution)
+        => attribution.Trim();
 
     private void ApplyDimOpacity(double opacity)
     {
@@ -3196,11 +3246,7 @@ public partial class ScreensaverSceneControl : UserControl
         if (string.IsNullOrWhiteSpace(path))
             return false;
 
-        if (File.Exists(path))
-            return true;
-
-        return Uri.TryCreate(path, UriKind.Absolute, out Uri? uri) &&
-               (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp);
+        return File.Exists(path);
     }
 
     private void ApplyGraphRefreshImpulse(FloatingGraphViewModel graph, Rect bounds)

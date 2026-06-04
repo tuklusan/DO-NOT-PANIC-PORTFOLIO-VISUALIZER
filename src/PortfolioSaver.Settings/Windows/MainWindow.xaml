@@ -155,78 +155,36 @@
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,10">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="Runtime" Foreground="White" FontSize="20" />
-                                        <Border Style="{StaticResource HelpBadgeStyle}"
-                                                ToolTip="Market data now runs through YFinance.NET only. DeepSeek remains configurable on the Advanced tab for summarized news.">
-                                            <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
-                                        </Border>
-                                    </StackPanel>
-                                </DockPanel>
-
-                                <Grid Margin="0,4,0,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" MinWidth="156" SharedSizeGroup="GeneralLabelCol" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Market data source:" Style="{StaticResource FieldLabelStyle}" />
-                                    <TextBlock Grid.Column="1"
-                                               Text="YFinance.NET (Yahoo-backed, 1-second paced, 10-minute cache ceiling)"
-                                               Foreground="#EAF3FA"
-                                               TextWrapping="Wrap" />
-                                </Grid>
-                                <TextBlock Text="The desktop runtime now uses YFinance.NET as the single market-data path. There are no separate quote-provider API keys or per-provider budgeting controls in Beta 5.6." Style="{StaticResource SectionNoteStyle}" />
-
-                                <Grid Margin="0,8,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" MinWidth="156" SharedSizeGroup="GeneralLabelCol" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="92" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Portfolio refresh:" Style="{StaticResource FieldLabelStyle}" />
-                                    <Slider x:Name="PortfolioRefreshSlider" Grid.Column="1" Minimum="5" Maximum="14400" SmallChange="5" LargeChange="300" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.RefreshSecondsPortfolio, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Grid.Column="2" Margin="12,0,0,0" Foreground="#F3D57F" VerticalAlignment="Center" Text="{Binding ElementName=PortfolioRefreshSlider, Path=Value, StringFormat={}{0:0}s}" />
-                                </Grid>
-
-                                <Grid Margin="0,8,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" MinWidth="156" SharedSizeGroup="GeneralLabelCol" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="92" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Off-hours refresh:" Style="{StaticResource FieldLabelStyle}" />
-                                    <Slider x:Name="OffHoursRefreshSlider" Grid.Column="1" Minimum="5" Maximum="14400" SmallChange="5" LargeChange="300" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.RefreshSecondsOffHours, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Grid.Column="2" Margin="12,0,0,0" Foreground="#F3D57F" VerticalAlignment="Center" Text="{Binding ElementName=OffHoursRefreshSlider, Path=Value, StringFormat={}{0:0}s}" />
-                                </Grid>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Style="{StaticResource SectionCardStyle}">
-                            <StackPanel>
-                                <DockPanel Margin="0,0,0,10">
-                                    <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Background" Foreground="White" FontSize="20" />
-                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Managed exchange photos are cached under Local AppData. You can override them with a custom image folder at any time.">
+                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Choose your own image folder, or leave this off to use the built-in background rotation.">
                                             <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
                                         </Border>
                                     </StackPanel>
                                 </DockPanel>
 
-                                <Grid Margin="0,4,0,4">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" MinWidth="156" SharedSizeGroup="GeneralLabelCol" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Managed cache folder:" Style="{StaticResource FieldLabelStyle}" />
-                                    <TextBox Grid.Column="1" MinWidth="128" IsReadOnly="True" Text="{Binding Settings.BackgroundImageFolder}" />
-                                </Grid>
-                                <CheckBox Content="Use my image directory instead of exchange photos" IsChecked="{Binding Settings.UseCustomBackgroundImageFolder}" Foreground="#DDDDDD" Margin="0,10,0,6" />
+                                <CheckBox x:Name="UseCustomBackgroundFolderCheckBox"
+                                          Content="Use my image folder"
+                                          IsChecked="{Binding Settings.UseCustomBackgroundImageFolder}"
+                                          Foreground="#DDDDDD"
+                                          Margin="0,0,0,6" />
                                 <Grid Margin="0,4,0,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" MinWidth="112" SharedSizeGroup="GeneralLabelCol" />
                                         <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Custom image folder:" Style="{StaticResource FieldLabelStyle}" />
-                                    <TextBox Grid.Column="1" MinWidth="128" Text="{Binding Settings.CustomBackgroundImageFolder, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Settings.UseCustomBackgroundImageFolder}" />
+                                    <TextBox Grid.Column="1"
+                                             MinWidth="128"
+                                             IsReadOnly="True"
+                                             Text="{Binding Settings.CustomBackgroundImageFolder, Mode=OneWay}" />
+                                    <Button Grid.Column="2"
+                                            Content="Choose..."
+                                            Command="{Binding ChooseBackgroundFolderCommand}"
+                                            IsEnabled="{Binding ElementName=UseCustomBackgroundFolderCheckBox, Path=IsChecked}"
+                                            MinWidth="92"
+                                            Margin="8,0,0,0"
+                                            Padding="10,3" />
                                 </Grid>
 
                                 <Grid Margin="0,8,0,0">
@@ -236,7 +194,7 @@
                                         <ColumnDefinition Width="92" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Change interval:" Style="{StaticResource FieldLabelStyle}" />
-                                    <Slider x:Name="BackgroundRefreshSlider" Grid.Column="1" Minimum="10" Maximum="14400" SmallChange="10" LargeChange="300" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Settings.BackgroundChangeSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Slider x:Name="BackgroundRefreshSlider" Grid.Column="1" Minimum="120" Maximum="14400" SmallChange="30" LargeChange="300" TickFrequency="30" IsSnapToTickEnabled="True" Value="{Binding Settings.BackgroundChangeSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <TextBlock Grid.Column="2" Margin="12,0,0,0" Foreground="#F3D57F" VerticalAlignment="Center" Text="{Binding ElementName=BackgroundRefreshSlider, Path=Value, StringFormat={}{0:0}s}" />
                                 </Grid>
                             </StackPanel>
@@ -247,13 +205,13 @@
                                 <DockPanel Margin="0,0,0,10">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Portfolio tapes" Foreground="White" FontSize="20" />
-                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Ticker names auto-fill during Apply when validation can resolve them.">
+                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Ticker names fill in during Validate when available.">
                                             <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
                                         </Border>
                                     </StackPanel>
                                 </DockPanel>
                                 <TextBlock Text="Edit the ticker tapes the screensaver should display." Foreground="#DDDDDD" TextWrapping="Wrap" Margin="0,0,0,4" />
-                                <TextBlock Text="Leave a Name blank if you want Apply to populate it from live symbol metadata." Style="{StaticResource SectionNoteStyle}" Margin="0,0,0,12" />
+                                <TextBlock Text="Leave a Name blank if you want Validate to fill it in when available." Style="{StaticResource SectionNoteStyle}" Margin="0,0,0,12" />
 
                                 <DockPanel Margin="0,0,0,10">
                                     <TextBlock Text="Portfolio tapes" Foreground="White" FontSize="18" VerticalAlignment="Center" />
@@ -298,7 +256,6 @@
                                                             <ComboBoxItem Content="Left" Tag="{x:Static enums:ScrollDirection.Left}" />
                                                             <ComboBoxItem Content="Right" Tag="{x:Static enums:ScrollDirection.Right}" />
                                                         </ComboBox>
-                                                        <TextBlock Grid.Column="2" Text="Alternating left/right helps reduce visual crowding." Foreground="#889AA9" VerticalAlignment="Center" TextWrapping="Wrap" />
                                                     </Grid>
 
                                                     <Grid Margin="0,0,0,8">
@@ -315,7 +272,7 @@
                                                     </Grid>
 
                                                     <TextBlock Text="Tickers" Foreground="White" FontSize="15" Margin="0,4,0,4" />
-                                                    <TextBlock Text="Edit the symbol only. Name fills in during Validate using YFinance.NET symbol metadata." Style="{StaticResource SectionNoteStyle}" Margin="0,0,0,8" />
+                                                    <TextBlock Text="Edit the symbol only. Name fills in during Validate when available." Style="{StaticResource SectionNoteStyle}" Margin="0,0,0,8" />
                                                     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
                                                         <ItemsControl ItemsSource="{Binding Tickers}">
                                                             <ItemsControl.ItemTemplate>
@@ -336,7 +293,7 @@
                                                                                  IsReadOnly="True"
                                                                                  Background="#1A1A1A"
                                                                                  Foreground="#C8D6E3"
-                                                                                 ToolTip="Filled automatically during Validate from YFinance.NET metadata." />
+                                                                                 ToolTip="Filled automatically during Validate when available." />
                                                                         <CheckBox Grid.Column="2" IsChecked="{Binding Enabled}" Foreground="#DDDDDD" Margin="4,0,4,0" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                                         <TextBlock Grid.Column="3"
                                                                                    Text="{Binding ValidationBadgeText}"
@@ -386,13 +343,12 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <DockPanel Margin="0,0,0,20">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Advanced Runtime and News" Foreground="White" FontSize="28" FontWeight="Bold" />
-                                <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Advanced settings now cover the news scroller and the fixed YFinance.NET runtime profile. Separate market-data provider budgeting has been retired.">
+                                <TextBlock Text="Advanced News Settings" Foreground="White" FontSize="28" FontWeight="Bold" />
+                                <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Optional AI summarization requires an API key. RSS mode uses the feed URL below.">
                                     <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
                                 </Border>
                             </StackPanel>
@@ -402,7 +358,7 @@
                                 <DockPanel Margin="0,0,0,10">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="News Scroller" Foreground="White" FontSize="20" />
-                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Summarized Financial News uses the DeepSeek API key from the config screen, protected local secret storage, or environment overrides and refreshes no more often than every 15 minutes. RSS Feed keeps the default finance feed unless you supply a different readable feed URL.">
+                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Choose summarized financial news or a plain RSS feed.">
                                             <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
                                         </Border>
                                     </StackPanel>
@@ -425,7 +381,7 @@
                                         <ColumnDefinition Width="Auto" MinWidth="156" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="DeepSeek style:" Style="{StaticResource FieldLabelStyle}" />
+                                    <TextBlock Text="Writing style:" Style="{StaticResource FieldLabelStyle}" />
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" IsEnabled="{Binding IsSummarizedFinancialNewsSelected}">
                                         <RadioButton Content="Douglas Adams"
                                                      Foreground="#EAF3FA"
@@ -474,7 +430,7 @@
                                         <ColumnDefinition Width="Auto" MinWidth="156" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="DeepSeek API key:" Style="{StaticResource FieldLabelStyle}" />
+                                    <TextBlock Text="AI API key:" Style="{StaticResource FieldLabelStyle}" />
                                     <PasswordBox Grid.Column="1"
                                                  MinWidth="128"
                                                  infra:BindablePasswordBox.BoundPassword="{Binding Settings.DeepSeekApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -484,7 +440,7 @@
                                         <ColumnDefinition Width="Auto" MinWidth="156" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="DeepSeek endpoint URL:" Style="{StaticResource FieldLabelStyle}" />
+                                    <TextBlock Text="AI endpoint URL:" Style="{StaticResource FieldLabelStyle}" />
                                     <TextBox Grid.Column="1"
                                              MinWidth="128"
                                              IsEnabled="{Binding IsSummarizedFinancialNewsSelected}"
@@ -495,22 +451,13 @@
                                         <ColumnDefinition Width="Auto" MinWidth="156" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="DeepSeek model ID:" Style="{StaticResource FieldLabelStyle}" />
+                                    <TextBlock Text="AI model ID:" Style="{StaticResource FieldLabelStyle}" />
                                     <TextBox Grid.Column="1"
                                              MinWidth="128"
                                              IsEnabled="{Binding IsSummarizedFinancialNewsSelected}"
                                              Text="{Binding Settings.DeepSeekModelId, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
-                                <TextBlock Text="Summarized mode sends curated live global financial headlines to a configurable OpenAI-compatible chat endpoint for style-only rewriting, then plays the results back one bulletin at a time in a teleprinter-style band with uppercase courier text, typed character by character, paused, cleared, and only scrolled when the item is too long. The three-field contract is API key, endpoint URL, and model ID." Style="{StaticResource SectionNoteStyle}" />
-                                <TextBlock Text="The DeepSeek key is kept out of settings.json, restored from protected local storage when saved locally, and still respects environment overrides when present. The default endpoint ships as https://api.deepseek.com and the default model ID ships as deepseek-v4-flash, but both remain editable for future compatible backends." Style="{StaticResource SectionNoteStyle}" />
-                                <TextBlock Text="RSS mode validates the feed during Apply and falls back to the default finance feed when needed." Style="{StaticResource SectionNoteStyle}" />
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Row="2" Style="{StaticResource SectionCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Market data runtime" Foreground="White" FontSize="20" Margin="0,0,0,8" />
-                                <TextBlock Text="Portfolio, macro, and graph retrieval now run exclusively through YFinance.NET. One-by-one work is paced at 1 second when batching is not available, and live cache/metadata freshness is capped at 10 minutes." Style="{StaticResource SectionNoteStyle}" Margin="0,0,0,4" />
-                                <TextBlock Text="The old per-provider API key and policy grid has been intentionally retired from the config surface." Style="{StaticResource SectionNoteStyle}" />
+                                <TextBlock Text="Summarized mode requires an API key. RSS mode uses the feed URL above." Style="{StaticResource SectionNoteStyle}" />
                             </StackPanel>
                         </Border>
                     </Grid>

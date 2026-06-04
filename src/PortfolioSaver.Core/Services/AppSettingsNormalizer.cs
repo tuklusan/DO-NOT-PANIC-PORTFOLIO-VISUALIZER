@@ -54,23 +54,14 @@ public static class AppSettingsNormalizer
             7 * 24,
             12);
 
-        normalized.RefreshSecondsPortfolio = Clamp(
-            normalized.RefreshSecondsPortfolio,
-            Defaults.MinRefreshSeconds,
-            Defaults.MaxRefreshSeconds,
-            Defaults.DefaultDesktopRefreshSeconds);
-
-        normalized.RefreshSecondsOffHours = Clamp(
-            normalized.RefreshSecondsOffHours,
-            Defaults.MinRefreshSeconds,
-            Defaults.MaxRefreshSeconds,
-            Defaults.DefaultDesktopRefreshSeconds);
+        normalized.RefreshSecondsPortfolio = Defaults.DefaultDesktopRefreshSeconds;
+        normalized.RefreshSecondsOffHours = Defaults.DefaultDesktopRefreshSeconds;
 
         normalized.BackgroundChangeSeconds = Clamp(
             normalized.BackgroundChangeSeconds,
-            10,
+            Defaults.MinBackgroundChangeSeconds,
             Defaults.MaxRefreshSeconds,
-            60);
+            300);
 
         normalized.NewsRefreshMinutes = Clamp(
             normalized.NewsRefreshMinutes,
@@ -85,15 +76,6 @@ public static class AppSettingsNormalizer
         return normalized;
     }
 
-    private static void ApplyLegacyDesktopRefreshMigration(AppSettings settings)
-    {
-        if (settings.RefreshSecondsPortfolio == Defaults.LegacySteadyStateRefreshSeconds &&
-            settings.RefreshSecondsOffHours == Defaults.LegacySteadyStateRefreshSeconds)
-        {
-            settings.RefreshSecondsPortfolio = Defaults.DefaultDesktopRefreshSeconds;
-            settings.RefreshSecondsOffHours = Defaults.DefaultDesktopRefreshSeconds;
-        }
-    }
 
     private static void ApplyLegacyAlternatingDirectionFallback(IReadOnlyList<TickerGroup> groups)
     {
@@ -188,10 +170,17 @@ public static class AppSettingsNormalizer
     private static string NormalizePath(string currentValue, string fallbackValue)
     {
         string value = string.IsNullOrWhiteSpace(currentValue) ? fallbackValue : currentValue;
+        if (IsHttpUri(value))
+            value = fallbackValue;
+
         return string.IsNullOrWhiteSpace(value)
             ? string.Empty
             : Environment.ExpandEnvironmentVariables(value.Trim());
     }
+
+    private static bool IsHttpUri(string value)
+        => Uri.TryCreate(value.Trim(), UriKind.Absolute, out Uri? uri) &&
+           (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
     private static bool PathsEqual(string left, string right)
     {

@@ -18,7 +18,7 @@
     <Resource Include="..\PortfolioSaver.Shared\Assets\Branding\dnppv-icon-rev-3.ico" Link="Assets\Branding\dnppv-icon-rev-3.ico" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Assets\**\*.*">
+    <Content Include="Assets\ExchangeBackgrounds\new-york-stock-exchange.jpg;Assets\ExchangeBackgrounds\london-skyline-public-domain.jpg;Assets\ExchangeBackgrounds\shanghai-skyline-public-domain.jpg;Assets\ExchangeBackgrounds\exchange-photo-attribution.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

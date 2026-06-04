@@ -201,7 +201,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("config-window-events.log", script, StringComparison.Ordinal);
         Assert.Contains("Config phase exceeded 60 seconds", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'TabActivityComplete'", script, StringComparison.Ordinal);
-        Assert.Contains("$script:vmBackgroundChangeSeconds = if ($ScreensaverDurationMinutes -ge 30) { 300 } else { 20 }", script, StringComparison.Ordinal);
+        Assert.Contains("$script:vmBackgroundChangeSeconds = 120", script, StringComparison.Ordinal);
         Assert.Contains("$settings['BackgroundChangeSeconds'] = $script:vmBackgroundChangeSeconds", script, StringComparison.Ordinal);
         Assert.Contains("$settings['ShuffleBackgrounds'] = $true", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'HarnessSettingsOverrideApplied'", script, StringComparison.Ordinal);

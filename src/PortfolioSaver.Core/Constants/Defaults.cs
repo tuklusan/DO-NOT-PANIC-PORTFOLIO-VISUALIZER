@@ -12,6 +12,7 @@ public static class Defaults
     public const string DefaultDeepSeekModelId = "deepseek-v4-flash";
     public const int MinRefreshSeconds = 5;
     public const int MaxRefreshSeconds = 4 * 60 * 60;
+    public const int MinBackgroundChangeSeconds = 120;
     public const int DefaultDesktopRefreshSeconds = 300;
     public const int LegacySteadyStateRefreshSeconds = 1200;
     public const int MinimumSummarizedNewsRefreshMinutes = 15;
@@ -60,6 +61,7 @@ public static class Defaults
         UseCustomBackgroundImageFolder = false,
         CustomBackgroundImageFolder = string.Empty,
         BackgroundChangeSeconds = 300,
+        BackgroundIncludeSubfolders = true,
         DimOpacity = 0.55,
         LayoutPreset = LayoutPreset.UltrawideDefault,
         Groups =

@@ -22,6 +22,8 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("Publisher: SANYALnet Labs", aboutText, StringComparison.Ordinal);
         Assert.Contains("Author: Supratim Sanyal", aboutText, StringComparison.Ordinal);
         Assert.Contains("License: MIT License", aboutText, StringComparison.Ordinal);
+        Assert.Contains("retires the legacy portfolio/off-hours refresh sliders", aboutText, StringComparison.Ordinal);
+        Assert.Contains("uses local background files only", aboutText, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -61,8 +63,9 @@ public sealed class ConfigTextConsistencyTests
     {
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
-        Assert.Contains("Name fills in during Validate using YFinance.NET symbol metadata.", xaml, StringComparison.Ordinal);
-        Assert.Contains("Filled automatically during Validate from YFinance.NET metadata.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Name fills in during Validate when available.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Filled automatically during Validate when available.", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("YFinance.NET symbol metadata", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding Quantity}\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding CostBasis}\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding Currency, UpdateSourceTrigger=PropertyChanged}\"", xaml, StringComparison.Ordinal);
@@ -109,16 +112,19 @@ public sealed class ConfigTextConsistencyTests
     }
 
     [Fact]
-    public void AdvancedTab_RetiresOldDataSourceGridAndExplainsFixedYFinanceRuntime()
+    public void AdvancedTab_KeepsNewsControlsAndOmitsRuntimeArchitectureNotes()
     {
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
         Assert.Contains("<Grid Margin=\"16\">", xaml, StringComparison.Ordinal);
         Assert.Contains("<Grid.RowDefinitions>", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"Advanced Runtime and News\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"Market data runtime\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Portfolio, macro, and graph retrieval now run exclusively through YFinance.NET.", xaml, StringComparison.Ordinal);
-        Assert.Contains("The old per-provider API key and policy grid has been intentionally retired from the config surface.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Advanced News Settings\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"News Scroller\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"AI endpoint URL:\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"AI model ID:\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Text=\"Market data runtime\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("YFinance.NET", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("per-provider", xaml, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Header=\"Service\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Header=\"Per Hour\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Header=\"Per Day\"", xaml, StringComparison.Ordinal);
@@ -134,13 +140,12 @@ public sealed class ConfigTextConsistencyTests
         int helpBadgeCount = xaml.Split("Style=\"{StaticResource HelpBadgeStyle}\"", StringSplitOptions.None).Length - 1;
         int tooltipCount = xaml.Split("ToolTip=\"", StringSplitOptions.None).Length - 1;
 
-        Assert.Equal(5, helpBadgeCount);
-        Assert.True(tooltipCount >= 5, "Expected every visible help badge to carry a tooltip.");
-        Assert.Contains("Market data now runs through YFinance.NET only.", xaml, StringComparison.Ordinal);
-        Assert.Contains("Summarized Financial News uses the DeepSeek API key from the config screen, protected local secret storage, or environment overrides", xaml, StringComparison.Ordinal);
-        Assert.Contains("Managed exchange photos are cached under Local AppData.", xaml, StringComparison.Ordinal);
-        Assert.Contains("Ticker names auto-fill during Apply when validation can resolve them.", xaml, StringComparison.Ordinal);
-        Assert.Contains("Advanced settings now cover the news scroller and the fixed YFinance.NET runtime profile.", xaml, StringComparison.Ordinal);
+        Assert.Equal(4, helpBadgeCount);
+        Assert.True(tooltipCount >= 4, "Expected every visible help badge to carry a tooltip.");
+        Assert.Contains("Choose your own image folder", xaml, StringComparison.Ordinal);
+        Assert.Contains("Choose summarized financial news or a plain RSS feed.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Ticker names fill in during Validate when available.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Optional AI summarization requires an API key.", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -153,6 +158,8 @@ public sealed class ConfigTextConsistencyTests
         Assert.False(string.IsNullOrWhiteSpace(aboutText));
         Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER Help", helpText, StringComparison.Ordinal);
         Assert.Contains("License: MIT License", aboutText, StringComparison.Ordinal);
+        Assert.Contains("retires the legacy portfolio/off-hours refresh sliders", aboutText, StringComparison.Ordinal);
+        Assert.Contains("uses local background files only", aboutText, StringComparison.Ordinal);
         Assert.Contains("Official License URL: https://opensource.org/license/mit/", aboutText, StringComparison.Ordinal);
         Assert.Contains("Review the bundled LICENSE file or the official MIT License page for the full license text.", helpText, StringComparison.Ordinal);
     }
@@ -174,6 +181,12 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("ColumnDefinition Width=\"1.5*\" MinWidth=\"92\"", xaml, StringComparison.Ordinal);
         Assert.Contains("ColumnDefinition Width=\"2.2*\" MinWidth=\"132\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("<TextBlock Text=\"News\" Foreground=\"White\" FontSize=\"20\" />", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortfolioRefreshSlider", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("OffHoursRefreshSlider", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Managed cache folder:", xaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"Choose...\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("IsReadOnly=\"True\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Minimum=\"120\"", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -189,20 +202,16 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("Content=\"RSS Feed\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"Douglas Adams\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"William Shakespeare\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"DeepSeek style:\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"DeepSeek endpoint URL:\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"DeepSeek model ID:\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Writing style:\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"AI endpoint URL:\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"AI model ID:\"", xaml, StringComparison.Ordinal);
         Assert.Contains("IsEnabled=\"{Binding IsSummarizedFinancialNewsSelected}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("IsEnabled=\"{Binding IsRssFeedSelected}\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("DeepSeek API key:", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"Market data runtime\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("One-by-one work is paced at 1 second when batching is not available, and live cache/metadata freshness is capped at 10 minutes.", xaml, StringComparison.Ordinal);
-        Assert.Contains("The old per-provider API key and policy grid has been intentionally retired from the config surface.", xaml, StringComparison.Ordinal);
-        Assert.Contains("teleprinter-style band with uppercase courier text, typed character by character, paused, cleared, and only scrolled when the item is too long", xaml, StringComparison.Ordinal);
-        Assert.Contains("style-only rewriting", xaml, StringComparison.Ordinal);
-        Assert.Contains("The three-field contract is API key, endpoint URL, and model ID.", xaml, StringComparison.Ordinal);
-        Assert.Contains("default endpoint ships as https://api.deepseek.com", xaml, StringComparison.Ordinal);
-        Assert.Contains("default model ID ships as deepseek-v4-flash", xaml, StringComparison.Ordinal);
+        Assert.Contains("AI API key:", xaml, StringComparison.Ordinal);
+        Assert.Contains("Summarized mode requires an API key.", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("teleprinter-style", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("style-only rewriting", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("default endpoint ships", xaml, StringComparison.Ordinal);
     }
 
     private static string GetRepoRoot()

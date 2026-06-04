@@ -161,9 +161,15 @@ function Write-SendAudit([string]$PacketPath, [string]$EndpointValue, [string]$M
     }
 }
 
+function Redact-RemovedDiffSecretLines([string]$Text) {
+    return [regex]::Replace(
+        $Text,
+        '(?im)^-(?!-).*?(?:api[_-]?key|secret|token|password)\s*[:=].*?$',
+        '-[redacted secret-like removed diff line]')
+}
 function Assert-NoLikelySecrets([string]$Text) {
     $patterns = @(
-        '(?im)(api[_-]?key|secret|token|password)\s*[:=]\s*[''"](?!(test|example|placeholder|dummy|sample))([A-Za-z0-9_\-+/=]{16,})[''"]',
+        '(?im)(api[_-]?key|secret|token|password)\s*[:=]\s*[''"](?!(test|example|placeholder|dummy|sample|REPLACE_WITH_))([A-Za-z0-9_\-+/=]{16,})[''"]',
         '(?im)(?:export\s+|set\s+)?(api[_-]?key|secret|token|password)\s*[:=]\s*(sk-[A-Za-z0-9_-]{20,}|[A-Za-z0-9_\-+/=]{32,})',
         '(?im)Authorization\s*[:=]\s*[''"]Bearer\s+(sk-[A-Za-z0-9_-]{20,}|[A-Za-z0-9_\-+/=]{32,})[''"]',
         '(?im)sk-(?!test|example|placeholder|dummy|sample)[A-Za-z0-9_-]{20,}',
@@ -174,7 +180,7 @@ function Assert-NoLikelySecrets([string]$Text) {
         '(?m)eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}',
         '(?im)[a-z][a-z0-9+.-]{2,}://[^/\s:@]{2,}:[^/\s:@]{8,}@',
         '(?im)(connectionstrings?|machinekey|clientsecret|tenantsecret)\s*[:=]\s*[''"](?!(test|example|placeholder|dummy|sample))[^''"]*(password|pwd|secret|accesskey|api[_-]?key|validationkey|decryptionkey)[^''"]{8,}[''"]',
-        '(?im)(password|pwd|user id|uid)\s*=\s*[^;]{8,};',
+        '(?im)(password|pwd|user id|uid)\s*=\s*[^;\r\n]{8,};',
         '(?s)-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----'
     )
 
@@ -355,7 +361,7 @@ foreach ($file in ($untrackedFiles | Sort-Object)) {
     $sections.Add($content)
 }
 
-$packet = $sections -join "`n`n"
+$packet = Redact-RemovedDiffSecretLines ($sections -join "`n`n")
 if ($packet.Length -gt $MaxPacketCharacters) {
     throw "DeepSeek review packet is $($packet.Length) characters, exceeding MaxPacketCharacters=$MaxPacketCharacters. Split the change into smaller reviewable units or rerun with an explicit larger -MaxPacketCharacters value."
 }

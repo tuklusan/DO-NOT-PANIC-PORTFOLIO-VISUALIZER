@@ -1,10 +1,7 @@
 {
-    "RefreshSecondsPortfolio":  30,
-    "RefreshSecondsBenchmarks":  30,
-    "RefreshSecondsOffHours":  120,
     "HttpTimeoutSeconds":  10,
     "BackgroundImageFolder":  "",
-    "BackgroundChangeSeconds":  60,
+    "BackgroundChangeSeconds":  120,
     "ShuffleBackgrounds":  true,
     "DimOpacity":  0.55,
     "LayoutPreset":  0,
@@ -18,7 +15,7 @@
     "FloatingGraphVelocityMax":  48,
     "EnableFloatingClock":  true,
     "ClockRefreshSeconds":  1,
-    "BackgroundIncludeSubfolders":  false,
+    "BackgroundIncludeSubfolders":  true,
     "Groups":  [
                    {
                        "Id":  "c4bd3620e5b246cda90a5493cdf93100",

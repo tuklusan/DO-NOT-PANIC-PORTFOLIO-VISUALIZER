@@ -8,6 +8,7 @@ License: MIT License
 Official License URL: https://opensource.org/license/mit/
 
 This build shows floating ticker tapes, finance headlines, exchange-photo backgrounds, and market-aware overlays.
-The configuration app lets you tune tapes, data sources, image behavior, and refresh settings.
-
+Beta 6 intentionally retires the legacy portfolio/off-hours refresh sliders; the UI now uses the one-symbol-at-a-time runtime cadence.
+Beta 6 also uses local background files only: built-in starter images are copied to Local AppData, optional Wikimedia images download into that cache, and custom folders are chosen through the Settings screen.
+Beta 6 raises the minimum background rotation interval to 120 seconds to keep scene updates calm during market rendering.
 

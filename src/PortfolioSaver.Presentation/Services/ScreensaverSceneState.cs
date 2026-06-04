@@ -14,6 +14,7 @@ public sealed class ScreensaverSceneState
     public IReadOnlyList<FloatingGraphViewModel> Graphs { get; init; } = [];
     public FloatingClockViewModel? Clock { get; init; }
     public IReadOnlyList<string> BackgroundPaths { get; init; } = [];
+    public IReadOnlyDictionary<string, string> BackgroundAttributions { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     public bool ShowNetworkWaitingOverlay { get; init; }
     public string? NetworkWaitingTitle { get; init; }
     public string? NetworkWaitingDetail { get; init; }

@@ -9,12 +9,10 @@ public sealed class SettingsValidator
     {
         List<string> errors = [];
 
-        if (settings.RefreshSecondsPortfolio is < Defaults.MinRefreshSeconds or > Defaults.MaxRefreshSeconds)
-            errors.Add("Portfolio refresh interval must be between 5 seconds and 4 hours.");
-        if (settings.RefreshSecondsOffHours is < Defaults.MinRefreshSeconds or > Defaults.MaxRefreshSeconds)
-            errors.Add("Off-hours refresh interval must be between 5 seconds and 4 hours.");
         if (settings.NewsRefreshMinutes is < Defaults.MinNewsRefreshMinutes or > Defaults.MaxNewsRefreshMinutes)
             errors.Add("News refresh interval must be between 5 minutes and 4 hours.");
+        if (settings.BackgroundChangeSeconds is < Defaults.MinBackgroundChangeSeconds or > Defaults.MaxRefreshSeconds)
+            errors.Add("Background change interval must be between 2 minutes and 4 hours.");
         if (settings.HttpTimeoutSeconds < 3)
             errors.Add("HTTP timeout must be at least 3 seconds.");
         if (settings.DimOpacity is < 0 or > 1)

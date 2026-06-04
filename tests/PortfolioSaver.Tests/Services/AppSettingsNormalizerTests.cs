@@ -126,16 +126,16 @@ public sealed class AppSettingsNormalizerTests
     {
         const string environmentName = "DEEPSEEK_API_KEY";
         string? previous = Environment.GetEnvironmentVariable(environmentName);
-        Environment.SetEnvironmentVariable(environmentName, "env-deepseek-key");
+        Environment.SetEnvironmentVariable(environmentName, "test-env-deepseek-key");
 
         try
         {
             AppSettings settings = Defaults.CreateSettings();
-            settings.DeepSeekApiKey = "persisted-deepseek-key";
+            settings.DeepSeekApiKey = "test-persisted-deepseek-key";
 
             AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
-            Assert.Equal("env-deepseek-key", normalized.DeepSeekApiKey);
+            Assert.Equal("test-env-deepseek-key", normalized.DeepSeekApiKey);
         }
         finally
         {
@@ -156,7 +156,7 @@ public sealed class AppSettingsNormalizerTests
         try
         {
             AppSettings settings = Defaults.CreateSettings();
-            settings.DeepSeekApiKey = "abcdefghijklmnopqrstuvwxyz012345";
+            settings.DeepSeekApiKey = "REPLACE_WITH_DEEPSEEK_API_KEY";
 
             AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
@@ -170,7 +170,7 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
-    public void Normalize_MigratesLegacySteadyStateRefreshPair_ToDesktopDefaults()
+    public void Normalize_RetiresLegacyRefreshPair_ToDesktopDefaults()
     {
         AppSettings legacy = Defaults.CreateSettings();
         legacy.RefreshSecondsPortfolio = Defaults.LegacySteadyStateRefreshSeconds;
@@ -183,7 +183,7 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
-    public void Normalize_PreservesIntentionalCustomRefreshValues()
+    public void Normalize_RetiresIntentionalCustomRefreshValues()
     {
         AppSettings custom = Defaults.CreateSettings();
         custom.RefreshSecondsPortfolio = 600;
@@ -191,8 +191,21 @@ public sealed class AppSettingsNormalizerTests
 
         AppSettings normalized = AppSettingsNormalizer.Normalize(custom);
 
-        Assert.Equal(600, normalized.RefreshSecondsPortfolio);
-        Assert.Equal(900, normalized.RefreshSecondsOffHours);
+        Assert.Equal(Defaults.DefaultDesktopRefreshSeconds, normalized.RefreshSecondsPortfolio);
+        Assert.Equal(Defaults.DefaultDesktopRefreshSeconds, normalized.RefreshSecondsOffHours);
+    }
+
+    [Fact]
+    public void Normalize_RetiresRemoteBackgroundPaths_ToLocalOnlyDefaults()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.BackgroundImageFolder = "https://example.invalid/backgrounds";
+        settings.CustomBackgroundImageFolder = "https://example.invalid/custom-backgrounds";
+
+        AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+        Assert.Equal(Defaults.GetManagedBackgroundCacheFolder(), normalized.BackgroundImageFolder);
+        Assert.Equal(string.Empty, normalized.CustomBackgroundImageFolder);
     }
 
     [Fact]
