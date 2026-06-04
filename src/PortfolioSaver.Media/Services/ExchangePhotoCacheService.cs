@@ -262,10 +262,13 @@ public sealed class ExchangePhotoCacheService
                 using HttpResponseMessage response = await httpClient.GetAsync(entry.DownloadUrl, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                await using Stream sourceStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-                await using FileStream targetStream = File.Create(tempPath);
-                await sourceStream.CopyToAsync(targetStream, cancellationToken).ConfigureAwait(false);
-                await targetStream.FlushAsync(cancellationToken).ConfigureAwait(false);
+                await using (Stream sourceStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
+                await using (FileStream targetStream = File.Create(tempPath))
+                {
+                    await sourceStream.CopyToAsync(targetStream, cancellationToken).ConfigureAwait(false);
+                    await targetStream.FlushAsync(cancellationToken).ConfigureAwait(false);
+                }
+
                 if (!IsJpegFile(tempPath))
                     throw new InvalidDataException("Downloaded background is not a JPEG file.");
 
