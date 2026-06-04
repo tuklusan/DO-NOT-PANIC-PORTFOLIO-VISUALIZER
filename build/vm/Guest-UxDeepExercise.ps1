@@ -172,6 +172,12 @@ $resultName = $ResultName
 $results = Join-Path $ResultRootPath $resultName
 
 New-Item -ItemType Directory -Force -Path $results | Out-Null
+foreach ($orphanedSummaryTempPath in [System.IO.Directory]::EnumerateFiles($results, 'ux-deep-summary.json.*.tmp')) {
+    [System.IO.File]::Delete($orphanedSummaryTempPath)
+}
+foreach ($orphanedSummaryTempPath in [System.IO.Directory]::EnumerateFiles($results, 'vm-ux-summary.json.*.tmp')) {
+    [System.IO.File]::Delete($orphanedSummaryTempPath)
+}
 
 $isLongRunSoak = $ScreensaverDurationMinutes -ge 120
 $script:vmBackgroundChangeSeconds = 120
@@ -967,11 +973,24 @@ function Write-TextFileWithRetry {
 
     $attempts = 0
     while ($true) {
+        $tempPath = $Path + ('.{0}.tmp' -f [guid]::NewGuid().ToString('N'))
         try {
-            Set-Content -LiteralPath $Path -Value $Content -Encoding UTF8
+            # The VM harness runs under PowerShell 7; Set-Content -Encoding UTF8 writes UTF-8 without BOM there.
+            $encoding = [System.Text.UTF8Encoding]::new($false)
+            [System.IO.File]::WriteAllText($tempPath, $Content, $encoding)
+            try {
+                [System.IO.File]::Replace($tempPath, $Path, $null)
+            }
+            catch [System.IO.FileNotFoundException] {
+                [System.IO.File]::Move($tempPath, $Path)
+            }
             return
         }
         catch {
+            if ([System.IO.File]::Exists($tempPath)) {
+                [System.IO.File]::Delete($tempPath)
+            }
+
             $attempts++
             if ($attempts -ge 20) {
                 throw
