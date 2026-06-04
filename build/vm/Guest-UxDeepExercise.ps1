@@ -979,7 +979,7 @@ function Write-TextFileWithRetry {
             $encoding = [System.Text.UTF8Encoding]::new($false)
             [System.IO.File]::WriteAllText($tempPath, $Content, $encoding)
             try {
-                [System.IO.File]::Replace($tempPath, $Path, $null)
+                [System.IO.File]::Replace($tempPath, $Path, [NullString]::Value)
             }
             catch [System.IO.FileNotFoundException] {
                 [System.IO.File]::Move($tempPath, $Path)
