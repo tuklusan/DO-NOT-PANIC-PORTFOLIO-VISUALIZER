@@ -1046,7 +1046,7 @@
       "priority": 1,
       "area": "backgrounds_config",
       "title": "Simplify background configuration and default-background download/cache flow",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User requested a CR to remove excess background configuration surface area, harden custom-folder selection, simplify the default downloaded-background flow, and investigate GPU usage after observed blank-background and transition-jitter symptoms."
@@ -1129,7 +1129,8 @@
         "Attribution metadata scan from Wikimedia/Commons on 2026-06-04: London skyline | CC BY 2.0 | attribution required | Donnchadh H.",
         "Attribution metadata scan from Wikimedia/Commons on 2026-06-04: Tokyo Stock Exchange entrance | CC0 | attribution not required | Suicasmo.",
         "Attribution metadata scan from Wikimedia/Commons on 2026-06-04: Australian Securities Exchange entrance | Public domain | attribution not required | Jason7825.",
-        "Implementation must perform one final verification pass before enabling downloads: confirm each candidate still resolves, keep only license-compatible files, keep only images with at least one dimension >=2K, prefer night/blue-hour/reflective financial-district imagery, drop visually weak images even if technically valid, and preserve complete attribution/license/source metadata in the shipped manifest."
+        "Implementation must perform one final verification pass before enabling downloads: confirm each candidate still resolves, keep only license-compatible files, keep only images with at least one dimension >=2K, prefer night/blue-hour/reflective financial-district imagery, drop visually weak images even if technically valid, and preserve complete attribution/license/source metadata in the shipped manifest.",
+        "Resolved on 2026-06-04 by simplifying the General background UI, making custom folder selection read-only plus Choose..., removing the managed cache field, raising the background interval minimum to 120 seconds, defaulting subfolder inclusion to true, limiting bundled starter images to three, moving default remote imagery into local-cache warmup/download behavior, rejecting HTTP/HTTPS active background paths, cleaning stale .TMP files safely, preserving attribution metadata for starter/downloaded images, and validating with clean local build/tests plus two consecutive 30-minute VM runs with 2-minute background rotations: ux-deep-ssh-20260604-180530 and ux-deep-ssh-20260604-185907."
       ]
     },
     {
@@ -1138,7 +1139,7 @@
       "priority": 1,
       "area": "config_ui",
       "title": "Simplify General config tab to user-facing controls only",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User reviewed the General tab widget inventory and requested a CR because stale cadence sliders and implementation/design notes no longer make sense in the normal configuration screen."
@@ -1166,7 +1167,8 @@
         "Update local tests, reflection/config harnesses, and VM harness expectations so they no longer depend on removed sliders, removed notes, or implementation-specific YFinance text in the General tab.",
         "Update local tests, reflection/config harnesses, and VM harness expectations so they no longer depend on removed Advanced-tab notes, removed Market data runtime card, or implementation-specific YFinance text in the Advanced tab.",
         "Acceptance requires a clean local build/test pass plus config-screen harness validation proving the General tab still supports editing background choices, portfolio tapes, ticker symbols, validation, OK, and Cancel without exposing internal runtime design notes.",
-        "Acceptance also requires Advanced-tab validation proving News Scroller mode selection, writing style selection, RSS feed URL editing, headline refresh editing, API key entry, endpoint URL editing, and model ID editing still work without exposing internal runtime architecture notes."
+        "Acceptance also requires Advanced-tab validation proving News Scroller mode selection, writing style selection, RSS feed URL editing, headline refresh editing, API key entry, endpoint URL editing, and model ID editing still work without exposing internal runtime architecture notes.",
+        "Resolved on 2026-06-04 by removing the General Runtime section and legacy refresh sliders from the visible config UI, retiring portfolio/off-hours refresh settings to desktop defaults in normalization, removing implementation-facing YFinance/runtime prose, simplifying the Advanced tab to user-actionable news/AI settings, keeping future-proof API key/endpoint/model controls, updating config text/tests/harness expectations, and validating with clean local build/tests plus two consecutive 30-minute VM runs: ux-deep-ssh-20260604-180530 and ux-deep-ssh-20260604-185907."
       ]
     }
   ],
