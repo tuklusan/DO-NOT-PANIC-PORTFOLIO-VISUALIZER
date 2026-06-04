@@ -1177,7 +1177,7 @@
       "priority": 2,
       "area": "background_attribution",
       "title": "Shorten on-screen background image attribution strings",
-      "status": "open",
+      "status": "resolved",
       "source": "user_followup",
       "evidence": [
         "User reported that the current image attribution strings are too long for the unobtrusive footer and requested a very short format."
@@ -1190,7 +1190,9 @@
         "Apply the short format consistently for bundled starter backgrounds and downloaded manifest backgrounds.",
         "If an image has no attribution requirement, still use the same short shape when a footer attribution is shown, using the creator/name and license/public-domain marker from the manifest.",
         "Update tests that assert footer attribution text so they verify the short on-screen form and guard against accidental reintroduction of long URLs in the UI footer.",
-        "Acceptance requires local build/test validation and at least one UI/harness verification that the footer attribution remains unobtrusive while the full source metadata remains preserved off-screen."
+        "Acceptance requires local build/test validation and at least one UI/harness verification that the footer attribution remains unobtrusive while the full source metadata remains preserved off-screen.",
+        "Resolved on 2026-06-04 in implementation commit 1022783 by splitting full attribution metadata from footer display metadata: UI/background catalog callers now use GetFooterAttributionsForBackgrounds for short \"Creator, License\" strings, the obsolete full-attribution API remains backward-compatible through GetFullAttributionsForBackgrounds, malformed formatter inputs fall back safely, and full source URLs remain preserved in exchange-photo-attribution.txt.",
+        "Validation: DeepSeek code review completed with no merge-blocking findings, local Release build succeeded with 0 warnings/errors, local Release tests passed, VM build/tests passed with 229/229 tests, 30-minute VM UX run ux-deep-ssh-20260604-202359 completed with config/desktop phases passed and visual capture desktop-060.png showing short footer attribution \"Image: Rodrigo.Argenton, CC0\"."
       ]
     }
   ],
