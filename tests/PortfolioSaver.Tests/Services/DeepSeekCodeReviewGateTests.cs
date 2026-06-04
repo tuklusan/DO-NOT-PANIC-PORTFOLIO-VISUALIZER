@@ -20,9 +20,31 @@ public sealed class DeepSeekCodeReviewGateTests
         Assert.Equal(0, selfTest.ExitCode);
         Assert.Contains("self-test passed", selfTest.Output, StringComparison.OrdinalIgnoreCase);
 
-        CommandResult whatIf = RunPowerShell(repoRoot, "-NoProfile -ExecutionPolicy Bypass -File .\\build\\Run-DeepSeekCodeReview.ps1 -IncludeUntracked -WhatIf");
-        Assert.Equal(0, whatIf.ExitCode);
-        Assert.Contains("WhatIf requested", whatIf.Output, StringComparison.OrdinalIgnoreCase);
+        string tempRoot = Path.Combine(Path.GetTempPath(), "DeepSeekCodeReviewGate_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            // Keep dry-run branch coverage isolated so tests never write probe files into the real checkout.
+            // The self-test and documentation checks still exercise the script from the actual repository.
+            Directory.CreateDirectory(Path.Combine(tempRoot, "build"));
+            File.Copy(
+                Path.Combine(repoRoot, "build", "Run-DeepSeekCodeReview.ps1"),
+                Path.Combine(tempRoot, "build", "Run-DeepSeekCodeReview.ps1"));
+            File.WriteAllText(Path.Combine(tempRoot, ".gitignore"), "build/deepseek-review/" + Environment.NewLine);
+            RunPowerShellAndAssertSuccess(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git init | Out-Null\"");
+            RunPowerShellAndAssertSuccess(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git config user.email test@example.invalid; git config user.name Test\"");
+            RunPowerShellAndAssertSuccess(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git add .; git commit -m init | Out-Null\"");
+            File.WriteAllText(Path.Combine(tempRoot, "pending-change.txt"), "pending review");
+
+            CommandResult whatIf = RunPowerShell(tempRoot, "-NoProfile -ExecutionPolicy Bypass -File .\\build\\Run-DeepSeekCodeReview.ps1 -IncludeUntracked -WhatIf");
+
+            Assert.Equal(0, whatIf.ExitCode);
+            Assert.Contains("WhatIf requested", whatIf.Output, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("No tracked code/documentation changes found", whatIf.Output, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            DeleteTempDirectory(tempRoot);
+        }
     }
 
     [Fact]
@@ -41,9 +63,9 @@ public sealed class DeepSeekCodeReviewGateTests
                 Path.Combine(repoRoot, "build", "Run-DeepSeekCodeReview.ps1"),
                 Path.Combine(tempRoot, "build", "Run-DeepSeekCodeReview.ps1"));
             File.WriteAllText(Path.Combine(tempRoot, ".gitignore"), "build/deepseek-review/" + Environment.NewLine);
-            RunPowerShell(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git init | Out-Null\"");
-            RunPowerShell(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git config user.email test@example.invalid; git config user.name Test\"");
-            RunPowerShell(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git commit --allow-empty -m init | Out-Null\"");
+            RunPowerShellAndAssertSuccess(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git init | Out-Null\"");
+            RunPowerShellAndAssertSuccess(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git config user.email test@example.invalid; git config user.name Test\"");
+            RunPowerShellAndAssertSuccess(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git commit --allow-empty -m init | Out-Null\"");
 
             string probePath = Path.Combine(tempRoot, "deepseek-scan-temp.txt");
             string syntheticSecret = "sk-" + "realisticsecretpattern1234567890";
@@ -56,8 +78,7 @@ public sealed class DeepSeekCodeReviewGateTests
         }
         finally
         {
-            if (Directory.Exists(tempRoot))
-                Directory.Delete(tempRoot, recursive: true);
+            DeleteTempDirectory(tempRoot);
         }
     }
 
@@ -77,9 +98,9 @@ public sealed class DeepSeekCodeReviewGateTests
                 Path.Combine(repoRoot, "build", "Run-DeepSeekCodeReview.ps1"),
                 Path.Combine(tempRoot, "build", "Run-DeepSeekCodeReview.ps1"));
             File.WriteAllText(Path.Combine(tempRoot, ".gitignore"), "build/deepseek-review/" + Environment.NewLine);
-            RunPowerShell(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git init | Out-Null\"");
-            RunPowerShell(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git config user.email test@example.invalid; git config user.name Test\"");
-            RunPowerShell(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git add .; git commit -m init | Out-Null\"");
+            RunPowerShellAndAssertSuccess(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git init | Out-Null\"");
+            RunPowerShellAndAssertSuccess(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git config user.email test@example.invalid; git config user.name Test\"");
+            RunPowerShellAndAssertSuccess(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git add .; git commit -m init | Out-Null\"");
 
             CommandResult result = RunPowerShell(tempRoot, "-NoProfile -ExecutionPolicy Bypass -File .\\build\\Run-DeepSeekCodeReview.ps1 -IncludeUntracked -PacketOnly");
 
@@ -88,8 +109,7 @@ public sealed class DeepSeekCodeReviewGateTests
         }
         finally
         {
-            if (Directory.Exists(tempRoot))
-                Directory.Delete(tempRoot, recursive: true);
+            DeleteTempDirectory(tempRoot);
         }
     }
 
@@ -181,5 +201,29 @@ public sealed class DeepSeekCodeReviewGateTests
         return new CommandResult(process.ExitCode, output, error);
     }
 
+    private static void RunPowerShellAndAssertSuccess(string workingDirectory, string arguments)
+    {
+        CommandResult result = RunPowerShell(workingDirectory, arguments);
+        Assert.Equal(0, result.ExitCode);
+    }
+
     private readonly record struct CommandResult(int ExitCode, string Output, string Error);
+
+    private static void DeleteTempDirectory(string path)
+    {
+        if (!Directory.Exists(path))
+            return;
+
+        try
+        {
+            foreach (string file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+                File.SetAttributes(file, FileAttributes.Normal);
+
+            Directory.Delete(path, recursive: true);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Best-effort cleanup failed for temp directory '{path}': {ex.Message}");
+        }
+    }
 }
