@@ -33,38 +33,41 @@
                 BorderBrush="#233948"
                 BorderThickness="1"
                 Padding="18">
-            <StackPanel>
-                <TextBlock Text="DO NOT PANIC PORTFOLIO VISUALIZER"
-                           Foreground="White"
-                           FontSize="26"
-                           FontWeight="Bold"
-                           Margin="0,0,0,8" />
-                <TextBlock Text="{Binding VersionText}"
-                           Foreground="#A7C4DB"
-                           FontSize="14"
-                           Margin="0,0,0,16" />
-                <TextBlock Text="{Binding PublisherText}"
-                           Foreground="#E5EDF4"
-                           FontSize="15"
-                           Margin="0,0,0,6" />
-                <TextBlock Text="{Binding AuthorText}"
-                           Foreground="#E5EDF4"
-                           FontSize="15"
-                           Margin="0,0,0,6" />
-                <TextBlock Text="{Binding LicenseText}"
-                           Foreground="#E5EDF4"
-                           FontSize="15"
-                           Margin="0,0,0,16" />
-                <TextBlock Text="BETA-6 desktop baseline. This build combines the top-level market ribbon, world markets, progressive ticker tapes, teleprinter-style finance news, and exchange-photo backgrounds under the DO NOT PANIC identity."
-                           Foreground="#C9D8E4"
-                           TextWrapping="Wrap"
-                           FontSize="14"
-                           Margin="0,0,0,10" />
-                <TextBlock Text="The revision-3 brand assets are now the shared icon and splash sources for runtime surfaces so the desktop shell, config app, legacy screensaver host, and installer all present one coherent product identity."
-                           Foreground="#AFC3D2"
-                           TextWrapping="Wrap"
-                           FontSize="13" />
-            </StackPanel>
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock Text="DO NOT PANIC PORTFOLIO VISUALIZER"
+                               Foreground="White"
+                               FontSize="26"
+                               FontWeight="Bold"
+                               Margin="0,0,0,8" />
+                    <TextBlock Text="{Binding VersionText}"
+                               Foreground="#A7C4DB"
+                               FontSize="14"
+                               Margin="0,0,0,16" />
+                    <TextBlock Text="{Binding PublisherText}"
+                               Foreground="#E5EDF4"
+                               FontSize="15"
+                               Margin="0,0,0,6" />
+                    <TextBlock Text="{Binding AuthorText}"
+                               Foreground="#E5EDF4"
+                               FontSize="15"
+                               Margin="0,0,0,6" />
+                    <TextBlock Text="{Binding LicenseText}"
+                               Foreground="#E5EDF4"
+                               FontSize="15"
+                               Margin="0,0,0,16" />
+                    <TextBlock Text="BETA-6 desktop baseline. This build combines the top-level market ribbon, world markets, progressive ticker tapes, teleprinter-style finance news, and exchange-photo backgrounds under the DO NOT PANIC identity."
+                               Foreground="#C9D8E4"
+                               TextWrapping="Wrap"
+                               FontSize="14"
+                               Margin="0,0,0,10" />
+                    <TextBlock Text="The revision-3 brand assets are now the shared icon and splash sources for runtime surfaces so the desktop shell, config app, legacy screensaver host, and installer all present one coherent product identity."
+                               Foreground="#AFC3D2"
+                               TextWrapping="Wrap"
+                               FontSize="13" />
+                </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <Button Grid.Row="2"
