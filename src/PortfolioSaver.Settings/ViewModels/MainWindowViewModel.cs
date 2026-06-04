@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using WpfMessageBox = System.Windows.MessageBox;
 using Forms = System.Windows.Forms;
 using System.Windows.Threading;
 using PortfolioSaver.Config.Commands;
@@ -228,7 +229,7 @@ public sealed class MainWindowViewModel : BindableBase
 
         if (_isApplying)
         {
-            MessageBox.Show(
+            WpfMessageBox.Show(
                 "Validation is still running. Wait for the validation loop to finish.",
                 "Validation In Progress",
                 MessageBoxButton.OK,
@@ -244,7 +245,7 @@ public sealed class MainWindowViewModel : BindableBase
         if (Groups.Count >= Defaults.MaxTapeCount)
         {
             StatusMessage = $"Only {Defaults.MaxTapeCount} tapes can be configured.";
-            MessageBox.Show(
+            WpfMessageBox.Show(
                 $"You can configure up to {Defaults.MaxTapeCount} tapes.",
                 "Tape Limit Reached",
                 MessageBoxButton.OK,
@@ -273,7 +274,7 @@ public sealed class MainWindowViewModel : BindableBase
         if (!EnsureValidationConnectivity())
         {
             StatusMessage = "Internet connection is required before validation can run.";
-            MessageBox.Show(
+            WpfMessageBox.Show(
                 "Internet connection is required to validate tickers and refresh the news-source checks.",
                 "Internet Required",
                 MessageBoxButton.OK,
@@ -304,7 +305,7 @@ public sealed class MainWindowViewModel : BindableBase
                 if (feedValidation.WasResetToDefault)
                 {
                     candidate.NewsFeedUrl = feedValidation.ResolvedFeedUrl;
-                    MessageBox.Show(
+                    WpfMessageBox.Show(
                         feedValidation.Message,
                         "News Feed Reset",
                         MessageBoxButton.OK,
@@ -324,7 +325,7 @@ public sealed class MainWindowViewModel : BindableBase
                 StatusMessage = configErrors[0];
                 foreach (string configError in configErrors)
                     AppendValidationLog($"SETTINGS: {configError}");
-                MessageBox.Show(
+                WpfMessageBox.Show(
                     string.Join(Environment.NewLine, configErrors),
                     "Settings Need Attention",
                     MessageBoxButton.OK,
@@ -348,7 +349,7 @@ public sealed class MainWindowViewModel : BindableBase
                     ("rate_limited", symbolValidation.WasRateLimited),
                     ("deferred_count", symbolValidation.DeferredSymbols.Count),
                     ("invalid_count", symbolValidation.InvalidSymbols.Count));
-                MessageBox.Show(
+                WpfMessageBox.Show(
                     "YFinance.NET temporarily throttled ticker validation." + Environment.NewLine + Environment.NewLine +
                     "No ticker entries were disabled during this pass." + Environment.NewLine +
                     "Wait a little and click Validate again." +
@@ -366,7 +367,7 @@ public sealed class MainWindowViewModel : BindableBase
                 TraceValidation("TickerValidationInvalid",
                     ("invalid_count", symbolValidation.InvalidSymbols.Count),
                     ("disabled_count", disabledCount));
-                MessageBox.Show(
+                WpfMessageBox.Show(
                     "These symbols are invalid on YFinance.NET:" + Environment.NewLine + Environment.NewLine +
                     string.Join(Environment.NewLine, symbolValidation.InvalidSymbols.Select(symbol => $"- {symbol}")) +
                     Environment.NewLine + Environment.NewLine +
@@ -401,7 +402,7 @@ public sealed class MainWindowViewModel : BindableBase
             StatusMessage = "Validation stopped unexpectedly. Review the details and try again.";
             AppendValidationLog($"VALIDATION ERROR: {ex.Message}");
             TraceLog.Error("Config.Validation", "ValidateConfigurationAsync", ex);
-            MessageBox.Show(
+            WpfMessageBox.Show(
                 $"Validation stopped unexpectedly:{Environment.NewLine}{Environment.NewLine}{ex.Message}",
                 "Validation Error",
                 MessageBoxButton.OK,

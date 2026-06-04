@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows;
+using WpfMessageBox = System.Windows.MessageBox;
 using PortfolioSaver.Config.Commands;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
@@ -99,7 +100,7 @@ public sealed class TickerGroupEditorViewModel : BindableBase
     {
         if (Tickers.Count >= Defaults.MaxTickersPerTape)
         {
-            MessageBox.Show(
+            WpfMessageBox.Show(
                 $"Each tape can contain up to {Defaults.MaxTickersPerTape} tickers.",
                 "Ticker Limit Reached",
                 MessageBoxButton.OK,
