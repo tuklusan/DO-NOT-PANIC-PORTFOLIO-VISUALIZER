@@ -65,7 +65,24 @@
                     <TextBlock Text="The revision-3 brand assets are now the shared icon and splash sources for runtime surfaces so the desktop shell, config app, legacy screensaver host, and installer all present one coherent product identity."
                                Foreground="#AFC3D2"
                                TextWrapping="Wrap"
-                               FontSize="13" />
+                               FontSize="13"
+                               Margin="0,0,0,18" />
+                    <TextBlock Text="MIT License Text"
+                               Foreground="White"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8" />
+                    <Border Background="#10171D"
+                            BorderBrush="#284960"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="12">
+                        <TextBlock Text="{Binding FullLicenseText}"
+                                   Foreground="#C9D8E4"
+                                   FontFamily="Consolas"
+                                   FontSize="12"
+                                   TextWrapping="Wrap" />
+                    </Border>
                 </StackPanel>
             </ScrollViewer>
         </Border>

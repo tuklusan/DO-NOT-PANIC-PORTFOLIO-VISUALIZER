@@ -138,6 +138,9 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("Publisher: {AppIdentity.PublisherName}", code, StringComparison.Ordinal);
         Assert.Contains("Author: {AppIdentity.AuthorName}", code, StringComparison.Ordinal);
         Assert.Contains("License: {AppIdentity.LicenseName}", code, StringComparison.Ordinal);
+        Assert.Contains("FullLicenseText", code, StringComparison.Ordinal);
+        Assert.Contains("MIT License Text", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding FullLicenseText}\"", xaml, StringComparison.Ordinal);
     }
 
     private static string GetRepoRoot()
