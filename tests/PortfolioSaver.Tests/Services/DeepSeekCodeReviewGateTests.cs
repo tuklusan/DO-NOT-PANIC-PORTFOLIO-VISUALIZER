@@ -143,20 +143,63 @@ public sealed class DeepSeekCodeReviewGateTests
         Assert.Contains("commit/push", vmRunbook, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string GetRepoRoot()
+    [Fact]
+    public void RepoRootDetection_SupportsVmSnapshotWithoutGitMetadata()
     {
-        DirectoryInfo? current = new(AppContext.BaseDirectory);
+        string tempRoot = Path.Combine(Path.GetTempPath(), "DeepSeekCodeReviewGate_" + Guid.NewGuid().ToString("N"));
+        string nestedBase = Path.Combine(tempRoot, "tests", "bin", "Release");
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(tempRoot, "build"));
+            Directory.CreateDirectory(nestedBase);
+            File.WriteAllText(Path.Combine(tempRoot, "PortfolioScreensaver.SLN"), string.Empty);
+            File.WriteAllText(Path.Combine(tempRoot, "build", "Run-DeepSeekCodeReview.ps1"), string.Empty);
+
+            Assert.Equal(tempRoot, FindRepoRoot(nestedBase));
+        }
+        finally
+        {
+            DeleteTempDirectory(tempRoot);
+        }
+    }
+
+    private static string GetRepoRoot()
+        => FindRepoRoot(AppContext.BaseDirectory);
+
+    private static string FindRepoRoot(string startDirectory)
+    {
+        DirectoryInfo? current = new(startDirectory);
         while (current is not null)
         {
             string gitMarker = Path.Combine(current.FullName, ".git");
             string reviewScript = Path.Combine(current.FullName, "build", "Run-DeepSeekCodeReview.ps1");
-            if (Directory.Exists(gitMarker) && File.Exists(reviewScript))
+            // The VM harness uploads a clean repository snapshot without .git metadata, so accept
+            // the root-level solution file as the snapshot marker when the review script is present.
+            bool hasCheckoutOrSnapshotMarker =
+                Directory.Exists(gitMarker) ||
+                HasTopLevelSolution(current.FullName);
+            if (File.Exists(reviewScript) && hasCheckoutOrSnapshotMarker)
                 return current.FullName;
 
             current = current.Parent;
         }
 
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
+    }
+
+    private static bool HasTopLevelSolution(string directory)
+    {
+        try
+        {
+            return Directory
+                .EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly)
+                .Any(path => string.Equals(Path.GetExtension(path), ".sln", StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static CommandResult RunPowerShell(string workingDirectory, string arguments)
