@@ -9,22 +9,17 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class DeepSeekCodeReviewGateTests
 {
     [Fact]
-    public void ReviewScript_SelfTestAndWhatIfExecuteSuccessfully()
+    public void ReviewScript_SelfTestInIsolatedRepoAndWhatIfExecuteSuccessfully()
     {
         if (!OperatingSystem.IsWindows())
             return;
 
         string repoRoot = GetRepoRoot();
-
-        CommandResult selfTest = RunPowerShell(repoRoot, "-NoProfile -ExecutionPolicy Bypass -File .\\build\\Run-DeepSeekCodeReview.ps1 -SelfTest");
-        Assert.Equal(0, selfTest.ExitCode);
-        Assert.Contains("self-test passed", selfTest.Output, StringComparison.OrdinalIgnoreCase);
-
         string tempRoot = Path.Combine(Path.GetTempPath(), "DeepSeekCodeReviewGate_" + Guid.NewGuid().ToString("N"));
         try
         {
-            // Keep dry-run branch coverage isolated so tests never write probe files into the real checkout.
-            // The self-test and documentation checks still exercise the script from the actual repository.
+            // Keep all script executions isolated so tests never write probe files into the real checkout.
+            // The review gate self-test is expected to work from a minimal Git repository with only the script copy.
             Directory.CreateDirectory(Path.Combine(tempRoot, "build"));
             File.Copy(
                 Path.Combine(repoRoot, "build", "Run-DeepSeekCodeReview.ps1"),
@@ -32,7 +27,13 @@ public sealed class DeepSeekCodeReviewGateTests
             File.WriteAllText(Path.Combine(tempRoot, ".gitignore"), "build/deepseek-review/" + Environment.NewLine);
             RunPowerShellAndAssertSuccess(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git init | Out-Null\"");
             RunPowerShellAndAssertSuccess(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git config user.email test@example.invalid; git config user.name Test\"");
+
             RunPowerShellAndAssertSuccess(tempRoot, "-NoProfile -ExecutionPolicy Bypass -Command \"git add .; git commit -m init | Out-Null\"");
+
+            CommandResult selfTest = RunPowerShell(tempRoot, "-NoProfile -ExecutionPolicy Bypass -File .\\build\\Run-DeepSeekCodeReview.ps1 -SelfTest");
+            Assert.Equal(0, selfTest.ExitCode);
+            Assert.Contains("self-test passed", selfTest.Output, StringComparison.OrdinalIgnoreCase);
+
             File.WriteAllText(Path.Combine(tempRoot, "pending-change.txt"), "pending review");
 
             CommandResult whatIf = RunPowerShell(tempRoot, "-NoProfile -ExecutionPolicy Bypass -File .\\build\\Run-DeepSeekCodeReview.ps1 -IncludeUntracked -WhatIf");
