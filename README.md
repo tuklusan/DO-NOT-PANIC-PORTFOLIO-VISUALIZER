@@ -144,6 +144,8 @@ Current canonical harness guardrails also include:
 
 - automatic purge of obsolete VM build/test artifacts whenever free space under `C:\vmharness\portfolio-saver` falls below `8 GB`
 - a quiet no-op startup launcher for `PortfolioSaver.VmAgent` when the staged agent executable is not present yet
+- reference spot checks do not call Yahoo APIs directly; they compare displayed UI values against `QuoteResponseObserved` values in the YFinance.NET circular trace, proving UI/rendering consistency while YFinance.NET remains the sole Yahoo-facing runtime boundary
+- independent upstream market-data correctness is owned by YFinance.NET-specific tests and VM proofs, not by desktop harness scripts
 
 The current known-good clean proof path is:
 

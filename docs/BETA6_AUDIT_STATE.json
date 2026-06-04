@@ -23,7 +23,7 @@
         "Recovery validation was performed in the rebuilt workspace under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer.",
         "A repo-local NuGet.Config now clears stale Visual Studio fallback package folders so restore works on this machine.",
         "The UX harness no longer relies on direct interactive PowerShell launch through PsExec; commands are now queued to PortfolioSaver.VmAgent inside session 1.",
-        "Guest long-run UX captures continue to write external Yahoo Finance spot checks plus displayed-versus-reference comparison artifacts.",
+        "Guest long-run UX captures write YFinance.NET trace-backed reference spot checks plus displayed-versus-reference comparison artifacts; harness scripts do not call Yahoo quote APIs directly.",
         "DeepSeek summarized-news mode now uses the same protected local secret store and environment-override flow as the market-data providers.",
         "Remote live validation can now apply DeepSeek and provider API keys from ignored local build/vm/test-secrets.json via Guest-ApplyTestSecrets.ps1.",
         "The SSH-first remote harness now supports desktop soak durations up to 10080 minutes.",

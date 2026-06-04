@@ -27,6 +27,12 @@ Use it as-is:
 - `PortfolioSaver.VmAgent` interactive desktop execution
 - result pullback over SFTP
 
+Reference spot checks are YFinance.NET-only by design. The VM harness must not
+call Yahoo quote APIs directly; it compares displayed UI values against
+`QuoteResponseObserved` entries in `yfinance.circular.log`. This proves
+UI/rendering consistency against the product market-data boundary. It is not an
+independent upstream market-data correctness proof.
+
 Run the review from the repository root with:
 
 ```powershell

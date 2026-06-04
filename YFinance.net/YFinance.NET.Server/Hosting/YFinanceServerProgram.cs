@@ -255,7 +255,9 @@ internal static class YFinanceServerProgram
         Models.QuoteSnapshot? quote = await client.Ticker(payload.Symbol).GetQuoteAsync(cancellationToken).ConfigureAwait(false);
         if (quote is null)
             throw new InvalidOperationException($"No quote returned for symbol '{payload.Symbol}'.");
-        return ProtocolMapper.MapQuote(quote);
+        QuoteDto mapped = ProtocolMapper.MapQuote(quote);
+        TraceQuoteResponse("get_quote", mapped);
+        return mapped;
     }
 
     private static async Task<QuotesResponseDto> HandleGetQuotesAsync(GetQuotesRequestDto? payload, YFinanceClient client, CancellationToken cancellationToken)
@@ -265,9 +267,31 @@ internal static class YFinanceServerProgram
 
         IReadOnlyDictionary<string, Models.QuoteSnapshot> quotes = await client.Tickers(payload.Symbols).GetQuotesAsync(cancellationToken).ConfigureAwait(false);
         List<QuoteDto> mapped = quotes.Values.Select(ProtocolMapper.MapQuote).ToList();
+        // Emit one compact line per symbol so VM spot checks can map displayed
+        // UI values back to symbol-level YFinance.NET evidence without parsing
+        // protocol payloads from the transport trace.
+        foreach (QuoteDto quote in mapped)
+            TraceQuoteResponse("get_quotes", quote);
+
         List<string> missing = payload.Symbols.Where(symbol => !quotes.ContainsKey(symbol)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         return new QuotesResponseDto(mapped, missing);
     }
+
+    private static void TraceQuoteResponse(string operation, QuoteDto quote)
+        // The circular sink is intentionally queue-backed/thread-safe; quote handlers
+        // can run concurrently when multiple clients pipeline requests.
+        => YFinanceCircularTraceSink.Instance.InfoState(
+            "YFinanceServer",
+            "QuoteResponseObserved",
+            [
+                new("operation", operation),
+                new("symbol", quote.Symbol),
+                new("price", quote.RegularMarketPrice),
+                new("change", quote.RegularMarketChange),
+                new("change_percent", quote.RegularMarketChangePercent),
+                new("market_state", quote.MarketState ?? string.Empty),
+                new("fetch_timestamp_utc", quote.FetchTimestampUtc)
+            ]);
 
     private static async Task<HistoryResponseDto> HandleGetHistoryAsync(GetHistoryRequestDto? payload, YFinanceClient client, CancellationToken cancellationToken)
     {

@@ -125,6 +125,9 @@ public sealed class YFinanceClientServerProtocolTests
         Assert.Contains("RequestReceived", serverSource, StringComparison.Ordinal);
         Assert.Contains("ResponseSent", serverSource, StringComparison.Ordinal);
         Assert.Contains("RequestIntegrityRejected", serverSource, StringComparison.Ordinal);
+        Assert.Contains("QuoteResponseObserved", serverSource, StringComparison.Ordinal);
+        Assert.Contains("new(\"price\"", serverSource, StringComparison.Ordinal);
+        Assert.Contains("new(\"change_percent\"", serverSource, StringComparison.Ordinal);
     }
 
     [Fact]

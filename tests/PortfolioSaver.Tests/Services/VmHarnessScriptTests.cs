@@ -223,6 +223,11 @@ public sealed class VmHarnessScriptTests
             "build",
             "vm",
             "Guest-UxDeepExercise.ps1"));
+        string sharedParser = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "VmTraceQuoteEvidence.ps1"));
 
         int start = script.IndexOf("function Perform-VisibleConfigActivity", StringComparison.Ordinal);
         int end = script.IndexOf("function Find-ElementMetadataByProcessId", StringComparison.Ordinal);
@@ -325,13 +330,28 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Get-PreferredDisplayedTapeSample", script, StringComparison.Ordinal);
         Assert.Contains("function Test-IsDisplayedSampleFullyLive", script, StringComparison.Ordinal);
         Assert.Contains("function Write-ReferenceSpotCheckComparison", script, StringComparison.Ordinal);
-        Assert.Contains("query1.finance.yahoo.com/v7/finance/quote", script, StringComparison.Ordinal);
+        Assert.Contains("YFinanceTrace", script, StringComparison.Ordinal);
+        Assert.Contains("VmTraceQuoteEvidence.ps1", script, StringComparison.Ordinal);
+        Assert.Contains("Test-YFinanceQuoteEvidenceParser", script, StringComparison.Ordinal);
+        Assert.Contains("PORTFOLIOSAVER_LOCALDATA_ROOT", script, StringComparison.Ordinal);
+        Assert.Contains("'Process', 'User', 'Machine'", script, StringComparison.Ordinal);
+        Assert.Contains("FileShare]::ReadWrite", script, StringComparison.Ordinal);
+        Assert.Contains("QuoteResponseObserved", sharedParser, StringComparison.Ordinal);
+        Assert.Contains("ReferenceComparisonSchemaVersion = 2", sharedParser, StringComparison.Ordinal);
+        Assert.Contains("ComparisonSchemaVersion", script, StringComparison.Ordinal);
+        Assert.Contains("Error = $null", script, StringComparison.Ordinal);
+        Assert.Contains("not independent market-data correctness", sharedParser, StringComparison.Ordinal);
+        Assert.Contains("YFinanceEvidenceStatus", script, StringComparison.Ordinal);
+        Assert.Contains("AbsoluteDifference", script, StringComparison.Ordinal);
+        Assert.Contains("PercentDifference", script, StringComparison.Ordinal);
         Assert.Contains("DisplayedVsReferenceFeed", script, StringComparison.Ordinal);
         Assert.Contains(".Replace(\"`0\", '')", script, StringComparison.Ordinal);
         Assert.Contains("[System.IO.Path]::ChangeExtension($Path, '.idx')", script, StringComparison.Ordinal);
-        Assert.Contains("[System.IO.File]::ReadAllBytes($Path)", script, StringComparison.Ordinal);
+        Assert.Contains("function Read-AllBytesShared", sharedParser, StringComparison.Ordinal);
         Assert.Contains("$displayedSample = @(Get-PreferredDisplayedTapeSample)", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("query1.finance.yahoo.com/v7/finance/quote", script, StringComparison.Ordinal);
         Assert.DoesNotContain("function Get-TwelveDataReferenceResults", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("function Get-YahooReferenceResults", script, StringComparison.Ordinal);
         Assert.DoesNotContain("PORTFOLIOSAVER_TWELVEDATA_API_KEY", script, StringComparison.Ordinal);
     }
 
@@ -343,6 +363,11 @@ public sealed class VmHarnessScriptTests
             "build",
             "vm",
             "PostProcess-ReferenceSpotChecks.ps1"));
+        string sharedParser = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "VmTraceQuoteEvidence.ps1"));
 
         Assert.Contains("function Read-CircularTraceText", script, StringComparison.Ordinal);
         Assert.Contains("function Parse-DisplayedTapeSamples", script, StringComparison.Ordinal);
@@ -355,9 +380,33 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("yfinance.circular.log", script, StringComparison.Ordinal);
         Assert.Contains("SampleSelection", script, StringComparison.Ordinal);
         Assert.Contains("latest-fully-live", script, StringComparison.Ordinal);
-        Assert.Contains("[decimal]::Zero", script, StringComparison.Ordinal);
+        Assert.Contains("YFinanceTrace", script, StringComparison.Ordinal);
+        Assert.Contains("VmTraceQuoteEvidence.ps1", script, StringComparison.Ordinal);
+        Assert.Contains("Test-YFinanceQuoteEvidenceParser", script, StringComparison.Ordinal);
+        Assert.Contains("FileShare]::ReadWrite", sharedParser, StringComparison.Ordinal);
+        Assert.Contains("QuoteResponseObserved", sharedParser, StringComparison.Ordinal);
+        Assert.Contains("ReferenceComparisonSchemaVersion = 2", sharedParser, StringComparison.Ordinal);
+        Assert.Contains("ComparisonSchemaVersion", script, StringComparison.Ordinal);
+        Assert.Contains("Error = $null", script, StringComparison.Ordinal);
+        Assert.Contains("not independent market-data correctness", sharedParser, StringComparison.Ordinal);
+        Assert.Contains("YFinanceEvidenceStatus", script, StringComparison.Ordinal);
+        Assert.Contains("AbsoluteDifference", script, StringComparison.Ordinal);
+        Assert.Contains("PercentDifference", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("query1.finance.yahoo.com/v7/finance/quote", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("function Get-YahooReferenceResults", script, StringComparison.Ordinal);
         Assert.DoesNotContain("0m", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Select-Object -First 6", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VmTraceQuoteEvidenceParser_DefinesSelfTestForObservedQuoteLines()
+    {
+        string parser = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "VmTraceQuoteEvidence.ps1"));
+
+        Assert.Contains("function Test-YFinanceQuoteEvidenceParser", parser, StringComparison.Ordinal);
+        Assert.Contains("event=QuoteResponseObserved / operation=get_quotes / symbol=SPY / price=600.12", parser, StringComparison.Ordinal);
+        Assert.Contains("Parse-YFinanceQuoteEvidence -TraceText $sample -Symbols @('SPY')", parser, StringComparison.Ordinal);
+        Assert.Contains("$parsed[0].Last -eq [decimal]600.12", parser, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -420,6 +469,7 @@ public sealed class VmHarnessScriptTests
 
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
+
 }
 
 

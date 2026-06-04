@@ -15,6 +15,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'VmTraceQuoteEvidence.ps1')
+if (-not (Test-YFinanceQuoteEvidenceParser)) {
+    throw 'YFinance trace quote parser self-test failed.'
+}
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -1412,6 +1416,8 @@ function Write-ReferenceSpotCheck {
     $referenceSource = 'ReferenceQuote'
     $referenceResults = @()
     $referenceError = $null
+    $referenceWarning = $null
+    $referenceStatus = 'unknown'
 
     try {
         $reference = Get-ReferenceSpotCheckResults -Symbols $symbols
@@ -1423,8 +1429,12 @@ function Write-ReferenceSpotCheck {
             $referenceResults = @($reference.Results)
         }
 
-        if ($null -ne $reference -and -not [string]::IsNullOrWhiteSpace([string]$reference.Error)) {
-            $referenceError = [string]$reference.Error
+        if ($null -ne $reference -and -not [string]::IsNullOrWhiteSpace([string]$reference.Status)) {
+            $referenceStatus = [string]$reference.Status
+        }
+
+        if ($null -ne $reference -and -not [string]::IsNullOrWhiteSpace([string]$reference.Warning)) {
+            $referenceWarning = [string]$reference.Warning
         }
     }
     catch {
@@ -1432,17 +1442,55 @@ function Write-ReferenceSpotCheck {
     }
 
     $payload = [pscustomobject]@{
+        ComparisonSchemaVersion = $ReferenceComparisonSchemaVersion
         CapturedAt = (Get-Date).ToString('o')
         CaptureIndex = $CaptureIndex
         Source = $referenceSource
         Symbols = $symbols
         DisplayedSample = @($displayedSample)
         Results = @($referenceResults)
+        Status = $referenceStatus
         Error = $referenceError
+        Warning = $referenceWarning
+        YFinanceEvidenceStatus = if (Test-YFinanceTraceEvidencePresent) { 'present' } else { 'missing' }
     }
 
     Add-Content -LiteralPath $OutputPath -Value ($payload | ConvertTo-Json -Compress) -Encoding UTF8
     Write-ReferenceSpotCheckComparison -OutputPath $referenceComparisonPath -Payload $payload
+}
+
+function Test-YFinanceTraceEvidencePresent {
+    return (Read-YFinanceTraceText) -match 'event=QuoteResponseObserved'
+}
+
+function Read-YFinanceTraceText {
+    $localRoot = Get-ScopedEnvironmentValue -Name 'PORTFOLIOSAVER_LOCALDATA_ROOT'
+    if ([string]::IsNullOrWhiteSpace($localRoot)) {
+        $localRoot = Get-ScopedEnvironmentValue -Name 'PORTFOLIOSAVER_APPDATA_ROOT'
+    }
+
+    if ([string]::IsNullOrWhiteSpace($localRoot)) {
+        $localRoot = Join-Path $env:LOCALAPPDATA 'PortfolioSaver'
+    }
+    $tracePath = Join-Path $localRoot 'Trace\yfinance.circular.log'
+    if (-not (Test-Path $tracePath)) {
+        return ''
+    }
+
+    return Read-TextFileTailShared -Path $tracePath -MaxBytes 2097152
+}
+
+function Get-ScopedEnvironmentValue {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    foreach ($scope in 'Process', 'User', 'Machine') {
+        $value = [Environment]::GetEnvironmentVariable($Name, $scope)
+        if (-not [string]::IsNullOrWhiteSpace($value)) {
+            return $value.Trim()
+        }
+    }
+
+    return ''
 }
 
 function Get-LatestDisplayedTapeSample {
@@ -1576,7 +1624,7 @@ function Read-TextFileTailShared {
             $positionText = Get-Content -LiteralPath $idxPath -Raw -ErrorAction Stop
             $writePosition = 0
             if ([int]::TryParse($positionText.Trim(), [ref]$writePosition)) {
-                $bytes = [System.IO.File]::ReadAllBytes($Path)
+                $bytes = Read-AllBytesShared -Path $Path
                 if ($bytes.Length -gt 0) {
                     $position = [Math]::Max(0, [Math]::Min($writePosition, $bytes.Length))
                     $orderedBytes = if ($position -eq 0) {
@@ -1624,17 +1672,6 @@ function Read-TextFileTailShared {
     catch {
         return ''
     }
-}
-
-function Try-ParseInvariantDecimal {
-    param([string]$Text)
-
-    $value = [decimal]::Zero
-    if ([decimal]::TryParse($Text, [System.Globalization.NumberStyles]::Any, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$value)) {
-        return $value
-    }
-
-    return $null
 }
 
 function Find-ConfigWindow {
@@ -2342,28 +2379,31 @@ function Write-ReferenceSpotCheckComparison {
     )
 
     $comparison = [ordered]@{
+        ComparisonSchemaVersion = $ReferenceComparisonSchemaVersion
         CapturedAt = $Payload.CapturedAt
         CaptureIndex = $Payload.CaptureIndex
         Source = 'DisplayedVsReferenceFeed'
         ReferenceSource = $Payload.Source
+        Warning = $Payload.Warning
+        YFinanceEvidenceStatus = $Payload.YFinanceEvidenceStatus
         Comparisons = @()
     }
 
     $resultMap = @{}
     foreach ($result in @($Payload.Results)) {
-        if ($null -eq $result.Symbol) { continue }
-        $resultMap[[string]$result.Symbol] = $result
+        if ($null -ne $result.Symbol) {
+            $resultMap[[string]$result.Symbol] = $result
+        }
     }
 
     foreach ($displayed in @($Payload.DisplayedSample)) {
         $symbol = [string]$displayed.Symbol
         $state = [string]$displayed.State
-
         if (-not $resultMap.ContainsKey($symbol)) {
             $comparison.Comparisons += [ordered]@{
                 Symbol = $symbol
                 State = $state
-                Status = 'reference-missing'
+                Status = if ($Payload.YFinanceEvidenceStatus -eq 'present') { 'reference-missing' } else { 'yfinance-evidence-missing' }
             }
             continue
         }
@@ -2412,38 +2452,18 @@ function Get-ReferenceSpotCheckResults {
         [Parameter(Mandatory = $true)][string[]]$Symbols
     )
 
-    return Get-YahooReferenceResults -Symbols $Symbols
-}
-
-function Get-YahooReferenceResults {
-    param(
-        [Parameter(Mandatory = $true)][string[]]$Symbols
-    )
-
-    $results = @()
-    $error = $null
-
-    try {
-        $encodedSymbols = [Uri]::EscapeDataString(($Symbols -join ','))
-        $response = Invoke-RestMethod -Uri ("https://query1.finance.yahoo.com/v7/finance/quote?symbols=$encodedSymbols") -TimeoutSec 20 -Headers @{ 'User-Agent' = 'PortfolioSaverVmHarness/1.0' }
-        foreach ($quote in ($response.quoteResponse.result | Where-Object { $_ -ne $null })) {
-            $results += [pscustomobject]@{
-                Symbol = [string]$quote.symbol
-                Last = $quote.regularMarketPrice
-                ChangePercent = $quote.regularMarketChangePercent
-                MarketTime = if ($quote.regularMarketTime) { [DateTimeOffset]::FromUnixTimeSeconds([long]$quote.regularMarketTime).ToString('o') } else { $null }
-                Currency = [string]$quote.currency
-            }
-        }
-    }
-    catch {
-        $error = $_.Exception.Message
-    }
-
+    # Canonical rule: harness code must not call Yahoo quote APIs directly.
+    # Reference values come from YFinance.NET circular trace quote response
+    # events generated by the owned server.
+    $traceText = Read-YFinanceTraceText
+    $results = @(Parse-YFinanceQuoteEvidence -TraceText $traceText -Symbols $Symbols)
     return [pscustomobject]@{
-        Source = 'YahooFinanceQuote'
+        Source = 'YFinanceTrace'
         Results = @($results)
-        Error = $error
+        Status = if ($results.Count -gt 0) { 'ok' } else { 'yfinance-evidence-missing' }
+        Symbols = @($Symbols)
+        Error = $null
+        Warning = $ExternalReferenceDisabledWarning
     }
 }
 
@@ -2829,7 +2849,3 @@ finally {
     Write-Output "RESULTS=$results"
     Write-Output "SUMMARY=$summaryPath"
 }
-
-
-
-

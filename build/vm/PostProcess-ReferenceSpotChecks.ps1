@@ -4,6 +4,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'VmTraceQuoteEvidence.ps1')
+if (-not (Test-YFinanceQuoteEvidenceParser)) {
+    throw 'YFinance trace quote parser self-test failed.'
+}
 
 function Get-EnvValue {
     param([Parameter(Mandatory = $true)][string]$Name)
@@ -28,7 +32,7 @@ function Read-CircularTraceText {
         return ''
     }
 
-    $bytes = [System.IO.File]::ReadAllBytes($LogPath)
+    $bytes = Read-AllBytesShared -Path $LogPath
     if ($bytes.Length -eq 0) {
         return ''
     }
@@ -56,17 +60,6 @@ function Read-CircularTraceText {
     }
 
     return ([System.Text.Encoding]::UTF8.GetString($orderedBytes)).Replace("`0", '')
-}
-
-function Try-ParseInvariantDecimal {
-    param([string]$Text)
-
-    $value = [decimal]::Zero
-    if ([decimal]::TryParse($Text, [System.Globalization.NumberStyles]::Any, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$value)) {
-        return $value
-    }
-
-    return $null
 }
 
 function Parse-DisplayedTapeSamples {
@@ -132,44 +125,30 @@ function Get-PreferredDisplayedTapeSample {
 }
 
 function Get-ReferenceResults {
-    param([Parameter(Mandatory = $true)][string[]]$Symbols)
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Symbols,
+        [Parameter(Mandatory = $true)][string]$YFinanceTraceText
+    )
 
-    return Get-YahooReferenceResults -Symbols $Symbols
-}
-
-function Get-YahooReferenceResults {
-    param([Parameter(Mandatory = $true)][string[]]$Symbols)
-
-    $results = @()
-    $error = $null
-    try {
-        $encodedSymbols = [Uri]::EscapeDataString(($Symbols -join ','))
-        $response = Invoke-RestMethod -Uri ("https://query1.finance.yahoo.com/v7/finance/quote?symbols=$encodedSymbols") -TimeoutSec 20 -Headers @{ 'User-Agent' = 'PortfolioSaverVmHarness/1.0' }
-        foreach ($quote in ($response.quoteResponse.result | Where-Object { $_ -ne $null })) {
-            $results += [pscustomobject]@{
-                Symbol = [string]$quote.symbol
-                Last = Try-ParseInvariantDecimal -Text ([string]$quote.regularMarketPrice)
-                ChangePercent = Try-ParseInvariantDecimal -Text ([string]$quote.regularMarketChangePercent)
-                MarketTime = if ($quote.regularMarketTime) { [DateTimeOffset]::FromUnixTimeSeconds([long]$quote.regularMarketTime).ToString('o') } else { $null }
-                Currency = [string]$quote.currency
-            }
-        }
-    }
-    catch {
-        $error = $_.Exception.Message
-    }
-
+    # Canonical rule: the VM harness must not call Yahoo quote APIs directly.
+    # These records prove the UI displayed live values; independent reference
+    # comparisons must use YFinance.NET trace/client evidence, not raw Yahoo calls.
+    $results = @(Parse-YFinanceQuoteEvidence -TraceText $YFinanceTraceText -Symbols $Symbols)
     return [pscustomobject]@{
-        Source = 'YahooFinanceQuote'
+        Source = 'YFinanceTrace'
         Results = @($results)
-        Error = $error
+        Status = if ($results.Count -gt 0) { 'ok' } else { 'yfinance-evidence-missing' }
+        Symbols = @($Symbols)
+        Error = $null
+        Warning = $ExternalReferenceDisabledWarning
     }
 }
 
 function Build-ComparisonEntries {
     param(
         [Parameter(Mandatory = $true)]$DisplayedSample,
-        [Parameter(Mandatory = $true)]$ReferenceResults
+        [Parameter(Mandatory = $true)]$ReferenceResults,
+        [Parameter(Mandatory = $true)][string]$EvidenceStatus
     )
 
     $resultMap = @{}
@@ -187,15 +166,15 @@ function Build-ComparisonEntries {
             $comparisons += [pscustomobject]@{
                 Symbol = $symbol
                 State = $state
-                Status = 'reference-missing'
+                Status = if ($EvidenceStatus -eq 'present') { 'reference-missing' } else { 'yfinance-evidence-missing' }
             }
             continue
         }
 
         $reference = $resultMap[$symbol]
         $entry = [ordered]@{
-            Symbol = $symbol
-            State = $state
+            Symbol = [string]$displayed.Symbol
+            State = [string]$displayed.State
             DisplayedLast = [string]$displayed.LastText
             ReferenceLast = $reference.Last
         }
@@ -242,6 +221,7 @@ $combinedTracePath = Join-Path $ResultRoot 'combined-trace-tail.txt'
 
 $traceText = Read-CircularTraceText -LogPath $tracePath -IndexPath $indexPath
 $yfinanceTraceText = Read-CircularTraceText -LogPath $yfinanceTracePath -IndexPath $yfinanceIndexPath
+$yfinanceEvidenceStatus = if ([string]::IsNullOrWhiteSpace($yfinanceTraceText)) { 'missing' } else { 'present' }
 $samples = @(Parse-DisplayedTapeSamples -TraceText $traceText)
 
 $sampleRecords = @()
@@ -250,11 +230,14 @@ $preferredSample = if ($samples.Count -gt 0) { Get-PreferredDisplayedTapeSample 
 if ($null -ne $preferredSample) {
 foreach ($sample in @($preferredSample)) {
     $symbols = @($sample.DisplayedSample | Select-Object -ExpandProperty Symbol -Unique)
-    $reference = Get-ReferenceResults -Symbols $symbols
+    $reference = Get-ReferenceResults -Symbols $symbols -YFinanceTraceText $yfinanceTraceText
     $sampleRecords += [pscustomobject]@{
+        ComparisonSchemaVersion = $ReferenceComparisonSchemaVersion
         CapturedAt = $sample.CapturedAt
         CaptureIndex = $sample.CaptureIndex
         Source = [string]$reference.Source
+        Warning = [string]$reference.Warning
+        YFinanceEvidenceStatus = $yfinanceEvidenceStatus
         SampleSelection = if (Test-IsDisplayedSampleFullyLive -SampleRecord $sample) { 'latest-fully-live' } else { 'latest-available' }
         Symbols = $symbols
         DisplayedSample = @($sample.DisplayedSample)
@@ -263,12 +246,15 @@ foreach ($sample in @($preferredSample)) {
     }
 
     $comparisonRecords += [pscustomobject]@{
+        ComparisonSchemaVersion = $ReferenceComparisonSchemaVersion
         CapturedAt = $sample.CapturedAt
         CaptureIndex = $sample.CaptureIndex
         Source = 'DisplayedVsReferenceFeed'
         ReferenceSource = [string]$reference.Source
+        Warning = [string]$reference.Warning
+        YFinanceEvidenceStatus = $yfinanceEvidenceStatus
         SampleSelection = if (Test-IsDisplayedSampleFullyLive -SampleRecord $sample) { 'latest-fully-live' } else { 'latest-available' }
-        Comparisons = @(Build-ComparisonEntries -DisplayedSample $sample.DisplayedSample -ReferenceResults $reference.Results)
+        Comparisons = @(Build-ComparisonEntries -DisplayedSample $sample.DisplayedSample -ReferenceResults $reference.Results -EvidenceStatus $yfinanceEvidenceStatus)
     }
 }
 }
