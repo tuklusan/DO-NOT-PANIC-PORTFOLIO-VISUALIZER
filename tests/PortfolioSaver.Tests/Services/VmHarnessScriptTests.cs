@@ -321,6 +321,11 @@ public sealed class VmHarnessScriptTests
             "build",
             "vm",
             "Guest-UxDeepExercise.ps1"));
+        string sharedParser = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "VmTraceQuoteEvidence.ps1"));
 
         Assert.Contains("reference-spot-checks.jsonl", script, StringComparison.Ordinal);
         Assert.Contains("reference-spot-check-comparisons.jsonl", script, StringComparison.Ordinal);
