@@ -411,7 +411,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Test-YFinanceQuoteEvidenceParser", parser, StringComparison.Ordinal);
         Assert.Contains("event=QuoteResponseObserved / operation=get_quotes / symbol=SPY / price=600.12", parser, StringComparison.Ordinal);
         Assert.Contains("Parse-YFinanceQuoteEvidence -TraceText $sample -Symbols @('SPY')", parser, StringComparison.Ordinal);
-        Assert.Contains("$parsed[0].Last -eq [decimal]600.12", parser, StringComparison.Ordinal);
+        Assert.Contains("[Math]::Abs([decimal]$parsed[0].Last - [decimal]600.12)", parser, StringComparison.Ordinal);
     }
 
     [Fact]
