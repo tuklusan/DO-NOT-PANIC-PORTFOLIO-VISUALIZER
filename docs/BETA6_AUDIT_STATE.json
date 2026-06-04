@@ -1170,6 +1170,28 @@
         "Acceptance also requires Advanced-tab validation proving News Scroller mode selection, writing style selection, RSS feed URL editing, headline refresh editing, API key entry, endpoint URL editing, and model ID editing still work without exposing internal runtime architecture notes.",
         "Resolved on 2026-06-04 by removing the General Runtime section and legacy refresh sliders from the visible config UI, retiring portfolio/off-hours refresh settings to desktop defaults in normalization, removing implementation-facing YFinance/runtime prose, simplifying the Advanced tab to user-actionable news/AI settings, keeping future-proof API key/endpoint/model controls, updating config text/tests/harness expectations, and validating with clean local build/tests plus two consecutive 30-minute VM runs: ux-deep-ssh-20260604-180530 and ux-deep-ssh-20260604-185907."
       ]
+    },
+    {
+      "id": "NB-069",
+      "tracking_number": "NB-069",
+      "priority": 2,
+      "area": "background_attribution",
+      "title": "Shorten on-screen background image attribution strings",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User reported that the current image attribution strings are too long for the unobtrusive footer and requested a very short format."
+      ],
+      "notes": [
+        "On-screen background image attribution must be shortened to the form 'Image: Name, License' only.",
+        "Example target format: 'Image: John Doe, CC0'.",
+        "Do not show long source URLs, Wikimedia page names, image titles, or extended license prose in the bottom-left footer.",
+        "Preserve full attribution/source/license metadata in internal manifests or documentation as needed for compliance, but render only the short footer form on screen.",
+        "Apply the short format consistently for bundled starter backgrounds and downloaded manifest backgrounds.",
+        "If an image has no attribution requirement, still use the same short shape when a footer attribution is shown, using the creator/name and license/public-domain marker from the manifest.",
+        "Update tests that assert footer attribution text so they verify the short on-screen form and guard against accidental reintroduction of long URLs in the UI footer.",
+        "Acceptance requires local build/test validation and at least one UI/harness verification that the footer attribution remains unobtrusive while the full source metadata remains preserved off-screen."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
