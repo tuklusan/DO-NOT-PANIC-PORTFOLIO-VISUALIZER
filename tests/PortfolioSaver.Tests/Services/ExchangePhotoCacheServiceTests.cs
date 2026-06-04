@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Media.Services;
@@ -105,8 +106,10 @@ public sealed class ExchangePhotoCacheServiceTests
         await service.WarmDefaultManifestCacheAsync(settings);
 
         string attributionPath = Path.Combine(cacheFolder, "exchange-photo-attribution.txt");
+        string attributionManifest = File.ReadAllText(attributionPath);
         Assert.True(File.Exists(attributionPath));
-        Assert.Contains("Download manifest:", File.ReadAllText(attributionPath), StringComparison.Ordinal);
+        Assert.Contains("Download manifest:", attributionManifest, StringComparison.Ordinal);
+        Assert.Contains("https://commons.wikimedia.org/wiki/File:", attributionManifest, StringComparison.Ordinal);
         Assert.True(Directory.EnumerateFiles(cacheFolder, "*.jpg", SearchOption.TopDirectoryOnly).Count() >= 4);
         Assert.Empty(Directory.EnumerateFiles(cacheFolder, "*.TMP", SearchOption.TopDirectoryOnly));
     }
@@ -158,7 +161,7 @@ public sealed class ExchangePhotoCacheServiceTests
 
 
     [Fact]
-    public void GetAttributionsForBackgrounds_MapsBundledAndDownloadedCacheFiles()
+    public void GetFooterAttributionsForBackgrounds_MapsBundledAndDownloadedCacheFiles()
     {
         string cacheFolder = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
         string starterPath = Path.Combine(cacheFolder, "new-york-stock-exchange.jpg");
@@ -166,12 +169,45 @@ public sealed class ExchangePhotoCacheServiceTests
         string customPath = Path.Combine(cacheFolder, "family-photo.jpg");
 
         ExchangePhotoCacheService service = new();
-        IReadOnlyDictionary<string, string> attributions = service.GetAttributionsForBackgrounds([starterPath, downloadedPath, customPath]);
+        IReadOnlyDictionary<string, string> attributions = service.GetFooterAttributionsForBackgrounds([starterPath, downloadedPath, customPath]);
 
         Assert.Equal(2, attributions.Count);
-        Assert.Contains("Jean-Christophe BENOIST", attributions[starterPath], StringComparison.Ordinal);
-        Assert.Contains("Jorg Braukmann", attributions[downloadedPath], StringComparison.Ordinal);
+        Assert.Equal("Jean-Christophe BENOIST, CC BY 3.0", attributions[starterPath]);
+        Assert.Equal("Jorg Braukmann, CC BY-SA 4.0", attributions[downloadedPath]);
+        Assert.All(attributions.Values, attribution =>
+        {
+            Assert.DoesNotContain("http", attribution, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("|", attribution, StringComparison.Ordinal);
+        });
         Assert.False(attributions.ContainsKey(customPath));
+    }
+
+    [Fact]
+    public void GetFullAttributionsForBackgrounds_PreservesSourceMetadata()
+    {
+        string cacheFolder = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        string downloadedPath = Path.Combine(cacheFolder, "frankfurt-skyline-2022.jpg");
+
+        ExchangePhotoCacheService service = new();
+        IReadOnlyDictionary<string, string> attributions = service.GetFullAttributionsForBackgrounds([downloadedPath]);
+
+        Assert.Single(attributions);
+        Assert.Contains("Frankfurt Skyline 2022", attributions[downloadedPath], StringComparison.Ordinal);
+        Assert.Contains("Jorg Braukmann", attributions[downloadedPath], StringComparison.Ordinal);
+        Assert.Contains("CC BY-SA 4.0", attributions[downloadedPath], StringComparison.Ordinal);
+        Assert.Contains("https://commons.wikimedia.org/wiki/File:", attributions[downloadedPath], StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Image title | Creator Name | CC0 | https://example.invalid/image", "Creator Name, CC0")]
+    [InlineData("Creator Name | CC0", "Creator Name, CC0")]
+    [InlineData("Image title |  | CC0 | https://example.invalid/image", "Unknown, Unknown license")]
+    [InlineData("Image title | Creator Name |  | https://example.invalid/image", "Unknown, Unknown license")]
+    [InlineData("", "Unknown, Unknown license")]
+    [InlineData(null, "Unknown, Unknown license")]
+    public void FooterAttributionFormatter_UsesShortSafeDisplayShape(string? attributionLine, string expected)
+    {
+        Assert.Equal(expected, InvokeFooterAttributionFormatter(attributionLine));
     }
 
     [Fact]
@@ -195,6 +231,15 @@ public sealed class ExchangePhotoCacheServiceTests
     }
     private static byte[] CreateMinimalJpegBytes()
         => [0xFF, 0xD8, 0xFF, 0xD9];
+
+    private static string InvokeFooterAttributionFormatter(string? attributionLine)
+    {
+        // Reflection keeps the edge-case checks close to the private formatter without widening production API surface.
+        MethodInfo method = typeof(ExchangePhotoCacheService).GetMethod("ToFooterAttribution", BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("ToFooterAttribution formatter was not found.");
+
+        return Assert.IsType<string>(method.Invoke(null, [attributionLine]));
+    }
 
     private sealed class StaticImageHandler(byte[]? responseBytes = null) : HttpMessageHandler
     {

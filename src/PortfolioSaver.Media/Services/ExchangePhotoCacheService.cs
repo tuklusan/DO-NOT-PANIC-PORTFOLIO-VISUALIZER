@@ -162,13 +162,18 @@ public sealed class ExchangePhotoCacheService
     }
 
     public string GetManagedCacheFolder(AppSettings settings) => settings.BackgroundImageFolder;
-    public IReadOnlyDictionary<string, string> GetAttributionsForBackgrounds(IEnumerable<string> backgroundPaths)
+    /// <summary>
+    /// Returns short on-screen attribution strings keyed by background path.
+    /// </summary>
+    /// <param name="backgroundPaths">Background image file paths to resolve.</param>
+    /// <returns>Footer-safe strings in the shape "Creator, License" with no URLs or image titles.</returns>
+    public IReadOnlyDictionary<string, string> GetFooterAttributionsForBackgrounds(IEnumerable<string> backgroundPaths)
     {
         Dictionary<string, string> attributions = new(StringComparer.OrdinalIgnoreCase);
         foreach (string path in backgroundPaths)
         {
             string fileName = Path.GetFileName(path);
-            string? attribution = ResolveAttribution(fileName);
+            string? attribution = ResolveFooterAttribution(fileName);
             if (!string.IsNullOrWhiteSpace(attribution))
                 attributions[path] = attribution;
         }
@@ -176,12 +181,69 @@ public sealed class ExchangePhotoCacheService
         return attributions;
     }
 
-    private static string? ResolveAttribution(string fileName)
+    [Obsolete("Use GetFooterAttributionsForBackgrounds for on-screen footer text or GetFullAttributionsForBackgrounds for full source metadata.")]
+    public IReadOnlyDictionary<string, string> GetAttributionsForBackgrounds(IEnumerable<string> backgroundPaths)
+        => GetFullAttributionsForBackgrounds(backgroundPaths);
+
+    /// <summary>
+    /// Returns full source attribution metadata keyed by background path.
+    /// </summary>
+    /// <param name="backgroundPaths">Background image file paths to resolve.</param>
+    /// <returns>Full manifest-style attribution lines containing title, creator, license, and source URL.</returns>
+    public IReadOnlyDictionary<string, string> GetFullAttributionsForBackgrounds(IEnumerable<string> backgroundPaths)
+    {
+        Dictionary<string, string> attributions = new(StringComparer.OrdinalIgnoreCase);
+        foreach (string path in backgroundPaths)
+        {
+            string fileName = Path.GetFileName(path);
+            string? attribution = ResolveFullAttribution(fileName);
+            if (!string.IsNullOrWhiteSpace(attribution))
+                attributions[path] = attribution;
+        }
+
+        return attributions;
+    }
+
+    private static string? ResolveFooterAttribution(string fileName)
+    {
+        string? attributionLine = ResolveFullAttribution(fileName);
+        return string.IsNullOrWhiteSpace(attributionLine)
+            ? null
+            : ToFooterAttribution(attributionLine);
+    }
+
+    private static string? ResolveFullAttribution(string fileName)
     {
         if (BundledStarterAttributions.TryGetValue(fileName, out string? starterAttribution))
             return starterAttribution;
 
         return Catalog.FirstOrDefault(entry => string.Equals(entry.LocalFileName, fileName, StringComparison.OrdinalIgnoreCase))?.AttributionLine;
+    }
+
+    // Full attribution lines are "Image title | Creator | License | Source URL".
+    // The footer intentionally displays only "Creator, License"; the full source URL remains in the cache manifest.
+    private static string ToFooterAttribution(string? attributionLine)
+    {
+        if (string.IsNullOrWhiteSpace(attributionLine))
+            return "Unknown, Unknown license";
+
+        string[] parts = attributionLine.Split('|', StringSplitOptions.TrimEntries);
+        if (parts.Length >= 3 &&
+            !string.IsNullOrWhiteSpace(parts[1]) &&
+            !string.IsNullOrWhiteSpace(parts[2]))
+        {
+            return $"{parts[1]}, {parts[2]}";
+        }
+
+        if (parts.Length == 2 &&
+            !string.IsNullOrWhiteSpace(parts[0]) &&
+            !string.IsNullOrWhiteSpace(parts[1]))
+        {
+            return $"{parts[0]}, {parts[1]}";
+        }
+
+        Trace.TraceWarning("Background attribution line has unexpected format and will not be shown in the footer: {0}", attributionLine);
+        return "Unknown, Unknown license";
     }
 
     private void StartDefaultManifestWarmup(string cacheFolder)

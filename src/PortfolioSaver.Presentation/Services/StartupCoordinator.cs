@@ -106,7 +106,7 @@ public sealed class StartupCoordinator
             Graphs = [],
             Clock = settings.EnableFloatingClock ? _floatingClockBuilder.BuildDefault() : null,
             BackgroundPaths = backgroundPaths,
-            BackgroundAttributions = _exchangePhotoCacheService.GetAttributionsForBackgrounds(backgroundPaths),
+            BackgroundAttributions = _exchangePhotoCacheService.GetFooterAttributionsForBackgrounds(backgroundPaths),
             ShowNetworkWaitingOverlay = showNetworkWaitingOverlay,
             NetworkWaitingTitle = networkAvailable
                 ? "Loading market data"
@@ -144,7 +144,7 @@ public sealed class StartupCoordinator
     {
         AppSettings settings = _settingsService.Load();
         IReadOnlyList<string> paths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
-        return (paths, _exchangePhotoCacheService.GetAttributionsForBackgrounds(paths));
+        return (paths, _exchangePhotoCacheService.GetFooterAttributionsForBackgrounds(paths));
     }
     public async Task<ScreensaverSceneState> BuildSceneAsync(int graphRotationSeed = 0, CancellationToken cancellationToken = default)
     {
@@ -1079,7 +1079,7 @@ public sealed class StartupCoordinator
             Graphs = [],
             Clock = clock,
             BackgroundPaths = backgroundPaths,
-            BackgroundAttributions = _exchangePhotoCacheService.GetAttributionsForBackgrounds(backgroundPaths),
+            BackgroundAttributions = _exchangePhotoCacheService.GetFooterAttributionsForBackgrounds(backgroundPaths),
             ShowNetworkWaitingOverlay = showNetworkWaitingOverlay,
             NetworkWaitingTitle = "Waiting for network",
             NetworkWaitingDetail = $"Retrying live quotes and exchange photos every {FormatRefreshCadenceText(settings)}."

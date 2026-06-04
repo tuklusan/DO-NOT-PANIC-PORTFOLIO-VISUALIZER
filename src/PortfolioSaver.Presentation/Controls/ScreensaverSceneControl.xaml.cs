@@ -2694,11 +2694,8 @@ public partial class ScreensaverSceneControl : UserControl
         }
 
         if (FooterAttributionWatermark is not null)
-            FooterAttributionWatermark.Text = FooterBaseText + " | Image: " + FormatFooterAttribution(attribution);
+            FooterAttributionWatermark.Text = FooterBaseText + " | Image: " + attribution.Trim();
     }
-
-    private static string FormatFooterAttribution(string attribution)
-        => attribution.Trim();
 
     private void ApplyDimOpacity(double opacity)
     {
