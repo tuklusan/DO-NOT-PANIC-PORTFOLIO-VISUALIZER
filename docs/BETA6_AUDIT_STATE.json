@@ -1131,6 +1131,32 @@
         "Attribution metadata scan from Wikimedia/Commons on 2026-06-04: Australian Securities Exchange entrance | Public domain | attribution not required | Jason7825.",
         "Implementation must perform one final verification pass before enabling downloads: confirm each candidate still resolves, keep only license-compatible files, keep only images with at least one dimension >=2K, prefer night/blue-hour/reflective financial-district imagery, drop visually weak images even if technically valid, and preserve complete attribution/license/source metadata in the shipped manifest."
       ]
+    },
+    {
+      "id": "NB-068",
+      "tracking_number": "NB-068",
+      "priority": 1,
+      "area": "config_ui",
+      "title": "Simplify General config tab to user-facing controls only",
+      "status": "open",
+      "source": "user_followup",
+      "evidence": [
+        "User reviewed the General tab widget inventory and requested a CR because stale cadence sliders and implementation/design notes no longer make sense in the normal configuration screen."
+      ],
+      "notes": [
+        "Remove implementation-facing market-data architecture text from the General tab. The user does not need to know that YFinance.NET is the runtime path, that Yahoo backs it, that requests are one-second paced, or that the cache ceiling is ten minutes.",
+        "Remove the Runtime section from the General tab unless it contains a genuinely user-actionable setting. Current Runtime content is informational only plus legacy refresh sliders.",
+        "Remove Settings.RefreshSecondsPortfolio and Settings.RefreshSecondsOffHours controls from the normal General tab if the current runtime scheduler no longer uses them as meaningful user-facing cadence controls. Do not leave sliders whose behavior is obsolete or misleading under the one-symbol-at-a-time scheduler.",
+        "Audit whether Settings.RefreshSecondsPortfolio and Settings.RefreshSecondsOffHours still have any active product meaning. If not, remove or retire the settings from active configuration paths, defaults, docs, harness inputs, and tests as appropriate.",
+        "Keep only user-meaningful General tab controls: background selection/rotation controls, portfolio tape composition controls, ticker symbols, tape enabled state, and any presentation controls that still visibly affect the UI.",
+        "Coordinate with NB-067 so the Background section removes Managed cache folder, uses a read-only custom-folder text box plus Choose... button, and raises BackgroundChangeSeconds minimum to 120 seconds.",
+        "Remove design-note text from the config screen, including explanatory paragraphs such as the YFinance-only runtime note, the provider-budgeting retirement note, and other architecture prose.",
+        "Replace implementation-specific ticker copy such as 'Name fills in during Validate using YFinance.NET symbol metadata' with plain user-facing copy such as 'Name fills in during Validate when available', or remove the note entirely if the control labels are self-explanatory.",
+        "Remove or simplify presentation-design notes such as 'Alternating left/right helps reduce visual crowding' unless they are necessary for a user to understand the control.",
+        "Apply the same user-facing-copy principle to tooltips and help badges: help text should explain what a control does, not how the app is internally implemented.",
+        "Update local tests, reflection/config harnesses, and VM harness expectations so they no longer depend on removed sliders, removed notes, or implementation-specific YFinance text in the General tab.",
+        "Acceptance requires a clean local build/test pass plus config-screen harness validation proving the General tab still supports editing background choices, portfolio tapes, ticker symbols, validation, OK, and Cancel without exposing internal runtime design notes."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
