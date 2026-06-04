@@ -141,10 +141,14 @@ Acceptance for the current YFinance.NET lane:
 
 The current remote Windows UX harness is the supported baseline and should be treated as frozen working infrastructure:
 
-1. run local tests
-2. publish with `build\publish-safe-temp.ps1`
-3. push with `build\vm\Push-VmWorkspace.ps1`
-4. run remote interactive UX validation through `PortfolioSaver.VmAgent`
+1. DeepSeek review gate: for any code modification, run mandatory DeepSeek code review with `build\Run-DeepSeekCodeReview.ps1 -IncludeUntracked -SendForReview -AcknowledgeSecretScan`, resolve actionable findings, and rerun the review if fixes were made
+2. Commit/push gate: commit and push only the code that passed the DeepSeek review gate before starting local or VM validation
+3. Local validation gate: run local tests
+4. Publish gate: publish with `build\publish-safe-temp.ps1`
+5. VM push gate: push with `build\vm\Push-VmWorkspace.ps1`
+6. Remote UX gate: run remote interactive UX validation through `PortfolioSaver.VmAgent`
+
+The DeepSeek review gate applies to application code, XAML, scripts, harnesses, tests, project files, build tooling, and packaging changes. It is intentionally before commit/push and before local/VM validation so reviewer findings are resolved before spending long test cycles. Documentation-only ticket updates are exempt unless they change developer workflow or validation policy.
 
 Two current canonical harness behaviors are easy to miss but are now intentional:
 

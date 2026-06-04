@@ -27,6 +27,7 @@ Issues and Development Scratchpad*.txt
 
 # Local agent/runtime logs
 .codex-logs/
+build/deepseek-review/
 
 # Generated outputs and packaged binaries
 build/artifacts/

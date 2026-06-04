@@ -20,11 +20,20 @@ This agent-based SSH/SFTP harness is now the canonical supported workflow.
 
 Use it as-is:
 
+- mandatory DeepSeek code review for any code modification before commit/push and before local/VM validation cycles
 - local test/build validation
 - safe-temp publish
 - SSH/SFTP workspace push
 - `PortfolioSaver.VmAgent` interactive desktop execution
 - result pullback over SFTP
+
+Run the review from the repository root with:
+
+```powershell
+.\build\Run-DeepSeekCodeReview.ps1 -IncludeUntracked -SendForReview -AcknowledgeSecretScan
+```
+
+Resolve actionable findings and rerun the review before continuing. If the review cannot run because a DeepSeek key is unavailable, do not start local or VM code-validation cycles unless the user explicitly waives the gate for that specific change.
 
 Do **not** treat the harness glue itself as an optimization target during normal feature work.
 Only revisit the harness when:
