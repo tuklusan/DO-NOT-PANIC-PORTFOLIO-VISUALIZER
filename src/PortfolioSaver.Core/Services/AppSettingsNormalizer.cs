@@ -11,7 +11,6 @@ public static class AppSettingsNormalizer
     public static AppSettings Normalize(AppSettings? settings)
     {
         AppSettings normalized = settings ?? Defaults.CreateSettings();
-        ApplyLegacyDesktopRefreshMigration(normalized);
 
         normalized.Groups ??= [];
         normalized.Groups = normalized.Groups
