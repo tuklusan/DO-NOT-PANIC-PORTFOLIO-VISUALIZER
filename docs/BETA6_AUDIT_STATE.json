@@ -1369,17 +1369,23 @@
       "priority": 0,
       "area": "yfinance_server_launch",
       "title": "Make YFinance server executable resolution deterministic and safe",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_full_rc_review_2026_06_05",
       "evidence": [
-        "Critical C-7 from DeepSeek full RC review: YFinanceServerProcessManager scans repo/parent paths and can launch non-deterministic or malicious binaries.",
-        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+        "DeepSeek review gate passed with no blocking/high findings for the owned-server launch path and validation build changes on 2026-06-05.",
+        "Committed and pushed implementation commits dac822c, fdeec81, and cb4c175 before local validation runs.",
+        "dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
+        "dotnet test PortfolioScreensaver.sln -c Release --no-build passed 270/270 on 2026-06-05."
       ],
       "notes": [
         "Remove repo-root walking and broad candidate search from release runtime server resolution.",
         "Resolve the server only from fixed deployment-relative paths under AppContext.BaseDirectory or explicit trusted configuration.",
         "Consider hash/signature validation or release-manifest validation for the server executable.",
-        "Add tests proving untrusted parent-directory binaries are ignored."
+        "Add tests proving untrusted parent-directory binaries are ignored.",
+        "Resolved by constraining owned YFinance server discovery to deployment-controlled YFinanceServer and publish sibling server bundles, removing repo-root/debug-output discovery from runtime startup.",
+        "App/config/screensaver builds now stage the owned YFinance server bundle under an isolated YFinanceServer output folder instead of flattening server dependencies into the host output directory.",
+        "Runtime resolution tests cover isolated bundle discovery, sibling publish fallback, DLL-only dotnet launch, EXE-over-DLL precedence, and rejection of legacy repo build outputs.",
+        "Runtime factory concurrency test now uses an AsyncLocal test-only server-startup suppression scope so scheduling coverage does not require launching a live owned server."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
