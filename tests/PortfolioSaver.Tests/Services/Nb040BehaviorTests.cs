@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Text.Json;
+using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Data.Services;
 using PortfolioSaver.Render.Services;
@@ -256,6 +258,40 @@ public sealed class Nb040BehaviorTests
         Assert.Contains("Dns.GetHostAddressesAsync(host, dnsTimeout.Token)", source, StringComparison.Ordinal);
         Assert.Contains("catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)", source, StringComparison.Ordinal);
         Assert.Contains("HostTimeout", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ProviderBudgetLedgerService_SerializesConcurrentReservationsAndPersistsValidLedger()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string ledgerPath = Path.Combine(tempRoot, "provider-query-usage.json");
+        try
+        {
+            ProviderBudgetLedgerService service = new(ledgerPath);
+            DataSourcePolicySettings policy = new()
+            {
+                Kind = DataSourceKind.YahooFinance,
+                MaxQueriesPerHour = 50,
+                MaxQueriesPerDay = 50
+            };
+            DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
+
+            bool[] reservations = await Task.WhenAll(Enumerable.Range(0, 8)
+                .Select(index => Task.Run(() => service.TryReserve(policy, 1, TimeSpan.Zero, nowUtc.AddSeconds(index)))));
+
+            Assert.Equal(8, reservations.Count(result => result));
+            string json = File.ReadAllText(ledgerPath);
+            using JsonDocument document = JsonDocument.Parse(json);
+            JsonProperty entryProperty = Assert.Single(document.RootElement.GetProperty("Entries").EnumerateObject());
+            Assert.Equal(8, entryProperty.Value.GetProperty("QueryTimestampsUtc").GetArrayLength());
+            Assert.Equal(JsonValueKind.Null, entryProperty.Value.GetProperty("CooldownUntilUtc").ValueKind);
+            Assert.DoesNotContain(".tmp", string.Join('|', Directory.EnumerateFiles(tempRoot).Select(Path.GetFileName)), StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+                Directory.Delete(tempRoot, recursive: true);
+        }
     }
 
     private static string GetRepoRoot()

@@ -16,14 +16,13 @@ public sealed class ProviderBudgetLedgerService
 
     private readonly string _ledgerPath;
     private readonly object _sync = new();
-    private ProviderBudgetLedger _ledger;
+    private ProviderBudgetLedger? _ledger;
 
     public ProviderBudgetLedgerService(string? ledgerPath = null)
     {
         _ledgerPath = string.IsNullOrWhiteSpace(ledgerPath)
             ? Path.Combine(PathHelper.GetLocalDataDirectory(), "provider-query-usage.json")
             : ledgerPath;
-        _ledger = LoadLedger();
     }
 
     public bool TryReserve(DataSourcePolicySettings policy, int queryCost, TimeSpan minimumReuseInterval, DateTimeOffset nowUtc)
@@ -82,13 +81,20 @@ public sealed class ProviderBudgetLedgerService
 
     private ProviderBudgetEntry GetEntry(DataSourceKind kind)
     {
-        if (!_ledger.Entries.TryGetValue(kind, out ProviderBudgetEntry? entry))
+        EnsureLedgerLoadedLocked();
+        ProviderBudgetLedger ledger = _ledger ?? throw new InvalidOperationException("Provider budget ledger has not been loaded.");
+        if (!ledger.Entries.TryGetValue(kind, out ProviderBudgetEntry? entry))
         {
             entry = new ProviderBudgetEntry();
-            _ledger.Entries[kind] = entry;
+            ledger.Entries[kind] = entry;
         }
 
         return entry;
+    }
+
+    private void EnsureLedgerLoadedLocked()
+    {
+        _ledger ??= LoadLedger();
     }
 
     private static void Prune(ProviderBudgetEntry entry, DateTimeOffset nowUtc)
@@ -126,8 +132,36 @@ public sealed class ProviderBudgetLedgerService
 
     private void SaveLedger()
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(_ledgerPath)!);
-        File.WriteAllText(_ledgerPath, JsonSerializer.Serialize(_ledger, JsonOptions));
+        ProviderBudgetLedger ledger = _ledger ?? throw new InvalidOperationException("Provider budget ledger has not been loaded.");
+        string targetPath = Path.GetFullPath(_ledgerPath);
+        string directory = Path.GetDirectoryName(targetPath) ?? Environment.CurrentDirectory;
+        Directory.CreateDirectory(directory);
+
+        string tempPath = Path.Combine(directory, Path.GetFileName(targetPath) + "." + Guid.NewGuid().ToString("N") + ".tmp");
+        string json = JsonSerializer.Serialize(ledger, JsonOptions);
+        try
+        {
+            using (FileStream stream = new(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (StreamWriter writer = new(stream))
+            {
+                writer.Write(json);
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(tempPath, targetPath, overwrite: true);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
+            }
+            catch
+            {
+            }
+        }
     }
 
     private sealed class ProviderBudgetLedger
