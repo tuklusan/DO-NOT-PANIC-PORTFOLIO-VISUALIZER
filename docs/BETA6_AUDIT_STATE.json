@@ -1194,6 +1194,370 @@
         "Resolved on 2026-06-04 in implementation commit 1022783 by splitting full attribution metadata from footer display metadata: UI/background catalog callers now use GetFooterAttributionsForBackgrounds for short \"Creator, License\" strings, the obsolete full-attribution API remains backward-compatible through GetFullAttributionsForBackgrounds, malformed formatter inputs fall back safely, and full source URLs remain preserved in exchange-photo-attribution.txt.",
         "Validation: DeepSeek code review completed with no merge-blocking findings, local Release build succeeded with 0 warnings/errors, local Release tests passed, VM build/tests passed with 229/229 tests, 30-minute VM UX run ux-deep-ssh-20260604-202359 completed with config/desktop phases passed and visual capture desktop-060.png showing short footer attribution \"Image: Rodrigo.Argenton, CC0\"."
       ]
+    },
+    {
+      "id": "CR-001",
+      "tracking_number": "CR-001",
+      "priority": 0,
+      "area": "rc_review_async_lifecycle",
+      "title": "Remove UI-thread sync blocking from owned YFinance server startup/shutdown",
+      "status": "open",
+      "source": "deepseek_full_rc_review_2026_06_05",
+      "evidence": [
+        "Critical C-1 from DeepSeek full RC review: App startup/exit blocks on async owned-server lifecycle calls and can deadlock or hang the WPF UI.",
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+      ],
+      "notes": [
+        "Replace .GetAwaiter().GetResult() in Config, Desktop, and Screensaver app startup/shutdown with safe async lifecycle handling.",
+        "Prefer async void WPF lifecycle overrides for startup where appropriate and use await directly.",
+        "Shutdown should not deadlock the dispatcher; use bounded async shutdown with logging or a documented safe fire-and-forget path.",
+        "Add tests or harness evidence that owned server startup/shutdown no longer blocks UI responsiveness."
+      ],
+      "acceptance": [
+        "Implementation is complete with focused automated coverage where practical.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-002",
+      "tracking_number": "CR-002",
+      "priority": 0,
+      "area": "yfinance_server_security",
+      "title": "Default YFinance.NET server bind address to localhost",
+      "status": "open",
+      "source": "deepseek_full_rc_review_2026_06_05",
+      "evidence": [
+        "Critical C-2 from DeepSeek full RC review: ICD/implementation direction exposes the YFinance.NET server on all network interfaces by default.",
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+      ],
+      "notes": [
+        "Default owned-mode server binding must be loopback only, preferably 127.0.0.1.",
+        "Add explicit standalone/remote configuration such as --bind-address or --allow-remote for future remote server use.",
+        "Update docs/YFINANCE_NET_ICD.md and implementation docs to lock the secure default.",
+        "Add tests or startup trace evidence proving owned mode uses loopback."
+      ],
+      "acceptance": [
+        "Implementation is complete with focused automated coverage where practical.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-003",
+      "tracking_number": "CR-003",
+      "priority": 0,
+      "area": "quote_pipeline_resilience",
+      "title": "Preserve partial quote results instead of dropping whole batches",
+      "status": "open",
+      "source": "deepseek_full_rc_review_2026_06_05",
+      "evidence": [
+        "Critical C-3 from DeepSeek full RC review: PartialQuoteResultException can cause one bad symbol to discard otherwise valid quote results.",
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+      ],
+      "notes": [
+        "Change YahooFinanceQuoteProvider/callers so partial quote results are applied for all successfully resolved symbols.",
+        "Unresolved symbols should be omitted or marked failed without blanking the entire tape/graph update.",
+        "Add regression coverage with mixed valid and invalid symbols.",
+        "Verify UI traces show valid symbols continue updating when one symbol fails."
+      ],
+      "acceptance": [
+        "Implementation is complete with focused automated coverage where practical.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-004",
+      "tracking_number": "CR-004",
+      "priority": 0,
+      "area": "secret_redaction",
+      "title": "Prevent DeepSeek API key and other secrets from reaching settings files or trace logs",
+      "status": "open",
+      "source": "deepseek_full_rc_review_2026_06_05",
+      "evidence": [
+        "Critical C-4 from DeepSeek full RC review: DeepSeek API key may live in AppSettings and structured traces lack generalized secret masking.",
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+      ],
+      "notes": [
+        "Never write DeepSeek API key to persisted settings in plaintext.",
+        "Add centralized TraceLog sanitization for key names containing key, secret, token, password, authorization, or similar.",
+        "Ensure FinanceNewsService resolves the API key only at the point of outbound use and never logs it.",
+        "Add tests that intentionally trace secret-like fields and assert redaction."
+      ],
+      "acceptance": [
+        "Implementation is complete with focused automated coverage where practical.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-005",
+      "tracking_number": "CR-005",
+      "priority": 0,
+      "area": "ai_news_prompt_security",
+      "title": "Harden FinanceNewsService prompt construction against prompt injection",
+      "status": "open",
+      "source": "deepseek_full_rc_review_2026_06_05",
+      "evidence": [
+        "Critical C-5 from DeepSeek full RC review: RSS headlines are untrusted inputs embedded into the DeepSeek instruction prompt.",
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+      ],
+      "notes": [
+        "Separate system instructions from untrusted feed headline data with clear delimiters.",
+        "Explicitly instruct the model to treat headlines as data, not instructions.",
+        "Normalize and bound headline text before inclusion in prompts.",
+        "Add tests covering malicious/instruction-like headlines."
+      ],
+      "acceptance": [
+        "Implementation is complete with focused automated coverage where practical.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-006",
+      "tracking_number": "CR-006",
+      "priority": 0,
+      "area": "refresh_policy",
+      "title": "Replace static QuoteRefreshPolicy values with real settings-aware cadence logic",
+      "status": "open",
+      "source": "deepseek_full_rc_review_2026_06_05",
+      "evidence": [
+        "Critical C-6 from DeepSeek full RC review: QuoteRefreshPolicy returns hard-coded one-second cadence and ignores meaningful settings.",
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+      ],
+      "notes": [
+        "Audit current scheduler expectations and decide which user settings still have product meaning.",
+        "Implement settings-aware cadence for relevant quote/news/status flows while preserving one-symbol-at-a-time UI smoothness where required.",
+        "Update config docs/tests so obsolete controls are removed or behavior is accurate.",
+        "Add regression tests for configured refresh values and displayed cadence text."
+      ],
+      "acceptance": [
+        "Implementation is complete with focused automated coverage where practical.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-007",
+      "tracking_number": "CR-007",
+      "priority": 0,
+      "area": "yfinance_server_launch",
+      "title": "Make YFinance server executable resolution deterministic and safe",
+      "status": "open",
+      "source": "deepseek_full_rc_review_2026_06_05",
+      "evidence": [
+        "Critical C-7 from DeepSeek full RC review: YFinanceServerProcessManager scans repo/parent paths and can launch non-deterministic or malicious binaries.",
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+      ],
+      "notes": [
+        "Remove repo-root walking and broad candidate search from release runtime server resolution.",
+        "Resolve the server only from fixed deployment-relative paths under AppContext.BaseDirectory or explicit trusted configuration.",
+        "Consider hash/signature validation or release-manifest validation for the server executable.",
+        "Add tests proving untrusted parent-directory binaries are ignored."
+      ],
+      "acceptance": [
+        "Implementation is complete with focused automated coverage where practical.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-008",
+      "tracking_number": "CR-008",
+      "priority": 1,
+      "area": "vm_harness_credentials",
+      "title": "Reduce plaintext autologon password exposure in VM harness registry setup",
+      "status": "open",
+      "source": "deepseek_full_rc_review_2026_06_05",
+      "evidence": [
+        "High H-1 from DeepSeek full RC review: Guest-ConfigureDesktopAutomation writes autologon password to Winlogon DefaultPassword.",
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+      ],
+      "notes": [
+        "Evaluate replacing Winlogon DefaultPassword with LSA secrets, scheduled-task credentials, SSH key flow, or other safer automation.",
+        "If plaintext autologon remains necessary for local VM harnessing, add prominent warnings, scope limitations, and cleanup steps.",
+        "Tighten ACLs where possible and document that this is local VM-only test infrastructure.",
+        "Add harness cleanup verification that credentials are removed/reset when the test lane is done."
+      ],
+      "acceptance": [
+        "Implementation is complete with focused automated coverage where practical.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-009",
+      "tracking_number": "CR-009",
+      "priority": 1,
+      "area": "vm_harness_credentials",
+      "title": "Remove or mitigate PsExec command-line password exposure",
+      "status": "open",
+      "source": "deepseek_full_rc_review_2026_06_05",
+      "evidence": [
+        "High H-2 from DeepSeek full RC review: Invoke-VmBuildTest passes password via PsExec -p command-line argument.",
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+      ],
+      "notes": [
+        "Replace PsExec password argument with a safer launch mechanism such as scheduled task, SSH key, temporary protected credential file, or agent-managed launch.",
+        "If PsExec remains, document local-only risk and minimize command-line exposure duration.",
+        "Add trace/log redaction for any credential-bearing command text.",
+        "Add validation that generated logs/artifacts do not contain VM passwords."
+      ],
+      "acceptance": [
+        "Implementation is complete with focused automated coverage where practical.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-010",
+      "tracking_number": "CR-010",
+      "priority": 1,
+      "area": "startup_quote_pipeline",
+      "title": "Make StartupCoordinator quote pipeline fully async and observed",
+      "status": "open",
+      "source": "deepseek_full_rc_review_2026_06_05",
+      "evidence": [
+        "High H-3 from DeepSeek full RC review: pending quote tasks are stored and later drained with GetResult, risking UI blocking and unobserved task leaks.",
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+      ],
+      "notes": [
+        "Refactor QueueQuotePipelineRequests/DrainCompletedQuotePipeline to use await instead of .GetAwaiter().GetResult().",
+        "Ensure every pending request is observed, cancelled, or drained on shutdown.",
+        "Add tests for pending-task completion, failure, cancellation, and no UI-thread blocking assumptions.",
+        "Verify ticker updates remain one-at-a-time and non-bursty after refactor."
+      ],
+      "acceptance": [
+        "Implementation is complete with focused automated coverage where practical.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-011",
+      "tracking_number": "CR-011",
+      "priority": 1,
+      "area": "ntp_timeouts",
+      "title": "Add bounded DNS timeout/cancellation to NtpTimeService",
+      "status": "open",
+      "source": "deepseek_full_rc_review_2026_06_05",
+      "evidence": [
+        "High H-4 from DeepSeek full RC review: DNS resolution can exceed UDP timeouts and stall time sync.",
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+      ],
+      "notes": [
+        "Wrap DNS resolution in a short bounded timeout and/or cancellation-aware path.",
+        "Ensure total NTP lookup time is bounded across all hosts.",
+        "Add tests/mocks for DNS timeout and fallback behavior.",
+        "Trace timeout decisions without flooding logs."
+      ],
+      "acceptance": [
+        "Implementation is complete with focused automated coverage where practical.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-012",
+      "tracking_number": "CR-012",
+      "priority": 1,
+      "area": "provider_budget_ledger",
+      "title": "Harden ProviderBudgetLedgerService locking and file I/O",
+      "status": "open",
+      "source": "deepseek_full_rc_review_2026_06_05",
+      "evidence": [
+        "High H-5 from DeepSeek full RC review: ledger loading and writes have lock-scope/thread-safety concerns.",
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+      ],
+      "notes": [
+        "Audit constructor-time LoadLedger and move to first guarded access if needed.",
+        "Minimize disk I/O inside critical sections or use an async lock/file write strategy.",
+        "Ensure concurrent reservations cannot corrupt ledger state.",
+        "Add concurrency tests for multiple simultaneous reservations."
+      ],
+      "acceptance": [
+        "Implementation is complete with focused automated coverage where practical.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-013",
+      "tracking_number": "CR-013",
+      "priority": 1,
+      "area": "finance_news_resilience",
+      "title": "Add backoff and bounded external-call behavior to FinanceNewsService",
+      "status": "open",
+      "source": "deepseek_full_rc_review_2026_06_05",
+      "evidence": [
+        "High H-6 from DeepSeek full RC review: summarized-news retry loop lacks backoff and broader call limits.",
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+      ],
+      "notes": [
+        "Add short exponential backoff between empty/failed DeepSeek response retries.",
+        "Bound total external news refresh time and preserve RSS-only fallback behavior.",
+        "Trace retry/backoff decisions without exposing secrets or prompt bodies.",
+        "Add tests for empty responses, transient failures, fallback cache, and no UI blocking."
+      ],
+      "acceptance": [
+        "Implementation is complete with focused automated coverage where practical.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-014",
+      "tracking_number": "CR-014",
+      "priority": 1,
+      "area": "settings_persistence",
+      "title": "Make SettingsFileService.Save atomic and corruption-resistant",
+      "status": "open",
+      "source": "deepseek_full_rc_review_2026_06_05",
+      "evidence": [
+        "High H-7 from DeepSeek full RC review: direct File.WriteAllText can corrupt settings on crash/power loss.",
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+      ],
+      "notes": [
+        "Write settings to a temporary file in the same directory, flush, then atomically replace/move into place.",
+        "Preserve existing secret sanitization behavior while making persistence atomic.",
+        "Add tests for write failure and existing settings preservation.",
+        "Consider backup/rollback behavior for corrupted existing settings."
+      ],
+      "acceptance": [
+        "Implementation is complete with focused automated coverage where practical.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
@@ -2060,6 +2424,21 @@
         "Resolved on 2026-05-20 by extending YFinance.NET HistoryMetadata to parse currentTradingPeriod and regularMarketTime, replacing ExchangeMarketCalendarService fallback hour logic with YFinance-derived session windows and cached YFinance timing data, and updating the UI countdown text so after-hours uses Yahoo session-end timing instead of local next-open math.",
         "Validation: dotnet build PortfolioScreensaver.sln -c Release succeeded and dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --no-build passed 160/160, including focused ExchangeMarketCalendarServiceTests covering Yahoo-driven regular, pre-market, after-hours, and next-window countdown behavior."
       ]
+    }
+  ],
+  "full_codebase_review_records": [
+    {
+      "id": "FULL-RC-REVIEW-2026-06-05",
+      "date": "2026-06-05",
+      "reviewer": "DeepSeek",
+      "scope": "Full tracked codebase and documentation end-to-end release-candidate review. Binary assets represented by path, size, and SHA-256 hash.",
+      "versioned_document": "docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md",
+      "artifact_directory": "build/deepseek-review/full-rc-20260605-142319",
+      "tracked_manifest": "build/deepseek-review/full-rc-20260605-142319/tracked-file-manifest.json",
+      "verdict": "not_acceptable_until_critical_and_high_findings_resolved",
+      "critical_count": 7,
+      "high_count": 7,
+      "status": "completed"
     }
   ]
 }
