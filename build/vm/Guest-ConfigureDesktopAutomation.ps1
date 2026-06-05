@@ -1,10 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string]$RootPath,
-    [Parameter(Mandatory = $true)]
-    [string]$UserName,
-    [Parameter(Mandatory = $true)]
-    [string]$Password
+    [string]$RootPath
 )
 
 Set-StrictMode -Version Latest
@@ -53,9 +49,10 @@ Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name ScreenSaveActive -Val
 Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name ScreenSaverIsSecure -Value '0'
 Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name ScreenSaveTimeOut -Value '0'
 
-Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value '1'
-Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $UserName
-Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $Password
+# The harness intentionally does not write Winlogon\DefaultPassword.
+# The test user must already be logged into the interactive VM desktop session.
+Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -ErrorAction SilentlyContinue
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value '0'
 
 [pscustomobject]@{
     RootPath = $RootPath

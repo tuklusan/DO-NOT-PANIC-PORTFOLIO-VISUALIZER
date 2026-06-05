@@ -116,66 +116,91 @@ Write-Output ('BUILD_SUMMARY=' + `$resultPath)
         $remoteAgentResult = Join-Path $RootPath ("agent\command-results\$uxResultName.result.json")
         $remoteAgentCommand = Join-Path $RootPath ("commands\$uxResultName.json")
         $remoteAutomationSetup = Join-Path $RootPath 'repo\build\vm\Guest-ConfigureDesktopAutomation.ps1'
+        $remoteAutomationCredentialCleanup = Join-Path $RootPath 'repo\build\vm\Guest-ClearDesktopAutomationCredentials.ps1'
         $remoteAgentExe = Join-Path $RootPath 'publish\agent\PortfolioSaver.VmAgent.exe'
         $remoteUser = $vmCredParts.UserName.Replace("'", "''")
-        $remotePassword = $vmCredParts.Password.Replace("'", "''")
         $prepareAutomationCommand = @"
-& '$remoteAutomationSetup' -RootPath '$RootPath' -UserName '$remoteUser' -Password '$remotePassword'
+& '$remoteAutomationSetup' -RootPath '$RootPath'
 "@
-        Write-VmSshStep "Configuring remote desktop automation"
-        Invoke-VmPwshCommand -Bundle $bundle -Command $prepareAutomationCommand -TimeOutSeconds 120 | Out-Null
+        try {
+            Write-VmSshStep "Configuring remote desktop automation"
+            Invoke-VmPwshCommand -Bundle $bundle -Command $prepareAutomationCommand -TimeOutSeconds 120 | Out-Null
 
-        $remoteAgentStatusCmdPath = $remoteAgentStatus.Replace('/', '\')
-        $stopExistingAgentCommand = "cmd /c taskkill /IM PortfolioSaver.VmAgent.exe /F >nul 2>&1 & del /F /Q `"$remoteAgentStatusCmdPath`" >nul 2>&1 & exit /b 0"
-        Write-VmSshStep "Stopping any existing desktop-session agent"
-        Invoke-VmRawCommand -Bundle $bundle -Command $stopExistingAgentCommand -TimeOutSeconds 60 -AllowedExitCodes @(0) | Out-Null
+            $remoteAgentStatusCmdPath = $remoteAgentStatus.Replace('/', '\')
+            $stopExistingAgentCommand = "cmd /c taskkill /IM PortfolioSaver.VmAgent.exe /F >nul 2>&1 & del /F /Q `"$remoteAgentStatusCmdPath`" >nul 2>&1 & schtasks /Delete /TN `"PortfolioSaverVmAgent`" /F >nul 2>&1 & exit /b 0"
+            Write-VmSshStep "Stopping any existing desktop-session agent"
+            Invoke-VmRawCommand -Bundle $bundle -Command $stopExistingAgentCommand -TimeOutSeconds 60 -AllowedExitCodes @(0) | Out-Null
 
-        $startAgentCommand = @"
-`$psexec = 'C:\Program Files\SysinternalsSuite\PsExec.exe'
-if (-not (Test-Path `$psexec)) {
-    throw 'Missing PsExec.exe in guest.'
-}
-if (-not (Test-Path '$remoteAgentExe')) {
+            $startAgentCommand = @"
+if (-not (Test-Path "$remoteAgentExe")) {
     throw 'Missing desktop-session agent executable.'
 }
-& `$psexec -accepteula -i 1 -d -u '$remoteUser' -p '$remotePassword' '$remoteAgentExe' --root-path '$RootPath'
+`$taskName = 'PortfolioSaverVmAgent'
+`$taskTime = (Get-Date).ToString('HH:mm')
+`$taskAction = '"$remoteAgentExe" --root-path "$RootPath"'
+& schtasks.exe /Create /TN `$taskName /TR `$taskAction /SC ONCE /ST `$taskTime /IT /RU '$remoteUser' /F
+if (`$LASTEXITCODE -ne 0) { throw 'Failed to create interactive desktop-session agent scheduled task.' }
+`$runOutput = & schtasks.exe /Run /TN `$taskName
+if (`$LASTEXITCODE -ne 0) { throw 'Failed to run interactive desktop-session agent scheduled task.' }
 "@
-        Write-VmSshStep "Starting desktop-session agent"
-        $startEncoded = ConvertTo-VmPwshEncodedCommand -Command $startAgentCommand
-        $startSucceeded = $false
-        for ($startAttempt = 1; $startAttempt -le 2 -and -not $startSucceeded; $startAttempt++) {
-            try {
-                Invoke-VmRawCommand -Bundle $bundle -Command ('pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ' + $startEncoded) -TimeOutSeconds 120 -SuccessOutputPattern 'started on WINDOWS10 with process ID' | Out-Null
-                $startSucceeded = $true
+            Write-VmSshStep "Starting desktop-session agent"
+            $startEncoded = ConvertTo-VmPwshEncodedCommand -Command $startAgentCommand
+            $startSucceeded = $false
+            for ($startAttempt = 1; $startAttempt -le 2 -and -not $startSucceeded; $startAttempt++) {
+                try {
+                    Invoke-VmRawCommand -Bundle $bundle -Command ('pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ' + $startEncoded) -TimeOutSeconds 120 | Out-Null
+                    $startSucceeded = $true
+                }
+                catch {
+                    if ($startAttempt -ge 2) { throw }
+                    Write-VmSshStep "Desktop-session agent start attempt failed once; retrying."
+                    Start-Sleep -Seconds 3
+                }
             }
-            catch {
-                if ($startAttempt -ge 2) { throw }
-                Write-VmSshStep "Desktop-session agent start attempt failed once; retrying."
-                Start-Sleep -Seconds 3
-            }
-        }
 
-        $agentDeadline = (Get-Date).AddSeconds(120)
-        do {
-            Start-Sleep -Seconds 5
-            $pollAgentCommand = @"
+            $agentDeadline = (Get-Date).AddSeconds(120)
+            do {
+                Start-Sleep -Seconds 5
+                $pollAgentCommand = @"
 if (Test-Path '$remoteAgentStatus') {
     Get-Content -LiteralPath '$remoteAgentStatus' -Raw
 }
 "@
-            $agentPoll = Invoke-VmPwshCommand -Bundle $bundle -Command $pollAgentCommand -TimeOutSeconds 60
-            $agentJson = ($agentPoll.Output -join [Environment]::NewLine).Trim()
-            if (-not [string]::IsNullOrWhiteSpace($agentJson)) {
-                $agentStatus = $agentJson | ConvertFrom-Json
-                $heartbeatUtc = [datetime]$agentStatus.LastHeartbeatUtc
-                if ($agentStatus.UserInteractive -and $agentStatus.SessionId -eq 1 -and ((Get-Date).ToUniversalTime() - $heartbeatUtc).TotalSeconds -lt 30) {
-                    break
+                $agentPoll = Invoke-VmPwshCommand -Bundle $bundle -Command $pollAgentCommand -TimeOutSeconds 60
+                $agentJson = ($agentPoll.Output -join [Environment]::NewLine).Trim()
+                if (-not [string]::IsNullOrWhiteSpace($agentJson)) {
+                    $agentStatus = $agentJson | ConvertFrom-Json
+                    $heartbeatUtc = [datetime]$agentStatus.LastHeartbeatUtc
+                    if ($agentStatus.UserInteractive -and $agentStatus.SessionId -eq 1 -and ((Get-Date).ToUniversalTime() - $heartbeatUtc).TotalSeconds -lt 30) {
+                        break
+                    }
                 }
-            }
-        } while ((Get-Date) -lt $agentDeadline)
+            } while ((Get-Date) -lt $agentDeadline)
 
-        if ((Get-Date) -ge $agentDeadline) {
-            throw "Timed out waiting for remote desktop-session agent heartbeat: $remoteAgentStatus"
+            if ((Get-Date) -ge $agentDeadline) {
+                throw "Timed out waiting for remote desktop-session agent heartbeat: $remoteAgentStatus"
+            }
+        }
+        finally {
+            $cleanupAutomationCredentialsCommand = @"
+schtasks /Delete /TN "PortfolioSaverVmAgent" /F >`$null 2>&1
+& '$remoteAutomationCredentialCleanup'
+"@
+            Write-VmSshStep "Clearing remote desktop automation autologon credential"
+            $cleanupOutput = Invoke-VmPwshCommand -Bundle $bundle -Command $cleanupAutomationCredentialsCommand -TimeOutSeconds 120
+            $cleanupJson = ($cleanupOutput.Output -join [Environment]::NewLine).Trim()
+            if ([string]::IsNullOrWhiteSpace($cleanupJson)) {
+                throw "Remote desktop automation credential cleanup produced no verification output."
+            }
+
+            $cleanupState = $cleanupJson | ConvertFrom-Json
+            if ($null -eq $cleanupState.PSObject.Properties['DefaultPasswordPresent'] -or $null -eq $cleanupState.PSObject.Properties['AutoAdminLogon']) {
+                throw "Remote desktop automation credential cleanup returned malformed verification output."
+            }
+
+            if ($cleanupState.DefaultPasswordPresent -or $cleanupState.AutoAdminLogon -ne '0') {
+                throw "Remote desktop automation credential cleanup verification failed."
+            }
         }
 
         $commandPayload = [ordered]@{

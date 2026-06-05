@@ -69,8 +69,7 @@ Only revisit the harness when:
 - `sshd` running and reachable
 - machine-wide `.NET 10 SDK`
 - machine-wide `PowerShell 7`
-- `PsExec.exe` available at:
-  - `C:\Program Files\SysinternalsSuite\PsExec.exe`
+- Task Scheduler enabled for interactive test-user agent launch.
 - `WinAppDriver.exe` available at:
   - `C:\Program Files (x86)\Windows Application Driver\WinAppDriver.exe`
 - an actively logged-in interactive Windows desktop session
@@ -157,12 +156,15 @@ Before the UX cycle starts, the harness now:
 - runs `Guest-ConfigureDesktopAutomation.ps1`
 - runs `Guest-ApplyTestSecrets.ps1`
 - re-checks free space and auto-purges stale harness artifacts again if free space is below `8 GB`
-- configures autologon-style Winlogon registry values for the dedicated test account
+- verifies and cleans Winlogon autologon registry values for the dedicated local VM test account
 - disables the screen saver for that user profile
 - prepares a startup launcher for `PortfolioSaver.VmAgent`
-- starts `PortfolioSaver.VmAgent.exe` directly in session `1`
+- starts `PortfolioSaver.VmAgent.exe` in the logged-on test user's interactive session with a one-shot `/IT` scheduled task
 - waits for a live heartbeat at:
   - `C:\vmharness\portfolio-saver\agent\agent-status.json`
+- clears any legacy `Winlogon\DefaultPassword`, disables `AutoAdminLogon`, and verifies cleanup before queuing UX work
+
+The VM test user must already be logged into the interactive desktop session. The harness must not write `Winlogon\DefaultPassword` and must not pass the VM password on a process command line.
 
 ### 4. Queue a UX run to the desktop-session agent
 
@@ -194,17 +196,18 @@ This is the key behavior that finally worked reliably.
 
 1. The host prepares the remote workspace over SSH.
 2. The host publishes `PortfolioSaver.VmAgent` into the remote `publish\agent` folder.
-3. The host starts the agent in session `1` with `PsExec`.
+3. The host starts the agent in session `1` with an interactive one-shot scheduled task, without password command-line exposure.
 4. The agent ensures `WinAppDriver` is running inside that same interactive desktop session.
 5. The host waits for the agent heartbeat file.
-6. The host writes a UX command JSON into the remote command queue.
-7. The agent launches the desktop app first, opens the Settings window from the desktop menu path, drives a minimal keyboard-first config smoke path, waits for Validate to succeed and the window to close naturally, then continues the same desktop-session run into the fullscreen/windowed validation flow.
+6. The host runs `Guest-ClearDesktopAutomationCredentials.ps1` and verifies that no plaintext autologon password is present.
+7. The host writes a UX command JSON into the remote command queue.
+8. The agent launches the desktop app first, opens the Settings window from the desktop menu path, drives a minimal keyboard-first config smoke path, waits for Validate to succeed and the window to close naturally, then continues the same desktop-session run into the fullscreen/windowed validation flow.
    During Validate, the config app is expected to disable the Validate button, show a small Validation Progress window, and trust recent local quote/profile evidence before falling back to YFinance.NET network lookups.
-8. Guest-UxDeepExercise.ps1 captures screenshots, explicitly focuses the desktop window, prefers keyboard navigation over coordinate clicks for config interaction, validates true fullscreen by comparing the live window bounds to the virtual screen, validates ESC return-to-windowed behavior, copies trace files into the result bundle, and writes:
+9. Guest-UxDeepExercise.ps1 captures screenshots, explicitly focuses the desktop window, prefers keyboard navigation over coordinate clicks for config interaction, validates true fullscreen by comparing the live window bounds to the virtual screen, validates ESC return-to-windowed behavior, copies trace files into the result bundle, and writes:
    - `ux-deep-summary.json`
    - `vm-ux-summary.json`
-9. The host polls the summary file until `FinishedAt` appears.
-10. The host pulls the complete result bundle back over SFTP.
+10. The host polls the summary file until `FinishedAt` appears.
+11. The host pulls the complete result bundle back over SFTP.
 
 ## Current known-good proof markers
 
@@ -236,7 +239,7 @@ The harness details that made this pass reliable are now considered part of the 
 
 ### Why we moved away from direct interactive PowerShell launch
 
-Direct `PsExec ... pwsh.exe -File Guest-UxDeepExercise.ps1` was the unreliable boundary.
+Direct one-shot SSH PowerShell injection into the desktop UX flow was the unreliable boundary.
 It matched the black popup symptom:
 
 - `Attempting to perform the InitializeDefaultDrives operation on the 'FileSystem' provider failed.`

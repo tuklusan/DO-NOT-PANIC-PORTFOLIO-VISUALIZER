@@ -74,7 +74,6 @@ $toolSnapshot = [ordered]@{
     rg = Get-CommandPathOrNull -Name 'rg.exe'
     sevenZip = Get-CommandPathOrNull -Name '7z.exe'
     ssh = Get-CommandPathOrNull -Name 'ssh.exe'
-    psexec = if (Test-Path 'C:\Program Files\SysinternalsSuite\PsExec.exe') { 'C:\Program Files\SysinternalsSuite\PsExec.exe' } else { $null }
     winAppDriver = if (Test-Path 'C:\Program Files (x86)\Windows Application Driver\WinAppDriver.exe') { 'C:\Program Files (x86)\Windows Application Driver\WinAppDriver.exe' } else { $null }
 }
 
@@ -92,4 +91,3 @@ $reportPath = Join-Path (Join-Path $RootPath 'logs') ("bootstrap-{0:yyyyMMdd-HHm
 $report | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $reportPath -Encoding UTF8
 
 Write-Output ("BOOTSTRAP_REPORT=" + $reportPath)
-

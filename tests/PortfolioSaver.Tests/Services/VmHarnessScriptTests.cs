@@ -69,6 +69,7 @@ public sealed class VmHarnessScriptTests
             "Invoke-VmBuildTest.ps1"));
 
         Assert.Contains("Guest-ConfigureDesktopAutomation.ps1", script, StringComparison.Ordinal);
+        Assert.Contains("Guest-ClearDesktopAutomationCredentials.ps1", script, StringComparison.Ordinal);
         Assert.Contains("Guest-ApplyTestSecrets.ps1", script, StringComparison.Ordinal);
         Assert.Contains("[ValidateRange(1, 10080)]", script, StringComparison.Ordinal);
         Assert.Contains("[ValidateSet('Apply', 'Cancel')]", script, StringComparison.Ordinal);
@@ -79,7 +80,10 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("agent\\agent-status.json", script, StringComparison.Ordinal);
         Assert.Contains("agent\\command-results\\$uxResultName.result.json", script, StringComparison.Ordinal);
         Assert.Contains("commands\\$uxResultName.json", script, StringComparison.Ordinal);
-        Assert.Contains("PsExec.exe", script, StringComparison.Ordinal);
+        Assert.Contains("schtasks.exe /Create", script, StringComparison.Ordinal);
+        Assert.Contains("schtasks.exe /Run", script, StringComparison.Ordinal);
+        Assert.Contains("/IT /RU '$remoteUser'", script, StringComparison.Ordinal);
+        Assert.Contains("schtasks /Delete /TN \"PortfolioSaverVmAgent\" /F", script, StringComparison.Ordinal);
         Assert.Contains("Starting desktop-session agent", script, StringComparison.Ordinal);
         Assert.Contains("Queuing UX run through desktop-session agent", script, StringComparison.Ordinal);
         Assert.Contains("taskkill /IM PortfolioSaver.VmAgent.exe /F >nul 2>&1", script, StringComparison.Ordinal);
@@ -98,6 +102,12 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("LOCAL_RESULT_DIR=", script, StringComparison.Ordinal);
         Assert.Contains("Timed out waiting for remote desktop-session agent heartbeat", script, StringComparison.Ordinal);
         Assert.Contains("$summary.PSObject.Properties.Name -contains 'FinishedAt'", script, StringComparison.Ordinal);
+        Assert.Contains("Clearing remote desktop automation autologon credential", script, StringComparison.Ordinal);
+        Assert.Contains("DefaultPasswordPresent", script, StringComparison.Ordinal);
+        Assert.DoesNotContain(" -p '$remotePassword'", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("$remotePassword", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("-Password", script, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("PsExec.exe", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -115,6 +125,22 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("ScreenSaveActive", script, StringComparison.Ordinal);
         Assert.Contains("AutoAdminLogon", script, StringComparison.Ordinal);
         Assert.Contains("DefaultPassword", script, StringComparison.Ordinal);
+        Assert.Contains("Remove-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon' -Name DefaultPassword", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon' -Name DefaultPassword", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GuestClearDesktopAutomationCredentials_RemovesAutologonPassword()
+    {
+        string script = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "Guest-ClearDesktopAutomationCredentials.ps1"));
+
+        Assert.Contains("Remove-ItemProperty -Path $winlogonPath -Name DefaultPassword", script, StringComparison.Ordinal);
+        Assert.Contains("Set-ItemProperty -Path $winlogonPath -Name AutoAdminLogon -Value '0'", script, StringComparison.Ordinal);
+        Assert.Contains("DefaultPasswordPresent", script, StringComparison.Ordinal);
     }
 
     [Fact]
