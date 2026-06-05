@@ -180,17 +180,20 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
-            "QueueQuotePipelineRequests(",
+            "QueueQuotePipelineRequests(orderedSymbols, yahooFinanceProvider, cancellationToken)",
             source,
             StringComparison.Ordinal);
         Assert.Contains(
-            "DrainCompletedQuotePipeline(",
+            "DrainCompletedQuotePipelineAsync(",
             source,
             StringComparison.Ordinal);
+        Assert.DoesNotContain("GetAwaiter().GetResult()", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetQuotesAsync([symbol], CancellationToken.None)", source, StringComparison.Ordinal);
         Assert.Contains(
-            "yahooFinanceProvider.GetQuotesAsync([symbol], CancellationToken.None)",
+            "yahooFinanceProvider.GetQuotesAsync([symbol], cancellationToken)",
             source,
             StringComparison.Ordinal);
+        Assert.Contains("SequentialQuoteCancelled", source, StringComparison.Ordinal);
         Assert.DoesNotContain(
             "IsDedicatedYahooSymbolCoolingDown",
             source,

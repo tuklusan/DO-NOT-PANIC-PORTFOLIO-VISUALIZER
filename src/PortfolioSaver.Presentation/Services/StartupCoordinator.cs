@@ -392,8 +392,11 @@ public sealed class StartupCoordinator
             return results;
         }
 
-        int completedRefreshCount = DrainCompletedQuotePipeline(results, ref latestUpdatedSymbol, ref latestUpdatedFetchUtc);
-        QueueQuotePipelineRequests(orderedSymbols, yahooFinanceProvider);
+        QuotePipelineDrainResult drainResult = await DrainCompletedQuotePipelineAsync(results).ConfigureAwait(false);
+        int completedRefreshCount = drainResult.CompletedCount;
+        latestUpdatedSymbol = drainResult.LatestUpdatedSymbol;
+        latestUpdatedFetchUtc = drainResult.LatestUpdatedFetchUtc;
+        QueueQuotePipelineRequests(orderedSymbols, yahooFinanceProvider, cancellationToken);
 
         foreach (string symbol in orderedSymbols)
         {
@@ -428,6 +431,11 @@ public sealed class StartupCoordinator
         int TickerOrder,
         decimal Score,
         bool HasLiveMoverScore);
+
+    private sealed record QuotePipelineDrainResult(
+        int CompletedCount,
+        string? LatestUpdatedSymbol,
+        DateTimeOffset LatestUpdatedFetchUtc);
 
     private IReadOnlyList<(TickerGroup Group, TickerItem Ticker)> SelectGraphTickerPairs(AppSettings settings)
     {
@@ -739,7 +747,7 @@ public sealed class StartupCoordinator
         return selected;
     }
 
-    private void QueueQuotePipelineRequests(IReadOnlyList<string> orderedSymbols, IQuoteProvider yahooFinanceProvider)
+    private void QueueQuotePipelineRequests(IReadOnlyList<string> orderedSymbols, IQuoteProvider yahooFinanceProvider, CancellationToken cancellationToken)
     {
         int capacity = Math.Max(0, SequentialQuotePipelineDepth - _pendingQuotePipeline.Count);
         if (capacity == 0)
@@ -757,20 +765,20 @@ public sealed class StartupCoordinator
             _pendingQuotePipeline[symbol] = new PendingQuoteRequest(
                 symbol,
                 operationId,
-                yahooFinanceProvider.GetQuotesAsync([symbol], CancellationToken.None),
+                yahooFinanceProvider.GetQuotesAsync([symbol], cancellationToken),
                 DateTimeOffset.UtcNow);
         }
     }
 
-    private int DrainCompletedQuotePipeline(
-        IDictionary<string, QuoteSnapshot> results,
-        ref string? latestUpdatedSymbol,
-        ref DateTimeOffset latestUpdatedFetchUtc)
+    private async Task<QuotePipelineDrainResult> DrainCompletedQuotePipelineAsync(
+        IDictionary<string, QuoteSnapshot> results)
     {
         List<string> completedSymbols = _pendingQuotePipeline
             .Where(pair => pair.Value.Task.IsCompleted)
             .Select(pair => pair.Key)
             .ToList();
+        string? latestUpdatedSymbol = null;
+        DateTimeOffset latestUpdatedFetchUtc = DateTimeOffset.MinValue;
 
         foreach (string symbol in completedSymbols)
         {
@@ -779,7 +787,8 @@ public sealed class StartupCoordinator
 
             try
             {
-                IReadOnlyList<QuoteSnapshot> fetched = pending.Task.GetAwaiter().GetResult();
+                // The symbol list above only includes completed tasks; await observes exceptions without blocking.
+                IReadOnlyList<QuoteSnapshot> fetched = await pending.Task;
                 TraceRuntimeState(
                     "SequentialQuoteReturned",
                     new KeyValuePair<string, object?>("operation_id", pending.OperationId),
@@ -791,6 +800,14 @@ public sealed class StartupCoordinator
                     results[quote.Symbol] = quote;
                     NoteLatestUpdatedQuote(quote, ref latestUpdatedSymbol, ref latestUpdatedFetchUtc);
                 }
+            }
+            catch (OperationCanceledException ex)
+            {
+                TraceRuntime($"YFinance.NET pipelined quote cancelled for [{symbol}]: {ex.GetType().Name}: {ex.Message}");
+                TraceRuntimeState(
+                    "SequentialQuoteCancelled",
+                    new KeyValuePair<string, object?>("operation_id", pending.OperationId),
+                    new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols([symbol])));
             }
             catch (Exception ex)
             {
@@ -812,7 +829,7 @@ public sealed class StartupCoordinator
             }
         }
 
-        return completedSymbols.Count;
+        return new QuotePipelineDrainResult(completedSymbols.Count, latestUpdatedSymbol, latestUpdatedFetchUtc);
     }
 
 
