@@ -115,12 +115,7 @@ public sealed class FinanceNewsServiceTests
         });
 
         using HttpClient client = new(handler);
-        List<TimeSpan> requestedDelays = [];
-        FinanceNewsService service = new(cachePath, () => string.Empty, (delay, _) =>
-        {
-            requestedDelays.Add(delay);
-            return Task.CompletedTask;
-        });
+        FinanceNewsService service = new(cachePath, () => string.Empty);
         AppSettings settings = new()
         {
             NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
@@ -381,7 +376,12 @@ public sealed class FinanceNewsServiceTests
         });
 
         using HttpClient client = new(handler);
-        FinanceNewsService service = new(cachePath, () => string.Empty);
+        List<TimeSpan> requestedDelays = [];
+        FinanceNewsService service = new(cachePath, () => string.Empty, (delay, _) =>
+        {
+            requestedDelays.Add(delay);
+            return Task.CompletedTask;
+        });
         AppSettings settings = new()
         {
             NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
