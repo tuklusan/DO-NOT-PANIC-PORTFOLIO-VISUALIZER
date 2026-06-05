@@ -1495,17 +1495,24 @@
       "priority": 1,
       "area": "ntp_timeouts",
       "title": "Add bounded DNS timeout/cancellation to NtpTimeService",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_full_rc_review_2026_06_05",
       "evidence": [
-        "High H-4 from DeepSeek full RC review: DNS resolution can exceed UDP timeouts and stall time sync.",
-        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+        "DeepSeek review gate passed with no high-severity findings after NTP timeout updates on 2026-06-05.",
+        "Committed and pushed implementation commit f9a799b before local validation runs.",
+        "dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
+        "dotnet test PortfolioScreensaver.sln -c Release --no-build passed 272/272 on 2026-06-05."
       ],
       "notes": [
         "Wrap DNS resolution in a short bounded timeout and/or cancellation-aware path.",
         "Ensure total NTP lookup time is bounded across all hosts.",
         "Add tests/mocks for DNS timeout and fallback behavior.",
-        "Trace timeout decisions without flooding logs."
+        "Trace timeout decisions without flooding logs.",
+        "Resolved by adding explicit per-host and DNS timeout budgets in NtpTimeService.",
+        "DNS resolution now uses a linked CancellationTokenSource with a 1.5-second DNS budget and emits DnsTimeout trace events.",
+        "NTP send/receive work now uses a 4-second per-host linked timeout and emits HostTimeout trace events.",
+        "Caller cancellation is no longer swallowed; TryGetUtcNowAsync rethrows OperationCanceledException when the caller token is cancelled.",
+        "Added regression coverage asserting bounded DNS/host timeout paths and cancellation handling are present."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
