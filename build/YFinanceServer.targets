@@ -30,7 +30,8 @@
       <OwnedYFinanceServerOutputFiles Include="$(OwnedYFinanceServerOutput)**\*" />
     </ItemGroup>
     <Warning Condition="'$(OwnedYFinanceServerCopyRoot)' == ''" Text="Owned YFinance.NET server bundle was not copied because neither OutDir nor TargetDir resolved to a safe output directory." />
-    <Warning Condition="'$(OwnedYFinanceServerUsedTargetDirFallback)' == 'true'" Text="Owned YFinance.NET server bundle copy used rooted TargetDir '$(TargetDir)' because OutDir was empty or relative ('$(OutDir)')." />
+    <!-- SDK-style builds commonly provide a relative OutDir; TargetDir is the rooted runtime output folder. -->
+    <Message Condition="'$(OwnedYFinanceServerUsedTargetDirFallback)' == 'true'" Importance="High" Text="Owned YFinance.NET server bundle copy used rooted TargetDir '$(TargetDir)' because OutDir was empty or relative ('$(OutDir)')." />
     <Copy Condition="'$(OwnedYFinanceServerCopyRoot)' != ''" SourceFiles="@(OwnedYFinanceServerOutputFiles)" DestinationFiles="@(OwnedYFinanceServerOutputFiles->'$(OwnedYFinanceServerCopyRoot)$(OwnedYFinanceServerBundleFolder)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
 
