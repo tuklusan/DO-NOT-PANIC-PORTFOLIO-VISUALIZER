@@ -1558,17 +1558,21 @@
       "priority": 1,
       "area": "finance_news_resilience",
       "title": "Add backoff and bounded external-call behavior to FinanceNewsService",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_full_rc_review_2026_06_05",
       "evidence": [
         "High H-6 from DeepSeek full RC review: summarized-news retry loop lacks backoff and broader call limits.",
-        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md",
+        "Resolved on 2026-06-05 by adding a bounded summarized-news external-call budget, retry backoff tracing, retry handling for transient HTTP and JSON failures, budget-aware cancellation handling, and non-sleeping automated tests for retry/backoff/fallback paths.",
+        "DeepSeek review gates completed with no blocking findings after corrections: build/deepseek-review/deepseek-review-20260605-173943.md and build/deepseek-review/deepseek-review-20260605-174346.md.",
+        "Validation after pre-test commits: dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors; dotnet test PortfolioScreensaver.sln -c Release --no-build passed 275/275."
       ],
       "notes": [
         "Add short exponential backoff between empty/failed DeepSeek response retries.",
         "Bound total external news refresh time and preserve RSS-only fallback behavior.",
         "Trace retry/backoff decisions without exposing secrets or prompt bodies.",
-        "Add tests for empty responses, transient failures, fallback cache, and no UI blocking."
+        "Add tests for empty responses, transient failures, fallback cache, and no UI blocking.",
+        "Implementation commits: f7cf9ef Bound finance news DeepSeek retries; 9521ebe Fix finance news retry test delay assertions."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
