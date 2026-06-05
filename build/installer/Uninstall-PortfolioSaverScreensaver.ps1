@@ -3,6 +3,7 @@ param()
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$migrationMarkerName = "DoNotPanicPortfolioVisualizer-migration-complete"
 
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -24,11 +25,23 @@ function Start-ElevatedUninstall {
     Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList $arguments | Out-Null
 }
 
+function Get-NativeSystemDirectory {
+    $system32Path = Join-Path $env:WINDIR "System32"
+    $sysnativePath = Join-Path $env:WINDIR "Sysnative"
+
+    if (-not [Environment]::Is64BitProcess -and [Environment]::Is64BitOperatingSystem -and (Test-Path $sysnativePath)) {
+        return $sysnativePath
+    }
+
+    return $system32Path
+}
+
 function Stop-PortfolioSaverProcesses {
+    $installRoot = Get-NativeSystemDirectory
     $installedExecutables = @(
-        (Join-Path $env:WINDIR "System32\PortfolioSaver.Screensaver.scr"),
-        (Join-Path $env:WINDIR "System32\PortfolioSaver.Config.exe"),
-        (Join-Path $env:WINDIR "System32\PortfolioSaver.Desktop.exe")
+        (Join-Path $installRoot "PortfolioSaver.Screensaver.scr"),
+        (Join-Path $installRoot "PortfolioSaver.Config.exe"),
+        (Join-Path $installRoot "PortfolioSaver.Desktop.exe")
     )
 
     Get-Process PortfolioSaver.Screensaver,PortfolioSaver.Config,PortfolioSaver.Desktop -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -44,30 +57,155 @@ function Stop-PortfolioSaverProcesses {
     Start-Sleep -Seconds 2
 }
 
+function Convert-ManifestPathToNativePath {
+    param([Parameter(Mandatory = $true)][string]$ManifestPath)
+
+    if (-not [System.IO.Path]::IsPathRooted($ManifestPath)) {
+        throw "Install manifest contains a relative path, which cannot be safely removed: $ManifestPath"
+    }
+
+    try {
+        $displaySystem32 = [System.IO.Path]::GetFullPath((Join-Path $env:WINDIR "System32")).TrimEnd('\')
+        $sysnativeSystem32 = [System.IO.Path]::GetFullPath((Join-Path $env:WINDIR "Sysnative")).TrimEnd('\')
+        $nativeSystemDirectory = [System.IO.Path]::GetFullPath((Get-NativeSystemDirectory)).TrimEnd('\')
+        $fullPath = [System.IO.Path]::GetFullPath($ManifestPath)
+    }
+    catch {
+        throw "Install manifest contains an invalid path, which cannot be safely removed: ${ManifestPath}: $($_.Exception.Message)"
+    }
+
+    $displayPrefix = $displaySystem32 + [System.IO.Path]::DirectorySeparatorChar
+    $sysnativePrefix = $sysnativeSystem32 + [System.IO.Path]::DirectorySeparatorChar
+
+    if ($fullPath.StartsWith($sysnativePrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return Join-Path $nativeSystemDirectory $fullPath.Substring($sysnativePrefix.Length)
+    }
+
+    if (-not $displaySystem32.Equals($nativeSystemDirectory, [System.StringComparison]::OrdinalIgnoreCase)) {
+        if ($fullPath.StartsWith($displayPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return Join-Path $nativeSystemDirectory $fullPath.Substring($displayPrefix.Length)
+        }
+    }
+
+    return $ManifestPath
+}
+
+function Test-IsPathUnderRoot {
+    param(
+        [Parameter(Mandatory = $true)][string]$CandidatePath,
+        [Parameter(Mandatory = $true)][string]$RootPath
+    )
+
+    $candidateFullPath = [System.IO.Path]::GetFullPath($CandidatePath)
+    $rootFullPath = [System.IO.Path]::GetFullPath($RootPath).TrimEnd('\', '/')
+    $rootPrefix = $rootFullPath + [System.IO.Path]::DirectorySeparatorChar
+
+    return $candidateFullPath.Equals($rootFullPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $candidateFullPath.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Test-IsOwnedInstallPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$CandidatePath,
+        [Parameter(Mandatory = $true)][string[]]$AllowedRoots
+    )
+
+    foreach ($allowedRoot in $AllowedRoots) {
+        if (Test-IsPathUnderRoot -CandidatePath $CandidatePath -RootPath $allowedRoot) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Test-IsOwnedRootPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$CandidatePath,
+        [Parameter(Mandatory = $true)][string[]]$AllowedRoots
+    )
+
+    $candidateFullPath = [System.IO.Path]::GetFullPath($CandidatePath).TrimEnd('\', '/')
+    foreach ($allowedRoot in $AllowedRoots) {
+        $allowedFullPath = [System.IO.Path]::GetFullPath($allowedRoot).TrimEnd('\', '/')
+        if ($candidateFullPath.Equals($allowedFullPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Remove-ManagedDirectory {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not (Test-Path $Path)) {
+        return
+    }
+
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    if ($null -eq $item) {
+        return
+    }
+
+    if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+        Write-Warning "Skipping managed directory reparse point during uninstall: $Path"
+        return
+    }
+
+    Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction SilentlyContinue
+    if (Test-Path $Path) {
+        Write-Host "Managed directory is still present after uninstall attempt: $Path"
+    }
+}
+
 if (-not (Test-IsAdministrator)) {
     Write-Host "Requesting administrator rights to uninstall the screensaver..."
     Start-ElevatedUninstall
     exit 0
 }
 
-$stateRoot = Join-Path $env:ProgramData "PortfolioSaverScreensaver"
+$stateRoot = Join-Path $env:ProgramData "DoNotPanicPortfolioVisualizer"
+$legacyStateRoot = Join-Path $env:ProgramData "PortfolioSaverScreensaver"
 $manifestPath = Join-Path $stateRoot "installed-files.txt"
-$uninstallRegistryKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\PortfolioSaverScreensaver"
-$localDataRoot = Join-Path $env:LOCALAPPDATA "PortfolioSaver"
-$managedBackgroundCache = Join-Path $env:LOCALAPPDATA "PortfolioSaver\Backgrounds\ExchangePhotoCache"
-$managedHistoryCache = Join-Path $env:LOCALAPPDATA "PortfolioSaver\Caches\History"
+$legacyManifestPath = Join-Path $legacyStateRoot "installed-files.txt"
+$uninstallRegistryKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\DoNotPanicPortfolioVisualizer"
+$legacyUninstallRegistryKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\PortfolioSaverScreensaver"
+$localDataRoot = Join-Path $env:LOCALAPPDATA "DoNotPanicPortfolioVisualizer"
+$legacyLocalDataRoot = Join-Path $env:LOCALAPPDATA "PortfolioSaver"
+$managedBackgroundCache = Join-Path $localDataRoot "Backgrounds\ExchangePhotoCache"
+$managedHistoryCache = Join-Path $localDataRoot "Caches\History"
+$managedTraceRoot = Join-Path $localDataRoot "Trace"
 $symbolProfileCache = Join-Path $localDataRoot "symbol-profiles.json"
 $providerBudgetLedger = Join-Path $localDataRoot "provider-query-usage.json"
+$ownedInstallRoots = @((Get-NativeSystemDirectory), $stateRoot, $legacyStateRoot)
 
 Stop-PortfolioSaverProcesses
 
-if (-not (Test-Path $manifestPath)) {
-    throw "Install manifest not found: $manifestPath"
+$manifestPaths = @($manifestPath, $legacyManifestPath) | Where-Object { Test-Path $_ }
+if (($manifestPaths | Measure-Object).Count -eq 0) {
+    throw "No install manifest found at '$manifestPath' or '$legacyManifestPath'. Uninstall cannot guarantee full payload removal."
 }
+$paths = $manifestPaths |
+    ForEach-Object {
+        Write-Host "Reading install manifest $_"
+        Get-Content -LiteralPath $_ -ErrorAction Stop
+    } |
+    Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+    ForEach-Object { Convert-ManifestPathToNativePath -ManifestPath $_ } |
+    Where-Object {
+        if (Test-IsOwnedInstallPath -CandidatePath $_ -AllowedRoots $ownedInstallRoots) {
+            return $true
+        }
 
-$paths = Get-Content -LiteralPath $manifestPath | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        Write-Warning "Skipping install manifest path outside owned roots: $_"
+        return $false
+    } |
+    Sort-Object -Unique
 $files = $paths | Where-Object { Test-Path $_ -PathType Leaf } | Sort-Object Length -Descending
-$directories = $paths | Where-Object { Test-Path $_ -PathType Container } | Sort-Object Length -Descending
+$directories = $paths | Where-Object { Test-Path $_ -PathType Container } | Sort-Object {
+    ([System.IO.Path]::GetFullPath($_).TrimEnd([char[]]@('\', '/')) -split '[\\/]').Count
+} -Descending
 
 foreach ($file in $files) {
     Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue
@@ -80,6 +218,11 @@ foreach ($file in $files) {
 }
 
 foreach ($directory in $directories) {
+    if (Test-IsOwnedRootPath -CandidatePath $directory -AllowedRoots $ownedInstallRoots) {
+        Write-Warning "Skipping manifest root directory entry during uninstall: $directory"
+        continue
+    }
+
     if ((Get-ChildItem -LiteralPath $directory -Force -ErrorAction SilentlyContinue | Measure-Object).Count -eq 0) {
         Remove-Item -LiteralPath $directory -Force -ErrorAction SilentlyContinue
         if (-not (Test-Path $directory)) {
@@ -91,7 +234,9 @@ foreach ($directory in $directories) {
     }
 }
 
-Remove-Item -LiteralPath $manifestPath -Force -ErrorAction SilentlyContinue
+foreach ($installManifestPath in @($manifestPath, $legacyManifestPath)) {
+    Remove-Item -LiteralPath $installManifestPath -Force -ErrorAction SilentlyContinue
+}
 if (Test-Path $stateRoot) {
     if ((Get-ChildItem -LiteralPath $stateRoot -Force -ErrorAction SilentlyContinue | Measure-Object).Count -eq 0) {
         Remove-Item -LiteralPath $stateRoot -Force -ErrorAction SilentlyContinue
@@ -102,8 +247,12 @@ if (Test-Path $uninstallRegistryKey) {
     Remove-Item -LiteralPath $uninstallRegistryKey -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+if (Test-Path $legacyUninstallRegistryKey) {
+    Remove-Item -LiteralPath $legacyUninstallRegistryKey -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 if (Test-Path $managedBackgroundCache) {
-    Remove-Item -LiteralPath $managedBackgroundCache -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-ManagedDirectory -Path $managedBackgroundCache
     if (-not (Test-Path $managedBackgroundCache)) {
         Write-Host "Removed managed background cache $managedBackgroundCache"
     }
@@ -113,7 +262,7 @@ if (Test-Path $managedBackgroundCache) {
 }
 
 if (Test-Path $managedHistoryCache) {
-    Remove-Item -LiteralPath $managedHistoryCache -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-ManagedDirectory -Path $managedHistoryCache
     if (-not (Test-Path $managedHistoryCache)) {
         Write-Host "Removed managed history cache $managedHistoryCache"
     }
@@ -134,10 +283,30 @@ foreach ($derivedCache in @($symbolProfileCache, $providerBudgetLedger)) {
     }
 }
 
+foreach ($managedDirectory in @($managedTraceRoot, (Join-Path $localDataRoot "Backgrounds"), (Join-Path $localDataRoot "Caches"))) {
+    Remove-ManagedDirectory -Path $managedDirectory
+}
+
+Remove-Item -LiteralPath (Join-Path $localDataRoot $migrationMarkerName) -Force -ErrorAction SilentlyContinue
+
+if (Test-Path $legacyLocalDataRoot) {
+    Write-Host "Legacy local data preserved for safety: $legacyLocalDataRoot"
+}
+
 if (Test-Path $localDataRoot) {
     $remaining = Get-ChildItem -LiteralPath $localDataRoot -Force -ErrorAction SilentlyContinue
     if (($remaining | Measure-Object).Count -eq 0) {
         Remove-Item -LiteralPath $localDataRoot -Force -ErrorAction SilentlyContinue
+    }
+}
+
+if (Test-Path $legacyStateRoot) {
+    $remainingLegacyState = Get-ChildItem -LiteralPath $legacyStateRoot -Force -ErrorAction SilentlyContinue
+    if (($remainingLegacyState | Measure-Object).Count -eq 0) {
+        Remove-Item -LiteralPath $legacyStateRoot -Force -ErrorAction SilentlyContinue
+    }
+    else {
+        Write-Host "Legacy installer state root preserved because it still contains untracked files: $legacyStateRoot"
     }
 }
 
