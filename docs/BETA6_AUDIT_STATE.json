@@ -1528,17 +1528,21 @@
       "priority": 1,
       "area": "provider_budget_ledger",
       "title": "Harden ProviderBudgetLedgerService locking and file I/O",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_full_rc_review_2026_06_05",
       "evidence": [
         "High H-5 from DeepSeek full RC review: ledger loading and writes have lock-scope/thread-safety concerns.",
-        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md",
+        "Resolved on 2026-06-05 by lazy-loading the provider budget ledger inside the service lock, centralizing guarded entry access, replacing direct File.WriteAllText persistence with same-directory temp-file write/flush/File.Move overwrite, and adding concurrent reservation persistence coverage.",
+        "DeepSeek review gates completed with no high-severity findings: build/deepseek-review/deepseek-review-20260605-172751.md and build/deepseek-review/deepseek-review-20260605-173101.md.",
+        "Validation after pre-test commits: dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors; dotnet test PortfolioScreensaver.sln -c Release --no-build passed 273/273."
       ],
       "notes": [
         "Audit constructor-time LoadLedger and move to first guarded access if needed.",
         "Minimize disk I/O inside critical sections or use an async lock/file write strategy.",
         "Ensure concurrent reservations cannot corrupt ledger state.",
-        "Add concurrency tests for multiple simultaneous reservations."
+        "Add concurrency tests for multiple simultaneous reservations.",
+        "Implementation commits: c549e6d Harden provider budget ledger persistence; 7b8ac6a Stabilize provider budget ledger concurrency test."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
