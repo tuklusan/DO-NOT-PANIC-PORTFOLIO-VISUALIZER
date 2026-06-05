@@ -1229,7 +1229,7 @@
       "priority": 0,
       "area": "yfinance_server_security",
       "title": "Default YFinance.NET server bind address to localhost",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_full_rc_review_2026_06_05",
       "evidence": [
         "Critical C-2 from DeepSeek full RC review: ICD/implementation direction exposes the YFinance.NET server on all network interfaces by default.",
@@ -1239,7 +1239,9 @@
         "Default owned-mode server binding must be loopback only, preferably 127.0.0.1.",
         "Add explicit standalone/remote configuration such as --bind-address or --allow-remote for future remote server use.",
         "Update docs/YFINANCE_NET_ICD.md and implementation docs to lock the secure default.",
-        "Add tests or startup trace evidence proving owned mode uses loopback."
+        "Add tests or startup trace evidence proving owned mode uses loopback.",
+        "Resolved on 2026-06-05 in implementation commit b8a9b6e by adding explicit YFinance.NET server bind-address parsing, defaulting to IPAddress.Loopback, requiring remote exposure to opt in with --bind-address or IPv4-only --allow-remote, rejecting non-loopback bind addresses in owned mode, tracing bind_address at startup/duplicate-reject paths, and documenting the BETA-6 runtime breaking change in docs/YFINANCE_NET_ICD.md.",
+        "Validation: DeepSeek pre-commit review completed with no blockers or significant findings; dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 245/245 tests including new bind-address behavior coverage."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
