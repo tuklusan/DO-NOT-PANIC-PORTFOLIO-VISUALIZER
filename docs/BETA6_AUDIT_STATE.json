@@ -1401,17 +1401,22 @@
       "priority": 1,
       "area": "vm_harness_credentials",
       "title": "Reduce plaintext autologon password exposure in VM harness registry setup",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_full_rc_review_2026_06_05",
       "evidence": [
-        "High H-1 from DeepSeek full RC review: Guest-ConfigureDesktopAutomation writes autologon password to Winlogon DefaultPassword.",
-        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+        "DeepSeek review gate passed with no high-severity blocking findings after VM harness credential hardening on 2026-06-05.",
+        "Committed and pushed implementation commit d5d594c before local validation runs.",
+        "dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
+        "dotnet test PortfolioScreensaver.sln -c Release --no-build passed 271/271 on 2026-06-05."
       ],
       "notes": [
         "Evaluate replacing Winlogon DefaultPassword with LSA secrets, scheduled-task credentials, SSH key flow, or other safer automation.",
         "If plaintext autologon remains necessary for local VM harnessing, add prominent warnings, scope limitations, and cleanup steps.",
         "Tighten ACLs where possible and document that this is local VM-only test infrastructure.",
-        "Add harness cleanup verification that credentials are removed/reset when the test lane is done."
+        "Add harness cleanup verification that credentials are removed/reset when the test lane is done.",
+        "Resolved by removing Winlogon DefaultPassword writes from Guest-ConfigureDesktopAutomation.ps1; the harness now requires the VM test user to already be logged into the interactive desktop session.",
+        "Added Guest-ClearDesktopAutomationCredentials.ps1 and Invoke-VmBuildTest cleanup verification to remove stale DefaultPassword/DefaultUserName values and force AutoAdminLogon=0.",
+        "Updated VM runbook to document the no-DefaultPassword policy and local interactive-session precondition."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
@@ -1427,17 +1432,22 @@
       "priority": 1,
       "area": "vm_harness_credentials",
       "title": "Remove or mitigate PsExec command-line password exposure",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_full_rc_review_2026_06_05",
       "evidence": [
-        "High H-2 from DeepSeek full RC review: Invoke-VmBuildTest passes password via PsExec -p command-line argument.",
-        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+        "DeepSeek review gate passed with no high-severity blocking findings after VM harness credential hardening on 2026-06-05.",
+        "Committed and pushed implementation commit d5d594c before local validation runs.",
+        "dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
+        "dotnet test PortfolioScreensaver.sln -c Release --no-build passed 271/271 on 2026-06-05."
       ],
       "notes": [
         "Replace PsExec password argument with a safer launch mechanism such as scheduled task, SSH key, temporary protected credential file, or agent-managed launch.",
         "If PsExec remains, document local-only risk and minimize command-line exposure duration.",
         "Add trace/log redaction for any credential-bearing command text.",
-        "Add validation that generated logs/artifacts do not contain VM passwords."
+        "Add validation that generated logs/artifacts do not contain VM passwords.",
+        "Resolved by removing PsExec from the active VM harness launch path and replacing it with an interactive one-shot scheduled task for the logged-in test user.",
+        "Added tests asserting no PsExec password argument, no remote password variable, no -Password argument in Invoke-VmBuildTest.ps1, and presence of scheduled-task launch plus credential cleanup.",
+        "Removed stale PsExec inventory from Guest-BootstrapVmRemoteTools.ps1 and updated the runbook to describe the Task Scheduler launch path."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
