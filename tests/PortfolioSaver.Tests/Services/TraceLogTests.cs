@@ -79,6 +79,36 @@ public sealed class TraceLogTests
         Assert.Contains("remaining=2", message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TraceLog_InfoState_RedactsSecretLikeStructuredFields()
+    {
+        MethodInfo formatter = typeof(TraceLog).GetMethod(
+            "BuildStructuredMessage",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("Could not find TraceLog.BuildStructuredMessage.");
+
+        string message = (string)(formatter.Invoke(
+            null,
+            [
+                "SecretTrace",
+                new[]
+                {
+                    new KeyValuePair<string, object?>("deepseek_api_key", "sk-live-secret"),
+                    new KeyValuePair<string, object?>("Authorization", "Bearer abc123"),
+                    new KeyValuePair<string, object?>("message", "token=abc123,def password:letmein safe=ok")
+                }
+            ]) ?? throw new InvalidOperationException("Structured message formatter returned null."));
+
+        Assert.Contains("deepseek_api_key=<redacted>", message, StringComparison.Ordinal);
+        Assert.Contains("Authorization=<redacted>", message, StringComparison.Ordinal);
+        Assert.Contains("token=<redacted>", message, StringComparison.Ordinal);
+        Assert.Contains("password:<redacted>", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("sk-live-secret", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("abc123", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("def", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("letmein", message, StringComparison.Ordinal);
+    }
+
     private static async Task<bool> WaitForTraceAsync(
         string traceFilePath,
         string traceIndexPath,

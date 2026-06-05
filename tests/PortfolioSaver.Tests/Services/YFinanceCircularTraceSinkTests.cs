@@ -1,4 +1,5 @@
 using System.Text;
+using System.Reflection;
 using YFinance.NET.Diagnostics;
 using Xunit;
 
@@ -45,6 +46,36 @@ public sealed class YFinanceCircularTraceSinkTests
         {
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", null);
         }
+    }
+
+    [Fact]
+    public void YFinanceCircularTraceSink_RedactsSecretLikeStructuredFields()
+    {
+        MethodInfo formatter = typeof(YFinanceCircularTraceSink).GetMethod(
+            "BuildStructuredMessage",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("Could not find YFinanceCircularTraceSink.BuildStructuredMessage.");
+
+        string message = (string)(formatter.Invoke(
+            null,
+            [
+                "SecretTrace",
+                new[]
+                {
+                    new KeyValuePair<string, object?>("launch_token", "owned-server-token"),
+                    new KeyValuePair<string, object?>("Authorization", "Bearer abc123"),
+                    new KeyValuePair<string, object?>("message", "api_key=abc123,def credential:letmein")
+                }
+            ]) ?? throw new InvalidOperationException("Structured message formatter returned null."));
+
+        Assert.Contains("launch_token=<redacted>", message, StringComparison.Ordinal);
+        Assert.Contains("Authorization=<redacted>", message, StringComparison.Ordinal);
+        Assert.Contains("api_key=<redacted>", message, StringComparison.Ordinal);
+        Assert.Contains("credential:<redacted>", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("owned-server-token", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("abc123", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("def", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("letmein", message, StringComparison.Ordinal);
     }
 
     private static async Task<bool> WaitForTraceAsync(

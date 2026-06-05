@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using PortfolioSaver.Shared.Diagnostics;
 using YFinance.NET.Storage;
 
 namespace YFinance.NET.Diagnostics;
@@ -68,9 +69,10 @@ public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
                 continue;
 
             builder.Append(" | ");
-            builder.Append(SanitizeKey(key));
+            string sanitizedKey = SanitizeKey(key);
+            builder.Append(sanitizedKey);
             builder.Append('=');
-            builder.Append(SanitizeValue(FormatFieldValue(value), MaxFieldValueLength));
+            builder.Append(SensitiveDataRedactor.IsSensitiveKey(sanitizedKey) ? SensitiveDataRedactor.RedactedValue : SanitizeValue(FormatFieldValue(value), MaxFieldValueLength));
         }
 
         return builder.ToString();
@@ -91,6 +93,7 @@ public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
             .Replace("\n", " ")
             .Replace('|', '/')
             .Trim();
+        sanitized = SensitiveDataRedactor.RedactSensitivePatterns(sanitized);
 
         if (sanitized.Length <= maxLength)
             return sanitized;

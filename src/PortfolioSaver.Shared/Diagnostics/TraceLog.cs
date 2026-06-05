@@ -112,9 +112,10 @@ public static class TraceLog
                 continue;
 
             builder.Append(" | ");
-            builder.Append(SanitizeKey(field.Key));
+            string sanitizedKey = SanitizeKey(field.Key);
+            builder.Append(sanitizedKey);
             builder.Append('=');
-            builder.Append(SanitizeValue(FormatFieldValue(field.Value), MaxFieldValueLength));
+            builder.Append(SensitiveDataRedactor.IsSensitiveKey(sanitizedKey) ? SensitiveDataRedactor.RedactedValue : SanitizeValue(FormatFieldValue(field.Value), MaxFieldValueLength));
         }
 
         return builder.ToString();
@@ -143,6 +144,7 @@ public static class TraceLog
             .Replace("\n", " ")
             .Replace('|', '/')
             .Trim();
+        sanitized = SensitiveDataRedactor.RedactSensitivePatterns(sanitized);
 
         if (sanitized.Length <= maxLength)
             return sanitized;

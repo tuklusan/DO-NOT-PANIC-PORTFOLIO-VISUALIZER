@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <Compile Include="..\..\src\PortfolioSaver.Shared\Helpers\AppDataRootResolver.cs" Link="Shared\AppDataRootResolver.cs" />
+    <Compile Include="..\..\src\PortfolioSaver.Shared\Diagnostics\SensitiveDataRedactor.cs" Link="Shared\SensitiveDataRedactor.cs" />
   </ItemGroup>
 
 </Project>
