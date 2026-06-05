@@ -99,6 +99,8 @@ public sealed class Nb040BehaviorTests
     [Fact]
     public async Task YFinanceRuntimeClientFactory_AllowsConcurrentClientWork()
     {
+        // This test verifies factory scheduling only; the client argument is intentionally unused.
+        using IDisposable serverBypass = YFinanceRuntimeClientFactory.SuppressServerStartupForTests();
         int concurrent = 0;
         int maxConcurrent = 0;
 

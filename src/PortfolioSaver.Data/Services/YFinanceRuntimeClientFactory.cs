@@ -16,6 +16,7 @@ public static class YFinanceRuntimeClientFactory
     private static YFinanceServerClient? _sharedClient;
     private static bool _helloCompleted;
     private static bool _serverReadyEnsured;
+    private static readonly AsyncLocal<int> ServerStartupSuppressedForTests = new();
 
     public static YFinanceServerClient GetSharedClient()
     {
@@ -32,6 +33,9 @@ public static class YFinanceRuntimeClientFactory
 
     public static async Task EnsureServerReadyAsync(string clientType, string clientVersion, CancellationToken cancellationToken = default)
     {
+        if (ServerStartupSuppressedForTests.Value > 0)
+            return;
+
         if (!_serverReadyEnsured)
         {
             await YFinanceServerProcessManager.EnsureOwnedServerAsync(clientType, cancellationToken).ConfigureAwait(false);
@@ -101,6 +105,16 @@ public static class YFinanceRuntimeClientFactory
     public static string CreateOperationId(string lane)
         => $"{lane}-{Interlocked.Increment(ref _operationSequence):D8}";
 
+    /// <summary>
+    /// Suppresses owned-server startup for tests that exercise factory scheduling without using the client.
+    /// </summary>
+    /// <remarks>The returned scope must be disposed with a using statement.</remarks>
+    internal static IDisposable SuppressServerStartupForTests()
+    {
+        ServerStartupSuppressedForTests.Value++;
+        return new TestServerStartupSuppressionScope();
+    }
+
     private static string BuildMachineHash()
     {
         string raw = $"{Environment.MachineName}|{Environment.UserName}|{Environment.OSVersion}|{Environment.ProcessorCount}";
@@ -123,6 +137,17 @@ public static class YFinanceRuntimeClientFactory
             _sharedClient = null;
             _helloCompleted = false;
             _serverReadyEnsured = false;
+        }
+    }
+
+    private sealed class TestServerStartupSuppressionScope : IDisposable
+    {
+        private int _disposed;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+                ServerStartupSuppressedForTests.Value--;
         }
     }
 }

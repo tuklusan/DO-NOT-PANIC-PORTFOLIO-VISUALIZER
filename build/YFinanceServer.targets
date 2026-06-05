@@ -3,8 +3,8 @@
     <OwnedYFinanceServerProject>$(MSBuildThisFileDirectory)..\YFinance.net\YFinance.NET.Server\YFinance.NET.Server.csproj</OwnedYFinanceServerProject>
     <OwnedYFinanceServerOutput>$(MSBuildThisFileDirectory)..\YFinance.net\YFinance.NET.Server\bin\$(Configuration)\net10.0\</OwnedYFinanceServerOutput>
     <OwnedYFinanceServerBundleFolder>YFinanceServer\</OwnedYFinanceServerBundleFolder>
-    <OwnedYFinanceServerOutDir>$([MSBuild]::EnsureTrailingSlash('$(OutDir)'))</OwnedYFinanceServerOutDir>
-    <OwnedYFinanceServerPublishDir>$([MSBuild]::EnsureTrailingSlash('$(PublishDir)'))</OwnedYFinanceServerPublishDir>
+    <OwnedYFinanceServerPublishDir Condition="'$(PublishDir)' != '' and $([System.IO.Path]::IsPathRooted('$(PublishDir)'))">$([MSBuild]::EnsureTrailingSlash('$(PublishDir)'))</OwnedYFinanceServerPublishDir>
+    <OwnedYFinanceServerPublishDir Condition="'$(OwnedYFinanceServerPublishDir)' == '' and '$(PublishDir)' != ''">$([MSBuild]::EnsureTrailingSlash('$(MSBuildProjectDirectory)\$(PublishDir)'))</OwnedYFinanceServerPublishDir>
   </PropertyGroup>
 
   <Target Name="BuildOwnedYFinanceServer" BeforeTargets="Build" Condition="'$(DesignTimeBuild)' != 'true' and Exists('$(OwnedYFinanceServerProject)')">
@@ -20,16 +20,27 @@
   </Target>
 
   <Target Name="CopyOwnedYFinanceServerToOutput" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true' and Exists('$(OwnedYFinanceServerOutput)')">
+    <PropertyGroup>
+      <OwnedYFinanceServerCopyRoot Condition="'$(OutDir)' != '' and $([System.IO.Path]::IsPathRooted('$(OutDir)'))">$([MSBuild]::EnsureTrailingSlash('$(OutDir)'))</OwnedYFinanceServerCopyRoot>
+      <OwnedYFinanceServerCopyRoot Condition="'$(OwnedYFinanceServerCopyRoot)' == '' and '$(TargetDir)' != '' and $([System.IO.Path]::IsPathRooted('$(TargetDir)'))">$([MSBuild]::EnsureTrailingSlash('$(TargetDir)'))</OwnedYFinanceServerCopyRoot>
+      <OwnedYFinanceServerUsedTargetDirFallback Condition="'$(OwnedYFinanceServerCopyRoot)' != '' and '$(OutDir)' == ''">true</OwnedYFinanceServerUsedTargetDirFallback>
+      <OwnedYFinanceServerUsedTargetDirFallback Condition="'$(OwnedYFinanceServerCopyRoot)' != '' and '$(OutDir)' != '' and !$([System.IO.Path]::IsPathRooted('$(OutDir)'))">true</OwnedYFinanceServerUsedTargetDirFallback>
+    </PropertyGroup>
     <ItemGroup>
       <OwnedYFinanceServerOutputFiles Include="$(OwnedYFinanceServerOutput)**\*" />
     </ItemGroup>
-    <Copy SourceFiles="@(OwnedYFinanceServerOutputFiles)" DestinationFiles="@(OwnedYFinanceServerOutputFiles->'$(OwnedYFinanceServerOutDir)$(OwnedYFinanceServerBundleFolder)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Warning Condition="'$(OwnedYFinanceServerCopyRoot)' == ''" Text="Owned YFinance.NET server bundle was not copied because neither OutDir nor TargetDir resolved to a safe output directory." />
+    <Warning Condition="'$(OwnedYFinanceServerUsedTargetDirFallback)' == 'true'" Text="Owned YFinance.NET server bundle copy used rooted TargetDir '$(TargetDir)' because OutDir was empty or relative ('$(OutDir)')." />
+    <Copy Condition="'$(OwnedYFinanceServerCopyRoot)' != ''" SourceFiles="@(OwnedYFinanceServerOutputFiles)" DestinationFiles="@(OwnedYFinanceServerOutputFiles->'$(OwnedYFinanceServerCopyRoot)$(OwnedYFinanceServerBundleFolder)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
 
   <Target Name="CopyOwnedYFinanceServerToPublish" AfterTargets="Publish" Condition="'$(PublishDir)' != '' and Exists('$(OwnedYFinanceServerOutput)')">
+    <PropertyGroup>
+      <OwnedYFinanceServerPublishRoot>$(OwnedYFinanceServerPublishDir)</OwnedYFinanceServerPublishRoot>
+    </PropertyGroup>
     <ItemGroup>
       <OwnedYFinanceServerPublishFiles Include="$(OwnedYFinanceServerOutput)**\*" />
     </ItemGroup>
-    <Copy SourceFiles="@(OwnedYFinanceServerPublishFiles)" DestinationFiles="@(OwnedYFinanceServerPublishFiles->'$(OwnedYFinanceServerPublishDir)$(OwnedYFinanceServerBundleFolder)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(OwnedYFinanceServerPublishFiles)" DestinationFiles="@(OwnedYFinanceServerPublishFiles->'$(OwnedYFinanceServerPublishRoot)$(OwnedYFinanceServerBundleFolder)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
 </Project>
