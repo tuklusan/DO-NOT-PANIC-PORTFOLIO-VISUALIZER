@@ -8,8 +8,27 @@ namespace PortfolioSaver.Data.Providers;
 
 public sealed class YahooFinanceQuoteProvider : IQuoteProvider
 {
+    private readonly Func<IReadOnlyList<string>, string, CancellationToken, Task<QuotesResponseDto>> _lookupQuotesAsync;
+    private readonly bool _throwOnPartial;
+
     public YahooFinanceQuoteProvider(HttpClient httpClient)
+        : this(httpClient, throwOnPartial: true)
     {
+    }
+
+    public YahooFinanceQuoteProvider(HttpClient httpClient, bool throwOnPartial)
+    {
+        // The app now talks to YFinance.NET through the owned runtime client; HttpClient remains in the signature for legacy call-site compatibility.
+        _lookupQuotesAsync = LookupQuotesAsync;
+        _throwOnPartial = throwOnPartial;
+    }
+
+    internal YahooFinanceQuoteProvider(
+        Func<IReadOnlyList<string>, string, CancellationToken, Task<QuotesResponseDto>> lookupQuotesAsync,
+        bool throwOnPartial = false)
+    {
+        _lookupQuotesAsync = lookupQuotesAsync;
+        _throwOnPartial = throwOnPartial;
     }
 
     public async Task<IReadOnlyList<QuoteSnapshot>> GetQuotesAsync(IEnumerable<string> symbols, CancellationToken cancellationToken = default)
@@ -24,10 +43,7 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
             return [];
 
         string operationId = YFinanceRuntimeClientFactory.CreateOperationId("quotes");
-        Dictionary<string, string> requestByOriginal = requestedSymbols.ToDictionary(
-            symbol => symbol,
-            YFinanceSymbolMapper.ToRequestSymbol,
-            StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, string> requestByOriginal = BuildRequestMap(requestedSymbols);
         TraceLog.InfoState(
             "YFinanceUiBridge",
             "QuoteRequestStart",
@@ -36,11 +52,9 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
         QuotesResponseDto resolved;
         try
         {
-            resolved = await YFinanceRuntimeClientFactory
-                .RunSerializedAsync(
-                    "quotes",
+            resolved = await _lookupQuotesAsync(
+                    requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                     operationId,
-                    (client, token) => client.GetQuotesAsync(requestByOriginal.Values.Distinct(StringComparer.OrdinalIgnoreCase).ToList(), token),
                     cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -62,6 +76,48 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
                 new("missing_count", resolved.MissingSymbols.Count),
                 new("response_symbols", resolved.Quotes.Select(static quote => quote.Symbol).ToList())
             ]);
+
+        IReadOnlyList<QuoteSnapshot> results = MapQuotesResponse(requestedSymbols, requestByOriginal, resolved, operationId);
+
+        if (results.Count == 0)
+            throw new InvalidOperationException("YFinance.NET server returned no matching quotes.");
+
+        List<string> unresolved = requestedSymbols
+            .Where(symbol => results.All(quote => !string.Equals(quote.Symbol, symbol, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+        if (_throwOnPartial && unresolved.Count > 0)
+            throw new PartialQuoteResultException(
+                $"YFinance.NET server returned partial quotes. Missing: {string.Join(", ", unresolved)}",
+                results);
+
+        return results;
+    }
+
+    private static async Task<QuotesResponseDto> LookupQuotesAsync(
+        IReadOnlyList<string> requestSymbols,
+        string operationId,
+        CancellationToken cancellationToken)
+        => await YFinanceRuntimeClientFactory
+            .RunSerializedAsync(
+                "quotes",
+                operationId,
+                (client, token) => client.GetQuotesAsync(requestSymbols, token),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    internal static IReadOnlyList<QuoteSnapshot> MapQuotesResponse(
+        IReadOnlyList<string> requestedSymbols,
+        QuotesResponseDto resolved,
+        string operationId)
+        => MapQuotesResponse(requestedSymbols, BuildRequestMap(requestedSymbols), resolved, operationId);
+
+    private static IReadOnlyList<QuoteSnapshot> MapQuotesResponse(
+        IReadOnlyList<string> requestedSymbols,
+        IReadOnlyDictionary<string, string> requestByOriginal,
+        QuotesResponseDto resolved,
+        string operationId)
+    {
+        ArgumentNullException.ThrowIfNull(resolved);
 
         Dictionary<string, QuoteSnapshot> results = new(StringComparer.OrdinalIgnoreCase);
         Dictionary<string, QuoteDto> byResponseKey = new(StringComparer.OrdinalIgnoreCase);
@@ -116,21 +172,21 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
             "YFinanceNetQuoteProvider",
             "QuoteBatchMapped",
             [new("operation_id", operationId), new("requested_count", requestedSymbols.Count), new("resolved_count", results.Count), new("symbols", requestedSymbols)]);
-        TraceLog.InfoState(
-            "YFinanceUiBridge",
-            "QuoteRequestComplete",
-            [new("operation_id", operationId), new("requested_count", requestedSymbols.Count), new("resolved_count", results.Count), new("resolved_symbols", results.Keys.ToList())]);
-
-        if (results.Count == 0)
-            throw new InvalidOperationException("YFinance.NET server returned no matching quotes.");
-
         List<string> unresolved = requestedSymbols
             .Where(symbol => !results.ContainsKey(symbol))
             .ToList();
         if (unresolved.Count > 0 && results.Count > 0)
-            throw new PartialQuoteResultException(
-                $"YFinance.NET server returned partial quotes. Missing: {string.Join(", ", unresolved)}",
-                requestedSymbols.Where(results.ContainsKey).Select(symbol => results[symbol]).ToList());
+        {
+            TraceLog.WarnState(
+                "YFinanceNetQuoteProvider",
+                "QuoteBatchPartial",
+                [new("operation_id", operationId), new("requested_count", requestedSymbols.Count), new("resolved_count", results.Count), new("missing_symbols", unresolved)]);
+        }
+
+        TraceLog.InfoState(
+            "YFinanceUiBridge",
+            "QuoteRequestComplete",
+            [new("operation_id", operationId), new("requested_count", requestedSymbols.Count), new("resolved_count", results.Count), new("resolved_symbols", results.Keys.ToList())]);
 
         return requestedSymbols.Where(results.ContainsKey).Select(symbol => results[symbol]).ToList();
     }
@@ -171,6 +227,12 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
             IsStale = quote.Cache.Stale
         };
     }
+
+    private static Dictionary<string, string> BuildRequestMap(IEnumerable<string> requestedSymbols)
+        => requestedSymbols.Distinct(StringComparer.OrdinalIgnoreCase).ToDictionary(
+            symbol => symbol,
+            YFinanceSymbolMapper.ToRequestSymbol,
+            StringComparer.OrdinalIgnoreCase);
 }
 
 public sealed class PartialQuoteResultException : HttpRequestException

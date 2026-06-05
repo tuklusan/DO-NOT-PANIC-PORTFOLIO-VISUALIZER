@@ -121,7 +121,7 @@ public partial class ScreensaverSceneControl : UserControl
     public ScreensaverSceneControl()
     {
         InitializeComponent();
-        _runtimeQuoteProvider = new YahooFinanceQuoteProvider(_runtimeQuoteHttpClient);
+        _runtimeQuoteProvider = new YahooFinanceQuoteProvider(_runtimeQuoteHttpClient, throwOnPartial: false);
         if (VersionWatermark is not null)
         {
             VersionWatermark.Text = PortfolioVersion.SemanticVersion;

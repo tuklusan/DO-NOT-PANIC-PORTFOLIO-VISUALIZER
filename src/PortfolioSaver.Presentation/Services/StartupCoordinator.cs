@@ -51,7 +51,7 @@ public sealed class StartupCoordinator
         ProviderBudgetLedgerService? providerBudgetLedgerService = null)
     {
         _isNetworkAvailable = networkAvailability ?? _networkAvailabilityService.IsNetworkAvailable;
-        _createYahooProvider = yahooProviderFactory ?? (client => new YahooFinanceQuoteProvider(client));
+        _createYahooProvider = yahooProviderFactory ?? (client => new YahooFinanceQuoteProvider(client, throwOnPartial: false));
         _exchangePhotoCacheService.BackgroundCacheWarmupCompleted += () => BackgroundCacheWarmupCompleted?.Invoke();
     }
 
