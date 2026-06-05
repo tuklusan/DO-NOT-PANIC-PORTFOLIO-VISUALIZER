@@ -276,8 +276,9 @@ public sealed class Nb040BehaviorTests
             };
             DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
 
+            // Use one timestamp so task scheduling order cannot turn this lock/persistence test into a reuse-interval test.
             bool[] reservations = await Task.WhenAll(Enumerable.Range(0, 8)
-                .Select(index => Task.Run(() => service.TryReserve(policy, 1, TimeSpan.Zero, nowUtc.AddSeconds(index)))));
+                .Select(_ => Task.Run(() => service.TryReserve(policy, 1, TimeSpan.Zero, nowUtc))));
 
             Assert.Equal(8, reservations.Count(result => result));
             string json = File.ReadAllText(ledgerPath);
