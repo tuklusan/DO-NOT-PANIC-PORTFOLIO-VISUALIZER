@@ -36,7 +36,7 @@ public static class YFinanceServerProcessManager
             }
 
             string token = $"{clientType}-{Environment.ProcessId}-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}";
-            (string fileName, string arguments) = ResolveLaunchCommand(token);
+            (string fileName, string arguments, string traceArguments) = ResolveLaunchCommand(token);
             ProcessStartInfo startInfo = new()
             {
                 FileName = fileName,
@@ -46,8 +46,21 @@ public static class YFinanceServerProcessManager
                 WindowStyle = ProcessWindowStyle.Hidden
             };
 
-            TraceLog.InfoState("YFinanceServerManager", "ServerLaunchStart", [new("client_type", clientType), new("file_name", fileName), new("arguments", arguments)]);
-            _ownedProcess = Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start YFinance.NET server process.");
+            TraceLog.InfoState("YFinanceServerManager", "ServerLaunchStart", [new("client_type", clientType), new("file_name", fileName), new("arguments", traceArguments)]);
+            try
+            {
+                _ownedProcess = Process.Start(startInfo) ?? throw new InvalidOperationException("Process.Start returned null.");
+            }
+            catch (Exception ex)
+            {
+                TraceLog.ErrorState(
+                    "YFinanceServerManager",
+                    "ServerLaunchFailed",
+                    [new("client_type", clientType), new("file_name", fileName), new("arguments", traceArguments)],
+                    ex);
+                throw new InvalidOperationException("Failed to start YFinance.NET server process.", ex);
+            }
+
             _launchToken = token;
 
             for (int attempt = 0; attempt < 30; attempt++)
@@ -116,67 +129,57 @@ public static class YFinanceServerProcessManager
             await client.ConnectAsync("127.0.0.1", 14870, timeoutCts.Token).ConfigureAwait(false);
             return true;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch
         {
             return false;
         }
     }
 
-    private static (string FileName, string Arguments) ResolveLaunchCommand(string token)
+    internal static (string FileName, string Arguments, string TraceArguments) ResolveLaunchCommand(string token, string? baseDirectoryOverride = null)
     {
-        string baseDirectory = AppContext.BaseDirectory;
+        string baseDirectory = baseDirectoryOverride ?? AppContext.BaseDirectory;
         string[] exeCandidates =
         [
-            Path.Combine(baseDirectory, "YFinance.NET.Server.exe"),
-            Path.Combine(baseDirectory, "YFinance.NET.Server", "YFinance.NET.Server.exe"),
-            Path.GetFullPath(Path.Combine(baseDirectory, "..", "server", "YFinance.NET.Server.exe")),
-            Path.Combine(GetRepoRoot(), "YFinance.net", "YFinance.NET.Server", "bin", "Release", "net10.0", "YFinance.NET.Server.exe"),
-            Path.Combine(GetRepoRoot(), "YFinance.net", "YFinance.NET.Server", "bin", "Debug", "net10.0", "YFinance.NET.Server.exe")
+            Path.Combine(baseDirectory, "YFinanceServer", "YFinance.NET.Server.exe"),
+            Path.GetFullPath(Path.Combine(baseDirectory, "..", "server", "YFinance.NET.Server.exe"))
         ];
 
         foreach (string candidate in exeCandidates)
         {
             if (File.Exists(candidate))
-                return (candidate, BuildArguments(token, isDll: false));
+                return BuildLaunchCommandForPath(candidate, token);
         }
 
         string[] dllCandidates =
         [
-            Path.Combine(baseDirectory, "YFinance.NET.Server.dll"),
-            Path.Combine(baseDirectory, "YFinance.NET.Server", "YFinance.NET.Server.dll"),
-            Path.GetFullPath(Path.Combine(baseDirectory, "..", "server", "YFinance.NET.Server.dll")),
-            Path.Combine(GetRepoRoot(), "YFinance.net", "YFinance.NET.Server", "bin", "Release", "net10.0", "YFinance.NET.Server.dll"),
-            Path.Combine(GetRepoRoot(), "YFinance.net", "YFinance.NET.Server", "bin", "Debug", "net10.0", "YFinance.NET.Server.dll")
+            Path.Combine(baseDirectory, "YFinanceServer", "YFinance.NET.Server.dll"),
+            Path.GetFullPath(Path.Combine(baseDirectory, "..", "server", "YFinance.NET.Server.dll"))
         ];
 
         foreach (string candidate in dllCandidates)
         {
             if (File.Exists(candidate))
-                return ("dotnet", $"\"{candidate}\" {BuildArguments(token, isDll: true)}");
+                return BuildLaunchCommandForPath(candidate, token);
         }
 
-        throw new FileNotFoundException("Could not locate YFinance.NET.Server executable or DLL.");
+        throw new FileNotFoundException("Could not locate YFinance.NET.Server executable or DLL. Expected the owned server bundle under the application YFinanceServer folder or the publish sibling server folder.");
     }
 
-    private static string BuildArguments(string token, bool isDll)
+    private static (string FileName, string Arguments, string TraceArguments) BuildLaunchCommandForPath(string path, string token)
+    {
+        bool isDll = string.Equals(Path.GetExtension(path), ".dll", StringComparison.OrdinalIgnoreCase);
+        string arguments = BuildArguments(token);
+        string traceArguments = BuildArguments("<redacted>");
+        return isDll
+            ? ("dotnet", $"\"{path}\" {arguments}", $"\"{path}\" {traceArguments}")
+            : (path, arguments, traceArguments);
+    }
+
+    private static string BuildArguments(string token)
         => $"--port 14870 --owned --owner-pid {Environment.ProcessId} --max-clients 1024 --launch-token \"{token}\"";
 
-    private static string GetRepoRoot()
-    {
-        string? current = Path.GetFullPath(AppContext.BaseDirectory);
-        for (int i = 0; i < 8 && !string.IsNullOrWhiteSpace(current); i++)
-        {
-            if (File.Exists(Path.Combine(current, "PortfolioScreensaver.sln")))
-                return current;
-
-            string siblingRepo = Path.Combine(current, "repo");
-            if (File.Exists(Path.Combine(siblingRepo, "PortfolioScreensaver.sln")))
-                return siblingRepo;
-
-            DirectoryInfo? parent = Directory.GetParent(current);
-            current = parent?.FullName;
-        }
-
-        return Directory.GetCurrentDirectory();
-    }
 }

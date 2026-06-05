@@ -22,5 +22,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+  <Import Project="../../build/YFinanceServer.targets" />
 </Project>
 

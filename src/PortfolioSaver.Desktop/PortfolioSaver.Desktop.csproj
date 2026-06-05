@@ -24,4 +24,5 @@
     <Content Include="..\PortfolioSaver.Screensaver\Assets\ExchangeBackgrounds\shanghai-skyline-public-domain.jpg" Link="Assets\ExchangeBackgrounds\shanghai-skyline-public-domain.jpg" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\PortfolioSaver.Screensaver\Assets\ExchangeBackgrounds\exchange-photo-attribution.txt" Link="Assets\ExchangeBackgrounds\exchange-photo-attribution.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <Import Project="../../build/YFinanceServer.targets" />
 </Project>

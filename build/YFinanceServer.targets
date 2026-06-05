@@ -1,0 +1,35 @@
+<Project>
+  <PropertyGroup>
+    <OwnedYFinanceServerProject>$(MSBuildThisFileDirectory)..\YFinance.net\YFinance.NET.Server\YFinance.NET.Server.csproj</OwnedYFinanceServerProject>
+    <OwnedYFinanceServerOutput>$(MSBuildThisFileDirectory)..\YFinance.net\YFinance.NET.Server\bin\$(Configuration)\net10.0\</OwnedYFinanceServerOutput>
+    <OwnedYFinanceServerBundleFolder>YFinanceServer\</OwnedYFinanceServerBundleFolder>
+    <OwnedYFinanceServerOutDir>$([MSBuild]::EnsureTrailingSlash('$(OutDir)'))</OwnedYFinanceServerOutDir>
+    <OwnedYFinanceServerPublishDir>$([MSBuild]::EnsureTrailingSlash('$(PublishDir)'))</OwnedYFinanceServerPublishDir>
+  </PropertyGroup>
+
+  <Target Name="BuildOwnedYFinanceServer" BeforeTargets="Build" Condition="'$(DesignTimeBuild)' != 'true' and Exists('$(OwnedYFinanceServerProject)')">
+    <MSBuild Projects="$(OwnedYFinanceServerProject)" Targets="Build" Properties="Configuration=$(Configuration)" />
+  </Target>
+
+  <Target Name="WarnWhenOwnedYFinanceServerProjectMissing" BeforeTargets="Build" Condition="'$(DesignTimeBuild)' != 'true' and !Exists('$(OwnedYFinanceServerProject)')">
+    <Warning Text="Owned YFinance.NET server project was not found at $(OwnedYFinanceServerProject). The app build will continue, but owned-mode startup requires a YFinanceServer bundle under the application output folder or a sibling publish server folder." />
+  </Target>
+
+  <Target Name="WarnWhenOwnedYFinanceServerOutputMissing" BeforeTargets="CopyOwnedYFinanceServerToOutput" Condition="'$(DesignTimeBuild)' != 'true' and Exists('$(OwnedYFinanceServerProject)') and !Exists('$(OwnedYFinanceServerOutput)')">
+    <Warning Text="Owned YFinance.NET server output folder was not found at $(OwnedYFinanceServerOutput). The app build will continue, but owned-mode startup requires a YFinanceServer bundle under the application output folder or a sibling publish server folder." />
+  </Target>
+
+  <Target Name="CopyOwnedYFinanceServerToOutput" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true' and Exists('$(OwnedYFinanceServerOutput)')">
+    <ItemGroup>
+      <OwnedYFinanceServerOutputFiles Include="$(OwnedYFinanceServerOutput)**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(OwnedYFinanceServerOutputFiles)" DestinationFiles="@(OwnedYFinanceServerOutputFiles->'$(OwnedYFinanceServerOutDir)$(OwnedYFinanceServerBundleFolder)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyOwnedYFinanceServerToPublish" AfterTargets="Publish" Condition="'$(PublishDir)' != '' and Exists('$(OwnedYFinanceServerOutput)')">
+    <ItemGroup>
+      <OwnedYFinanceServerPublishFiles Include="$(OwnedYFinanceServerOutput)**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(OwnedYFinanceServerPublishFiles)" DestinationFiles="@(OwnedYFinanceServerPublishFiles->'$(OwnedYFinanceServerPublishDir)$(OwnedYFinanceServerBundleFolder)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

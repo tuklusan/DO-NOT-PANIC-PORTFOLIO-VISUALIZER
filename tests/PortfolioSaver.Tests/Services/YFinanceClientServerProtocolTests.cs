@@ -2,6 +2,7 @@ using System.IO;
 using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
+using PortfolioSaver.Shared.Services;
 using YFinance.NET.Client;
 using YFinance.NET.Protocol.Dtos;
 using YFinance.NET.Protocol.Integrity;
@@ -186,8 +187,119 @@ public sealed class YFinanceClientServerProtocolTests
         Assert.Contains("$serverOut = Join-Path $publishRoot \"server\"", publishScript, StringComparison.Ordinal);
         Assert.Contains("$serverProject = \".\\YFinance.net\\YFinance.NET.Server\\YFinance.NET.Server.csproj\"", publishScript, StringComparison.Ordinal);
         Assert.Contains("$serverTempPublish = \".\\YFinance.net\\YFinance.NET.Server\\bin\\$Configuration\\net10.0\\publish\"", publishScript, StringComparison.Ordinal);
-        Assert.Contains("Path.GetFullPath(Path.Combine(baseDirectory, \"..\", \"server\", \"YFinance.NET.Server.exe\"))", launcherSource, StringComparison.Ordinal);
-        Assert.Contains("string siblingRepo = Path.Combine(current, \"repo\")", launcherSource, StringComparison.Ordinal);
+        string desktopProject = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Desktop", "PortfolioSaver.Desktop.csproj"));
+        string configProject = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Config", "PortfolioSaver.Config.csproj"));
+        string screensaverProject = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Screensaver", "PortfolioSaver.Screensaver.csproj"));
+
+        string serverTargets = File.ReadAllText(Path.Combine(repoRoot, "build", "YFinanceServer.targets"));
+
+        Assert.Contains("../../build/YFinanceServer.targets", desktopProject, StringComparison.Ordinal);
+        Assert.Contains("../../build/YFinanceServer.targets", configProject, StringComparison.Ordinal);
+        Assert.Contains("../../build/YFinanceServer.targets", screensaverProject, StringComparison.Ordinal);
+        Assert.Contains("CopyOwnedYFinanceServerToOutput", serverTargets, StringComparison.Ordinal);
+        Assert.Contains("CopyOwnedYFinanceServerToPublish", serverTargets, StringComparison.Ordinal);
+        Assert.Contains("<OwnedYFinanceServerBundleFolder>YFinanceServer\\</OwnedYFinanceServerBundleFolder>", serverTargets, StringComparison.Ordinal);
+        Assert.Contains("$(OwnedYFinanceServerOutput)**\\*", serverTargets, StringComparison.Ordinal);
+        Assert.Contains("Path.Combine(baseDirectory, \"YFinanceServer\", \"YFinance.NET.Server.exe\")", launcherSource, StringComparison.Ordinal);
+        Assert.Contains("Path.Combine(baseDirectory, \"YFinanceServer\", \"YFinance.NET.Server.dll\")", launcherSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetRepoRoot()", launcherSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("PORTFOLIOSAVER_YFINANCE_SERVER_PATH", launcherSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("string siblingRepo = Path.Combine(current, \"repo\")", launcherSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("YFinance.NET.Server\", \"bin\", \"Release\"", launcherSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ServerProcessManager_ResolvesOnlyDeploymentRelativeServerBinary()
+    {
+        using TempDirectory temp = TempDirectory.Create();
+        string appDirectory = Path.Combine(temp.Path, "app");
+        string siblingServerDirectory = Path.Combine(appDirectory, "YFinanceServer");
+        string untrustedParentDirectory = Path.Combine(temp.Path, "YFinance.net", "YFinance.NET.Server", "bin", "Release", "net10.0");
+        Directory.CreateDirectory(appDirectory);
+        Directory.CreateDirectory(siblingServerDirectory);
+        Directory.CreateDirectory(untrustedParentDirectory);
+
+        string trustedServer = Path.Combine(siblingServerDirectory, "YFinance.NET.Server.exe");
+        string untrustedServer = Path.Combine(untrustedParentDirectory, "YFinance.NET.Server.exe");
+        File.WriteAllText(trustedServer, string.Empty);
+        File.WriteAllText(untrustedServer, string.Empty);
+
+        (string fileName, string arguments, string traceArguments) =
+            YFinanceServerProcessManager.ResolveLaunchCommand("test-token", appDirectory);
+
+        Assert.Equal(trustedServer, fileName);
+        Assert.Contains("--launch-token \"test-token\"", arguments, StringComparison.Ordinal);
+        Assert.Contains("--launch-token \"<redacted>\"", traceArguments, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ServerProcessManager_IgnoresLegacyRepoBuildOutputWhenDeploymentBundleMissing()
+    {
+        using TempDirectory temp = TempDirectory.Create();
+        string appDirectory = Path.Combine(temp.Path, "app");
+        string untrustedParentDirectory = Path.Combine(temp.Path, "YFinance.net", "YFinance.NET.Server", "bin", "Release", "net10.0");
+        Directory.CreateDirectory(appDirectory);
+        Directory.CreateDirectory(untrustedParentDirectory);
+        File.WriteAllText(Path.Combine(untrustedParentDirectory, "YFinance.NET.Server.exe"), string.Empty);
+
+        Assert.Throws<FileNotFoundException>(() =>
+            YFinanceServerProcessManager.ResolveLaunchCommand("test-token", appDirectory));
+    }
+
+    [Fact]
+    public void ServerProcessManager_ResolvesSiblingPublishServerBundle()
+    {
+        using TempDirectory temp = TempDirectory.Create();
+        string appDirectory = Path.Combine(temp.Path, "publish", "app");
+        string siblingServerDirectory = Path.Combine(temp.Path, "publish", "server");
+        Directory.CreateDirectory(appDirectory);
+        Directory.CreateDirectory(siblingServerDirectory);
+
+        string trustedServer = Path.Combine(siblingServerDirectory, "YFinance.NET.Server.exe");
+        File.WriteAllText(trustedServer, string.Empty);
+
+        (string fileName, _, _) =
+            YFinanceServerProcessManager.ResolveLaunchCommand("test-token", appDirectory);
+
+        Assert.Equal(trustedServer, fileName);
+    }
+
+    [Fact]
+    public void ServerProcessManager_UsesDotnetForDllOnlyBundle()
+    {
+        using TempDirectory temp = TempDirectory.Create();
+        string appDirectory = Path.Combine(temp.Path, "app");
+        string serverDirectory = Path.Combine(appDirectory, "YFinanceServer");
+        Directory.CreateDirectory(serverDirectory);
+
+        string trustedServer = Path.Combine(serverDirectory, "YFinance.NET.Server.dll");
+        File.WriteAllText(trustedServer, string.Empty);
+
+        (string fileName, string arguments, string traceArguments) =
+            YFinanceServerProcessManager.ResolveLaunchCommand("test-token", appDirectory);
+
+        Assert.Equal("dotnet", fileName);
+        Assert.Contains($"\"{trustedServer}\"", arguments, StringComparison.Ordinal);
+        Assert.Contains("--launch-token \"test-token\"", arguments, StringComparison.Ordinal);
+        Assert.Contains("--launch-token \"<redacted>\"", traceArguments, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ServerProcessManager_PrefersExeOverDllInSameBundle()
+    {
+        using TempDirectory temp = TempDirectory.Create();
+        string appDirectory = Path.Combine(temp.Path, "app");
+        string serverDirectory = Path.Combine(appDirectory, "YFinanceServer");
+        Directory.CreateDirectory(serverDirectory);
+
+        string trustedExe = Path.Combine(serverDirectory, "YFinance.NET.Server.exe");
+        File.WriteAllText(trustedExe, string.Empty);
+        File.WriteAllText(Path.Combine(serverDirectory, "YFinance.NET.Server.dll"), string.Empty);
+
+        (string fileName, _, _) =
+            YFinanceServerProcessManager.ResolveLaunchCommand("test-token", appDirectory);
+
+        Assert.Equal(trustedExe, fileName);
     }
 
     [Fact]
@@ -302,6 +414,35 @@ public sealed class YFinanceClientServerProtocolTests
         }
         catch
         {
+        }
+    }
+
+    private sealed class TempDirectory : IDisposable
+    {
+        private TempDirectory(string path)
+        {
+            Path = path;
+        }
+
+        public string Path { get; }
+
+        public static TempDirectory Create()
+        {
+            string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "dnppv-yfinance-tests-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(path);
+            return new(path);
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                if (Directory.Exists(Path))
+                    Directory.Delete(Path, recursive: true);
+            }
+            catch
+            {
+            }
         }
     }
 }
