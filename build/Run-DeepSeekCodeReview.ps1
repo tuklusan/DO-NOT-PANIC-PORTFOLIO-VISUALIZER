@@ -22,6 +22,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $script:OutputRootForAudit = $null
 $script:ReviewGateLocationPushed = $false
+$script:MinimumDeepSeekSendSpacingSeconds = 20
 
 trap {
     if ($script:ReviewGateLocationPushed) {
@@ -161,6 +162,63 @@ function Write-SendAudit([string]$PacketPath, [string]$EndpointValue, [string]$M
     }
 }
 
+function Wait-DeepSeekSendSpacing {
+    if ([string]::IsNullOrWhiteSpace($script:OutputRootForAudit)) {
+        throw "Cannot enforce DeepSeek send spacing before the ignored output directory is initialized."
+    }
+
+    $spacingPath = Join-Path $script:OutputRootForAudit 'last-send-at.txt'
+    $mutexName = if ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT) {
+        'Global\DoNotPanicPortfolioVisualizer.DeepSeekReviewGate.SendSpacing'
+    }
+    else {
+        'DoNotPanicPortfolioVisualizer.DeepSeekReviewGate.SendSpacing'
+    }
+    $mutex = New-Object System.Threading.Mutex($false, $mutexName)
+    $lockTaken = $false
+
+    try {
+        try {
+            $lockTaken = $mutex.WaitOne([TimeSpan]::FromSeconds(30))
+            if (-not $lockTaken) {
+                throw "Timed out waiting for DeepSeek send-spacing lock."
+            }
+        }
+        catch [System.Threading.AbandonedMutexException] {
+            Write-Warning "DeepSeek send-spacing mutex was abandoned by a prior run; continuing with the recovered lock."
+            $lockTaken = $true
+        }
+
+        if (Test-Path -LiteralPath $spacingPath) {
+            try {
+                $lastSendText = (Get-Content -Raw -LiteralPath $spacingPath -ErrorAction Stop).Trim()
+                if (-not [string]::IsNullOrWhiteSpace($lastSendText)) {
+                    $lastSend = [DateTimeOffset]::Parse($lastSendText)
+                    $elapsedSeconds = ([DateTimeOffset]::Now - $lastSend).TotalSeconds
+                    $remainingSeconds = [Math]::Ceiling($script:MinimumDeepSeekSendSpacingSeconds - $elapsedSeconds)
+                    if ($remainingSeconds -gt 0) {
+                        Write-Warning "DeepSeek gate spacing: waiting $remainingSeconds seconds before sending the next review message."
+                        Start-Sleep -Seconds $remainingSeconds
+                    }
+                }
+            }
+            catch {
+                Write-Warning "Could not read DeepSeek send-spacing timestamp; enforcing a full $script:MinimumDeepSeekSendSpacingSeconds-second delay and resetting the timestamp. $($_.Exception.Message)"
+                Start-Sleep -Seconds $script:MinimumDeepSeekSendSpacingSeconds
+            }
+        }
+
+        Set-Content -LiteralPath $spacingPath -Value ([DateTimeOffset]::Now.ToString('o')) -Encoding UTF8
+    }
+    finally {
+        if ($lockTaken) {
+            $mutex.ReleaseMutex()
+        }
+
+        $mutex.Dispose()
+    }
+}
+
 function Redact-RemovedDiffSecretLines([string]$Text) {
     return [regex]::Replace(
         $Text,
@@ -228,10 +286,32 @@ if ($SelfTest) {
     $null = Invoke-GitLines @('version')
     $scriptText = Get-Content -Raw -LiteralPath $PSCommandPath
     $null = [ScriptBlock]::Create($scriptText)
-    foreach ($requiredToken in @('$SendForReview', '$AcknowledgeSecretScan', '$AcknowledgeEndpointOverride', 'Get-DeepSeekApiKey', 'Assert-NoLikelySecrets', 'Write-WaiverAudit', 'Write-SendAudit')) {
+    foreach ($requiredToken in @('$SendForReview', '$AcknowledgeSecretScan', '$AcknowledgeEndpointOverride', 'Get-DeepSeekApiKey', 'Assert-NoLikelySecrets', 'Write-WaiverAudit', 'Write-SendAudit', 'Wait-DeepSeekSendSpacing')) {
         if ($scriptText.IndexOf($requiredToken, [StringComparison]::Ordinal) -lt 0) {
             throw "DeepSeek review gate self-test failed; missing required token $requiredToken."
         }
+    }
+
+    $originalOutputRootForAudit = $script:OutputRootForAudit
+    $originalMinimumSpacingSeconds = $script:MinimumDeepSeekSendSpacingSeconds
+    $spacingSelfTestRoot = Join-Path ([IO.Path]::GetTempPath()) ("DeepSeekReviewGateSelfTest-" + [Guid]::NewGuid().ToString("N"))
+    try {
+        New-Item -ItemType Directory -Force -Path $spacingSelfTestRoot | Out-Null
+        $script:OutputRootForAudit = $spacingSelfTestRoot
+        $script:MinimumDeepSeekSendSpacingSeconds = 0
+        Wait-DeepSeekSendSpacing
+        $script:MinimumDeepSeekSendSpacingSeconds = 1
+        $startedAt = Get-Date
+        Wait-DeepSeekSendSpacing
+        $elapsedSeconds = ((Get-Date) - $startedAt).TotalSeconds
+        if ($elapsedSeconds -lt 0.8) {
+            throw "DeepSeek review gate self-test failed; spacing helper did not enforce a non-zero delay."
+        }
+    }
+    finally {
+        $script:OutputRootForAudit = $originalOutputRootForAudit
+        $script:MinimumDeepSeekSendSpacingSeconds = $originalMinimumSpacingSeconds
+        Remove-Item -LiteralPath $spacingSelfTestRoot -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     try {
@@ -435,6 +515,8 @@ try {
     $response = $null
     for ($attempt = 1; $attempt -le ($retryDelaysSeconds.Count + 1); $attempt++) {
         try {
+            # Enforce spacing for every attempt, including retries, to prevent rapid bursts after transient failures.
+            Wait-DeepSeekSendSpacing
             $response = Invoke-RestMethod `
                 -Method Post `
                 -Uri "$Endpoint/chat/completions" `
