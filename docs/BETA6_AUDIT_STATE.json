@@ -1257,7 +1257,7 @@
       "priority": 0,
       "area": "quote_pipeline_resilience",
       "title": "Preserve partial quote results instead of dropping whole batches",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_full_rc_review_2026_06_05",
       "evidence": [
         "Critical C-3 from DeepSeek full RC review: PartialQuoteResultException can cause one bad symbol to discard otherwise valid quote results.",
@@ -1267,7 +1267,9 @@
         "Change YahooFinanceQuoteProvider/callers so partial quote results are applied for all successfully resolved symbols.",
         "Unresolved symbols should be omitted or marked failed without blanking the entire tape/graph update.",
         "Add regression coverage with mixed valid and invalid symbols.",
-        "Verify UI traces show valid symbols continue updating when one symbol fails."
+        "Verify UI traces show valid symbols continue updating when one symbol fails.",
+        "Resolved on 2026-06-05 in implementation commit 1bb3ec3 by making app-owned YahooFinanceQuoteProvider instances opt into partial-success behavior, returning successfully resolved quotes while logging missing symbols, preserving the legacy PartialQuoteResultException path behind throwOnPartial for compatibility, and keeping the startup/runtime coordinator partial-exception salvage path as defensive compatibility armor.",
+        "Validation: DeepSeek pre-commit review completed with no actionable findings; dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 251/251 tests including new mixed valid/invalid quote-provider coverage."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
