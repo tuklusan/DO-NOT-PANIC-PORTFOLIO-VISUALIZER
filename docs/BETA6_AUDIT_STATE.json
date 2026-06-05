@@ -1463,17 +1463,23 @@
       "priority": 1,
       "area": "startup_quote_pipeline",
       "title": "Make StartupCoordinator quote pipeline fully async and observed",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_full_rc_review_2026_06_05",
       "evidence": [
-        "High H-3 from DeepSeek full RC review: pending quote tasks are stored and later drained with GetResult, risking UI blocking and unobserved task leaks.",
-        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+        "DeepSeek review gate passed with no high-severity findings after async startup quote pipeline updates on 2026-06-05.",
+        "Committed and pushed implementation commit fa934a1 before local validation runs.",
+        "dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
+        "dotnet test PortfolioScreensaver.sln -c Release --no-build passed 271/271 on 2026-06-05."
       ],
       "notes": [
         "Refactor QueueQuotePipelineRequests/DrainCompletedQuotePipeline to use await instead of .GetAwaiter().GetResult().",
         "Ensure every pending request is observed, cancelled, or drained on shutdown.",
         "Add tests for pending-task completion, failure, cancellation, and no UI-thread blocking assumptions.",
-        "Verify ticker updates remain one-at-a-time and non-bursty after refactor."
+        "Verify ticker updates remain one-at-a-time and non-bursty after refactor.",
+        "Resolved by replacing synchronous pending quote task GetResult drain with DrainCompletedQuotePipelineAsync and QuotePipelineDrainResult.",
+        "Queued progressive quote requests now receive the LoadQuotesAsync cancellation token instead of CancellationToken.None.",
+        "Canceled completed quote tasks are observed, removed from the pending pipeline, and traced as SequentialQuoteCancelled so cached/stale state remains consistent for the frame.",
+        "Regression tests now assert the async drain path, cancellation token propagation, absence of GetAwaiter().GetResult(), and cancellation tracing."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
