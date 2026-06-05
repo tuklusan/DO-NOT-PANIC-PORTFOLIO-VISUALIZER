@@ -242,6 +242,22 @@ public sealed class Nb040BehaviorTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void NtpTimeService_BoundsDnsAndHostTimeouts()
+    {
+        string servicePath = Path.Combine(
+            GetRepoRoot(),
+            "src", "PortfolioSaver.Presentation", "Services", "NtpTimeService.cs");
+        string source = File.ReadAllText(Path.GetFullPath(servicePath));
+
+        Assert.Contains("DnsTimeout", source, StringComparison.Ordinal);
+        Assert.Contains("PerHostTimeout", source, StringComparison.Ordinal);
+        Assert.Contains("ResolveHostAsync(host, hostTimeout.Token)", source, StringComparison.Ordinal);
+        Assert.Contains("Dns.GetHostAddressesAsync(host, dnsTimeout.Token)", source, StringComparison.Ordinal);
+        Assert.Contains("catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)", source, StringComparison.Ordinal);
+        Assert.Contains("HostTimeout", source, StringComparison.Ordinal);
+    }
+
     private static string GetRepoRoot()
     {
         DirectoryInfo? current = new(AppContext.BaseDirectory);
