@@ -274,17 +274,32 @@ function Capture-Screen {
 }
 
 function Apply-HarnessSettingsOverrides {
-    $appDataRoot = if (-not [string]::IsNullOrWhiteSpace($env:PORTFOLIOSAVER_LOCALDATA_ROOT)) {
+    $appDataRoot = if (-not [string]::IsNullOrWhiteSpace($env:DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT)) {
+        $env:DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($env:PORTFOLIOSAVER_LOCALDATA_ROOT)) {
         $env:PORTFOLIOSAVER_LOCALDATA_ROOT
     }
     elseif (-not [string]::IsNullOrWhiteSpace($env:PORTFOLIOSAVER_APPDATA_ROOT)) {
         $env:PORTFOLIOSAVER_APPDATA_ROOT
     }
     else {
-        Join-Path $env:LOCALAPPDATA 'PortfolioSaver'
+        Join-Path $env:LOCALAPPDATA 'DoNotPanicPortfolioVisualizer'
     }
 
     New-Item -ItemType Directory -Force -Path $appDataRoot | Out-Null
+    if ([string]::IsNullOrWhiteSpace((Get-ScopedEnvironmentValue -Name 'DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT')) -and
+        [string]::IsNullOrWhiteSpace((Get-ScopedEnvironmentValue -Name 'PORTFOLIOSAVER_LOCALDATA_ROOT')) -and
+        [string]::IsNullOrWhiteSpace((Get-ScopedEnvironmentValue -Name 'PORTFOLIOSAVER_APPDATA_ROOT'))) {
+        $legacyAppDataRoot = Join-Path $env:LOCALAPPDATA 'PortfolioSaver'
+        $sentinelPath = Join-Path $appDataRoot '.portfolio-visualizer-migration-complete'
+        if ((Test-Path $legacyAppDataRoot) -and -not (Test-Path $sentinelPath)) {
+            Copy-Item -Path (Join-Path $legacyAppDataRoot '*') -Destination $appDataRoot -Recurse -ErrorAction SilentlyContinue
+            Set-Content -LiteralPath $sentinelPath -Value (Get-Date).ToString('o') -Encoding UTF8
+            Write-ConfigWindowTrace -Event 'HarnessAppDataMigrationApplied' -Details ("legacy_root={0}; product_root={1}" -f $legacyAppDataRoot, $appDataRoot)
+        }
+    }
+
     $settingsPath = Join-Path $appDataRoot 'settings.json'
     $settings = @{}
     if (Test-Path $settingsPath) {
@@ -1464,20 +1479,48 @@ function Test-YFinanceTraceEvidencePresent {
 }
 
 function Read-YFinanceTraceText {
-    $localRoot = Get-ScopedEnvironmentValue -Name 'PORTFOLIOSAVER_LOCALDATA_ROOT'
-    if ([string]::IsNullOrWhiteSpace($localRoot)) {
-        $localRoot = Get-ScopedEnvironmentValue -Name 'PORTFOLIOSAVER_APPDATA_ROOT'
-    }
-
-    if ([string]::IsNullOrWhiteSpace($localRoot)) {
-        $localRoot = Join-Path $env:LOCALAPPDATA 'PortfolioSaver'
-    }
-    $tracePath = Join-Path $localRoot 'Trace\yfinance.circular.log'
+    $tracePath = Get-HarnessTracePath -RelativePath 'Trace\yfinance.circular.log'
     if (-not (Test-Path $tracePath)) {
         return ''
     }
 
     return Read-TextFileTailShared -Path $tracePath -MaxBytes 2097152
+}
+
+function Get-HarnessAppDataRoot {
+    $localRoot = Get-ScopedEnvironmentValue -Name 'DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT'
+    if ([string]::IsNullOrWhiteSpace($localRoot)) {
+        $localRoot = Get-ScopedEnvironmentValue -Name 'PORTFOLIOSAVER_LOCALDATA_ROOT'
+    }
+    if ([string]::IsNullOrWhiteSpace($localRoot)) {
+        $localRoot = Get-ScopedEnvironmentValue -Name 'PORTFOLIOSAVER_APPDATA_ROOT'
+    }
+
+    if ([string]::IsNullOrWhiteSpace($localRoot)) {
+        $localRoot = Join-Path $env:LOCALAPPDATA 'DoNotPanicPortfolioVisualizer'
+    }
+
+    return $localRoot
+}
+
+function Get-HarnessTracePath {
+    param([Parameter(Mandatory = $true)][string]$RelativePath)
+
+    $primaryPath = Join-Path (Get-HarnessAppDataRoot) $RelativePath
+    if (Test-Path $primaryPath) {
+        return $primaryPath
+    }
+
+    if ([string]::IsNullOrWhiteSpace((Get-ScopedEnvironmentValue -Name 'DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT')) -and
+        [string]::IsNullOrWhiteSpace((Get-ScopedEnvironmentValue -Name 'PORTFOLIOSAVER_LOCALDATA_ROOT')) -and
+        [string]::IsNullOrWhiteSpace((Get-ScopedEnvironmentValue -Name 'PORTFOLIOSAVER_APPDATA_ROOT'))) {
+        $legacyPath = Join-Path (Join-Path $env:LOCALAPPDATA 'PortfolioSaver') $RelativePath
+        if (Test-Path $legacyPath) {
+            return $legacyPath
+        }
+    }
+
+    return $primaryPath
 }
 
 function Get-ScopedEnvironmentValue {
@@ -1494,7 +1537,7 @@ function Get-ScopedEnvironmentValue {
 }
 
 function Get-LatestDisplayedTapeSample {
-    $tracePath = Join-Path $env:LOCALAPPDATA 'PortfolioSaver\Trace\trace.circular.log'
+    $tracePath = Get-HarnessTracePath -RelativePath 'Trace\trace.circular.log'
     if (-not (Test-Path $tracePath)) {
         return @()
     }
@@ -1551,7 +1594,7 @@ function Test-IsDisplayedSampleFullyLive {
 }
 
 function Get-PreferredDisplayedTapeSample {
-    $tracePath = Join-Path $env:LOCALAPPDATA 'PortfolioSaver\Trace\trace.circular.log'
+    $tracePath = Get-HarnessTracePath -RelativePath 'Trace\trace.circular.log'
     if (-not (Test-Path $tracePath)) {
         return @()
     }

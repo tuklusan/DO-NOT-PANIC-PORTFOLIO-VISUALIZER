@@ -2,6 +2,11 @@ namespace PortfolioSaver.Shared.Helpers;
 
 public static class PathHelper
 {
+    public const string AppLocalDataFolderName = AppDataRootResolver.AppLocalDataFolderName;
+    public const string ProductLocalDataRootEnvironmentVariable = AppDataRootResolver.ProductLocalDataRootEnvironmentVariable;
+    public const string LegacyLocalDataRootEnvironmentVariable = AppDataRootResolver.LegacyLocalDataRootEnvironmentVariable;
+    public const string LegacyAppDataRootEnvironmentVariable = AppDataRootResolver.LegacyAppDataRootEnvironmentVariable;
+
     public static string GetAppDataDirectory()
     {
         string path = ResolveInstalledDataDirectory();
@@ -12,33 +17,19 @@ public static class PathHelper
     public static string GetLocalDataDirectory()
     {
         string path = ResolveDataDirectory(
-            "PORTFOLIOSAVER_LOCALDATA_ROOT",
+            ProductLocalDataRootEnvironmentVariable,
             Environment.SpecialFolder.LocalApplicationData);
         Directory.CreateDirectory(path);
         return path;
     }
 
     private static string ResolveInstalledDataDirectory()
-    {
-        string? localOverride = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
-        if (!string.IsNullOrWhiteSpace(localOverride))
-            return Path.GetFullPath(localOverride.Trim());
-
-        string? legacyOverride = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
-        if (!string.IsNullOrWhiteSpace(legacyOverride))
-            return Path.GetFullPath(legacyOverride.Trim());
-
-        return Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "PortfolioSaver");
-    }
+        => AppDataRootResolver.ResolveInstalledLocalDataRoot();
 
     private static string ResolveDataDirectory(string environmentVariableName, Environment.SpecialFolder fallbackFolder)
     {
-        string? overrideRoot = Environment.GetEnvironmentVariable(environmentVariableName);
-        if (!string.IsNullOrWhiteSpace(overrideRoot))
-            return Path.GetFullPath(overrideRoot.Trim());
-
-        return Path.Combine(Environment.GetFolderPath(fallbackFolder), "PortfolioSaver");
+        return fallbackFolder == Environment.SpecialFolder.LocalApplicationData
+            ? AppDataRootResolver.ResolveInstalledLocalDataRoot()
+            : Path.Combine(Environment.GetFolderPath(fallbackFolder), AppLocalDataFolderName);
     }
 }

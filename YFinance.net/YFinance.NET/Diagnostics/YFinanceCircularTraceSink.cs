@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using PortfolioSaver.Shared.Helpers;
 
 namespace YFinance.NET.Diagnostics;
 
@@ -45,19 +46,7 @@ public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
         => Path.Combine(TraceDirectory, "yfinance.circular.idx");
 
     private static string GetAppDataDirectory()
-    {
-        string? localOverride = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
-        if (!string.IsNullOrWhiteSpace(localOverride))
-            return Path.GetFullPath(localOverride.Trim());
-
-        string? legacyOverride = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
-        if (!string.IsNullOrWhiteSpace(legacyOverride))
-            return Path.GetFullPath(legacyOverride.Trim());
-
-        string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PortfolioSaver");
-        Directory.CreateDirectory(path);
-        return path;
-    }
+        => AppDataRootResolver.ResolveInstalledLocalDataRoot();
 
     private static void Enqueue(string level, string source, string message, Exception? exception)
     {

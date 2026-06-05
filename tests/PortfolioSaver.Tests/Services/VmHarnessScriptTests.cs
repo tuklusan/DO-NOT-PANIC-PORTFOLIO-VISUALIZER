@@ -204,6 +204,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$script:vmBackgroundChangeSeconds = 120", script, StringComparison.Ordinal);
         Assert.Contains("$settings['BackgroundChangeSeconds'] = $script:vmBackgroundChangeSeconds", script, StringComparison.Ordinal);
         Assert.Contains("$settings['ShuffleBackgrounds'] = $true", script, StringComparison.Ordinal);
+        Assert.Contains("HarnessAppDataMigrationApplied", script, StringComparison.Ordinal);
+        Assert.Contains("Copy-Item -Path (Join-Path $legacyAppDataRoot '*') -Destination $appDataRoot -Recurse -ErrorAction SilentlyContinue", script, StringComparison.Ordinal);
+        Assert.Contains(".portfolio-visualizer-migration-complete", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'HarnessSettingsOverrideApplied'", script, StringComparison.Ordinal);
         Assert.Contains("$configInteractionStartedAt = $null", script, StringComparison.Ordinal);
         Assert.Contains("$configInteractionStartedAt = [datetime]::UtcNow", script, StringComparison.Ordinal);
@@ -338,7 +341,14 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("YFinanceTrace", script, StringComparison.Ordinal);
         Assert.Contains("VmTraceQuoteEvidence.ps1", script, StringComparison.Ordinal);
         Assert.Contains("Test-YFinanceQuoteEvidenceParser", script, StringComparison.Ordinal);
+        Assert.Contains("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", script, StringComparison.Ordinal);
         Assert.Contains("PORTFOLIOSAVER_LOCALDATA_ROOT", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-HarnessAppDataRoot", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-HarnessTracePath", script, StringComparison.Ordinal);
+        Assert.Contains("Get-HarnessTracePath -RelativePath 'Trace\\trace.circular.log'", script, StringComparison.Ordinal);
+        Assert.Contains("Get-HarnessTracePath -RelativePath 'Trace\\yfinance.circular.log'", script, StringComparison.Ordinal);
+        Assert.Contains("Join-Path (Join-Path $env:LOCALAPPDATA 'PortfolioSaver') $RelativePath", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortfolioSaver\\Trace\\trace.circular.log", script, StringComparison.Ordinal);
         Assert.Contains("'Process', 'User', 'Machine'", script, StringComparison.Ordinal);
         Assert.Contains("FileShare]::ReadWrite", script, StringComparison.Ordinal);
         Assert.Contains("QuoteResponseObserved", sharedParser, StringComparison.Ordinal);

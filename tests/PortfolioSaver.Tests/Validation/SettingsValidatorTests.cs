@@ -3,6 +3,7 @@ using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Core.Services;
 using PortfolioSaver.Core.Validation;
+using PortfolioSaver.Shared.Helpers;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Validation;
@@ -22,6 +23,8 @@ public sealed class SettingsValidatorTests
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             settings.HistoricalCacheRootFolder,
             StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(PathHelper.AppLocalDataFolderName, settings.HistoricalCacheRootFolder, StringComparison.Ordinal);
+        Assert.Contains(PathHelper.AppLocalDataFolderName, settings.BackgroundImageFolder, StringComparison.Ordinal);
     }
 
     [Fact]

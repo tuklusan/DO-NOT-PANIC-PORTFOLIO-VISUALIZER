@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Include="..\..\src\PortfolioSaver.Shared\Helpers\AppDataRootResolver.cs" Link="Shared\AppDataRootResolver.cs" />
+  </ItemGroup>
+
 </Project>

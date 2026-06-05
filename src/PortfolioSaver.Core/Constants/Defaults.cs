@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Shared.Helpers;
 
 namespace PortfolioSaver.Core.Constants;
 
@@ -30,14 +31,10 @@ public static class Defaults
         => Path.Combine(Environment.GetEnvironmentVariable("TEMP") ?? Path.GetTempPath(), "PortfolioSaver", "history-cache");
 
     public static string GetHistoricalCacheFolder()
-        => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "PortfolioSaver",
-            "Caches",
-            "History");
+        => Path.Combine(PathHelper.GetLocalDataDirectory(), "Caches", "History");
 
     public static string GetManagedBackgroundCacheFolder()
-        => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PortfolioSaver", "Backgrounds", "ExchangePhotoCache");
+        => Path.Combine(PathHelper.GetLocalDataDirectory(), "Backgrounds", "ExchangePhotoCache");
 
     public static AppSettings CreateSettings() => new()
     {

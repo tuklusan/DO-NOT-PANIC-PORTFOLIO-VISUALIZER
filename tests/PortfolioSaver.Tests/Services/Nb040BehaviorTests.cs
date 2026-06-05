@@ -3,6 +3,7 @@ using PortfolioSaver.Core.Models;
 using PortfolioSaver.Data.Services;
 using PortfolioSaver.Render.Services;
 using PortfolioSaver.Screensaver.Services;
+using PortfolioSaver.Shared.Helpers;
 using Xunit;
 using YFinance.NET.Config;
 using YFinance.NET.Transport;
@@ -15,14 +16,64 @@ public sealed class Nb040BehaviorTests
     [Fact]
     public void YFinanceOptions_DefaultToTenMinuteCachesAndGenericUserAgent()
     {
-        YFinanceOptions options = new();
+        string? previousProductOverride = Environment.GetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT");
+        string? previousLocalOverride = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        string? previousLegacyOverride = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", null);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", null);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", null);
 
-        Assert.Equal(TimeSpan.FromMinutes(10), options.DefaultCacheTtl);
-        Assert.Equal(TimeSpan.FromMinutes(10), options.SummaryCacheTtl);
-        Assert.Equal(TimeSpan.FromMinutes(10), options.PersistentMetadataCacheTtl);
-        Assert.DoesNotContain("PortfolioSaver", options.UserAgent, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("Don't Panic", options.UserAgent, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("Visualiz", options.UserAgent, StringComparison.OrdinalIgnoreCase);
+        try
+        {
+            YFinanceOptions options = new();
+
+            Assert.Equal(TimeSpan.FromMinutes(10), options.DefaultCacheTtl);
+            Assert.Equal(TimeSpan.FromMinutes(10), options.SummaryCacheTtl);
+            Assert.Equal(TimeSpan.FromMinutes(10), options.PersistentMetadataCacheTtl);
+            Assert.Equal(
+                Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    PathHelper.AppLocalDataFolderName,
+                    "Caches",
+                    "YFinance"),
+                options.PersistentCacheRootPath);
+            Assert.DoesNotContain("PortfolioSaver", options.UserAgent, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Don't Panic", options.UserAgent, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Visualiz", options.UserAgent, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", previousProductOverride);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", previousLocalOverride);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousLegacyOverride);
+        }
+    }
+
+    [Fact]
+    public void YFinanceOptions_PersistentCacheRootHonorsProductLocalDataOverride()
+    {
+        string? previousProductOverride = Environment.GetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT");
+        string? previousLocalOverride = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        string? previousLegacyOverride = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        string overrideRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", overrideRoot);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", null);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", null);
+
+        try
+        {
+            YFinanceOptions options = new();
+
+            Assert.Equal(Path.Combine(Path.GetFullPath(overrideRoot), "Caches", "YFinance"), options.PersistentCacheRootPath);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", previousProductOverride);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", previousLocalOverride);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousLegacyOverride);
+            if (Directory.Exists(overrideRoot))
+                Directory.Delete(overrideRoot, recursive: true);
+        }
     }
 
     [Fact]

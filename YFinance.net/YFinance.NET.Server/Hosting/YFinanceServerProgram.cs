@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
+using PortfolioSaver.Shared.Helpers;
 using YFinance.NET.Api;
 using YFinance.NET.Config;
 using YFinance.NET.Diagnostics;
@@ -368,15 +369,5 @@ internal static class YFinanceServerProgram
         => ex is HttpRequestException or TaskCanceledException or TimeoutException;
 
     private static string ResolveTraceRoot()
-    {
-        string? localOverride = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
-        if (!string.IsNullOrWhiteSpace(localOverride))
-            return Path.GetFullPath(localOverride.Trim());
-
-        string? legacyOverride = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
-        if (!string.IsNullOrWhiteSpace(legacyOverride))
-            return Path.GetFullPath(legacyOverride.Trim());
-
-        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PortfolioSaver");
-    }
+        => AppDataRootResolver.ResolveInstalledLocalDataRoot();
 }
