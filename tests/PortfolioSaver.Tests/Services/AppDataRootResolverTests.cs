@@ -68,6 +68,18 @@ public sealed class AppDataRootResolverTests
     }
 
     [Fact]
+    public void YFinanceEmbeddedResolver_UsesSameProductOverrideContract()
+    {
+        using EnvironmentScope scope = new();
+        string productRoot = NewTempRoot("yfinance-product");
+        scope.Set(AppDataRootResolver.ProductLocalDataRootEnvironmentVariable, productRoot);
+
+        Assert.Equal(
+            Path.GetFullPath(productRoot),
+            YFinance.NET.Storage.AppDataRootResolver.ResolveInstalledLocalDataRoot(createDirectory: false));
+    }
+
+    [Fact]
     public void TryCopyLegacyRootOnce_IsIdempotentAndDoesNotOverwriteProductFiles()
     {
         string root = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));

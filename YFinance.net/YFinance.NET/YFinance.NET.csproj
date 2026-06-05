@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <DefineConstants>$(DefineConstants);YFINANCE_EMBEDDED_APPDATA_RESOLVER</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

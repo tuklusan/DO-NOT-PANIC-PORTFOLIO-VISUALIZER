@@ -1,7 +1,14 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 
+// YFinance.NET links this source file into its net10.0 assembly with a distinct
+// namespace so it can share the storage-root contract without depending on the
+// Windows-targeted PortfolioSaver.Shared assembly.
+#if YFINANCE_EMBEDDED_APPDATA_RESOLVER
+namespace YFinance.NET.Storage;
+#else
 namespace PortfolioSaver.Shared.Helpers;
+#endif
 
 public static class AppDataRootResolver
 {

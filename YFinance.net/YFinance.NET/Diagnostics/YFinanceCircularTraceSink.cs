@@ -5,7 +5,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using PortfolioSaver.Shared.Helpers;
+using YFinance.NET.Storage;
 
 namespace YFinance.NET.Diagnostics;
 
