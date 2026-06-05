@@ -9,7 +9,7 @@ namespace PortfolioSaver.Desktop;
 
 public partial class App : Application
 {
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         if (!ReleaseManifestGuard.ValidateCurrentExecutable("Desktop.App", out string integritySummary))
         {
@@ -34,7 +34,17 @@ public partial class App : Application
         };
 
         TraceLog.Info("Desktop.App", $"Startup args: {string.Join(" ", e.Args)}");
-        YFinanceServerProcessManager.EnsureOwnedServerAsync("PortfolioSaver.Desktop").GetAwaiter().GetResult();
+        try
+        {
+            await YFinanceServerProcessManager.EnsureOwnedServerAsync("PortfolioSaver.Desktop");
+        }
+        catch (Exception ex)
+        {
+            TraceLog.Error("Desktop.App", "Owned YFinance server startup failed.", ex);
+            Shutdown(-1);
+            return;
+        }
+
         bool startFullScreen = e.Args.Any(arg => string.Equals(arg, "--fullscreen", StringComparison.OrdinalIgnoreCase));
         base.OnStartup(e);
 
@@ -58,6 +68,10 @@ public partial class App : Application
         try
         {
             YFinanceServerProcessManager.StopOwnedServerAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            TraceLog.Error("Desktop.App", "Owned YFinance server shutdown failed.", ex);
         }
         finally
         {

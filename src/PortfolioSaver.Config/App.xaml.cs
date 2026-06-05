@@ -9,7 +9,7 @@ namespace PortfolioSaver.Config;
 
 public partial class App : Application
 {
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         if (!ReleaseManifestGuard.ValidateCurrentExecutable("Config.App", out string integritySummary))
         {
@@ -39,7 +39,17 @@ public partial class App : Application
         };
 
         TraceLog.Info("Config.App", $"Startup args: {string.Join(" ", e.Args)}");
-        YFinanceServerProcessManager.EnsureOwnedServerAsync("PortfolioSaver.Config").GetAwaiter().GetResult();
+        try
+        {
+            await YFinanceServerProcessManager.EnsureOwnedServerAsync("PortfolioSaver.Config");
+        }
+        catch (Exception ex)
+        {
+            TraceLog.Error("Config.App", "Owned YFinance server startup failed.", ex);
+            Shutdown(-1);
+            return;
+        }
+
         base.OnStartup(e);
 
         var window = new MainWindow();
@@ -52,6 +62,10 @@ public partial class App : Application
         try
         {
             YFinanceServerProcessManager.StopOwnedServerAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            TraceLog.Error("Config.App", "Owned YFinance server shutdown failed.", ex);
         }
         finally
         {
