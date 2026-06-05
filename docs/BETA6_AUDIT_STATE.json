@@ -1201,7 +1201,7 @@
       "priority": 0,
       "area": "rc_review_async_lifecycle",
       "title": "Remove UI-thread sync blocking from owned YFinance server startup/shutdown",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_full_rc_review_2026_06_05",
       "evidence": [
         "Critical C-1 from DeepSeek full RC review: App startup/exit blocks on async owned-server lifecycle calls and can deadlock or hang the WPF UI.",
@@ -1211,7 +1211,9 @@
         "Replace .GetAwaiter().GetResult() in Config, Desktop, and Screensaver app startup/shutdown with safe async lifecycle handling.",
         "Prefer async void WPF lifecycle overrides for startup where appropriate and use await directly.",
         "Shutdown should not deadlock the dispatcher; use bounded async shutdown with logging or a documented safe fire-and-forget path.",
-        "Add tests or harness evidence that owned server startup/shutdown no longer blocks UI responsiveness."
+        "Add tests or harness evidence that owned server startup/shutdown no longer blocks UI responsiveness.",
+        "Resolved on 2026-06-05 in implementation commit 971f472 by converting Config, Desktop, and Screensaver startup to await owned YFinance server startup asynchronously before continuing WPF startup, with logged fail-fast shutdown on startup failure. Shutdown keeps WPF's synchronous OnExit contract, wraps the owned-server stop in explicit exception logging, and always invokes base.OnExit.",
+        "Validation: DeepSeek focused code review reported no actionable findings after the OnExit correction; dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 241/241 tests."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
