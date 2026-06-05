@@ -1341,7 +1341,7 @@
       "priority": 0,
       "area": "refresh_policy",
       "title": "Replace static QuoteRefreshPolicy values with real settings-aware cadence logic",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_full_rc_review_2026_06_05",
       "evidence": [
         "Critical C-6 from DeepSeek full RC review: QuoteRefreshPolicy returns hard-coded one-second cadence and ignores meaningful settings.",
@@ -1351,7 +1351,9 @@
         "Audit current scheduler expectations and decide which user settings still have product meaning.",
         "Implement settings-aware cadence for relevant quote/news/status flows while preserving one-symbol-at-a-time UI smoothness where required.",
         "Update config docs/tests so obsolete controls are removed or behavior is accurate.",
-        "Add regression tests for configured refresh values and displayed cadence text."
+        "Add regression tests for configured refresh values and displayed cadence text.",
+        "Resolved on 2026-06-05 in implementation commit ea54cd3 by making QuoteRefreshPolicy distinguish the fixed one-second UI dispatch cadence from a settings-aware configured freshness window, preserving the legacy hard-stale threshold formula/API, documenting that configured windows must not drive scheduling, and confirming no production callers use GetConfiguredRefreshWindow for timers.",
+        "Validation: DeepSeek pre-commit review completed with no high-severity findings after preserving hard-stale compatibility; dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 265/265 tests including quote refresh policy coverage."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
