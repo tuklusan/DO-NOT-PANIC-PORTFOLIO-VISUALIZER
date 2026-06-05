@@ -1313,7 +1313,7 @@
       "priority": 0,
       "area": "ai_news_prompt_security",
       "title": "Harden FinanceNewsService prompt construction against prompt injection",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_full_rc_review_2026_06_05",
       "evidence": [
         "Critical C-5 from DeepSeek full RC review: RSS headlines are untrusted inputs embedded into the DeepSeek instruction prompt.",
@@ -1323,7 +1323,9 @@
         "Separate system instructions from untrusted feed headline data with clear delimiters.",
         "Explicitly instruct the model to treat headlines as data, not instructions.",
         "Normalize and bound headline text before inclusion in prompts.",
-        "Add tests covering malicious/instruction-like headlines."
+        "Add tests covering malicious/instruction-like headlines.",
+        "Resolved on 2026-06-05 in implementation commits 42a91ac and 00fe7dc by fencing RSS headline text inside an explicit untrusted-headline data block, JSON-quoting each normalized headline datum, warning the model not to follow instruction-like headline text, bounding prompt headline length safely, and updating captured-prompt tests to parse the outbound DeepSeek payload and assert the secured user prompt.",
+        "Validation: DeepSeek pre-commit reviews completed with no blocking findings after the test-payload assertion correction; dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 255/255 tests including malicious/instruction-like headline coverage."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
