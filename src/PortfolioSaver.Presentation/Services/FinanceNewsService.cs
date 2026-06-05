@@ -24,6 +24,9 @@ public sealed class FinanceNewsService
     private const string CnbcWorldFeedUrl = "https://www.cnbc.com/id/19832390/device/rss/rss.html";
     private const string BbcBusinessFeedUrl = "https://feeds.bbci.co.uk/news/business/rss.xml";
     private const string NytEconomyFeedUrl = "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml";
+    private const int MaxDeepSeekSummaryAttempts = 2;
+    private const int SummaryRetryBaseDelayMilliseconds = 750;
+    private static readonly TimeSpan DefaultSummarizedNewsExternalCallBudget = TimeSpan.FromSeconds(60);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private static readonly string[] SummarizedNewsFeedUrls =
     [
@@ -35,13 +38,21 @@ public sealed class FinanceNewsService
     private const string WilliamShakespeareClosingQuote = "\"All that glisters is not gold.\"";
     private readonly string _cachePath;
     private readonly Func<string> _deepSeekApiKeyResolver;
+    private readonly Func<TimeSpan, CancellationToken, Task> _delayAsync;
+    private readonly TimeSpan _summarizedNewsExternalCallBudget;
 
-    public FinanceNewsService(string? cachePath = null, Func<string>? deepSeekApiKeyResolver = null)
+    public FinanceNewsService(
+        string? cachePath = null,
+        Func<string>? deepSeekApiKeyResolver = null,
+        Func<TimeSpan, CancellationToken, Task>? delayAsync = null,
+        TimeSpan? summarizedNewsExternalCallBudget = null)
     {
         _cachePath = string.IsNullOrWhiteSpace(cachePath)
             ? Path.Combine(PathHelper.GetLocalDataDirectory(), CacheFileName)
             : cachePath;
         _deepSeekApiKeyResolver = deepSeekApiKeyResolver ?? (() => string.Empty);
+        _delayAsync = delayAsync ?? Task.Delay;
+        _summarizedNewsExternalCallBudget = summarizedNewsExternalCallBudget.GetValueOrDefault(DefaultSummarizedNewsExternalCallBudget);
     }
 
     public async Task<IReadOnlyList<string>> GetHeadlinesAsync(
@@ -214,7 +225,28 @@ public sealed class FinanceNewsService
         if (string.IsNullOrWhiteSpace(apiKey))
             return new([], false);
 
-        SummarizedNewsContext context = await FetchSummarizedNewsContextAsync(httpClient, settings, cancellationToken);
+        using CancellationTokenSource budgetCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        budgetCts.CancelAfter(_summarizedNewsExternalCallBudget);
+        CancellationToken boundedToken = budgetCts.Token;
+
+        SummarizedNewsContext context;
+        try
+        {
+            context = await FetchSummarizedNewsContextAsync(httpClient, settings, boundedToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            TraceNewsState(
+                "NewsSummaryExternalBudgetExceeded",
+                new KeyValuePair<string, object?>("phase", "context"),
+                new KeyValuePair<string, object?>("budget_seconds", _summarizedNewsExternalCallBudget.TotalSeconds));
+            return new([], false);
+        }
+
         if (context.Headlines.Count == 0)
             return new([], false);
 
@@ -242,100 +274,167 @@ public sealed class FinanceNewsService
                 }
             };
 
-            const int maxAttempts = 2;
             string? retryReason = null;
-            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            for (int attempt = 1; attempt <= MaxDeepSeekSummaryAttempts; attempt++)
             {
-                using HttpRequestMessage request = new(HttpMethod.Post, BuildDeepSeekChatCompletionsUri(endpointUrl));
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-                request.Content = new StringContent(
-                    JsonSerializer.Serialize(payload),
-                    Encoding.UTF8,
-                    "application/json");
-
-                using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
-                response.EnsureSuccessStatusCode();
-                await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-                using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-
-                if (!document.RootElement.TryGetProperty("choices", out JsonElement choicesElement) ||
-                    choicesElement.ValueKind != JsonValueKind.Array ||
-                    choicesElement.GetArrayLength() == 0)
+                JsonDocument document;
+                try
                 {
-                    if (attempt < maxAttempts)
-                    {
-                        retryReason = "empty-choices";
-                        continue;
-                    }
+                    using HttpRequestMessage request = new(HttpMethod.Post, BuildDeepSeekChatCompletionsUri(endpointUrl));
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+                    request.Content = new StringContent(
+                        JsonSerializer.Serialize(payload),
+                        Encoding.UTF8,
+                        "application/json");
 
-                    return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "empty-choices");
+                    using HttpResponseMessage response = await httpClient.SendAsync(request, boundedToken);
+                    response.EnsureSuccessStatusCode();
+                    await using Stream stream = await response.Content.ReadAsStreamAsync(boundedToken);
+                    document = await JsonDocument.ParseAsync(stream, cancellationToken: boundedToken);
                 }
-
-                JsonElement firstChoice = choicesElement[0];
-                if (!firstChoice.TryGetProperty("message", out JsonElement messageElement) ||
-                    !messageElement.TryGetProperty("content", out JsonElement contentElement))
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    if (attempt < maxAttempts)
-                    {
-                        retryReason = "missing-message-content";
-                        continue;
-                    }
-
-                    return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "missing-message-content");
+                    throw;
                 }
-
-                string? content = contentElement.GetString();
-                List<string> summarizedItems = ParseSummarizedNewsItems(content);
-                TraceNewsState(
-                    "NewsParseComplete",
-                    new KeyValuePair<string, object?>("mode", NewsScrollerMode.SummarizedFinancialNews),
-                    new KeyValuePair<string, object?>("source_headline_count", context.Headlines.Count),
-                    new KeyValuePair<string, object?>("item_count", summarizedItems.Count),
-                    new KeyValuePair<string, object?>("writing_style", settings.DeepSeekWritingStyle),
-                    new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                    new KeyValuePair<string, object?>("model_id", modelId),
-                    new KeyValuePair<string, object?>("attempt", attempt));
-                if (summarizedItems.Count == 0)
+                catch (OperationCanceledException) when (boundedToken.IsCancellationRequested)
                 {
-                    if (attempt < maxAttempts)
-                    {
-                        retryReason = "empty-summary-items";
-                        continue;
-                    }
-
                     TraceNewsState(
-                        "NewsParseEmptyPreview",
-                        new KeyValuePair<string, object?>("mode", NewsScrollerMode.SummarizedFinancialNews),
-                        new KeyValuePair<string, object?>("content_preview", BuildResponsePreview(content)),
-                        new KeyValuePair<string, object?>("response_length", content?.Length ?? 0),
+                        "NewsSummaryExternalBudgetExceeded",
+                        new KeyValuePair<string, object?>("phase", "deepseek"),
+                        new KeyValuePair<string, object?>("attempt", attempt),
+                        new KeyValuePair<string, object?>("budget_seconds", _summarizedNewsExternalCallBudget.TotalSeconds));
+                    return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "deepseek-request-timeout");
+                }
+                catch (OperationCanceledException ex) when (attempt < MaxDeepSeekSummaryAttempts)
+                {
+                    retryReason = ex.GetType().Name;
+                    await DelayBeforeSummaryRetryAsync(retryReason, attempt, boundedToken);
+                    continue;
+                }
+                catch (OperationCanceledException ex)
+                {
+                    TraceNewsState(
+                        "NewsSummaryRequestCancelled",
+                        new KeyValuePair<string, object?>("exception_type", ex.GetType().Name),
                         new KeyValuePair<string, object?>("attempt", attempt));
-                    return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "empty-summary-items");
+                    return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "deepseek-request-canceled");
                 }
-
-                if (!string.IsNullOrWhiteSpace(retryReason))
+                catch (Exception ex) when (IsRetryableSummaryException(ex) && attempt < MaxDeepSeekSummaryAttempts)
                 {
-                    TraceNewsState(
-                        "NewsSummaryRetryRecovered",
-                        new KeyValuePair<string, object?>("reason", retryReason),
-                        new KeyValuePair<string, object?>("final_attempt", attempt),
-                        new KeyValuePair<string, object?>("item_count", summarizedItems.Count));
+                    retryReason = ex.GetType().Name;
+                    await DelayBeforeSummaryRetryAsync(retryReason, attempt, boundedToken);
+                    continue;
                 }
 
-                summarizedItems.Add(BuildClosingQuoteHeadline(settings.DeepSeekWritingStyle));
-                return new(summarizedItems, false);
+                using (document)
+                {
+                    if (!document.RootElement.TryGetProperty("choices", out JsonElement choicesElement) ||
+                        choicesElement.ValueKind != JsonValueKind.Array ||
+                        choicesElement.GetArrayLength() == 0)
+                    {
+                        if (attempt < MaxDeepSeekSummaryAttempts)
+                        {
+                            retryReason = "empty-choices";
+                            await DelayBeforeSummaryRetryAsync(retryReason, attempt, boundedToken);
+                            continue;
+                        }
+
+                        return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "empty-choices");
+                    }
+
+                    JsonElement firstChoice = choicesElement[0];
+                    if (!firstChoice.TryGetProperty("message", out JsonElement messageElement) ||
+                        !messageElement.TryGetProperty("content", out JsonElement contentElement))
+                    {
+                        if (attempt < MaxDeepSeekSummaryAttempts)
+                        {
+                            retryReason = "missing-message-content";
+                            await DelayBeforeSummaryRetryAsync(retryReason, attempt, boundedToken);
+                            continue;
+                        }
+
+                        return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "missing-message-content");
+                    }
+
+                    string? content = contentElement.GetString();
+                    List<string> summarizedItems = ParseSummarizedNewsItems(content);
+                    TraceNewsState(
+                        "NewsParseComplete",
+                        new KeyValuePair<string, object?>("mode", NewsScrollerMode.SummarizedFinancialNews),
+                        new KeyValuePair<string, object?>("source_headline_count", context.Headlines.Count),
+                        new KeyValuePair<string, object?>("item_count", summarizedItems.Count),
+                        new KeyValuePair<string, object?>("writing_style", settings.DeepSeekWritingStyle),
+                        new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                        new KeyValuePair<string, object?>("model_id", modelId),
+                        new KeyValuePair<string, object?>("attempt", attempt));
+                    if (summarizedItems.Count == 0)
+                    {
+                        if (attempt < MaxDeepSeekSummaryAttempts)
+                        {
+                            retryReason = "empty-summary-items";
+                            await DelayBeforeSummaryRetryAsync(retryReason, attempt, boundedToken);
+                            continue;
+                        }
+
+                        TraceNewsState(
+                            "NewsParseEmptyPreview",
+                            new KeyValuePair<string, object?>("mode", NewsScrollerMode.SummarizedFinancialNews),
+                            new KeyValuePair<string, object?>("content_preview", BuildResponsePreview(content)),
+                            new KeyValuePair<string, object?>("response_length", content?.Length ?? 0),
+                            new KeyValuePair<string, object?>("attempt", attempt));
+                        return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "empty-summary-items");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(retryReason))
+                    {
+                        TraceNewsState(
+                            "NewsSummaryRetryRecovered",
+                            new KeyValuePair<string, object?>("reason", retryReason),
+                            new KeyValuePair<string, object?>("final_attempt", attempt),
+                            new KeyValuePair<string, object?>("item_count", summarizedItems.Count));
+                    }
+
+                    summarizedItems.Add(BuildClosingQuoteHeadline(settings.DeepSeekWritingStyle));
+                    return new(summarizedItems, false);
+                }
             }
 
             return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "retry-exhausted");
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
+        }
+        catch (OperationCanceledException)
+        {
+            TraceNewsState(
+                "NewsSummaryExternalBudgetExceeded",
+                new KeyValuePair<string, object?>("phase", "retry-delay"),
+                new KeyValuePair<string, object?>("budget_seconds", _summarizedNewsExternalCallBudget.TotalSeconds));
+            return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "deepseek-request-timeout");
         }
         catch
         {
             return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "deepseek-request-failed");
         }
     }
+
+    private async Task DelayBeforeSummaryRetryAsync(
+        string reason,
+        int completedAttempt,
+        CancellationToken cancellationToken)
+    {
+        TimeSpan delay = TimeSpan.FromMilliseconds(SummaryRetryBaseDelayMilliseconds * completedAttempt);
+        TraceNewsState(
+            "NewsSummaryRetryBackoff",
+            new KeyValuePair<string, object?>("reason", reason),
+            new KeyValuePair<string, object?>("completed_attempt", completedAttempt),
+            new KeyValuePair<string, object?>("delay_milliseconds", delay.TotalMilliseconds));
+        await _delayAsync(delay, cancellationToken);
+    }
+
+    private static bool IsRetryableSummaryException(Exception ex)
+        => ex is HttpRequestException or JsonException;
 
     private static async Task<SummarizedNewsContext> FetchSummarizedNewsContextAsync(
         HttpClient httpClient,
@@ -357,6 +456,10 @@ public sealed class FinanceNewsService
                     if (mergedHeadlines.Count >= 10)
                         break;
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch
             {

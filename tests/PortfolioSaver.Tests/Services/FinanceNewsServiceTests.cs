@@ -115,7 +115,12 @@ public sealed class FinanceNewsServiceTests
         });
 
         using HttpClient client = new(handler);
-        FinanceNewsService service = new(cachePath, () => string.Empty);
+        List<TimeSpan> requestedDelays = [];
+        FinanceNewsService service = new(cachePath, () => string.Empty, (delay, _) =>
+        {
+            requestedDelays.Add(delay);
+            return Task.CompletedTask;
+        });
         AppSettings settings = new()
         {
             NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
@@ -390,6 +395,8 @@ public sealed class FinanceNewsServiceTests
         IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
 
         Assert.Equal(2, deepSeekRequestCount);
+        Assert.Single(requestedDelays);
+        Assert.Equal(TimeSpan.FromMilliseconds(750), requestedDelays[0]);
         Assert.True(headlines.Count >= 2);
         Assert.Contains(Environment.NewLine, headlines[0], StringComparison.Ordinal);
         Assert.StartsWith("In a development filed under cosmic market paperwork,", headlines[0].Split(Environment.NewLine).Last(), StringComparison.Ordinal);
@@ -567,7 +574,12 @@ public sealed class FinanceNewsServiceTests
         });
 
         using HttpClient client = new(handler);
-        FinanceNewsService service = new(cachePath, () => string.Empty);
+        List<TimeSpan> requestedDelays = [];
+        FinanceNewsService service = new(cachePath, () => string.Empty, (delay, _) =>
+        {
+            requestedDelays.Add(delay);
+            return Task.CompletedTask;
+        });
         AppSettings settings = new()
         {
             NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
@@ -583,7 +595,9 @@ public sealed class FinanceNewsServiceTests
         Assert.Equal(2, first.Count);
         Assert.Equal(first, second);
         Assert.Equal(3, rssRequestCount);
-        Assert.Equal(1, deepSeekRequestCount);
+        Assert.Equal(2, deepSeekRequestCount);
+        Assert.Single(requestedDelays);
+        Assert.Equal(TimeSpan.FromMilliseconds(750), requestedDelays[0]);
         Assert.Contains(Environment.NewLine, first[0], StringComparison.Ordinal);
         Assert.Contains("Markets brace for a", first[0], StringComparison.Ordinal);
         Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", first[1]);
@@ -636,7 +650,12 @@ public sealed class FinanceNewsServiceTests
         });
 
         using HttpClient client = new(handler);
-        FinanceNewsService service = new(cachePath, () => string.Empty);
+        List<TimeSpan> requestedDelays = [];
+        FinanceNewsService service = new(cachePath, () => string.Empty, (delay, _) =>
+        {
+            requestedDelays.Add(delay);
+            return Task.CompletedTask;
+        });
         AppSettings settings = new()
         {
             NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
@@ -654,10 +673,12 @@ public sealed class FinanceNewsServiceTests
 
         failDeepSeek = true;
         IReadOnlyList<string> second = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
-        Assert.Equal(2, deepSeekRequestCount);
+        Assert.Equal(3, deepSeekRequestCount);
         IReadOnlyList<string> third = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
 
-        Assert.Equal(2, deepSeekRequestCount);
+        Assert.Equal(3, deepSeekRequestCount);
+        Assert.Single(requestedDelays);
+        Assert.Equal(TimeSpan.FromMilliseconds(750), requestedDelays[0]);
         Assert.NotEqual(first, second);
         Assert.Equal(second, third);
         Assert.Contains(Environment.NewLine, second[0], StringComparison.Ordinal);
@@ -710,7 +731,12 @@ public sealed class FinanceNewsServiceTests
         });
 
         using HttpClient client = new(handler);
-        FinanceNewsService service = new(cachePath, () => string.Empty);
+        List<TimeSpan> requestedDelays = [];
+        FinanceNewsService service = new(cachePath, () => string.Empty, (delay, _) =>
+        {
+            requestedDelays.Add(delay);
+            return Task.CompletedTask;
+        });
         AppSettings settings = new()
         {
             NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
@@ -722,9 +748,144 @@ public sealed class FinanceNewsServiceTests
         IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
 
         Assert.Equal(2, deepSeekRequestCount);
+        Assert.Single(requestedDelays);
+        Assert.Equal(TimeSpan.FromMilliseconds(750), requestedDelays[0]);
         Assert.Equal(2, headlines.Count);
         Assert.Contains("Clerks stamp the void.", headlines[0], StringComparison.Ordinal);
         Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", headlines[1]);
+    }
+
+    [Fact]
+    public async Task GetHeadlinesAsync_SummarizedMode_RetriesOnceAfterMalformedDeepSeekJson()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        int deepSeekRequestCount = 0;
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    <rss><channel><item><title>Markets brace for a volatile week as oil and bonds diverge</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            deepSeekRequestCount++;
+            if (deepSeekRequestCount == 1)
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("{ malformed json", Encoding.UTF8, "application/json")
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "content": "[[ITEM]]\nClerks stamp the void.\nBond markets cough into fog.\nTea goes cold again.\n---\nBond markets drifted as traders weighed slower growth against stubborn inflation worries.\n[[/ITEM]]"
+                      }
+                    }
+                  ]
+                }
+                """, Encoding.UTF8, "application/json")
+            };
+        });
+
+        using HttpClient client = new(handler);
+        List<TimeSpan> requestedDelays = [];
+        FinanceNewsService service = new(cachePath, () => string.Empty, (delay, _) =>
+        {
+            requestedDelays.Add(delay);
+            return Task.CompletedTask;
+        });
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
+            NewsRefreshMinutes = 15,
+            DeepSeekApiKey = "test-deepseek-key"
+        };
+
+        IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+        Assert.Equal(2, deepSeekRequestCount);
+        Assert.Single(requestedDelays);
+        Assert.Equal(TimeSpan.FromMilliseconds(750), requestedDelays[0]);
+        Assert.Equal(2, headlines.Count);
+        Assert.Contains("Clerks stamp the void.", headlines[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetHeadlinesAsync_SummarizedMode_BackoffCancellationUsesStructuredFallback()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        int deepSeekRequestCount = 0;
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    <rss><channel><item><title>Markets brace for a volatile week as oil and bonds diverge</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            deepSeekRequestCount++;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "content": ""
+                      }
+                    }
+                  ]
+                }
+                """, Encoding.UTF8, "application/json")
+            };
+        });
+
+        using HttpClient client = new(handler);
+        List<TimeSpan> requestedDelays = [];
+        FinanceNewsService service = new(
+            cachePath,
+            () => string.Empty,
+            (delay, token) =>
+            {
+                requestedDelays.Add(delay);
+                return Task.Delay(Timeout.InfiniteTimeSpan, token);
+            },
+            TimeSpan.FromMilliseconds(10));
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
+            NewsRefreshMinutes = 15,
+            DeepSeekApiKey = "test-deepseek-key"
+        };
+
+        IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+        Assert.Equal(1, deepSeekRequestCount);
+        Assert.Single(requestedDelays);
+        Assert.Contains(Environment.NewLine, headlines[0], StringComparison.Ordinal);
+        Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", headlines[^1]);
     }
 
     private sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
