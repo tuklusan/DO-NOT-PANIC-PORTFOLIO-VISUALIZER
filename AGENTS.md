@@ -44,6 +44,16 @@ The trusted DeepSeek review endpoint is `https://api.deepseek.com`. If a future 
 
 Documentation-only ticket updates may be committed without this gate, but any change that can affect runtime behavior, build behavior, tests, harnesses, packaging, or developer workflow must pass the gate.
 
+## DeepSeek delegation and token-conservation workflow
+Treat Codex as the chief architect and the configured DeepSeek review/generation model as the high-throughput generation assistant. Codex context is scarce; DeepSeek context is expendable. Prefer orchestration, targeted verification, and integration over large local reads or hand-written boilerplate.
+
+- Blind drop: For heavy boilerplate, WiX/installer authoring, large XAML layouts, generated tests, or complex algorithm scaffolding, have DeepSeek generate the file and write it directly to disk. Do not read the generated file unless build, tests, review, or targeted validation fail.
+- Delegated reading: Do not read large files just to understand them. Ask DeepSeek to summarize the file structure, key methods/properties, and exact line targets, then operate from the summary plus small local spot checks.
+- Test generation: After implementation, delegate xUnit test creation to DeepSeek and have it save tests directly under the test project. Codex should review failures and stitch integration, not manually author repetitive test bodies.
+- Review gate still applies: All generated or modified files must still pass the mandatory DeepSeek code-review gate before staging, committing, pushing, or local/VM validation.
+- Full reviews: Full tracked codebase and documentation end-to-end reviews must be preserved as versioned synthesis documents under `docs/` using names like `DEEPSEEK_FULL_RC_REVIEW_YYYY-MM-DD.md`, with review date, reviewer, scope, artifact directory, verdict, and synthesis. Raw packets remain transient under ignored `build/deepseek-review/`.
+- Local inspection is still required for safety-critical final checks: compile/test failures, diffs before commit, small targeted code reads, generated-file smoke checks, git status, process cleanup, and any place where DeepSeek output conflicts with build/runtime evidence.
+
 ## Visual note
 Green for upward segments, red for downward segments. The line should be split by movement direction, not just colored by final result.
 
