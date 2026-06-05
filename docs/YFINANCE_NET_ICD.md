@@ -78,7 +78,9 @@ Transport is raw TCP.
 
 Default server listener:
 - port: `14870`
-- bind target: accepts connections from any IP address
+- bind target: `127.0.0.1` loopback by default
+
+Remote listener exposure is opt-in only. Standalone/server-hosted scenarios that intentionally accept non-local clients must pass an explicit bind address, such as `--bind-address 0.0.0.0`, or the equivalent IPv4 convenience switch `--allow-remote`. IPv6 remote exposure must use an explicit IPv6 bind address such as `--bind-address ::`. If both `--allow-remote` and `--bind-address` are provided, the explicit `--bind-address` value wins. Owned UI startup must not expose the server on non-loopback interfaces.
 
 ### 4.2 Concurrency target
 The server must support multiple client connections with a maximum of `1024` concurrent clients.
@@ -489,6 +491,8 @@ The wire protocol must include `protocolVersion` in every message.
 
 ### 18.2 Breaking changes
 Breaking wire changes require a protocol version increment and an ICD update.
+
+BETA-6 listener security hardening is a runtime behavior breaking change for non-local clients: the YFinance.NET server no longer binds to all network interfaces by default. Remote or shared-server deployments must explicitly pass `--bind-address 0.0.0.0`, another concrete non-loopback bind address, or the IPv4-only `--allow-remote` convenience switch. Owned UI startup remains loopback-only.
 
 ### 18.3 Backward compatibility
 No backward compatibility guarantee is assumed until explicitly declared in a later ICD revision.

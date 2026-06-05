@@ -1,11 +1,13 @@
 using System.IO;
 using System.Diagnostics;
+using System.Net;
 using System.Text.Json;
 using YFinance.NET.Client;
 using YFinance.NET.Protocol.Dtos;
 using YFinance.NET.Protocol.Integrity;
 using YFinance.NET.Protocol.Messages;
 using YFinance.NET.Protocol.Transport;
+using YFinance.NET.Server.Hosting;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
@@ -128,6 +130,50 @@ public sealed class YFinanceClientServerProtocolTests
         Assert.Contains("QuoteResponseObserved", serverSource, StringComparison.Ordinal);
         Assert.Contains("new(\"price\"", serverSource, StringComparison.Ordinal);
         Assert.Contains("new(\"change_percent\"", serverSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ServerOptions_DefaultsToLoopbackBinding()
+    {
+        ServerOptions options = ServerOptions.Parse([]);
+
+        Assert.Equal(IPAddress.Loopback, options.BindAddress);
+    }
+
+    [Fact]
+    public void ServerOptions_RequiresExplicitOptInForRemoteBinding()
+    {
+        ServerOptions explicitAddress = ServerOptions.Parse(["--bind-address", "0.0.0.0"]);
+        ServerOptions allowRemote = ServerOptions.Parse(["--allow-remote"]);
+        ServerOptions explicitAddressWins = ServerOptions.Parse(["--allow-remote", "--bind-address", "127.0.0.1"]);
+        ServerOptions explicitAddressStillWins = ServerOptions.Parse(["--bind-address", "0.0.0.0", "--allow-remote"]);
+        ServerOptions ipv6Any = ServerOptions.Parse(["--bind-address", "::"]);
+        ServerOptions ipv6Loopback = ServerOptions.Parse(["--bind-address", "::1"]);
+
+        Assert.Equal(IPAddress.Any, explicitAddress.BindAddress);
+        Assert.Equal(IPAddress.Any, allowRemote.BindAddress);
+        Assert.Equal(IPAddress.Loopback, explicitAddressWins.BindAddress);
+        Assert.Equal(IPAddress.Any, explicitAddressStillWins.BindAddress);
+        Assert.Equal(IPAddress.IPv6Any, ipv6Any.BindAddress);
+        Assert.Equal(IPAddress.IPv6Loopback, ipv6Loopback.BindAddress);
+    }
+
+    [Fact]
+    public void ServerOptions_RejectsInvalidBindAddress()
+    {
+        ArgumentException ex = Assert.Throws<ArgumentException>(() => ServerOptions.Parse(["--bind-address", "not-an-ip"]));
+
+        Assert.Contains("--bind-address requires a valid IP address", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ServerOptions_RejectsRemoteBindingInOwnedMode()
+    {
+        ArgumentException allowRemoteEx = Assert.Throws<ArgumentException>(() => ServerOptions.Parse(["--owned", "--allow-remote"]));
+        ArgumentException bindAddressEx = Assert.Throws<ArgumentException>(() => ServerOptions.Parse(["--owned", "--bind-address", "0.0.0.0"]));
+
+        Assert.Contains("Owned mode requires a loopback bind address", allowRemoteEx.Message, StringComparison.Ordinal);
+        Assert.Contains("Owned mode requires a loopback bind address", bindAddressEx.Message, StringComparison.Ordinal);
     }
 
     [Fact]

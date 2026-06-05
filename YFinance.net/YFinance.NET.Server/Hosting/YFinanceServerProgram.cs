@@ -22,12 +22,23 @@ internal static class YFinanceServerProgram
 
     public static int Run(string[] args)
     {
-        ServerOptions options = ServerOptions.Parse(args);
+        ServerOptions options;
+        try
+        {
+            options = ServerOptions.Parse(args);
+        }
+        catch (ArgumentException ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            YFinanceCircularTraceSink.Instance.ErrorState("YFinanceServer", "ServerOptionRejected", [], ex);
+            return -1;
+        }
+
         using Mutex singleInstanceMutex = new(false, ProtocolConstants.GetMutexName(options.Port), out bool createdNew);
         if (!createdNew)
         {
             YFinanceCircularTraceSink.Instance.WarnState("YFinanceServer", "DuplicateServerStartRejected",
-            [new("port", options.Port), new("owned_mode", options.OwnedMode), new("owner_pid", options.OwnerProcessId)]);
+            [new("port", options.Port), new("bind_address", options.BindAddress.ToString()), new("owned_mode", options.OwnedMode), new("owner_pid", options.OwnerProcessId)]);
             return 0;
         }
 
@@ -40,7 +51,7 @@ internal static class YFinanceServerProgram
         AppDomain.CurrentDomain.ProcessExit += (_, _) => cts.Cancel();
 
         YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ServerStartup",
-        [new("port", options.Port), new("owned_mode", options.OwnedMode), new("owner_pid", options.OwnerProcessId), new("max_clients", options.MaxConcurrentClients)]);
+        [new("port", options.Port), new("bind_address", options.BindAddress.ToString()), new("owned_mode", options.OwnedMode), new("owner_pid", options.OwnerProcessId), new("max_clients", options.MaxConcurrentClients)]);
 
         try
         {
@@ -61,7 +72,7 @@ internal static class YFinanceServerProgram
     private static async Task RunAsync(ServerOptions options, CancellationToken cancellationToken)
     {
         using YFinanceClient client = CreateDomainClient();
-        using TcpListener listener = new(IPAddress.Any, options.Port);
+        using TcpListener listener = new(options.BindAddress, options.Port);
         listener.Start(options.MaxConcurrentClients);
 
         using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
