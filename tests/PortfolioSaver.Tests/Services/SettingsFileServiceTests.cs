@@ -156,7 +156,9 @@ public sealed class SettingsFileServiceTests
             AppSettings persisted = JsonSerializer.Deserialize<AppSettings>(json)!;
 
             Assert.Equal(30, persisted.NewsRefreshMinutes);
-            Assert.False(Directory.EnumerateFiles(tempRoot).Any(path => path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)));
+            Assert.DoesNotContain(
+                Directory.EnumerateFiles(tempRoot),
+                path => path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase));
         }
         finally
         {
@@ -238,7 +240,9 @@ public sealed class SettingsFileServiceTests
             AppSettings persisted = JsonSerializer.Deserialize<AppSettings>(json)!;
 
             Assert.InRange(persisted.NewsRefreshMinutes, 15, 22);
-            Assert.False(Directory.EnumerateFiles(tempRoot).Any(path => path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)));
+            Assert.DoesNotContain(
+                Directory.EnumerateFiles(tempRoot),
+                path => path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase));
         }
         finally
         {
