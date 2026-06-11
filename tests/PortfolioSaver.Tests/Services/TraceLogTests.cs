@@ -115,12 +115,12 @@ public sealed class TraceLogTests
         string repoRoot = GetRepoRoot();
         string source = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Shared", "Diagnostics", "TraceLog.cs"));
 
-        Assert.Contains("private static string _hostName = Environment.MachineName;", source, StringComparison.Ordinal);
-        Assert.Contains("private static string _localIp = \"127.0.0.1\";", source, StringComparison.Ordinal);
+        Assert.Contains("private static NetworkMetadata _networkMetadata = new(Environment.MachineName, \"127.0.0.1\");", source, StringComparison.Ordinal);
         Assert.Contains("EnsureNetworkMetadataResolution();", source, StringComparison.Ordinal);
         Assert.Contains("_ = Task.Run(ResolveNetworkMetadata);", source, StringComparison.Ordinal);
-        Assert.Contains("Volatile.Read(ref _hostName)", source, StringComparison.Ordinal);
-        Assert.Contains("Volatile.Write(ref _localIp, localIp)", source, StringComparison.Ordinal);
+        Assert.Contains("NetworkMetadata metadata = Volatile.Read(ref _networkMetadata);", source, StringComparison.Ordinal);
+        Assert.Contains("Volatile.Write(ref _networkMetadata, new NetworkMetadata(hostName, localIp));", source, StringComparison.Ordinal);
+        Assert.Contains("private sealed record NetworkMetadata(string HostName, string LocalIp);", source, StringComparison.Ordinal);
         Assert.DoesNotContain("static readonly string HostName = GetHostNameSafe()", source, StringComparison.Ordinal);
         Assert.DoesNotContain("static readonly string LocalIp = GetPrimaryIpSafe()", source, StringComparison.Ordinal);
     }

@@ -19,8 +19,7 @@ public static class TraceLog
     private static readonly object FileSync = new();
     private static readonly ConcurrentQueue<string> Queue = new();
     private static readonly string ProgramName = Process.GetCurrentProcess().ProcessName;
-    private static string _hostName = Environment.MachineName;
-    private static string _localIp = "127.0.0.1";
+    private static NetworkMetadata _networkMetadata = new(Environment.MachineName, "127.0.0.1");
     private static int _workerStarted;
     private static int _metadataResolutionStarted;
 
@@ -98,9 +97,8 @@ public static class TraceLog
         EnsureNetworkMetadataResolution();
         string exceptionText = exception is null ? string.Empty : $" | ex={exception.GetType().Name}: {exception.Message}";
         string functionText = string.IsNullOrWhiteSpace(functionName) ? "unknown" : functionName;
-        string hostName = Volatile.Read(ref _hostName);
-        string localIp = Volatile.Read(ref _localIp);
-        string line = $"{DateTimeOffset.UtcNow:O} | {level} | program={ProgramName} | source={source} | function={functionText} | host={hostName} | ip={localIp} | pid={Environment.ProcessId} | tid={Environment.CurrentManagedThreadId} | {SanitizeValue(message, MaxLineLength)}{SanitizeValue(exceptionText, 240)}";
+        NetworkMetadata metadata = Volatile.Read(ref _networkMetadata);
+        string line = $"{DateTimeOffset.UtcNow:O} | {level} | program={ProgramName} | source={source} | function={functionText} | host={metadata.HostName} | ip={metadata.LocalIp} | pid={Environment.ProcessId} | tid={Environment.CurrentManagedThreadId} | {SanitizeValue(message, MaxLineLength)}{SanitizeValue(exceptionText, 240)}";
         Queue.Enqueue(line);
     }
 
@@ -213,9 +211,10 @@ public static class TraceLog
     {
         string hostName = GetHostNameSafe();
         string localIp = GetPrimaryIpSafe(hostName);
-        Volatile.Write(ref _hostName, hostName);
-        Volatile.Write(ref _localIp, localIp);
+        Volatile.Write(ref _networkMetadata, new NetworkMetadata(hostName, localIp));
     }
+
+    private sealed record NetworkMetadata(string HostName, string LocalIp);
 
     private static async Task ProcessQueueAsync()
     {
