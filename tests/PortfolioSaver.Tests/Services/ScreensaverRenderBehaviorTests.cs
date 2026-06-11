@@ -938,6 +938,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("TeleprinterCursor", newsCode, StringComparison.Ordinal);
         Assert.Contains("Canvas.SetTop(ActiveHeadlineBlock, _currentVerticalOffset);", newsCode, StringComparison.Ordinal);
         Assert.Contains("MeasureHeadlineHeight", newsCode, StringComparison.Ordinal);
+        Assert.Contains("_headlineWidthCache", newsCode, StringComparison.Ordinal);
+        Assert.Contains("MeasurementCacheKey", newsCode, StringComparison.Ordinal);
+        Assert.Contains("MaxWidthMeasurementCacheEntries = 256", newsCode, StringComparison.Ordinal);
         Assert.Contains("TelegraphVerticalScrollPixelsPerSecond = 42d", newsCode, StringComparison.Ordinal);
         Assert.Contains("TypewriterCharactersPerTick = 2", newsCode, StringComparison.Ordinal);
         Assert.DoesNotContain("nameof(NewsFlasherViewModel.MarqueeText)", newsCode, StringComparison.Ordinal);
@@ -1129,6 +1132,50 @@ public sealed class ScreensaverRenderBehaviorTests
             "SECOND LINE" + Environment.NewLine +
             "THIRD LINE",
             formatted);
+    }
+
+    [Fact]
+    public void NewsFlasherControl_CachesAndClearsWidthMeasurements()
+    {
+        RunOnSta(() =>
+        {
+            NewsFlasherControl control = new()
+            {
+                Width = 420,
+                Height = 54
+            };
+
+            control.ApplyTemplate();
+            control.Measure(new Size(420, 54));
+            control.Arrange(new Rect(0, 0, 420, 54));
+            control.UpdateLayout();
+
+            MethodInfo buildWrappedLinesMethod = typeof(NewsFlasherControl).GetMethod("BuildWrappedLines", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.BuildWrappedLines not found.");
+            MethodInfo clearMeasurementCacheMethod = typeof(NewsFlasherControl).GetMethod("ClearMeasurementCache", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.ClearMeasurementCache not found.");
+            FieldInfo cacheField = typeof(NewsFlasherControl).GetField("_headlineWidthCache", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._headlineWidthCache not found.");
+
+            buildWrappedLinesMethod.Invoke(control, ["ALPHA BRAVO CHARLIE DELTA ECHO FOXTROT"]);
+            object cache = cacheField.GetValue(control) ?? throw new InvalidOperationException("Width cache not found.");
+            int populatedCount = (int)(cache.GetType().GetProperty("Count")?.GetValue(cache) ?? 0);
+            buildWrappedLinesMethod.Invoke(control, ["ALPHA BRAVO CHARLIE DELTA ECHO FOXTROT"]);
+            int reusedCount = (int)(cache.GetType().GetProperty("Count")?.GetValue(cache) ?? -1);
+
+            clearMeasurementCacheMethod.Invoke(control, []);
+            int clearedCount = (int)(cache.GetType().GetProperty("Count")?.GetValue(cache) ?? -1);
+
+            Assert.True(populatedCount > 0);
+            Assert.Equal(populatedCount, reusedCount);
+            Assert.Equal(0, clearedCount);
+
+            for (int i = 0; i < 257; i++)
+                buildWrappedLinesMethod.Invoke(control, [$"ALPHA-{i} BRAVO-{i} CHARLIE-{i}"]);
+
+            int boundedCount = (int)(cache.GetType().GetProperty("Count")?.GetValue(cache) ?? -1);
+            Assert.InRange(boundedCount, 1, 256);
+        });
     }
 
     private static string TeleprinterCursorText() => " █";

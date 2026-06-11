@@ -2129,7 +2129,7 @@
       "priority": 3,
       "area": "UI performance",
       "title": "Dispatcher timer in `NewsFlasherControl` causing rendering jitter due to heavy text measurement",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2148,7 +2148,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-11 by caching NewsFlasherControl text-width measurements with DPI/font-aware keys, bounding the cache to 256 entries, clearing it on headline/layout resets, and removing the redundant post-typing height measurement.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-194431.md reported no blocking or high-severity findings. Local validation pending commit/push checkpoint."
     },
     {
       "id": "CR-032",

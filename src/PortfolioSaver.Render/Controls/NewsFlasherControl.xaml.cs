@@ -20,6 +20,7 @@ public partial class NewsFlasherControl : UserControl
     private const double DefaultBetweenHeadlinePauseSeconds = 1.6d;
     private const double TelegraphVerticalScrollPixelsPerSecond = 42d;
     private const int TypewriterCharactersPerTick = 2;
+    private const int MaxWidthMeasurementCacheEntries = 256;
     private const string TeleprinterCursor = " █";
     private readonly DispatcherTimer _playbackTimer = new() { Interval = TimeSpan.FromMilliseconds(40) };
     private NewsFlasherViewModel? _flasher;
@@ -33,6 +34,7 @@ public partial class NewsFlasherControl : UserControl
     private PlaybackPhase _lastTracedPhase = PlaybackPhase.Idle;
     private bool _pendingRefresh;
     private IReadOnlyList<string> _wrappedLines = [];
+    private readonly Dictionary<MeasurementCacheKey, double> _headlineWidthCache = [];
     private string _displayTopLine = string.Empty;
     private string _displayBottomLine = string.Empty;
     private string _activeText = string.Empty;
@@ -44,7 +46,11 @@ public partial class NewsFlasherControl : UserControl
 
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
-        SizeChanged += (_, _) => RefreshLayoutForCurrentState();
+        SizeChanged += (_, _) =>
+        {
+            ClearMeasurementCache();
+            RefreshLayoutForCurrentState();
+        };
         DataContextChanged += OnDataContextChanged;
         _playbackTimer.Tick += OnPlaybackTick;
     }
@@ -173,6 +179,7 @@ public partial class NewsFlasherControl : UserControl
     private void PrepareHeadline(NewsHeadlineViewModel headline)
     {
         _activeText = FormatHeadline(headline.Text);
+        ClearMeasurementCache();
         _wrappedLines = BuildWrappedLines(_activeText);
         _segmentIndex = 0;
         _activeForeground = headline.Foreground;
@@ -242,7 +249,6 @@ public partial class NewsFlasherControl : UserControl
         if (_visibleCharacterCount < GetTypingTargetLength())
             return;
 
-        _activeHeadlineHeight = MeasureHeadlineHeight(GetFullSegmentText());
         SetPhase(PlaybackPhase.PauseBeforeScroll);
         _pauseTicksRemaining = GetPauseTicks(DefaultRevealPauseSeconds);
     }
@@ -324,6 +330,7 @@ public partial class NewsFlasherControl : UserControl
         _displayBottomLine = string.Empty;
         _activeText = string.Empty;
         _activeHeadlineHeight = 0d;
+        ClearMeasurementCache();
         ClearDisplay();
     }
 
@@ -393,6 +400,7 @@ public partial class NewsFlasherControl : UserControl
     private List<string> BuildWrappedLines(string text)
     {
         List<string> lines = [];
+        double widthLimit = Math.Max(1d, ViewportHost.ActualWidth);
         string normalized = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
         string[] logicalLines = normalized.Split('\n', StringSplitOptions.None);
         foreach (string logicalLine in logicalLines)
@@ -413,7 +421,7 @@ public partial class NewsFlasherControl : UserControl
                     ? word
                     : current + " " + word;
 
-                if (MeasureHeadlineWidth(candidate) <= Math.Max(1d, ViewportHost.ActualWidth))
+                if (MeasureHeadlineWidth(candidate) <= widthLimit)
                 {
                     current = candidate;
                     continue;
@@ -501,6 +509,10 @@ public partial class NewsFlasherControl : UserControl
         if (string.IsNullOrWhiteSpace(text))
             return 0d;
 
+        MeasurementCacheKey key = CreateMeasurementCacheKey(text);
+        if (_headlineWidthCache.TryGetValue(key, out double cachedWidth))
+            return cachedWidth;
+
         Typeface typeface = new(
             ActiveHeadlineBlock.FontFamily,
             ActiveHeadlineBlock.FontStyle,
@@ -517,7 +529,31 @@ public partial class NewsFlasherControl : UserControl
             Brushes.White,
             dpi);
 
-        return Math.Ceiling(formatted.WidthIncludingTrailingWhitespace);
+        double width = Math.Ceiling(formatted.WidthIncludingTrailingWhitespace);
+        if (_headlineWidthCache.Count >= MaxWidthMeasurementCacheEntries)
+            _headlineWidthCache.Clear();
+
+        _headlineWidthCache[key] = width;
+        return width;
+    }
+
+    private MeasurementCacheKey CreateMeasurementCacheKey(string text)
+    {
+        double dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        // DPI/font are part of the key so monitor/theme changes cannot reuse stale measurements.
+        return new MeasurementCacheKey(
+            text,
+            dpi,
+            ActiveHeadlineBlock.FontFamily?.Source ?? string.Empty,
+            ActiveHeadlineBlock.FontStyle.ToString(),
+            ActiveHeadlineBlock.FontWeight.ToOpenTypeWeight(),
+            ActiveHeadlineBlock.FontStretch.ToString(),
+            ActiveHeadlineBlock.FontSize);
+    }
+
+    private void ClearMeasurementCache()
+    {
+        _headlineWidthCache.Clear();
     }
 
     private void SetPhase(PlaybackPhase phase)
@@ -548,4 +584,13 @@ public partial class NewsFlasherControl : UserControl
         PauseBetweenHeadlines,
         AdvanceHeadline
     }
+
+    private readonly record struct MeasurementCacheKey(
+        string Text,
+        double PixelsPerDip,
+        string FontFamily,
+        string FontStyle,
+        int FontWeight,
+        string FontStretch,
+        double FontSize);
 }
