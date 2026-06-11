@@ -227,6 +227,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Get-TopLevelWindowSnapshot", script, StringComparison.Ordinal);
         Assert.Contains("function Test-ConfigPhaseBudget", script, StringComparison.Ordinal);
         Assert.Contains("function Validate-AndCloseConfigWindow", script, StringComparison.Ordinal);
+        Assert.Contains("function Wait-ConfigPrimaryButtonReady", script, StringComparison.Ordinal);
+        Assert.Contains("$primaryButton.Current.IsEnabled -and -not $primaryButton.Current.IsOffscreen", script, StringComparison.Ordinal);
+        Assert.Contains("Write-ConfigWindowTrace -Event 'PrimaryButtonNotReady'", script, StringComparison.Ordinal);
         Assert.Contains("function Get-ConfigBlockingDialog", script, StringComparison.Ordinal);
         Assert.Contains("function Get-ProcessOwnedWindows", script, StringComparison.Ordinal);
         Assert.Contains("function Close-ConfigWindowIfPresent", script, StringComparison.Ordinal);
@@ -254,6 +257,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Write-ConfigWindowTrace -Event 'ConfigCloseButtonFallback'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'FooterButtonClickFallback'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'PrimaryButtonInvoked'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-ConfigWindowTrace -Event 'PrimaryButtonMissingOrDisabled'", script, StringComparison.Ordinal);
         Assert.Contains("$invokeEvent = 'OkButtonInvoked'", script, StringComparison.Ordinal);
         Assert.Contains("$invokeEvent = 'CancelButtonInvoked'", script, StringComparison.Ordinal);
         Assert.Contains("throw 'Validate did not close the config window automatically.'", script, StringComparison.Ordinal);

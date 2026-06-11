@@ -2212,6 +2212,34 @@ function Get-WindowButtonSnapshot {
     }
 }
 
+function Wait-ConfigPrimaryButtonReady {
+    param(
+        [Parameter(Mandatory = $true)]$Window,
+        [int]$TimeoutSeconds = 30
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    do {
+        $primaryButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigPrimaryButton'
+        if ($null -ne $primaryButton) {
+            try {
+                if ($primaryButton.Current.IsEnabled -and -not $primaryButton.Current.IsOffscreen) {
+                    return $primaryButton
+                }
+            }
+            catch {
+            }
+        }
+
+        $statusText = Get-ConfigStatusText -Window $Window
+        $buttonSnapshot = Get-WindowButtonSnapshot -Window $Window
+        Write-ConfigWindowTrace -Event 'PrimaryButtonNotReady' -Details ("status={0}; buttons={1}" -f $statusText, $buttonSnapshot)
+        Start-Sleep -Milliseconds 500
+    } while ((Get-Date) -lt $deadline)
+
+    return $null
+}
+
 function Validate-AndCloseConfigWindow {
     param(
         [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process,
@@ -2230,9 +2258,9 @@ function Validate-AndCloseConfigWindow {
             return $true
         }
 
-        $primaryButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigPrimaryButton'
+        $primaryButton = Wait-ConfigPrimaryButtonReady -Window $Window -TimeoutSeconds 30
         if ($null -eq $primaryButton) {
-            Write-ConfigWindowTrace -Event 'PrimaryButtonMissing'
+            Write-ConfigWindowTrace -Event 'PrimaryButtonMissingOrDisabled' -Details (Get-WindowButtonSnapshot -Window $Window)
             return $false
         }
 
