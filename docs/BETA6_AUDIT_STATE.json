@@ -1721,7 +1721,7 @@
       "priority": 1,
       "area": "Concurrency / Resource management",
       "title": "`YFinanceRuntimeClientFactory` reset tears down in‑flight operations",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Critical",
       "evidence": [
@@ -1740,6 +1740,19 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Resolved on 2026-06-11 by replacing immediate shared YFinanceServerClient disposal with active-operation accounting and retired-client disposal.",
+        "RunAsync now rents the shared client, retires the failed client on operation failure, and releases the active operation in a finally block so disposal waits until all in-flight users have completed.",
+        "EnsureServerReadyAsync now uses the same rent/release path for the hello connection, and the prior public untracked GetSharedClient acquire surface was removed.",
+        "ResetConnectionState now clears the shared future-use pointer and routes the previous client through RetireConnectionState so an active operation is not disposed mid-flight.",
+        "Added regression tests proving a failing concurrent operation does not dispose another operation's captured client, and explicit ResetConnectionState while an operation is active retires rather than disposes the client."
+      ],
+      "validation": [
+        "Implementation commits pushed: c695fb0 Retire failed YFinance clients after active operations; 4c73fae Route YFinance reset through active client accounting.",
+        "DeepSeek post-commit review build/deepseek-review/postcommit-review-20260611-104648.md reported no blocking findings; advisory notes were non-blocking and the hello retirement catch is scoped to ConnectAsync.",
+        "Local validation on 2026-06-11: dotnet build PortfolioScreensaver.sln -c Release succeeded with 0 warnings and 0 errors.",
+        "Local validation on 2026-06-11: dotnet test PortfolioScreensaver.sln -c Release --no-build passed 286/286 tests."
       ]
     },
     {
