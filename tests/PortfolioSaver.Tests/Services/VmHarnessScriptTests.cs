@@ -98,7 +98,9 @@ public sealed class VmHarnessScriptTests
 
         Assert.Contains("$tempBuildRoot = Join-Path $tempRoot \"build\"", script, StringComparison.Ordinal);
         Assert.Contains("New-Item -ItemType Directory -Force -Path $tempBuildRoot", script, StringComparison.Ordinal);
-        Assert.Contains("Copy-Item -LiteralPath (Join-Path $repoRoot \"build\\YFinanceServer.targets\")", script, StringComparison.Ordinal);
+        Assert.Contains("$yfinanceServerTargets = Join-Path (Join-Path $repoRoot \"build\") \"YFinanceServer.targets\"", script, StringComparison.Ordinal);
+        Assert.Contains("Copy-Item -LiteralPath $yfinanceServerTargets -Destination $tempBuildRoot -Force", script, StringComparison.Ordinal);
+        Assert.True(File.Exists(Path.Combine(GetRepoRoot(), "build", "YFinanceServer.targets")));
     }
 
     [Fact]
