@@ -47,6 +47,9 @@ public sealed class HistoricalCacheService : IHistoricalCacheService
     }
 
     public Task PurgeExpiredAsync(CancellationToken cancellationToken = default)
+        => Task.Run(() => PurgeExpired(cancellationToken), cancellationToken);
+
+    private void PurgeExpired(CancellationToken cancellationToken)
     {
         foreach (string file in Directory.EnumerateFiles(_rootFolder, "*.json", SearchOption.TopDirectoryOnly))
         {
@@ -56,8 +59,6 @@ public sealed class HistoricalCacheService : IHistoricalCacheService
             if (DateTimeOffset.UtcNow - info.LastWriteTimeUtc > MaxAge)
                 TryDelete(file);
         }
-
-        return Task.CompletedTask;
     }
 
     private string GetPath(string symbol)
