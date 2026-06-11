@@ -230,6 +230,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Wait-ConfigPrimaryButtonReady", script, StringComparison.Ordinal);
         Assert.Contains("$primaryButton.Current.IsEnabled -and -not $primaryButton.Current.IsOffscreen", script, StringComparison.Ordinal);
         Assert.Contains("Write-ConfigWindowTrace -Event 'PrimaryButtonNotReady'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-ConfigWindowTrace -Event 'PrimaryButtonReadinessTraceFailed'", script, StringComparison.Ordinal);
         Assert.Contains("function Get-ConfigBlockingDialog", script, StringComparison.Ordinal);
         Assert.Contains("function Get-ProcessOwnedWindows", script, StringComparison.Ordinal);
         Assert.Contains("function Close-ConfigWindowIfPresent", script, StringComparison.Ordinal);

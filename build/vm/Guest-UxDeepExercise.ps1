@@ -2219,7 +2219,9 @@ function Wait-ConfigPrimaryButtonReady {
     )
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $pollCount = 0
     do {
+        $pollCount++
         $primaryButton = Find-DescendantByAutomationId -Root $Window -AutomationId 'ConfigPrimaryButton'
         if ($null -ne $primaryButton) {
             try {
@@ -2231,9 +2233,17 @@ function Wait-ConfigPrimaryButtonReady {
             }
         }
 
-        $statusText = Get-ConfigStatusText -Window $Window
-        $buttonSnapshot = Get-WindowButtonSnapshot -Window $Window
-        Write-ConfigWindowTrace -Event 'PrimaryButtonNotReady' -Details ("status={0}; buttons={1}" -f $statusText, $buttonSnapshot)
+        if ($pollCount -eq 1 -or ($pollCount % 5) -eq 0) {
+            try {
+                $statusText = Get-ConfigStatusText -Window $Window
+                $buttonSnapshot = Get-WindowButtonSnapshot -Window $Window
+                Write-ConfigWindowTrace -Event 'PrimaryButtonNotReady' -Details ("status={0}; buttons={1}" -f $statusText, $buttonSnapshot)
+            }
+            catch {
+                Write-ConfigWindowTrace -Event 'PrimaryButtonReadinessTraceFailed' -Details $_.Exception.Message
+            }
+        }
+
         Start-Sleep -Milliseconds 500
     } while ((Get-Date) -lt $deadline)
 
