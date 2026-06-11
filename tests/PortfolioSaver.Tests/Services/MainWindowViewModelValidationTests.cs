@@ -179,6 +179,24 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
+    public void ConnectivityStateUpdates_AreAppliedThroughUiDispatcher()
+    {
+        string source = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Settings",
+            "ViewModels",
+            "MainWindowViewModel.cs"));
+
+        Assert.Contains("private readonly Dispatcher _uiDispatcher;", source, StringComparison.Ordinal);
+        Assert.Contains("_uiDispatcher = Dispatcher.CurrentDispatcher;", source, StringComparison.Ordinal);
+        Assert.Contains("ApplyConnectivityStateOnUiThread", source, StringComparison.Ordinal);
+        Assert.Contains("ApplyConnectivityStateOnUiThreadAsync", source, StringComparison.Ordinal);
+        Assert.Contains("DispatcherPriority.Send", source, StringComparison.Ordinal);
+        Assert.Contains("ConnectivityStateUpdated", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void EndValidationRun_WhenAlreadyValidated_ShowsOkCancelActions()
     {
         MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));

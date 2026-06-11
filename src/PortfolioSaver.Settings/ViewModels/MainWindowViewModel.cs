@@ -31,6 +31,7 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly YahooSymbolValidationService _yahooSymbolValidationService;
     private readonly SymbolProfileStore _symbolProfileStore;
     private readonly DispatcherTimer _stateTimer;
+    private readonly Dispatcher _uiDispatcher;
     private readonly HashSet<TickerGroupEditorViewModel> _trackedGroups = [];
     private readonly HashSet<TickerItemEditorViewModel> _trackedTickers = [];
 
@@ -60,6 +61,7 @@ public sealed class MainWindowViewModel : BindableBase
         _connectivityService = connectivityService ?? new ConfigConnectivityService();
         _yahooSymbolValidationService = new YahooSymbolValidationService();
         _symbolProfileStore = new SymbolProfileStore(Path.Combine(PathHelper.GetLocalDataDirectory(), "symbol-profiles.json"));
+        _uiDispatcher = Dispatcher.CurrentDispatcher;
 
         _settings = _settingsFileService.Load();
         Groups = new ObservableCollection<TickerGroupEditorViewModel>(
@@ -744,10 +746,11 @@ public sealed class MainWindowViewModel : BindableBase
     }
 
     private void UpdateConnectivityState()
-        => ApplyConnectivityState(_connectivityService.IsInternetAvailable());
+        => ApplyConnectivityStateOnUiThread(_connectivityService.IsInternetAvailable());
 
     private async Task UpdateConnectivityStateAsync(CancellationToken cancellationToken = default)
-        => ApplyConnectivityState(await _connectivityService.IsInternetAvailableAsync(cancellationToken));
+        => await ApplyConnectivityStateOnUiThreadAsync(
+            await _connectivityService.IsInternetAvailableAsync(cancellationToken).ConfigureAwait(false));
 
     private void RunConnectivityUpdateInBackground(bool forceProbe = false)
         => _ = RunConnectivityUpdateInBackgroundAsync(forceProbe);
@@ -771,6 +774,11 @@ public sealed class MainWindowViewModel : BindableBase
     {
         bool wasNetworkAvailable = _isNetworkAvailable;
         IsNetworkAvailable = connected;
+        TraceValidation("ConnectivityStateUpdated",
+            ("connected", connected),
+            ("was_connected", wasNetworkAvailable),
+            ("is_applying", _isApplying),
+            ("is_validated", _isValidated));
         if (!connected)
         {
             InvalidateValidationState("Internet connection is required for ticker validation.");
@@ -784,6 +792,30 @@ public sealed class MainWindowViewModel : BindableBase
         {
             StatusMessage = "Internet connection detected. Continue with Validate.";
         }
+    }
+
+    private void ApplyConnectivityStateOnUiThread(bool connected)
+    {
+        if (_uiDispatcher.CheckAccess())
+        {
+            ApplyConnectivityState(connected);
+            return;
+        }
+
+        _uiDispatcher.Invoke(() => ApplyConnectivityState(connected), DispatcherPriority.Send);
+    }
+
+    private async Task ApplyConnectivityStateOnUiThreadAsync(bool connected)
+    {
+        if (_uiDispatcher.CheckAccess())
+        {
+            ApplyConnectivityState(connected);
+            return;
+        }
+
+        await _uiDispatcher.InvokeAsync(
+            () => ApplyConnectivityState(connected),
+            DispatcherPriority.Send);
     }
 
     private async Task<bool> EnsureValidationConnectivityAsync()
