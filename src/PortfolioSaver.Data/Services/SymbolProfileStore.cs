@@ -21,11 +21,29 @@ public sealed class SymbolProfileStore
         try
         {
             List<SymbolProfile>? profiles = JsonSerializer.Deserialize<List<SymbolProfile>>(File.ReadAllText(_storagePath));
-            return (profiles ?? [])
-                .Where(profile => !string.IsNullOrWhiteSpace(profile.Symbol))
-                .GroupBy(profile => SymbolProfileHeuristics.Normalize(profile.Symbol), StringComparer.OrdinalIgnoreCase)
-                .Select(group => group.Last())
-                .ToDictionary(profile => SymbolProfileHeuristics.Normalize(profile.Symbol), StringComparer.OrdinalIgnoreCase);
+            return NormalizeProfiles(profiles);
+        }
+        catch
+        {
+            return new Dictionary<string, SymbolProfile>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    public async Task<IReadOnlyDictionary<string, SymbolProfile>> LoadAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!File.Exists(_storagePath))
+            return new Dictionary<string, SymbolProfile>(StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            await using FileStream stream = new(_storagePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, bufferSize: 4096, useAsync: true);
+            List<SymbolProfile>? profiles = await JsonSerializer.DeserializeAsync<List<SymbolProfile>>(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return NormalizeProfiles(profiles);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch
         {
@@ -55,4 +73,11 @@ public sealed class SymbolProfileStore
         string json = JsonSerializer.Serialize(normalized, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(_storagePath, json);
     }
+
+    private static IReadOnlyDictionary<string, SymbolProfile> NormalizeProfiles(IEnumerable<SymbolProfile>? profiles)
+        => (profiles ?? [])
+            .Where(profile => !string.IsNullOrWhiteSpace(profile.Symbol))
+            .GroupBy(profile => SymbolProfileHeuristics.Normalize(profile.Symbol), StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.Last())
+            .ToDictionary(profile => SymbolProfileHeuristics.Normalize(profile.Symbol), StringComparer.OrdinalIgnoreCase);
 }

@@ -246,7 +246,7 @@ public sealed class StartupCoordinator
             yield break;
 
         bool networkAvailable = _isNetworkAvailable();
-        IReadOnlyDictionary<string, SymbolProfile> symbolProfiles = _symbolProfileStore.Load();
+        IReadOnlyDictionary<string, SymbolProfile> symbolProfiles = await _symbolProfileStore.LoadAsync(cancellationToken).ConfigureAwait(false);
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
         IHistoricalCacheService cacheService = new HistoricalCacheService(settings.HistoricalCacheRootFolder);
         IHistoricalDataProvider historicalProvider = new HybridHistoricalDataProvider(
