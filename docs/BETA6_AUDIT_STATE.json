@@ -2245,7 +2245,7 @@
       "priority": 3,
       "area": "Thread safety / Caching",
       "title": "`InternetProbeService` cache expiry race condition",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2264,7 +2264,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-11 by verifying the existing InternetProbeService in-flight probe coalescing path covers expired-cache refresh races and adding explicit concurrent expired-cache refresh coverage.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-205846.md reported no actionable findings; focused local Release tests for InternetProbeService passed 6/6 before full validation."
     },
     {
       "id": "CR-036",

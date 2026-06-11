@@ -86,6 +86,30 @@ public sealed class InternetProbeServiceTests
         Assert.Equal(1, requestCount);
     }
 
+    [Fact]
+    public async Task IsInternetAvailableAsync_CollapsesConcurrentExpiredCacheRefreshesToSingleProbe()
+    {
+        int requestCount = 0;
+        InternetProbeService service = new(
+            probeUrls: ["https://probe.test"],
+            attempts: 1,
+            timeoutMilliseconds: 1000,
+            cacheDuration: TimeSpan.FromMilliseconds(1),
+            messageHandlerFactory: () => new FakeProbeHandler(async (_, cancellationToken) =>
+            {
+                Interlocked.Increment(ref requestCount);
+                await Task.Delay(100, cancellationToken);
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }));
+        SetPrivateField(service, "_lastProbeUtc", DateTimeOffset.UtcNow.AddMinutes(-1));
+        SetPrivateField(service, "_lastProbeResult", false);
+
+        bool[] results = await Task.WhenAll(Enumerable.Range(0, 12).Select(_ => service.IsInternetAvailableAsync()));
+
+        Assert.All(results, Assert.True);
+        Assert.Equal(1, requestCount);
+    }
+
     private static T GetPrivateField<T>(object instance, string fieldName)
     {
         FieldInfo? field = instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
