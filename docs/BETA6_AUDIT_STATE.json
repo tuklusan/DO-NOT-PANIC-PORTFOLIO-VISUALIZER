@@ -2121,7 +2121,7 @@
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
       ],
       "resolution": "Resolved on 2026-06-11 by removing full AppSettings candidate rebuild/JSON fingerprinting from OnEditorChanged. The settings editor now ignores non-persisted status properties, compares only the changed persisted field against validated editor-instance snapshots, and invalidates through collection-change handlers for group/ticker structural changes.",
-      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-193130.md approved with no critical/high/medium findings; local validation pending commit/push checkpoint."
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-193130.md approved with no blocking findings; local Release build passed with 0 warnings/errors; local Release tests passed 356/356."
     },
     {
       "id": "CR-031",
