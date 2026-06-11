@@ -1897,7 +1897,7 @@
       "priority": 2,
       "area": "Startup / UI fluidity",
       "title": "Synchronous file copy during legacy data migration on startup",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "High",
       "evidence": [
@@ -1915,7 +1915,9 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Resolved on 2026-06-11 by replacing startup's full recursive legacy AppData copy with a deduplicated queued background migration while preserving first-run settings/secrets through a minimal non-overwriting synchronous copy of settings.json and provider-secrets.json.",
+        "Validation: DeepSeek CR-023 re-review artifact postcommit-review-cr023-rereview-short-20260611-155914 reported no blockers and no high findings; local Release build passed with 0 warnings/errors; local Release tests passed 297/297."
       ]
     },
     {
