@@ -37,6 +37,7 @@ public partial class ScreensaverSceneControl : UserControl
     private static readonly TimeSpan MacroLaneMinimumRefreshInterval = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan WorldMarketsLaneMinimumRefreshInterval = TimeSpan.FromSeconds(15);
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
+    private readonly Dictionary<string, FloatingGraphControl> _graphControlsByKey = new(StringComparer.OrdinalIgnoreCase);
     private readonly ObservableCollection<MarketSpriteViewModel> _marketSprites = [];
     private readonly ObservableCollection<TapeViewModel> _tapes = [];
     private readonly StartupCoordinator _startupCoordinator = new();
@@ -3898,18 +3899,35 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void SyncGraphVisuals()
     {
-        FloatingGraphCanvas.Children.Clear();
+        List<FloatingGraphViewModel> visibleGraphs = EnumerateVisibleGraphCards().ToList();
+        HashSet<string> visibleKeys = visibleGraphs
+            .Select(GetGraphKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        foreach (FloatingGraphViewModel graph in EnumerateVisibleGraphCards())
+        foreach (string staleKey in _graphControlsByKey.Keys.Where(key => !visibleKeys.Contains(key)).ToList())
         {
-            FloatingGraphControl control = new()
+            FloatingGraphCanvas.Children.Remove(_graphControlsByKey[staleKey]);
+            _graphControlsByKey.Remove(staleKey);
+        }
+
+        foreach (FloatingGraphViewModel graph in visibleGraphs)
+        {
+            string graphKey = GetGraphKey(graph);
+            if (_graphControlsByKey.TryGetValue(graphKey, out FloatingGraphControl? control))
+            {
+                if (!ReferenceEquals(control.DataContext, graph))
+                    control.DataContext = graph;
+                continue;
+            }
+
+            control = new FloatingGraphControl
             {
                 DataContext = graph
             };
-
             control.SetBinding(Canvas.LeftProperty, new Binding(nameof(FloatingGraphViewModel.X)));
             control.SetBinding(Canvas.TopProperty, new Binding(nameof(FloatingGraphViewModel.Y)));
             Panel.SetZIndex(control, 12);
+            _graphControlsByKey[graphKey] = control;
             FloatingGraphCanvas.Children.Add(control);
         }
     }

@@ -64,6 +64,23 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void ScreensaverSceneControl_SyncGraphVisualsUpdatesIncrementally()
+    {
+        string codeBehind = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "ScreensaverSceneControl.xaml.cs"));
+
+        Assert.Contains("_graphControlsByKey", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("_graphControlsByKey.TryGetValue(graphKey", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("FloatingGraphCanvas.Children.Remove(_graphControlsByKey[staleKey])", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("FloatingGraphCanvas.Children.Add(control)", codeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("FloatingGraphCanvas.Children.Clear()", codeBehind, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NetworkWaitingOverlay_DefinesOverlayTemplateAndBounceMotion()
     {
         string xaml = File.ReadAllText(Path.Combine(
