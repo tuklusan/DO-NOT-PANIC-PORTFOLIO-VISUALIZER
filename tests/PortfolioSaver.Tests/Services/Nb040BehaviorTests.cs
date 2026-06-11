@@ -249,9 +249,13 @@ public sealed class Nb040BehaviorTests
         foreach (string symbol in symbols)
             provider.Complete(symbol, new QuoteSnapshot { Symbol = symbol, Last = 100m, FetchTimestampUtc = DateTimeOffset.UtcNow });
 
+        using ManualResetEventSlim startGate = new(false);
+        int readyCount = 0;
         Task<(int CompletedCount, int ResultCount)>[] drains = Enumerable.Range(0, 8)
             .Select(_ => Task.Run(async () =>
             {
+                Interlocked.Increment(ref readyCount);
+                startGate.Wait();
                 Dictionary<string, QuoteSnapshot> results = new(StringComparer.OrdinalIgnoreCase);
                 object taskObject = drainMethod.Invoke(coordinator, [results])!;
                 await (Task)taskObject;
@@ -261,6 +265,9 @@ public sealed class Nb040BehaviorTests
             }))
             .ToArray();
 
+        SpinWait.SpinUntil(() => Volatile.Read(ref readyCount) == drains.Length, TimeSpan.FromSeconds(5));
+        startGate.Set();
+
         (int CompletedCount, int ResultCount)[] outcomes = await Task.WhenAll(drains);
         object pending = pendingField.GetValue(coordinator)!;
         int pendingCount = (int)pending.GetType().GetProperty("Count")!.GetValue(pending)!;
@@ -269,6 +276,48 @@ public sealed class Nb040BehaviorTests
         Assert.Equal(symbols.Length, outcomes.Sum(outcome => outcome.ResultCount));
         Assert.Single(outcomes.Where(outcome => outcome.CompletedCount > 0));
         Assert.Equal(0, pendingCount);
+    }
+
+    [Fact]
+    public async Task StartupCoordinator_QuotePipelineLeavesIncompleteRequestsForLaterDrain()
+    {
+        StartupCoordinator coordinator = new();
+        ControlledQuoteProvider provider = new();
+        string[] symbols = ["AAPL", "MSFT", "VOO", "QUAL"];
+
+        MethodInfo queueMethod = typeof(StartupCoordinator).GetMethod(
+            "QueueQuotePipelineRequests",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        MethodInfo drainMethod = typeof(StartupCoordinator).GetMethod(
+            "DrainCompletedQuotePipelineAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        FieldInfo pendingField = typeof(StartupCoordinator).GetField(
+            "_pendingQuotePipeline",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        queueMethod.Invoke(coordinator, [symbols, provider, CancellationToken.None]);
+        provider.Complete("AAPL", new QuoteSnapshot { Symbol = "AAPL", Last = 100m, FetchTimestampUtc = DateTimeOffset.UtcNow });
+        provider.Complete("MSFT", new QuoteSnapshot { Symbol = "MSFT", Last = 200m, FetchTimestampUtc = DateTimeOffset.UtcNow });
+
+        Dictionary<string, QuoteSnapshot> firstResults = new(StringComparer.OrdinalIgnoreCase);
+        object firstTaskObject = drainMethod.Invoke(coordinator, [firstResults])!;
+        await (Task)firstTaskObject;
+
+        object pending = pendingField.GetValue(coordinator)!;
+        int pendingAfterFirstDrain = (int)pending.GetType().GetProperty("Count")!.GetValue(pending)!;
+        Assert.Equal(2, firstResults.Count);
+        Assert.Equal(2, pendingAfterFirstDrain);
+
+        provider.Complete("VOO", new QuoteSnapshot { Symbol = "VOO", Last = 300m, FetchTimestampUtc = DateTimeOffset.UtcNow });
+        provider.Complete("QUAL", new QuoteSnapshot { Symbol = "QUAL", Last = 400m, FetchTimestampUtc = DateTimeOffset.UtcNow });
+
+        Dictionary<string, QuoteSnapshot> secondResults = new(StringComparer.OrdinalIgnoreCase);
+        object secondTaskObject = drainMethod.Invoke(coordinator, [secondResults])!;
+        await (Task)secondTaskObject;
+
+        int pendingAfterSecondDrain = (int)pending.GetType().GetProperty("Count")!.GetValue(pending)!;
+        Assert.Equal(2, secondResults.Count);
+        Assert.Equal(0, pendingAfterSecondDrain);
     }
 
     [Fact]
