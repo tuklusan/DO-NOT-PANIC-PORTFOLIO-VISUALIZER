@@ -2013,7 +2013,7 @@
       "priority": 3,
       "area": "Async / UI fluidity",
       "title": "`HistoricalCacheService.PurgeExpiredAsync` runs synchronous I/O on calling thread",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2031,7 +2031,9 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Resolved on 2026-06-11 by moving HistoricalCacheService.PurgeExpiredAsync scan/delete work behind Task.Run, adding cancellation checks, handling missing cache directories, and adding tests for stale deletion, worker-thread offload, mid-execution cancellation, and pre-cancellation.",
+        "Validation: DeepSeek final CR-027 review artifact postcommit-review-cr027-final-20260611-163949 reported no blockers and no high findings; local Release build passed with 0 warnings/errors; local Release tests passed 305/305."
       ]
     },
     {
