@@ -131,6 +131,51 @@ public sealed class AppDataRootResolverTests
         }
     }
 
+    [Fact]
+    public async Task QueueLegacyRootMigrationForStartup_CopiesLegacyRootInBackground()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string legacyRoot = Path.Combine(root, "PortfolioSaver");
+        string productRoot = Path.Combine(root, AppDataRootResolver.AppLocalDataFolderName);
+        try
+        {
+            Directory.CreateDirectory(legacyRoot);
+            File.WriteAllText(Path.Combine(legacyRoot, "settings.json"), "legacy");
+
+            await AppDataRootResolver.QueueLegacyRootMigrationForStartup(legacyRoot, productRoot).WaitAsync(TimeSpan.FromSeconds(10));
+
+            Assert.Equal("legacy", File.ReadAllText(Path.Combine(productRoot, "settings.json")));
+            Assert.True(File.Exists(Path.Combine(productRoot, ".portfolio-visualizer-migration-complete")));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void QueueLegacyRootMigrationForStartup_ReusesScheduledMigrationTask()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string legacyRoot = Path.Combine(root, "PortfolioSaver");
+        string productRoot = Path.Combine(root, AppDataRootResolver.AppLocalDataFolderName);
+        try
+        {
+            Directory.CreateDirectory(legacyRoot);
+
+            Task first = AppDataRootResolver.QueueLegacyRootMigrationForStartup(legacyRoot, productRoot);
+            Task second = AppDataRootResolver.QueueLegacyRootMigrationForStartup(legacyRoot, productRoot);
+
+            Assert.Same(first, second);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static string NewTempRoot(string suffix)
         => Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"), suffix);
 

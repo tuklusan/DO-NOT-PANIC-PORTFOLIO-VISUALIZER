@@ -21,6 +21,7 @@ public static class AppDataRootResolver
 
     private static readonly object MigrationSync = new();
     private static readonly ConcurrentDictionary<string, byte> MigratedRootPairs = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, Lazy<Task>> ScheduledMigrationTasks = new(StringComparer.OrdinalIgnoreCase);
 
     public static string ResolveInstalledLocalDataRoot(bool createDirectory = true)
     {
@@ -34,7 +35,7 @@ public static class AppDataRootResolver
         string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         string productRoot = Path.Combine(localAppData, AppLocalDataFolderName);
         if (createDirectory)
-            TryCopyLegacyRootOnce(Path.Combine(localAppData, LegacyAppLocalDataFolderName), productRoot);
+            _ = QueueLegacyRootMigrationForStartup(Path.Combine(localAppData, LegacyAppLocalDataFolderName), productRoot);
 
         return NormalizeRoot(productRoot, createDirectory);
     }
@@ -69,6 +70,18 @@ public static class AppDataRootResolver
             TryCopyDirectory(legacyRoot, productRoot);
             TryWriteMigrationSentinel(legacyRoot, sentinelPath);
         }
+    }
+
+    internal static Task QueueLegacyRootMigrationForStartup(string legacyRoot, string productRoot)
+    {
+        string migrationKey = $"{Path.GetFullPath(legacyRoot)}|{Path.GetFullPath(productRoot)}";
+        Lazy<Task> migration = ScheduledMigrationTasks.GetOrAdd(
+            migrationKey,
+            _ => new Lazy<Task>(
+                () => Task.Run(() => TryCopyLegacyRootOnce(legacyRoot, productRoot)),
+                LazyThreadSafetyMode.ExecutionAndPublication));
+
+        return migration.Value;
     }
 
     public static void TryCopyDirectory(string sourceDirectory, string targetDirectory)
