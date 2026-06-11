@@ -89,6 +89,19 @@ public sealed class VmHarnessScriptTests
     }
 
     [Fact]
+    public void PublishSafeTemp_SeedsImportedYFinanceServerTargets()
+    {
+        string script = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "publish-safe-temp.ps1"));
+
+        Assert.Contains("$tempBuildRoot = Join-Path $tempRoot \"build\"", script, StringComparison.Ordinal);
+        Assert.Contains("New-Item -ItemType Directory -Force -Path $tempBuildRoot", script, StringComparison.Ordinal);
+        Assert.Contains("Copy-Item -LiteralPath (Join-Path $repoRoot \"build\\YFinanceServer.targets\")", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void InvokeVmBuildTest_UsesDesktopSessionAgentAndPollsForFinishedSummary()
     {
         string script = File.ReadAllText(Path.Combine(

@@ -69,6 +69,9 @@ New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
 
 Copy-Item -LiteralPath (Join-Path $repoRoot "PortfolioScreensaver.sln") -Destination $tempRoot -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "Directory.Build.props") -Destination $tempRoot -Force
+$tempBuildRoot = Join-Path $tempRoot "build"
+New-Item -ItemType Directory -Force -Path $tempBuildRoot | Out-Null
+Copy-Item -LiteralPath (Join-Path $repoRoot "build\YFinanceServer.targets") -Destination $tempBuildRoot -Force
 if (Test-Path (Join-Path $repoRoot "NuGet.Config")) {
     Copy-Item -LiteralPath (Join-Path $repoRoot "NuGet.Config") -Destination $tempRoot -Force
 }
