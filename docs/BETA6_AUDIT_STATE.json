@@ -1800,7 +1800,7 @@
       "priority": 2,
       "area": "Startup / Async",
       "title": "`TraceLog` static constructor blocks first caller on DNS resolution",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "High",
       "evidence": [
@@ -1819,6 +1819,18 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Resolved on 2026-06-11 by removing synchronous DNS work from TraceLog static field initialization.",
+        "TraceLog now starts with cheap placeholder metadata (Environment.MachineName and 127.0.0.1), queues the first trace immediately, and resolves host/IP once on a background task.",
+        "Resolved host/IP metadata is published as a single immutable NetworkMetadata record through Volatile.Write and read through Volatile.Read so each trace line sees a consistent pair.",
+        "Added a regression guard proving TraceLog no longer initializes HostName/LocalIp from synchronous DNS calls and uses background metadata resolution."
+      ],
+      "validation": [
+        "Implementation commits pushed: 4963fb3 Resolve trace network metadata asynchronously; 9cef917 Publish trace network metadata atomically.",
+        "DeepSeek post-commit review build/deepseek-review/postcommit-review-20260611-110112.md reported no findings.",
+        "Local validation on 2026-06-11: dotnet build PortfolioScreensaver.sln -c Release succeeded with 0 warnings and 0 errors.",
+        "Local validation on 2026-06-11: dotnet test PortfolioScreensaver.sln -c Release --no-build passed 287/287 tests."
       ]
     },
     {
