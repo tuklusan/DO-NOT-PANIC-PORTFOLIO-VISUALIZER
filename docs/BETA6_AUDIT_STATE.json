@@ -2237,7 +2237,7 @@
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
       ],
       "resolution": "Resolved on 2026-06-11 by serializing ProviderHealthService snapshot reads/writes behind a private lock, returning defensive snapshot copies, normalizing blank failure messages, and documenting the thread-safe copy-returning contract.",
-      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-205451.md reported no high-severity defects; focused local Release tests for ProviderHealthService passed 6/6 before full validation."
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-205451.md reported no high-severity defects; focused local Release tests for ProviderHealthService passed 6/6; full local Release tests passed 376/376."
     },
     {
       "id": "CR-035",
