@@ -82,6 +82,8 @@ public sealed class ExchangePhotoCacheService
 
     public event Action? BackgroundCacheWarmupCompleted;
 
+    internal Task? CurrentDefaultManifestWarmupTask => _downloadTask;
+
     public Task<IReadOnlyList<string>> GetAvailableBackgroundsAsync(
         AppSettings settings,
         HttpClient httpClient,
@@ -147,9 +149,11 @@ public sealed class ExchangePhotoCacheService
             return;
 
         string cacheFolder = settings.BackgroundImageFolder;
-        await _downloadGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        bool gateAcquired = false;
         try
         {
+            await _downloadGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            gateAcquired = true;
             await PrepareDefaultCacheFolderAsync(cacheFolder, cancellationToken).ConfigureAwait(false);
             bool changed = await DownloadMissingManifestImagesAsync(cacheFolder, cancellationToken).ConfigureAwait(false);
             if (changed)
@@ -157,7 +161,8 @@ public sealed class ExchangePhotoCacheService
         }
         finally
         {
-            _downloadGate.Release();
+            if (gateAcquired)
+                _downloadGate.Release();
         }
     }
 
@@ -255,20 +260,15 @@ public sealed class ExchangePhotoCacheService
 
             _downloadTask = Task.Run(async () =>
             {
+                bool gateAcquired = false;
                 try
                 {
                     await _downloadGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-                    try
-                    {
-                        await PrepareDefaultCacheFolderAsync(cacheFolder, cancellationToken).ConfigureAwait(false);
-                        bool changed = await DownloadMissingManifestImagesAsync(cacheFolder, cancellationToken).ConfigureAwait(false);
-                        if (changed)
-                            BackgroundCacheWarmupCompleted?.Invoke();
-                    }
-                    finally
-                    {
-                        _downloadGate.Release();
-                    }
+                    gateAcquired = true;
+                    await PrepareDefaultCacheFolderAsync(cacheFolder, cancellationToken).ConfigureAwait(false);
+                    bool changed = await DownloadMissingManifestImagesAsync(cacheFolder, cancellationToken).ConfigureAwait(false);
+                    if (changed)
+                        BackgroundCacheWarmupCompleted?.Invoke();
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -277,6 +277,11 @@ public sealed class ExchangePhotoCacheService
                 catch (Exception ex)
                 {
                     Trace.TraceWarning("Background image warmup failed: {0}: {1}", ex.GetType().Name, ex.Message);
+                }
+                finally
+                {
+                    if (gateAcquired)
+                        _downloadGate.Release();
                 }
             }, cancellationToken);
         }

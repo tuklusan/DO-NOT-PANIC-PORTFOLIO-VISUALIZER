@@ -159,6 +159,40 @@ public sealed class ExchangePhotoCacheServiceTests
         Assert.DoesNotContain(images, path => path.StartsWith("http", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task GetAvailableBackgroundsAsync_BackgroundWarmupHonorsCancellationAndReleasesGate()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        string cacheFolder = Path.Combine(tempRoot, "cache");
+        Directory.CreateDirectory(cacheFolder);
+        string existingPath = Path.Combine(cacheFolder, "existing.jpg");
+        File.WriteAllBytes(existingPath, CreateMinimalJpegBytes());
+
+        AppSettings settings = Defaults.CreateSettings();
+        settings.UseCustomBackgroundImageFolder = false;
+        settings.BackgroundImageFolder = cacheFolder;
+
+        BlockingImageHandler handler = new();
+        using HttpClient httpClient = new(handler);
+        ExchangePhotoCacheService service = new(() => httpClient);
+        using CancellationTokenSource cts = new();
+
+        IReadOnlyList<string> images = await service.GetAvailableBackgroundsAsync(settings, httpClient, networkAvailable: true, cancellationToken: cts.Token);
+        Task warmup = service.CurrentDefaultManifestWarmupTask ?? throw new InvalidOperationException("Background warmup was not started.");
+        await handler.RequestStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        cts.Cancel();
+
+        await warmup.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(warmup.IsCompletedSuccessfully);
+        Assert.Contains(existingPath, images, StringComparer.OrdinalIgnoreCase);
+
+        handler.BlockRequests = false;
+        using CancellationTokenSource retryCts = new(TimeSpan.FromSeconds(10));
+        await service.WarmDefaultManifestCacheAsync(settings, retryCts.Token);
+        Assert.Empty(Directory.EnumerateFiles(cacheFolder, "*.TMP", SearchOption.TopDirectoryOnly));
+    }
+
 
     [Fact]
     public void GetFooterAttributionsForBackgrounds_MapsBundledAndDownloadedCacheFiles()
@@ -316,11 +350,14 @@ public sealed class ExchangePhotoCacheServiceTests
     private sealed class BlockingImageHandler : HttpMessageHandler
     {
         public TaskCompletionSource<bool> RequestStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public volatile bool BlockRequests = true;
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             RequestStarted.TrySetResult(true);
-            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            if (BlockRequests)
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new ByteArrayContent(CreateMinimalJpegBytes())
