@@ -2042,7 +2042,7 @@
       "priority": 3,
       "area": "Startup / Performance",
       "title": "Synchronous SHA‑256 hashing during release‑manifest validation at startup",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2060,7 +2060,9 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Resolved on 2026-06-11 by adding ReleaseManifestGuard.ValidateCurrentExecutableInBackground, running full ValidateDirectory hashing via Task.Run after app host startup/show, preserving failure shutdown through dispatcher callbacks, and containing validation/callback exceptions inside the guard.",
+        "Validation: DeepSeek final CR-028 review artifact postcommit-review-cr028-final-20260611-164903 reported no blockers for the deferred validation change; local Release build passed with 0 warnings/errors; local Release tests passed 307/307. DeepSeek also raised unrelated screensaver command-line handling follow-up CR-061."
       ]
     },
     {
@@ -2920,6 +2922,32 @@
       ],
       "acceptance": [
         "Handler made `async` and content read with `await`.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
+        "Local build/test validation passes.",
+        "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-061",
+      "tracking_number": "CR-061",
+      "priority": 3,
+      "area": "Screensaver host / Windows integration",
+      "title": "Screensaver host does not explicitly handle standard Windows screensaver command-line modes",
+      "status": "open",
+      "source": "deepseek_cr028_review_2026_06_11",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek CR-028 final review finding: PortfolioSaver.Screensaver/App.xaml.cs does not parse or react to standard Windows screensaver arguments such as /s, /p, /c, or /showconfig.",
+        "The finding was unrelated to CR-028's deferred release-manifest validation objective, but should be tracked to avoid incorrect behavior when launched by Windows screensaver control paths.",
+        "Review artifact: build/deepseek-review/postcommit-review-cr028-final-20260611-164903.md"
+      ],
+      "notes": [
+        "Analyze current screensaver launch expectations and existing config/preview entry points before changing behavior.",
+        "Ensure any command-line mode still participates in release integrity validation according to the final chosen startup contract."
+      ],
+      "acceptance": [
+        "Screensaver host explicitly handles documented runtime/config/preview arguments or documents why a mode is intentionally unsupported.",
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
