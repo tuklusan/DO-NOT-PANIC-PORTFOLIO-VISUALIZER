@@ -2234,14 +2234,7 @@ function Wait-ConfigPrimaryButtonReady {
         }
 
         if ($pollCount -eq 1 -or ($pollCount % 5) -eq 0) {
-            try {
-                $statusText = Get-ConfigStatusText -Window $Window
-                $buttonSnapshot = Get-WindowButtonSnapshot -Window $Window
-                Write-ConfigWindowTrace -Event 'PrimaryButtonNotReady' -Details ("status={0}; buttons={1}" -f $statusText, $buttonSnapshot)
-            }
-            catch {
-                Write-ConfigWindowTrace -Event 'PrimaryButtonReadinessTraceFailed' -Details $_.Exception.Message
-            }
+            Write-ConfigWindowTrace -Event 'PrimaryButtonNotReady' -Details ("poll={0}; timeout_seconds={1}" -f $pollCount, $TimeoutSeconds)
         }
 
         Start-Sleep -Milliseconds 500
