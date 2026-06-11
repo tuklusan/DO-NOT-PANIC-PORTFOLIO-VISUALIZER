@@ -10,19 +10,6 @@ public partial class App : Application
 {
     protected override async void OnStartup(StartupEventArgs e)
     {
-        if (!ReleaseManifestGuard.ValidateCurrentExecutable("Screensaver.App", out string integritySummary))
-        {
-            MessageBox.Show(
-                "Release integrity check failed. This build may be stale or corrupted." +
-                Environment.NewLine + Environment.NewLine +
-                integritySummary,
-                "DO NOT PANIC PORTFOLIO VISUALIZER",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            Shutdown(-1);
-            return;
-        }
-
         if (TraceLog.ShouldForceSoftwareRendering())
         {
             RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
@@ -39,6 +26,7 @@ public partial class App : Application
         };
 
         TraceLog.Info("Screensaver.App", $"Startup args: {string.Join(" ", e.Args)}");
+        QueueReleaseIntegrityValidation();
         try
         {
             await YFinanceServerProcessManager.EnsureOwnedServerAsync("PortfolioSaver.Screensaver");
@@ -52,6 +40,21 @@ public partial class App : Application
 
         base.OnStartup(e);
     }
+
+    private void QueueReleaseIntegrityValidation()
+        => ReleaseManifestGuard.ValidateCurrentExecutableInBackground(
+            "Screensaver.App",
+            integritySummary => Dispatcher.BeginInvoke(new Action(() =>
+            {
+                MessageBox.Show(
+                    "Release integrity check failed. This build may be stale or corrupted." +
+                    Environment.NewLine + Environment.NewLine +
+                    integritySummary,
+                    "DO NOT PANIC PORTFOLIO VISUALIZER",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                Shutdown(-1);
+            })));
 
     protected override void OnExit(ExitEventArgs e)
     {

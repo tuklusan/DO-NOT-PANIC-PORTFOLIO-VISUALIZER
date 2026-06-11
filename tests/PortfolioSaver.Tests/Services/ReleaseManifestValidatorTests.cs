@@ -70,6 +70,36 @@ public sealed class ReleaseManifestValidatorTests
         }
     }
 
+    [Fact]
+    public void InteractiveApps_QueueReleaseManifestValidationInBackground()
+    {
+        string repoRoot = GetRepoRoot();
+        foreach (string appPath in new[]
+                 {
+                     Path.Combine(repoRoot, "src", "PortfolioSaver.Desktop", "App.xaml.cs"),
+                     Path.Combine(repoRoot, "src", "PortfolioSaver.Config", "App.xaml.cs"),
+                     Path.Combine(repoRoot, "src", "PortfolioSaver.Screensaver", "App.xaml.cs")
+                 })
+        {
+            string source = File.ReadAllText(appPath);
+
+            Assert.Contains("QueueReleaseIntegrityValidation();", source, StringComparison.Ordinal);
+            Assert.Contains("ReleaseManifestGuard.ValidateCurrentExecutableInBackground", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("if (!ReleaseManifestGuard.ValidateCurrentExecutable", source, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void ReleaseManifestGuard_BackgroundApiQueuesFullDirectoryValidation()
+    {
+        string repoRoot = GetRepoRoot();
+        string source = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Shared", "Integrity", "ReleaseManifestValidator.cs"));
+
+        Assert.Contains("ValidateCurrentExecutableInBackground", source, StringComparison.Ordinal);
+        Assert.Contains("Task.Run(() => ReleaseManifestValidator.ValidateDirectory(AppContext.BaseDirectory))", source, StringComparison.Ordinal);
+        Assert.Contains("onValidationFailed(result.Summary);", source, StringComparison.Ordinal);
+    }
+
     private static string CreateTempDirectory()
     {
         string path = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
@@ -123,5 +153,19 @@ public sealed class ReleaseManifestValidatorTests
         catch
         {
         }
+    }
+
+    private static string GetRepoRoot()
+    {
+        string directory = AppContext.BaseDirectory;
+        while (!string.IsNullOrWhiteSpace(directory))
+        {
+            if (File.Exists(Path.Combine(directory, "PortfolioScreensaver.sln")))
+                return directory;
+
+            directory = Directory.GetParent(directory)?.FullName ?? string.Empty;
+        }
+
+        throw new InvalidOperationException("Repository root was not found.");
     }
 }

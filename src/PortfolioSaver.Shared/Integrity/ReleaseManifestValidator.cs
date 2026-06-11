@@ -124,6 +124,47 @@ public static class ReleaseManifestValidator
 
 public static class ReleaseManifestGuard
 {
+    public static void ValidateCurrentExecutableInBackground(string source, Action<string> onValidationFailed)
+    {
+#if DEBUG
+        TraceLog.Info(source, "Release integrity validation skipped in DEBUG build.");
+#else
+        string bypass = (Environment.GetEnvironmentVariable("PORTFOLIOSAVER_SKIP_MANIFEST_VALIDATION") ?? string.Empty).Trim();
+        if (string.Equals(bypass, "1", StringComparison.Ordinal))
+        {
+            TraceLog.Warn(source, "Release integrity validation bypassed by environment override.");
+            return;
+        }
+
+        _ = Task.Run(() => ReleaseManifestValidator.ValidateDirectory(AppContext.BaseDirectory))
+            .ContinueWith(
+                task =>
+                {
+                    if (task.IsFaulted)
+                    {
+                        string message = $"Release integrity validation failed: {task.Exception?.GetBaseException().Message ?? "unknown error"}";
+                        TraceLog.Error(source, message);
+                        onValidationFailed(message);
+                        return;
+                    }
+
+                    ReleaseManifestValidationResult result = task.Result;
+                    if (result.IsValid)
+                    {
+                        TraceLog.Info(source, result.Summary);
+                        return;
+                    }
+
+                    foreach (string error in result.Errors.Take(10))
+                        TraceLog.Error(source, error);
+                    onValidationFailed(result.Summary);
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+#endif
+    }
+
     public static bool ValidateCurrentExecutable(string source, out string summary)
     {
 #if DEBUG

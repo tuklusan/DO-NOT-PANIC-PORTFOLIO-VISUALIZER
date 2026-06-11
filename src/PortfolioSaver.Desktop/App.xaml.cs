@@ -11,19 +11,6 @@ public partial class App : Application
 {
     protected override async void OnStartup(StartupEventArgs e)
     {
-        if (!ReleaseManifestGuard.ValidateCurrentExecutable("Desktop.App", out string integritySummary))
-        {
-            MessageBox.Show(
-                "Release integrity check failed. This build may be stale or corrupted." +
-                Environment.NewLine + Environment.NewLine +
-                integritySummary,
-                "DO NOT PANIC PORTFOLIO VISUALIZER",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            Shutdown(-1);
-            return;
-        }
-
         DispatcherUnhandledException += (_, args) =>
         {
             TraceLog.Error("Desktop.App", "DispatcherUnhandledException", args.Exception);
@@ -34,6 +21,7 @@ public partial class App : Application
         };
 
         TraceLog.Info("Desktop.App", $"Startup args: {string.Join(" ", e.Args)}");
+        QueueReleaseIntegrityValidation();
         try
         {
             await YFinanceServerProcessManager.EnsureOwnedServerAsync("PortfolioSaver.Desktop");
@@ -62,6 +50,21 @@ public partial class App : Application
         MainWindow = window;
         window.Show();
     }
+
+    private void QueueReleaseIntegrityValidation()
+        => ReleaseManifestGuard.ValidateCurrentExecutableInBackground(
+            "Desktop.App",
+            integritySummary => Dispatcher.BeginInvoke(new Action(() =>
+            {
+                MessageBox.Show(
+                    "Release integrity check failed. This build may be stale or corrupted." +
+                    Environment.NewLine + Environment.NewLine +
+                    integritySummary,
+                    "DO NOT PANIC PORTFOLIO VISUALIZER",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                Shutdown(-1);
+            })));
 
     protected override void OnExit(ExitEventArgs e)
     {
