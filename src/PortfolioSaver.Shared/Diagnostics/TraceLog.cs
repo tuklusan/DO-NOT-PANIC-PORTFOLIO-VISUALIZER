@@ -19,9 +19,10 @@ public static class TraceLog
     private static readonly object FileSync = new();
     private static readonly ConcurrentQueue<string> Queue = new();
     private static readonly string ProgramName = Process.GetCurrentProcess().ProcessName;
-    private static readonly string HostName = GetHostNameSafe();
-    private static readonly string LocalIp = GetPrimaryIpSafe();
+    private static string _hostName = Environment.MachineName;
+    private static string _localIp = "127.0.0.1";
     private static int _workerStarted;
+    private static int _metadataResolutionStarted;
 
     private static string TraceDirectory
         => Path.Combine(PathHelper.GetAppDataDirectory(), "Trace");
@@ -94,9 +95,12 @@ public static class TraceLog
     private static void Enqueue(string level, string source, string message, Exception? exception, string functionName)
     {
         EnsureWorker();
+        EnsureNetworkMetadataResolution();
         string exceptionText = exception is null ? string.Empty : $" | ex={exception.GetType().Name}: {exception.Message}";
         string functionText = string.IsNullOrWhiteSpace(functionName) ? "unknown" : functionName;
-        string line = $"{DateTimeOffset.UtcNow:O} | {level} | program={ProgramName} | source={source} | function={functionText} | host={HostName} | ip={LocalIp} | pid={Environment.ProcessId} | tid={Environment.CurrentManagedThreadId} | {SanitizeValue(message, MaxLineLength)}{SanitizeValue(exceptionText, 240)}";
+        string hostName = Volatile.Read(ref _hostName);
+        string localIp = Volatile.Read(ref _localIp);
+        string line = $"{DateTimeOffset.UtcNow:O} | {level} | program={ProgramName} | source={source} | function={functionText} | host={hostName} | ip={localIp} | pid={Environment.ProcessId} | tid={Environment.CurrentManagedThreadId} | {SanitizeValue(message, MaxLineLength)}{SanitizeValue(exceptionText, 240)}";
         Queue.Enqueue(line);
     }
 
@@ -195,6 +199,22 @@ public static class TraceLog
             return;
 
         _ = Task.Run(ProcessQueueAsync);
+    }
+
+    private static void EnsureNetworkMetadataResolution()
+    {
+        if (Interlocked.CompareExchange(ref _metadataResolutionStarted, 1, 0) != 0)
+            return;
+
+        _ = Task.Run(ResolveNetworkMetadata);
+    }
+
+    private static void ResolveNetworkMetadata()
+    {
+        string hostName = GetHostNameSafe();
+        string localIp = GetPrimaryIpSafe(hostName);
+        Volatile.Write(ref _hostName, hostName);
+        Volatile.Write(ref _localIp, localIp);
     }
 
     private static async Task ProcessQueueAsync()
@@ -296,11 +316,11 @@ public static class TraceLog
         }
     }
 
-    private static string GetPrimaryIpSafe()
+    private static string GetPrimaryIpSafe(string hostName)
     {
         try
         {
-            IPAddress[] addresses = Dns.GetHostAddresses(Dns.GetHostName());
+            IPAddress[] addresses = Dns.GetHostAddresses(hostName);
             IPAddress? ip = addresses.FirstOrDefault(address => address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(address));
             return ip?.ToString() ?? "127.0.0.1";
         }

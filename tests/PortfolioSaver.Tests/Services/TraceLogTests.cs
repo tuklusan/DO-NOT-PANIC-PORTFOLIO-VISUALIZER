@@ -109,6 +109,22 @@ public sealed class TraceLogTests
         Assert.DoesNotContain("letmein", message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TraceLog_NetworkMetadataResolution_IsNotPerformedByStaticInitializers()
+    {
+        string repoRoot = GetRepoRoot();
+        string source = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Shared", "Diagnostics", "TraceLog.cs"));
+
+        Assert.Contains("private static string _hostName = Environment.MachineName;", source, StringComparison.Ordinal);
+        Assert.Contains("private static string _localIp = \"127.0.0.1\";", source, StringComparison.Ordinal);
+        Assert.Contains("EnsureNetworkMetadataResolution();", source, StringComparison.Ordinal);
+        Assert.Contains("_ = Task.Run(ResolveNetworkMetadata);", source, StringComparison.Ordinal);
+        Assert.Contains("Volatile.Read(ref _hostName)", source, StringComparison.Ordinal);
+        Assert.Contains("Volatile.Write(ref _localIp, localIp)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("static readonly string HostName = GetHostNameSafe()", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("static readonly string LocalIp = GetPrimaryIpSafe()", source, StringComparison.Ordinal);
+    }
+
     private static async Task<bool> WaitForTraceAsync(
         string traceFilePath,
         string traceIndexPath,
@@ -155,5 +171,19 @@ public sealed class TraceLogTests
         Buffer.BlockCopy(bytes, position, reordered, 0, bytes.Length - position);
         Buffer.BlockCopy(bytes, 0, reordered, bytes.Length - position, position);
         return Encoding.UTF8.GetString(reordered).Replace("\0", string.Empty);
+    }
+
+    private static string GetRepoRoot()
+    {
+        DirectoryInfo? current = new(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "PortfolioScreensaver.sln")))
+                return current.FullName;
+
+            current = current.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate repo root from test AppContext.BaseDirectory.");
     }
 }
