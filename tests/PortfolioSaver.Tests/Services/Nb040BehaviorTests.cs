@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Data.Interfaces;
 using PortfolioSaver.Data.Services;
 using PortfolioSaver.Render.Services;
 using PortfolioSaver.Screensaver.Services;
@@ -226,6 +227,51 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
+    public async Task StartupCoordinator_ConcurrentQuotePipelineDrainsClaimEachCompletedRequestOnce()
+    {
+        StartupCoordinator coordinator = new();
+        ControlledQuoteProvider provider = new();
+        string[] symbols = ["AAPL", "MSFT", "VOO", "QUAL"];
+
+        MethodInfo queueMethod = typeof(StartupCoordinator).GetMethod(
+            "QueueQuotePipelineRequests",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        MethodInfo drainMethod = typeof(StartupCoordinator).GetMethod(
+            "DrainCompletedQuotePipelineAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        FieldInfo pendingField = typeof(StartupCoordinator).GetField(
+            "_pendingQuotePipeline",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        queueMethod.Invoke(coordinator, [symbols, provider, CancellationToken.None]);
+        Assert.Equal(symbols.Length, provider.RequestedSymbols.Count);
+
+        foreach (string symbol in symbols)
+            provider.Complete(symbol, new QuoteSnapshot { Symbol = symbol, Last = 100m, FetchTimestampUtc = DateTimeOffset.UtcNow });
+
+        Task<(int CompletedCount, int ResultCount)>[] drains = Enumerable.Range(0, 8)
+            .Select(_ => Task.Run(async () =>
+            {
+                Dictionary<string, QuoteSnapshot> results = new(StringComparer.OrdinalIgnoreCase);
+                object taskObject = drainMethod.Invoke(coordinator, [results])!;
+                await (Task)taskObject;
+                object drainResult = taskObject.GetType().GetProperty("Result")!.GetValue(taskObject)!;
+                int completedCount = (int)drainResult.GetType().GetProperty("CompletedCount")!.GetValue(drainResult)!;
+                return (completedCount, results.Count);
+            }))
+            .ToArray();
+
+        (int CompletedCount, int ResultCount)[] outcomes = await Task.WhenAll(drains);
+        object pending = pendingField.GetValue(coordinator)!;
+        int pendingCount = (int)pending.GetType().GetProperty("Count")!.GetValue(pending)!;
+
+        Assert.Equal(symbols.Length, outcomes.Sum(outcome => outcome.CompletedCount));
+        Assert.Equal(symbols.Length, outcomes.Sum(outcome => outcome.ResultCount));
+        Assert.Single(outcomes.Where(outcome => outcome.CompletedCount > 0));
+        Assert.Equal(0, pendingCount);
+    }
+
+    [Fact]
     public void ScreensaverRefreshTimer_UsesOneSecondAsyncQuoteDispatchPath()
     {
         string controlPath = Path.Combine(
@@ -326,6 +372,25 @@ public sealed class Nb040BehaviorTests
         }
 
         throw new DirectoryNotFoundException("Could not locate repo root from test AppContext.BaseDirectory.");
+    }
+
+    private sealed class ControlledQuoteProvider : IQuoteProvider
+    {
+        private readonly Dictionary<string, TaskCompletionSource<IReadOnlyList<QuoteSnapshot>>> _pending = new(StringComparer.OrdinalIgnoreCase);
+
+        public List<string> RequestedSymbols { get; } = [];
+
+        public Task<IReadOnlyList<QuoteSnapshot>> GetQuotesAsync(IEnumerable<string> symbols, CancellationToken cancellationToken = default)
+        {
+            string symbol = Assert.Single(symbols);
+            RequestedSymbols.Add(symbol);
+            TaskCompletionSource<IReadOnlyList<QuoteSnapshot>> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pending.Add(symbol, completion);
+            return completion.Task;
+        }
+
+        public void Complete(string symbol, QuoteSnapshot quote)
+            => _pending[symbol].SetResult([quote]);
     }
 }
 
