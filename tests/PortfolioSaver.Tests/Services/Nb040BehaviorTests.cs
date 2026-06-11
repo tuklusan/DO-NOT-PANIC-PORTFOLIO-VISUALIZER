@@ -207,6 +207,25 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
+    public void StartupCoordinator_QuotePipelineAccessIsSerializedAndDrainedBeforeAwait()
+    {
+        string coordinatorPath = Path.Combine(
+            GetRepoRoot(),
+            "src", "PortfolioSaver.Presentation", "Services", "StartupCoordinator.cs");
+        string source = File.ReadAllText(Path.GetFullPath(coordinatorPath));
+
+        Assert.Contains("private readonly object _pendingQuotePipelineGate = new();", source, StringComparison.Ordinal);
+        Assert.Contains("lock (_pendingQuotePipelineGate)", source, StringComparison.Ordinal);
+        Assert.Contains("List<PendingQuoteRequest> completedRequests = [];", source, StringComparison.Ordinal);
+        Assert.Contains("completedRequests.Add(pending);", source, StringComparison.Ordinal);
+        Assert.Contains("foreach (PendingQuoteRequest pending in completedRequests)", source, StringComparison.Ordinal);
+        Assert.Contains("IReadOnlyList<QuoteSnapshot> fetched = await pending.Task;", source, StringComparison.Ordinal);
+        Assert.Contains("QuotePipelineSnapshot pipelineSnapshot = SnapshotQuotePipeline(orderedSymbols);", source, StringComparison.Ordinal);
+        Assert.Contains("private QuotePipelineSnapshot SnapshotQuotePipeline(IReadOnlyList<string> orderedSymbols)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("orderedSymbols.Except(_pendingQuotePipeline.Keys", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ScreensaverRefreshTimer_UsesOneSecondAsyncQuoteDispatchPath()
     {
         string controlPath = Path.Combine(

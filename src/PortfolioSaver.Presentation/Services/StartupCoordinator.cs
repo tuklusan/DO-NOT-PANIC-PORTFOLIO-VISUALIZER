@@ -36,6 +36,7 @@ public sealed class StartupCoordinator
     private readonly SymbolProfileStore _symbolProfileStore = new(Path.Combine(PathHelper.GetLocalDataDirectory(), "symbol-profiles.json"));
     private readonly Dictionary<string, QuoteSnapshot> _runtimeQuoteMemory = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, PendingQuoteRequest> _pendingQuotePipeline = new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _pendingQuotePipelineGate = new();
     private int _sequentialRuntimeCursor;
     private string _sequentialRuntimeFingerprint = string.Empty;
     private readonly Func<bool> _isNetworkAvailable;
@@ -407,6 +408,8 @@ public sealed class StartupCoordinator
                 results[symbol] = CloneQuote(cached);
         }
 
+        QuotePipelineSnapshot pipelineSnapshot = SnapshotQuotePipeline(orderedSymbols);
+
         TraceRuntimeState(
             "QuoteResolutionSummary",
             new KeyValuePair<string, object?>("result_quote_count", results.Count),
@@ -414,12 +417,12 @@ public sealed class StartupCoordinator
             new KeyValuePair<string, object?>("stale_symbol_count", results.Values.Count(quote => quote.IsStale)),
             new KeyValuePair<string, object?>("stale_symbols", PreviewSymbols(results.Values.Where(quote => quote.IsStale).Select(quote => quote.Symbol))),
             new KeyValuePair<string, object?>("missing_value_symbols", PreviewSymbols(results.Values.Where(quote => !quote.Last.HasValue && !quote.PreviousClose.HasValue).Select(quote => quote.Symbol))),
-            new KeyValuePair<string, object?>("pipeline_depth", _pendingQuotePipeline.Count),
-            new KeyValuePair<string, object?>("remaining_symbol_count", Math.Max(0, orderedSymbols.Count - _pendingQuotePipeline.Count)),
-            new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(orderedSymbols.Except(_pendingQuotePipeline.Keys, StringComparer.OrdinalIgnoreCase))),
+            new KeyValuePair<string, object?>("pipeline_depth", pipelineSnapshot.Depth),
+            new KeyValuePair<string, object?>("remaining_symbol_count", pipelineSnapshot.RemainingCount),
+            new KeyValuePair<string, object?>("remaining_symbols", PreviewSymbols(pipelineSnapshot.RemainingSymbols)),
             new KeyValuePair<string, object?>("macro_missing_symbols", PreviewMissingSymbols(GetMacroIndicatorSymbols(), results, settings)),
             new KeyValuePair<string, object?>("world_index_missing_symbols", PreviewMissingSymbols(FloatingClockBuilder.GetWorldIndexSymbols(), results, settings)));
-        TraceRuntime($"Quotes resolved. Pipeline={_pendingQuotePipeline.Count} Cached={results.Count} Remaining={Math.Max(0, orderedSymbols.Count - _pendingQuotePipeline.Count)}");
+        TraceRuntime($"Quotes resolved. Pipeline={pipelineSnapshot.Depth} Cached={results.Count} Remaining={pipelineSnapshot.RemainingCount}");
         PrimeRuntimeQuotes(results);
         return results;
     }
@@ -436,6 +439,11 @@ public sealed class StartupCoordinator
         int CompletedCount,
         string? LatestUpdatedSymbol,
         DateTimeOffset LatestUpdatedFetchUtc);
+
+    private sealed record QuotePipelineSnapshot(
+        int Depth,
+        int RemainingCount,
+        IReadOnlyList<string> RemainingSymbols);
 
     private IReadOnlyList<(TickerGroup Group, TickerItem Ticker)> SelectGraphTickerPairs(AppSettings settings)
     {
@@ -749,42 +757,57 @@ public sealed class StartupCoordinator
 
     private void QueueQuotePipelineRequests(IReadOnlyList<string> orderedSymbols, IQuoteProvider yahooFinanceProvider, CancellationToken cancellationToken)
     {
-        int capacity = Math.Max(0, SequentialQuotePipelineDepth - _pendingQuotePipeline.Count);
-        if (capacity == 0)
-            return;
-
-        List<string> requestSymbols = TakeSequentialRequestSymbols(orderedSymbols, capacity, _pendingQuotePipeline.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase));
-        foreach (string symbol in requestSymbols)
+        lock (_pendingQuotePipelineGate)
         {
-            string operationId = YFinanceRuntimeClientFactory.CreateOperationId("progressive-quotes");
-            TraceRuntimeState(
-                "SequentialQuoteQueued",
-                new KeyValuePair<string, object?>("operation_id", operationId),
-                new KeyValuePair<string, object?>("symbol", symbol),
-                new KeyValuePair<string, object?>("pipeline_depth_before", _pendingQuotePipeline.Count));
-            _pendingQuotePipeline[symbol] = new PendingQuoteRequest(
-                symbol,
-                operationId,
-                yahooFinanceProvider.GetQuotesAsync([symbol], cancellationToken),
-                DateTimeOffset.UtcNow);
+            int capacity = Math.Max(0, SequentialQuotePipelineDepth - _pendingQuotePipeline.Count);
+            if (capacity == 0)
+                return;
+
+            HashSet<string> inFlightSymbols = _pendingQuotePipeline.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            List<string> requestSymbols = TakeSequentialRequestSymbols(orderedSymbols, capacity, inFlightSymbols);
+            foreach (string symbol in requestSymbols)
+            {
+                if (_pendingQuotePipeline.ContainsKey(symbol))
+                    continue;
+
+                string operationId = YFinanceRuntimeClientFactory.CreateOperationId("progressive-quotes");
+                TraceRuntimeState(
+                    "SequentialQuoteQueued",
+                    new KeyValuePair<string, object?>("operation_id", operationId),
+                    new KeyValuePair<string, object?>("symbol", symbol),
+                    new KeyValuePair<string, object?>("pipeline_depth_before", _pendingQuotePipeline.Count));
+                _pendingQuotePipeline[symbol] = new PendingQuoteRequest(
+                    symbol,
+                    operationId,
+                    yahooFinanceProvider.GetQuotesAsync([symbol], cancellationToken),
+                    DateTimeOffset.UtcNow);
+            }
         }
     }
 
     private async Task<QuotePipelineDrainResult> DrainCompletedQuotePipelineAsync(
         IDictionary<string, QuoteSnapshot> results)
     {
-        List<string> completedSymbols = _pendingQuotePipeline
-            .Where(pair => pair.Value.Task.IsCompleted)
-            .Select(pair => pair.Key)
-            .ToList();
+        List<PendingQuoteRequest> completedRequests = [];
+        lock (_pendingQuotePipelineGate)
+        {
+            List<string> completedSymbols = _pendingQuotePipeline
+                .Where(pair => pair.Value.Task.IsCompleted)
+                .Select(pair => pair.Key)
+                .ToList();
+
+            foreach (string symbol in completedSymbols)
+            {
+                if (_pendingQuotePipeline.Remove(symbol, out PendingQuoteRequest? pending))
+                    completedRequests.Add(pending);
+            }
+        }
+
         string? latestUpdatedSymbol = null;
         DateTimeOffset latestUpdatedFetchUtc = DateTimeOffset.MinValue;
 
-        foreach (string symbol in completedSymbols)
+        foreach (PendingQuoteRequest pending in completedRequests)
         {
-            if (!_pendingQuotePipeline.Remove(symbol, out PendingQuoteRequest? pending))
-                continue;
-
             try
             {
                 // The symbol list above only includes completed tasks; await observes exceptions without blocking.
@@ -792,7 +815,7 @@ public sealed class StartupCoordinator
                 TraceRuntimeState(
                     "SequentialQuoteReturned",
                     new KeyValuePair<string, object?>("operation_id", pending.OperationId),
-                    new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols([symbol])),
+                    new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols([pending.Symbol])),
                     new KeyValuePair<string, object?>("fetched_symbols", PreviewSymbols(fetched.Select(quote => quote.Symbol))));
 
                 foreach (QuoteSnapshot quote in fetched)
@@ -803,11 +826,11 @@ public sealed class StartupCoordinator
             }
             catch (OperationCanceledException ex)
             {
-                TraceRuntime($"YFinance.NET pipelined quote cancelled for [{symbol}]: {ex.GetType().Name}: {ex.Message}");
+                TraceRuntime($"YFinance.NET pipelined quote cancelled for [{pending.Symbol}]: {ex.GetType().Name}: {ex.Message}");
                 TraceRuntimeState(
                     "SequentialQuoteCancelled",
                     new KeyValuePair<string, object?>("operation_id", pending.OperationId),
-                    new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols([symbol])));
+                    new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols([pending.Symbol])));
             }
             catch (Exception ex)
             {
@@ -820,16 +843,35 @@ public sealed class StartupCoordinator
                     }
                 }
 
-                TraceRuntime($"YFinance.NET pipelined quote failed for [{symbol}]: {ex.GetType().Name}: {ex.Message}");
+                TraceRuntime($"YFinance.NET pipelined quote failed for [{pending.Symbol}]: {ex.GetType().Name}: {ex.Message}");
                 TraceRuntimeState(
                     "SequentialQuoteFailed",
                     new KeyValuePair<string, object?>("operation_id", pending.OperationId),
-                    new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols([symbol])),
+                    new KeyValuePair<string, object?>("requested_symbols", PreviewSymbols([pending.Symbol])),
                     new KeyValuePair<string, object?>("is_rate_limited", IsRateLimited(ex)));
             }
         }
 
-        return new QuotePipelineDrainResult(completedSymbols.Count, latestUpdatedSymbol, latestUpdatedFetchUtc);
+        return new QuotePipelineDrainResult(completedRequests.Count, latestUpdatedSymbol, latestUpdatedFetchUtc);
+    }
+
+    private QuotePipelineSnapshot SnapshotQuotePipeline(IReadOnlyList<string> orderedSymbols)
+    {
+        HashSet<string> inFlightSymbols;
+        int depth;
+        lock (_pendingQuotePipelineGate)
+        {
+            depth = _pendingQuotePipeline.Count;
+            inFlightSymbols = _pendingQuotePipeline.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+
+        List<string> remainingSymbols = orderedSymbols
+            .Where(symbol => !inFlightSymbols.Contains(symbol))
+            .ToList();
+        return new QuotePipelineSnapshot(
+            depth,
+            Math.Max(0, orderedSymbols.Count - depth),
+            remainingSymbols);
     }
 
 
