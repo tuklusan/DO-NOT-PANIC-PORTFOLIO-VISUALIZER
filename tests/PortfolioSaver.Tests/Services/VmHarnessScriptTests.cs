@@ -468,7 +468,7 @@ public sealed class VmHarnessScriptTests
 
         Assert.Contains("function Read-CircularTraceText", script, StringComparison.Ordinal);
         Assert.Contains("function Parse-DisplayedTapeSamples", script, StringComparison.Ordinal);
-        Assert.Contains("if ([string]::IsNullOrWhiteSpace($traceText))", script, StringComparison.Ordinal);
+        Assert.Contains("if (-not [string]::IsNullOrWhiteSpace($traceText))", script, StringComparison.Ordinal);
         Assert.Contains("function Get-PreferredDisplayedTapeSample", script, StringComparison.Ordinal);
         Assert.Contains("function Test-IsDisplayedSampleFullyLive", script, StringComparison.Ordinal);
         Assert.Contains("function Get-ReferenceResults", script, StringComparison.Ordinal);
