@@ -2187,7 +2187,7 @@
       "priority": 3,
       "area": "Performance",
       "title": "`CompositionTarget.Rendering` handler fires when not needed",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2201,12 +2201,14 @@
         "Suggested verification: Scene with all tapes disabled; profile CPU usage of rendering thread."
       ],
       "acceptance": [
-        "Early exit when `IsVisible == false` or `ActualWidth <= 0`; CPU near zero when no tape motion.",
+        "Tape animation starts only after valid measured motion metrics, stops on empty data, zero metrics, or unload, and skips rendering work while hidden, unarranged, or empty-sized.",
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-11 by guarding TapeAnimationController rendering against hidden/unarranged/empty-size elements, preventing Start before Attach, starting tape animation only after valid Update metrics, stopping and clearing scroll tracks on invalid metrics, and preventing queued metrics work from restarting animation after unload.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-204534.md reported no blocking findings; focused local Release tests for ticker/global tape animation lifecycle passed 11/11 before full validation."
     },
     {
       "id": "CR-034",

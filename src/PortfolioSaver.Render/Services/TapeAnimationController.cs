@@ -16,6 +16,8 @@ public sealed class TapeAnimationController
     private TimeSpan? _lastRenderingTime;
     private bool _running;
 
+    internal bool IsRunning => _running;
+
     public void Attach(UIElement element)
     {
         if (ReferenceEquals(_element, element))
@@ -40,6 +42,9 @@ public sealed class TapeAnimationController
 
     public void Start()
     {
+        if (_element is null)
+            return;
+
         if (_running)
             return;
 
@@ -59,13 +64,20 @@ public sealed class TapeAnimationController
 
     private void OnRendering(object? sender, EventArgs e)
     {
-        if (_transform is null || _cycleDistance <= 0 || _pixelsPerSecond <= 0)
+        if (_element is null || _transform is null || _cycleDistance <= 0 || _pixelsPerSecond <= 0)
             return;
 
         if (e is not RenderingEventArgs renderingArgs)
             return;
 
         TimeSpan renderingTime = renderingArgs.RenderingTime;
+        if (!_element.IsVisible || !_element.IsArrangeValid || _element.RenderSize.IsEmpty)
+        {
+            // Resume with a small first-frame delta instead of accumulating hidden-time jumps.
+            _lastRenderingTime = null;
+            return;
+        }
+
         double elapsedSeconds = _lastRenderingTime is null
             ? 1d / 60d
             : Math.Max(1d / 240d, (renderingTime - _lastRenderingTime.Value).TotalSeconds);

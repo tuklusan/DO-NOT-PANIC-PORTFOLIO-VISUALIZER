@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using PortfolioSaver.Core.Constants;
+using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Render.Controls;
 using PortfolioSaver.Render.Services;
@@ -1558,6 +1559,355 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void TapeAnimationController_StartWithoutAttach_DoesNotSubscribe()
+    {
+        TapeAnimationController controller = new();
+
+        controller.Start();
+
+        Assert.False(controller.IsRunning);
+    }
+
+    [Fact]
+    public void TapeAnimationController_UpdateBeforeStart_AppliesAnchorOffsetBeforeRendering()
+    {
+        RunOnSta(() =>
+        {
+            Border element = new() { Width = 100, Height = 20 };
+            TapeAnimationController controller = new();
+
+            try
+            {
+                controller.Attach(element);
+                controller.Update(cycleDistance: 120d, pixelsPerSecond: 30d, ScrollDirection.Left, anchorOffset: 14d);
+                controller.Start();
+
+                TranslateTransform transform = Assert.IsType<TranslateTransform>(element.RenderTransform);
+                Assert.Equal(14d, transform.X, precision: 3);
+                Assert.True(controller.IsRunning);
+            }
+            finally
+            {
+                controller.Stop();
+            }
+        });
+    }
+
+    [Fact]
+    public void TickerTapeControl_WithNoItems_LeavesAnimationStopped()
+    {
+        RunOnSta(() =>
+        {
+            TickerTapeControl control = new()
+            {
+                DataContext = new TapeViewModel(),
+                Width = 600,
+                Height = 40
+            };
+            Window? window = null;
+
+            try
+            {
+                window = HostControlForLayout(control, 600, 40);
+                control.RefreshMotionMetricsForTests();
+
+                Assert.False(control.AnimationControllerForTests.IsRunning);
+            }
+            finally
+            {
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                window?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void TickerTapeControl_WithMeasuredItems_StartsAnimationAfterMetricsUpdate()
+    {
+        RunOnSta(() =>
+        {
+            TapeViewModel tape = new() { Title = "TEST" };
+            tape.Items.Add(new TapeItemViewModel
+            {
+                SymbolText = "AAPL",
+                LastText = "123.45",
+                ChangeText = "+1.23%"
+            });
+
+            TickerTapeControl control = new()
+            {
+                DataContext = tape,
+                Width = 600,
+                Height = 40
+            };
+            Window? window = null;
+
+            try
+            {
+                window = HostControlForLayout(control, 600, 40);
+                control.RefreshMotionMetricsForTests();
+
+                Assert.True(control.AnimationControllerForTests.IsRunning);
+            }
+            finally
+            {
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                window?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void TickerTapeControl_StopsAndRestartsAcrossDataTransitions()
+    {
+        RunOnSta(() =>
+        {
+            TapeViewModel tape = CreateTapeWithItem();
+            TickerTapeControl control = new()
+            {
+                DataContext = tape,
+                Width = 600,
+                Height = 40
+            };
+            Window? window = null;
+
+            try
+            {
+                window = HostControlForLayout(control, 600, 40);
+                control.RefreshMotionMetricsForTests();
+                Assert.True(control.AnimationControllerForTests.IsRunning);
+
+                control.DataContext = new TapeViewModel();
+                control.RefreshMotionMetricsForTests();
+                Assert.False(control.AnimationControllerForTests.IsRunning);
+
+                control.DataContext = CreateTapeWithItem();
+                control.RefreshMotionMetricsForTests();
+                Assert.True(control.AnimationControllerForTests.IsRunning);
+            }
+            finally
+            {
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                window?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void TickerTapeControl_DoesNotRestartAnimationAfterUnload()
+    {
+        RunOnSta(() =>
+        {
+            TickerTapeControl control = new()
+            {
+                DataContext = CreateTapeWithItem(),
+                Width = 600,
+                Height = 40
+            };
+            Window? window = null;
+
+            try
+            {
+                window = HostControlForLayout(control, 600, 40);
+                control.RefreshMotionMetricsForTests();
+                Assert.True(control.AnimationControllerForTests.IsRunning);
+
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                control.RefreshMotionMetricsForTests();
+
+                Assert.False(control.AnimationControllerForTests.IsRunning);
+            }
+            finally
+            {
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                window?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void GlobalMarketsTapeControl_WithNoExchangeCities_LeavesAnimationStopped()
+    {
+        RunOnSta(() =>
+        {
+            GlobalMarketsTapeControl control = new()
+            {
+                DataContext = new FloatingClockViewModel(),
+                Width = 900,
+                Height = 80
+            };
+            Window? window = null;
+
+            try
+            {
+                window = HostControlForLayout(control, 900, 80);
+                control.RefreshMotionMetricsForTests();
+
+                Assert.False(control.AnimationControllerForTests.IsRunning);
+            }
+            finally
+            {
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                window?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void GlobalMarketsTapeControl_WithOnlyPinnedCity_PreservesPinnedCardAndStopsScrollingAnimation()
+    {
+        RunOnSta(() =>
+        {
+            FloatingClockViewModel clock = new();
+            clock.Cities.Add(new ClockCityViewModel
+            {
+                Key = "NewYorkNasdaq",
+                Label = "New York",
+                ShowExchangeDetails = true,
+                ExchangeName = "Nasdaq",
+                ExchangeSymbol = "^IXIC",
+                IndexValueText = "12345.67",
+                IndexChangeText = "+0.11%",
+                TimeText = "09:30",
+                ZoneText = "EDT",
+                MarketStatusText = "OPEN"
+            });
+
+            GlobalMarketsTapeControl control = new()
+            {
+                DataContext = clock,
+                Width = 900,
+                Height = 80
+            };
+            Window? window = null;
+
+            try
+            {
+                window = HostControlForLayout(control, 900, 80);
+                control.RefreshMotionMetricsForTests();
+
+                Assert.False(control.AnimationControllerForTests.IsRunning);
+                Assert.NotNull(control.PinnedCardChildForTests);
+            }
+            finally
+            {
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                window?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void GlobalMarketsTapeControl_WithMeasuredExchangeCities_StartsAnimationAfterMetricsUpdate()
+    {
+        RunOnSta(() =>
+        {
+            FloatingClockViewModel clock = new() { Title = "Global Markets" };
+            clock.Cities.Add(new ClockCityViewModel
+            {
+                Key = "London",
+                Label = "London",
+                ShowExchangeDetails = true,
+                ExchangeName = "FTSE 100",
+                ExchangeSymbol = "^FTSE",
+                IndexValueText = "8123.45",
+                IndexChangeText = "+0.42%",
+                TimeText = "12:34",
+                ZoneText = "GMT",
+                MarketStatusText = "OPEN"
+            });
+
+            GlobalMarketsTapeControl control = new()
+            {
+                DataContext = clock,
+                Width = 900,
+                Height = 80
+            };
+            Window? window = null;
+
+            try
+            {
+                window = HostControlForLayout(control, 900, 80);
+                control.RefreshMotionMetricsForTests();
+
+                Assert.True(control.AnimationControllerForTests.IsRunning);
+            }
+            finally
+            {
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                window?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void GlobalMarketsTapeControl_StopsAndRestartsAcrossDataTransitions()
+    {
+        RunOnSta(() =>
+        {
+            GlobalMarketsTapeControl control = new()
+            {
+                DataContext = CreateClockWithExchangeCity(),
+                Width = 900,
+                Height = 80
+            };
+            Window? window = null;
+
+            try
+            {
+                window = HostControlForLayout(control, 900, 80);
+                control.RefreshMotionMetricsForTests();
+                Assert.True(control.AnimationControllerForTests.IsRunning);
+
+                control.DataContext = new FloatingClockViewModel();
+                control.RefreshMotionMetricsForTests();
+                Assert.False(control.AnimationControllerForTests.IsRunning);
+
+                control.DataContext = CreateClockWithExchangeCity();
+                control.RefreshMotionMetricsForTests();
+                Assert.True(control.AnimationControllerForTests.IsRunning);
+            }
+            finally
+            {
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                window?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void GlobalMarketsTapeControl_DoesNotRestartAnimationAfterUnload()
+    {
+        RunOnSta(() =>
+        {
+            GlobalMarketsTapeControl control = new()
+            {
+                DataContext = CreateClockWithExchangeCity(),
+                Width = 900,
+                Height = 80
+            };
+            Window? window = null;
+
+            try
+            {
+                window = HostControlForLayout(control, 900, 80);
+                control.RefreshMotionMetricsForTests();
+                Assert.True(control.AnimationControllerForTests.IsRunning);
+
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                control.RefreshMotionMetricsForTests();
+
+                Assert.False(control.AnimationControllerForTests.IsRunning);
+            }
+            finally
+            {
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                window?.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void ScreensaverScene_EmitsDisplayedTapeSamplesForSoakComparison()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
@@ -1841,6 +2191,56 @@ public sealed class ScreensaverRenderBehaviorTests
             ExceptionDispatchInfo.Capture(error).Throw();
     }
 
+    private static Window HostControlForLayout(FrameworkElement control, double width, double height)
+    {
+        Window window = new()
+        {
+            Content = control,
+            Width = width,
+            Height = height,
+            Left = -10000,
+            Top = -10000,
+            ShowInTaskbar = false,
+            WindowStyle = WindowStyle.None
+        };
+
+        window.Show();
+        window.UpdateLayout();
+        control.UpdateLayout();
+        return window;
+    }
+
+    private static TapeViewModel CreateTapeWithItem()
+    {
+        TapeViewModel tape = new() { Title = "TEST" };
+        tape.Items.Add(new TapeItemViewModel
+        {
+            SymbolText = "AAPL",
+            LastText = "123.45",
+            ChangeText = "+1.23%"
+        });
+        return tape;
+    }
+
+    private static FloatingClockViewModel CreateClockWithExchangeCity()
+    {
+        FloatingClockViewModel clock = new() { Title = "Global Markets" };
+        clock.Cities.Add(new ClockCityViewModel
+        {
+            Key = "London",
+            Label = "London",
+            ShowExchangeDetails = true,
+            ExchangeName = "FTSE 100",
+            ExchangeSymbol = "^FTSE",
+            IndexValueText = "8123.45",
+            IndexChangeText = "+0.42%",
+            TimeText = "12:34",
+            ZoneText = "GMT",
+            MarketStatusText = "OPEN"
+        });
+        return clock;
+    }
+
     private static string GetRepoRoot()
     {
         DirectoryInfo? current = new(AppContext.BaseDirectory);
@@ -1856,6 +2256,7 @@ public sealed class ScreensaverRenderBehaviorTests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 }
+
 
 
 

@@ -32,6 +32,13 @@ public partial class GlobalMarketsTapeControl : UserControl
     private bool _metricsQueued;
     private string _contentSignature = string.Empty;
     private int _renderedSideCopyCount;
+    private bool _isLoaded;
+
+    internal TapeAnimationController AnimationControllerForTests => _animationController;
+
+    internal UIElement? PinnedCardChildForTests => PinnedCardHost.Child;
+
+    internal void RefreshMotionMetricsForTests() => RefreshMotionMetrics();
 
     public GlobalMarketsTapeControl()
     {
@@ -45,16 +52,18 @@ public partial class GlobalMarketsTapeControl : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        _isLoaded = true;
         if (_clock is null)
             SubscribeToClock(DataContext as FloatingClockViewModel);
 
         _animationController.Attach(TrackPanel);
-        _animationController.Start();
+        // Start only after RefreshMotionMetrics has measured valid motion parameters.
         QueueMetricsUpdate();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        _isLoaded = false;
         _animationController.Stop();
         UnsubscribeFromClock(_clock);
     }
@@ -84,6 +93,11 @@ public partial class GlobalMarketsTapeControl : UserControl
     private void RefreshMotionMetrics()
     {
         _metricsQueued = false;
+        if (!_isLoaded)
+        {
+            _animationController.Stop();
+            return;
+        }
 
         if (DataContext is not FloatingClockViewModel clock)
         {
@@ -92,6 +106,7 @@ public partial class GlobalMarketsTapeControl : UserControl
             _contentSignature = string.Empty;
             _renderedSideCopyCount = 0;
             PinnedCardHost.Child = null;
+            _animationController.Stop();
             return;
         }
 
@@ -111,12 +126,28 @@ public partial class GlobalMarketsTapeControl : UserControl
         UpdateLayout();
         double viewportWidth = ViewportHost.ActualWidth;
         if (viewportWidth <= 0)
+        {
+            TrackPanel.Children.Clear();
+            TrackPanel.Width = 0d;
+            PinnedCardHost.Child = null;
+            _contentSignature = string.Empty;
+            _renderedSideCopyCount = 0;
+            _animationController.Stop();
             return;
+        }
 
         string signature = BuildMarketSignature(clock);
         double sequenceWidth = MeasureSequenceWidth(clock);
         if (sequenceWidth <= 0)
+        {
+            TrackPanel.Children.Clear();
+            TrackPanel.Width = 0d;
+            PinnedCardHost.Child = null;
+            _contentSignature = string.Empty;
+            _renderedSideCopyCount = 0;
+            _animationController.Stop();
             return;
+        }
 
         int requiredSideCopies = CalculateSideCopyCount(viewportWidth, sequenceWidth);
         if (!string.Equals(signature, _contentSignature, StringComparison.Ordinal) ||
@@ -130,9 +161,8 @@ public partial class GlobalMarketsTapeControl : UserControl
         double cycleDistance = sequenceWidth + CopySpacing;
         const double pixelsPerSecond = 30d;
         double anchorOffset = -requiredSideCopies * cycleDistance;
-        _animationController.Attach(TrackPanel);
-        _animationController.Start();
         _animationController.Update(cycleDistance, pixelsPerSecond, ScrollDirection.Left, anchorOffset);
+        _animationController.Start();
     }
 
     private void SubscribeToClock(FloatingClockViewModel? clock)

@@ -21,6 +21,11 @@ public partial class TickerTapeControl : UserControl
     private TapeViewModel? _tape;
     private string _contentSignature = string.Empty;
     private int _renderedSideCopyCount;
+    private bool _isLoaded;
+
+    internal TapeAnimationController AnimationControllerForTests => _animationController;
+
+    internal void RefreshMotionMetricsForTests() => RefreshMotionMetrics();
 
     public TickerTapeControl()
     {
@@ -34,16 +39,18 @@ public partial class TickerTapeControl : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        _isLoaded = true;
         if (_tape is null)
             SubscribeToTape(DataContext as TapeViewModel);
 
         _animationController.Attach(TrackPanel);
-        _animationController.Start();
+        // Start only after RefreshMotionMetrics has measured valid motion parameters.
         QueueMetricsUpdate();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        _isLoaded = false;
         _animationController.Stop();
         UnsubscribeFromTape(_tape);
         ClearFlashTargets();
@@ -74,6 +81,11 @@ public partial class TickerTapeControl : UserControl
     private void RefreshMotionMetrics()
     {
         _metricsQueued = false;
+        if (!_isLoaded)
+        {
+            _animationController.Stop();
+            return;
+        }
 
         if (DataContext is not TapeViewModel tape || tape.Items.Count == 0)
         {
@@ -82,20 +94,37 @@ public partial class TickerTapeControl : UserControl
             _contentSignature = string.Empty;
             _renderedSideCopyCount = 0;
             ClearFlashTargets();
+            _animationController.Stop();
             return;
         }
 
         UpdateLayout();
         double viewportWidth = ViewportHost.ActualWidth;
         if (viewportWidth <= 0)
+        {
+            TrackPanel.Children.Clear();
+            TrackPanel.Width = 0d;
+            _contentSignature = string.Empty;
+            _renderedSideCopyCount = 0;
+            ClearFlashTargets();
+            _animationController.Stop();
             return;
+        }
 
         RefreshItemSubscriptions();
 
         string signature = BuildContentSignature(tape);
         double sequenceWidth = MeasureContentWidth(tape);
         if (sequenceWidth <= 0)
+        {
+            TrackPanel.Children.Clear();
+            TrackPanel.Width = 0d;
+            _contentSignature = string.Empty;
+            _renderedSideCopyCount = 0;
+            ClearFlashTargets();
+            _animationController.Stop();
             return;
+        }
 
         int requiredSideCopies = CalculateSideCopyCount(viewportWidth, sequenceWidth);
         if (!string.Equals(signature, _contentSignature, StringComparison.Ordinal) || requiredSideCopies != _renderedSideCopyCount)
@@ -108,8 +137,8 @@ public partial class TickerTapeControl : UserControl
         double cycleDistance = sequenceWidth + TapeCopySpacing;
         double pixelsPerSecond = Math.Max(18d, 72d * Math.Max(0.1d, tape.Speed));
         double anchorOffset = -requiredSideCopies * cycleDistance;
-        _animationController.Attach(TrackPanel);
         _animationController.Update(cycleDistance, pixelsPerSecond, tape.Direction, anchorOffset);
+        _animationController.Start();
     }
 
     private void SubscribeToTape(TapeViewModel? tape)
