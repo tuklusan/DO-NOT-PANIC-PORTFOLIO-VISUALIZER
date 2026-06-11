@@ -241,8 +241,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("\"BackgroundZoomStopped\"", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void SetBackgroundZoomRunning(bool enabled, string reason)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("if (bitmap.CanFreeze)", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("private static async Task<byte[]?> PreloadBackgroundBytesAsync(string path)", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("byte[]? preloadedBytes = await PreloadBackgroundBytesAsync(backgroundPath).ConfigureAwait(true);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private static async Task<byte[]?> PreloadBackgroundBytesAsync(string path, CancellationToken cancellationToken = default)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("byte[]? preloadedBytes = await PreloadBackgroundBytesAsync(backgroundPath, cancellationToken).ConfigureAwait(true);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("return await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BitmapImage backgroundBitmap = CreateBackgroundBitmap(backgroundPath, preloadedBytes);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("fileBitmap.StreamSource = memoryStream;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private int _backgroundTransitionGeneration;", codeBehind, StringComparison.Ordinal);
@@ -268,9 +269,12 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("_currentBackgroundBitmap = incomingBitmap;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private static double GetBackgroundPresentationOpacity(BitmapSource bitmap)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private bool _backgroundRecoveryReloadInFlight;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private CancellationTokenSource? _backgroundRecoveryReloadCancellation;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("QueueBackgroundRecoveryReload(_currentBackgroundPath!);", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("private async Task ReloadBackgroundForRecoveryAsync(string path)", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("await LoadBackgroundAsync(path).ConfigureAwait(true);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private async Task ReloadBackgroundForRecoveryAsync(string path, CancellationTokenSource cancellation)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("await LoadBackgroundAsync(path, cancellation.Token).ConfigureAwait(true);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void CancelBackgroundRecoveryReload()", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("BackgroundRecoveryReloadCanceled", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("recoverySource = _currentBackgroundBitmap = CreateBackgroundBitmap(_currentBackgroundPath!);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_backgroundTransitionInFlight", codeBehind, StringComparison.Ordinal);
         Assert.Contains("SetBackgroundZoomRunning(false, \"background-transitioning\");", codeBehind, StringComparison.Ordinal);

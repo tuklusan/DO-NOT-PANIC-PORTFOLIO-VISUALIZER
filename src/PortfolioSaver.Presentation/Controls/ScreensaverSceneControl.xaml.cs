@@ -80,6 +80,7 @@ public partial class ScreensaverSceneControl : UserControl
     private bool _hasSeededLayout;
     private int _graphRotationSeed;
     private CancellationTokenSource? _graphWarmupCancellation;
+    private CancellationTokenSource? _backgroundRecoveryReloadCancellation;
     private Task? _graphWarmupTask;
     private CancellationTokenSource? _captureSequenceCancellation;
     private TimeSpan? _ntpOffset;
@@ -220,6 +221,7 @@ public partial class ScreensaverSceneControl : UserControl
         _refreshTimer.Stop();
         _backgroundTimer.Stop();
         _backgroundZoomTimer.Stop();
+        CancelBackgroundRecoveryReload();
         _worldDataTimer.Stop();
         StopDemoFlashSequence();
         _motionTimer.Stop();
@@ -1083,6 +1085,7 @@ public partial class ScreensaverSceneControl : UserControl
         _refreshTimer.Stop();
         _backgroundTimer.Stop();
         _backgroundZoomTimer.Stop();
+        CancelBackgroundRecoveryReload();
         _worldDataTimer.Stop();
         _motionTimer.Stop();
     }
@@ -2632,7 +2635,7 @@ public partial class ScreensaverSceneControl : UserControl
         city.CardBorderBrush = new SolidColorBrush(border);
     }
 
-    private async Task LoadBackgroundAsync(string? path)
+    private async Task LoadBackgroundAsync(string? path, CancellationToken cancellationToken = default)
     {
         _backgroundTransitionCompletionTimer?.Stop();
         _backgroundTransitionCompletionTimer = null;
@@ -2653,7 +2656,8 @@ public partial class ScreensaverSceneControl : UserControl
 
         string backgroundPath = path!;
         UpdateFooterAttribution(backgroundPath);
-        byte[]? preloadedBytes = await PreloadBackgroundBytesAsync(backgroundPath).ConfigureAwait(true);
+        byte[]? preloadedBytes = await PreloadBackgroundBytesAsync(backgroundPath, cancellationToken).ConfigureAwait(true);
+        cancellationToken.ThrowIfCancellationRequested();
         BitmapImage backgroundBitmap = CreateBackgroundBitmap(backgroundPath, preloadedBytes);
         _currentBackgroundOpacity = GetBackgroundPresentationOpacity(backgroundBitmap);
 
@@ -3077,7 +3081,7 @@ public partial class ScreensaverSceneControl : UserControl
         if (recoverySource is null && IsSupportedBackgroundReference(_currentBackgroundPath))
         {
             QueueBackgroundRecoveryReload(_currentBackgroundPath!);
-            return false;
+            return true;
         }
 
         if (recoverySource is null)
@@ -3093,18 +3097,27 @@ public partial class ScreensaverSceneControl : UserControl
         if (_backgroundRecoveryReloadInFlight)
             return;
 
+        CancelBackgroundRecoveryReload();
+        CancellationTokenSource cancellation = new();
+        _backgroundRecoveryReloadCancellation = cancellation;
         _backgroundRecoveryReloadInFlight = true;
-        _ = ReloadBackgroundForRecoveryAsync(path);
+        _ = ReloadBackgroundForRecoveryAsync(path, cancellation);
     }
 
-    private async Task ReloadBackgroundForRecoveryAsync(string path)
+    private async Task ReloadBackgroundForRecoveryAsync(string path, CancellationTokenSource cancellation)
     {
         try
         {
             TraceSceneState(
                 "BackgroundRecoveryReloadQueued",
                 new KeyValuePair<string, object?>("path", Path.GetFileName(path)));
-            await LoadBackgroundAsync(path).ConfigureAwait(true);
+            await LoadBackgroundAsync(path, cancellation.Token).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            TraceSceneState(
+                "BackgroundRecoveryReloadCanceled",
+                new KeyValuePair<string, object?>("path", Path.GetFileName(path)));
         }
         catch (Exception ex)
         {
@@ -3115,7 +3128,26 @@ public partial class ScreensaverSceneControl : UserControl
         }
         finally
         {
+            if (ReferenceEquals(_backgroundRecoveryReloadCancellation, cancellation))
+                _backgroundRecoveryReloadCancellation = null;
+            cancellation.Dispose();
             _backgroundRecoveryReloadInFlight = false;
+        }
+    }
+
+    private void CancelBackgroundRecoveryReload()
+    {
+        CancellationTokenSource? cancellation = _backgroundRecoveryReloadCancellation;
+        if (cancellation is null)
+            return;
+
+        _backgroundRecoveryReloadCancellation = null;
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch
+        {
         }
     }
 
@@ -3266,12 +3298,12 @@ public partial class ScreensaverSceneControl : UserControl
         }
     }
 
-    private static async Task<byte[]?> PreloadBackgroundBytesAsync(string path)
+    private static async Task<byte[]?> PreloadBackgroundBytesAsync(string path, CancellationToken cancellationToken = default)
     {
         if (!File.Exists(path))
             return null;
 
-        return await File.ReadAllBytesAsync(path).ConfigureAwait(false);
+        return await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
     }
 
     private static bool IsSupportedBackgroundReference(string? path)
