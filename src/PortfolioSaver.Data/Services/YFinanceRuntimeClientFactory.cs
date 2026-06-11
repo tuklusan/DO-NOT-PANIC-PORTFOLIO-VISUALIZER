@@ -14,6 +14,8 @@ public static class YFinanceRuntimeClientFactory
     private static readonly SemaphoreSlim HelloGate = new(1, 1);
     private static long _operationSequence;
     private static YFinanceServerClient? _sharedClient;
+    private static readonly List<YFinanceServerClient> RetiredClients = [];
+    private static int _activeClientOperations;
     private static bool _helloCompleted;
     private static bool _serverReadyEnsured;
     private static readonly AsyncLocal<int> ServerStartupSuppressedForTests = new();
@@ -22,11 +24,7 @@ public static class YFinanceRuntimeClientFactory
     {
         lock (Sync)
         {
-            _sharedClient ??= new YFinanceServerClient(new YFinanceServerConnectionOptions(
-                "127.0.0.1",
-                YFinance.NET.Protocol.Constants.ProtocolConstants.DefaultPort,
-                TimeSpan.FromSeconds(5),
-                PortfolioSaverYFinanceServerClientTraceSink.Instance));
+            _sharedClient ??= CreateClient();
             return _sharedClient;
         }
     }
@@ -82,11 +80,23 @@ public static class YFinanceRuntimeClientFactory
         try
         {
             TraceLog.InfoState("YFinanceRuntimeClientFactory", "ClientOperationStart", [new("lane", lane), new("operation_id", operationId)]);
-            return await action(GetSharedClient(), cancellationToken).ConfigureAwait(false);
+            YFinanceServerClient client = RentSharedClient();
+            try
+            {
+                return await action(client, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                RetireConnectionState(client);
+                throw;
+            }
+            finally
+            {
+                ReleaseSharedClientOperation();
+            }
         }
         catch (Exception ex)
         {
-            ResetConnectionState();
             TraceLog.WarnState("YFinanceRuntimeClientFactory", "ClientOperationError", [new("lane", lane), new("operation_id", operationId), new("message", ex.Message)]);
             throw;
         }
@@ -122,21 +132,88 @@ public static class YFinanceRuntimeClientFactory
         return Convert.ToHexString(hash)[..32];
     }
 
-    private static void ResetConnectionState()
+    private static YFinanceServerClient RentSharedClient()
     {
         lock (Sync)
         {
+            _sharedClient ??= CreateClient();
+            _activeClientOperations++;
+            return _sharedClient;
+        }
+    }
+
+    private static YFinanceServerClient CreateClient()
+        => new(new YFinanceServerConnectionOptions(
+            "127.0.0.1",
+            YFinance.NET.Protocol.Constants.ProtocolConstants.DefaultPort,
+            TimeSpan.FromSeconds(5),
+            PortfolioSaverYFinanceServerClientTraceSink.Instance));
+
+    private static void RetireConnectionState(YFinanceServerClient failedClient)
+    {
+        List<YFinanceServerClient> disposeNow = [];
+        lock (Sync)
+        {
+            if (ReferenceEquals(_sharedClient, failedClient))
+            {
+                _sharedClient = null;
+                _helloCompleted = false;
+                _serverReadyEnsured = false;
+            }
+
+            if (_activeClientOperations == 0)
+                disposeNow.Add(failedClient);
+            else if (!RetiredClients.Any(client => ReferenceEquals(client, failedClient)))
+                RetiredClients.Add(failedClient);
+        }
+
+        DisposeClients(disposeNow);
+    }
+
+    private static void ReleaseSharedClientOperation()
+    {
+        List<YFinanceServerClient> disposeNow = [];
+        lock (Sync)
+        {
+            if (_activeClientOperations > 0)
+                _activeClientOperations--;
+
+            if (_activeClientOperations == 0 && RetiredClients.Count > 0)
+            {
+                disposeNow.AddRange(RetiredClients);
+                RetiredClients.Clear();
+            }
+        }
+
+        DisposeClients(disposeNow);
+    }
+
+    private static void ResetConnectionState()
+    {
+        YFinanceServerClient? sharedClient;
+        lock (Sync)
+        {
+            sharedClient = _sharedClient;
+            _sharedClient = null;
+            _helloCompleted = false;
+            _serverReadyEnsured = false;
+        }
+
+        if (sharedClient is not null)
+            RetireConnectionState(sharedClient);
+    }
+
+    private static void DisposeClients(IReadOnlyList<YFinanceServerClient> clients)
+    {
+        foreach (YFinanceServerClient client in clients)
+        {
             try
             {
-                _sharedClient?.Dispose();
+                client.Dispose();
             }
             catch
             {
             }
-
-            _sharedClient = null;
-            _helloCompleted = false;
-            _serverReadyEnsured = false;
         }
     }
 

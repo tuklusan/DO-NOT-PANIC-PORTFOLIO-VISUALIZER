@@ -8,6 +8,7 @@ using PortfolioSaver.Render.Services;
 using PortfolioSaver.Screensaver.Services;
 using PortfolioSaver.Shared.Helpers;
 using Xunit;
+using YFinance.NET.Client;
 using YFinance.NET.Config;
 using YFinance.NET.Transport;
 
@@ -134,6 +135,35 @@ public sealed class Nb040BehaviorTests
         Assert.Equal(new[] { 1, 2 }, results);
         Assert.True(maxConcurrent >= 2, $"Expected concurrent client work, observed max concurrency {maxConcurrent}.");
         Assert.Equal(0, concurrent);
+    }
+
+    [Fact]
+    public async Task YFinanceRuntimeClientFactory_DoesNotDisposeSharedClientWhileConcurrentOperationUsesIt()
+    {
+        using IDisposable serverBypass = YFinanceRuntimeClientFactory.SuppressServerStartupForTests();
+        TaskCompletionSource<YFinanceServerClient> survivorClientSeen = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource failureObserved = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task<int> survivor = YFinanceRuntimeClientFactory.RunSerializedAsync(
+            "test-survivor",
+            async (client, token) =>
+            {
+                survivorClientSeen.SetResult(client);
+                await failureObserved.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+                AssertYFinanceClientNotDisposed(client);
+                return 1;
+            });
+
+        await survivorClientSeen.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Task<int> failing = YFinanceRuntimeClientFactory.RunSerializedAsync<int>(
+            "test-failure",
+            (_, _) => Task.FromException<int>(new InvalidOperationException("forced failure")));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => failing);
+        failureObserved.SetResult();
+
+        Assert.Equal(1, await survivor);
     }
 
     [Fact]
@@ -421,6 +451,17 @@ public sealed class Nb040BehaviorTests
         }
 
         throw new DirectoryNotFoundException("Could not locate repo root from test AppContext.BaseDirectory.");
+    }
+
+    private static void AssertYFinanceClientNotDisposed(YFinanceServerClient client)
+    {
+        FieldInfo connectGateField = typeof(YFinanceServerClient).GetField(
+            "_connectGate",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        SemaphoreSlim connectGate = (SemaphoreSlim)connectGateField.GetValue(client)!;
+
+        Assert.True(connectGate.Wait(0));
+        connectGate.Release();
     }
 
     private sealed class ControlledQuoteProvider : IQuoteProvider
