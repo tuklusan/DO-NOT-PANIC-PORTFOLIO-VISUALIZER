@@ -97,7 +97,7 @@ public sealed class ReleaseManifestValidatorTests
 
         Assert.Contains("ValidateCurrentExecutableInBackground", source, StringComparison.Ordinal);
         Assert.Contains("Task.Run(() => ReleaseManifestValidator.ValidateDirectory(AppContext.BaseDirectory))", source, StringComparison.Ordinal);
-        Assert.Contains("onValidationFailed(result.Summary);", source, StringComparison.Ordinal);
+        Assert.Contains("TryNotifyValidationFailed(source, onValidationFailed, result.Summary);", source, StringComparison.Ordinal);
     }
 
     private static string CreateTempDirectory()
