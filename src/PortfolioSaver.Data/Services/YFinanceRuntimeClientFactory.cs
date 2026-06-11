@@ -20,15 +20,6 @@ public static class YFinanceRuntimeClientFactory
     private static bool _serverReadyEnsured;
     private static readonly AsyncLocal<int> ServerStartupSuppressedForTests = new();
 
-    public static YFinanceServerClient GetSharedClient()
-    {
-        lock (Sync)
-        {
-            _sharedClient ??= CreateClient();
-            return _sharedClient;
-        }
-    }
-
     public static async Task EnsureServerReadyAsync(string clientType, string clientVersion, CancellationToken cancellationToken = default)
     {
         if (ServerStartupSuppressedForTests.Value > 0)
@@ -56,14 +47,23 @@ public static class YFinanceRuntimeClientFactory
                 true,
                 Environment.ProcessId);
             TraceLog.InfoState("YFinanceUiBridge", "ServerHelloStart", [new("client_type", clientType), new("client_version", clientVersion)]);
-            await GetSharedClient().ConnectAsync(hello, cancellationToken).ConfigureAwait(false);
+            YFinanceServerClient client = RentSharedClient();
+            try
+            {
+                await client.ConnectAsync(hello, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                RetireConnectionState(client);
+                throw;
+            }
+            finally
+            {
+                ReleaseSharedClientOperation();
+            }
+
             _helloCompleted = true;
             TraceLog.InfoState("YFinanceUiBridge", "ServerHelloComplete", [new("client_type", clientType), new("client_version", clientVersion)]);
-        }
-        catch
-        {
-            ResetConnectionState();
-            throw;
         }
         finally
         {

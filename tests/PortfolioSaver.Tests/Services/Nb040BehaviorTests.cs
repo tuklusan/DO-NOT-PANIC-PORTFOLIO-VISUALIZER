@@ -167,6 +167,33 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
+    public async Task YFinanceRuntimeClientFactory_ResetRetiresSharedClientAfterActiveOperationCompletes()
+    {
+        using IDisposable serverBypass = YFinanceRuntimeClientFactory.SuppressServerStartupForTests();
+        MethodInfo resetMethod = typeof(YFinanceRuntimeClientFactory).GetMethod(
+            "ResetConnectionState",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
+        TaskCompletionSource<YFinanceServerClient> activeClientSeen = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource resetInvoked = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task<int> activeOperation = YFinanceRuntimeClientFactory.RunSerializedAsync(
+            "test-reset-active",
+            async (client, token) =>
+            {
+                activeClientSeen.SetResult(client);
+                await resetInvoked.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+                AssertYFinanceClientNotDisposed(client);
+                return 1;
+            });
+
+        await activeClientSeen.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        resetMethod.Invoke(null, null);
+        resetInvoked.SetResult();
+
+        Assert.Equal(1, await activeOperation);
+    }
+
+    [Fact]
     public void RuntimeQuoteSeedStore_PublishesAndConsumesQuotesOnce()
     {
         RuntimeQuoteSeedStore.ConsumeAll();
