@@ -155,6 +155,56 @@ public sealed class AppDataRootResolverTests
     }
 
     [Fact]
+    public void TryCopyStartupCriticalLegacyFiles_CopiesSettingsAndSecretsWithoutOverwriting()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string legacyRoot = Path.Combine(root, "PortfolioSaver");
+        string productRoot = Path.Combine(root, AppDataRootResolver.AppLocalDataFolderName);
+        try
+        {
+            Directory.CreateDirectory(legacyRoot);
+            Directory.CreateDirectory(productRoot);
+            File.WriteAllText(Path.Combine(legacyRoot, "settings.json"), "legacy-settings");
+            File.WriteAllText(Path.Combine(legacyRoot, "provider-secrets.json"), "legacy-secrets");
+            File.WriteAllText(Path.Combine(productRoot, "settings.json"), "product-settings");
+
+            AppDataRootResolver.TryCopyStartupCriticalLegacyFiles(legacyRoot, productRoot);
+
+            Assert.Equal("product-settings", File.ReadAllText(Path.Combine(productRoot, "settings.json")));
+            Assert.Equal("legacy-secrets", File.ReadAllText(Path.Combine(productRoot, "provider-secrets.json")));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task QueueLegacyRootMigrationForStartup_RespectsExistingSentinel()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string legacyRoot = Path.Combine(root, "PortfolioSaver");
+        string productRoot = Path.Combine(root, AppDataRootResolver.AppLocalDataFolderName);
+        try
+        {
+            Directory.CreateDirectory(legacyRoot);
+            Directory.CreateDirectory(productRoot);
+            File.WriteAllText(Path.Combine(legacyRoot, "late.txt"), "late");
+            File.WriteAllText(Path.Combine(productRoot, ".portfolio-visualizer-migration-complete"), DateTimeOffset.UtcNow.ToString("O"));
+
+            await AppDataRootResolver.QueueLegacyRootMigrationForStartup(legacyRoot, productRoot).WaitAsync(TimeSpan.FromSeconds(10));
+
+            Assert.False(File.Exists(Path.Combine(productRoot, "late.txt")));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void QueueLegacyRootMigrationForStartup_ReusesScheduledMigrationTask()
     {
         string root = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));

@@ -18,6 +18,7 @@ public static class AppDataRootResolver
     public const string LegacyLocalDataRootEnvironmentVariable = "PORTFOLIOSAVER_LOCALDATA_ROOT";
     public const string LegacyAppDataRootEnvironmentVariable = "PORTFOLIOSAVER_APPDATA_ROOT";
     private const string MigrationSentinelFileName = ".portfolio-visualizer-migration-complete";
+    private static readonly string[] StartupCriticalLegacyFileNames = ["settings.json", "provider-secrets.json"];
 
     private static readonly object MigrationSync = new();
     private static readonly ConcurrentDictionary<string, byte> MigratedRootPairs = new(StringComparer.OrdinalIgnoreCase);
@@ -35,7 +36,13 @@ public static class AppDataRootResolver
         string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         string productRoot = Path.Combine(localAppData, AppLocalDataFolderName);
         if (createDirectory)
-            _ = QueueLegacyRootMigrationForStartup(Path.Combine(localAppData, LegacyAppLocalDataFolderName), productRoot);
+        {
+            string normalizedProductRoot = NormalizeRoot(productRoot, createDirectory: true);
+            string legacyRoot = Path.Combine(localAppData, LegacyAppLocalDataFolderName);
+            TryCopyStartupCriticalLegacyFiles(legacyRoot, normalizedProductRoot);
+            _ = QueueLegacyRootMigrationForStartup(legacyRoot, normalizedProductRoot);
+            return normalizedProductRoot;
+        }
 
         return NormalizeRoot(productRoot, createDirectory);
     }
@@ -78,10 +85,30 @@ public static class AppDataRootResolver
         Lazy<Task> migration = ScheduledMigrationTasks.GetOrAdd(
             migrationKey,
             _ => new Lazy<Task>(
-                () => Task.Run(() => TryCopyLegacyRootOnce(legacyRoot, productRoot)),
+                () => Task.Run(() => ExecuteQueuedLegacyRootMigration(legacyRoot, productRoot, migrationKey)),
                 LazyThreadSafetyMode.ExecutionAndPublication));
 
         return migration.Value;
+    }
+
+    private static void ExecuteQueuedLegacyRootMigration(string legacyRoot, string productRoot, string migrationKey)
+    {
+        try
+        {
+            TryCopyLegacyRootOnce(legacyRoot, productRoot);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            MigratedRootPairs.TryRemove(migrationKey, out _);
+            ScheduledMigrationTasks.TryRemove(migrationKey, out _);
+            Trace.WriteLine($"Local data root background migration failed from '{legacyRoot}' to '{productRoot}': {ex.Message}");
+        }
+    }
+
+    internal static void TryCopyStartupCriticalLegacyFiles(string legacyRoot, string productRoot)
+    {
+        foreach (string fileName in StartupCriticalLegacyFileNames)
+            TryCopyFile(Path.Combine(legacyRoot, fileName), Path.Combine(productRoot, fileName));
     }
 
     public static void TryCopyDirectory(string sourceDirectory, string targetDirectory)
