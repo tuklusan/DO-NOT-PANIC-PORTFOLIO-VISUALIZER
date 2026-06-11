@@ -2071,7 +2071,7 @@
       "priority": 3,
       "area": "UI fluidity",
       "title": "Synchronous file read in UI recovery path (`ScreensaverSceneControl.TryRecoverActiveBackgroundSource`)",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2089,7 +2089,9 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Resolved on 2026-06-11 by replacing the synchronous CreateBackgroundBitmap recovery fallback with TryRecoverOrQueueActiveBackgroundSource, which queues a token-aware async LoadBackgroundAsync recovery reload, uses File.ReadAllBytesAsync with cancellation, cancels on unload/live-timer stop, and protects in-flight ownership with a generation guard.",
+        "Validation: DeepSeek final CR-029 review artifact postcommit-review-cr029-final2-20260611-170150 reported no blockers and no high findings; local Release build passed with 0 warnings/errors; local Release tests passed 307/307."
       ]
     },
     {
