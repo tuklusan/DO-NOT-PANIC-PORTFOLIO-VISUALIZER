@@ -121,6 +121,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[string]$ValidationCompletionMode = 'Apply'", script, StringComparison.Ordinal);
         Assert.Contains("function New-RemoteSharedJsonReadCommand", script, StringComparison.Ordinal);
         Assert.Contains("[System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete", script, StringComparison.Ordinal);
+        Assert.Contains("New-Object System.IO.StreamReader", script, StringComparison.Ordinal);
+        Assert.Contains("if ($null -ne $stream)", script, StringComparison.Ordinal);
         Assert.Contains("[int]$DisplayWidth", script, StringComparison.Ordinal);
         Assert.Contains("[int]$DisplayHeight", script, StringComparison.Ordinal);
         Assert.Contains("[string]$DisplayProfile", script, StringComparison.Ordinal);

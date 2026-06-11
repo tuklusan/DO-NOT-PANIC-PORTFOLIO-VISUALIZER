@@ -47,23 +47,29 @@ function New-RemoteSharedJsonReadCommand {
 if (Test-Path `$path) {
     for (`$attempt = 0; `$attempt -lt 12; `$attempt++) {
         try {
+            `$stream = `$null
+            `$reader = `$null
             `$stream = [System.IO.File]::Open(
                 `$path,
                 [System.IO.FileMode]::Open,
                 [System.IO.FileAccess]::Read,
                 [System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete)
             try {
-                `$reader = [System.IO.StreamReader]::new(`$stream)
+                `$reader = New-Object System.IO.StreamReader(`$stream)
                 try {
                     `$reader.ReadToEnd()
                 }
                 finally {
-                    `$reader.Dispose()
+                    if (`$null -ne `$reader) {
+                        `$reader.Dispose()
+                    }
                 }
                 break
             }
             finally {
-                `$stream.Dispose()
+                if (`$null -ne `$stream) {
+                    `$stream.Dispose()
+                }
             }
         }
         catch {
