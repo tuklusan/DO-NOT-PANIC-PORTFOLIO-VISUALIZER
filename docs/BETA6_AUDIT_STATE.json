@@ -1868,7 +1868,7 @@
       "priority": 2,
       "area": "UI fluidity",
       "title": "Synchronous file write on UI thread after symbol validation",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "High",
       "evidence": [
@@ -1886,7 +1886,9 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Resolved on 2026-06-11 by routing config validation profile persistence through SaveTrustedSymbolProfilesAsync, running the existing merge/save disk I/O on a background task, and serializing writes with a SemaphoreSlim gate to avoid overlapping profile-file writes.",
+        "Validation: DeepSeek review postcommit-review-20260611-154416 reported the prior concurrency blocker resolved and no new blockers; local Release build passed with 0 warnings/errors; local Release tests passed 293/293."
       ]
     },
     {
