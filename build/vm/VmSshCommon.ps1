@@ -175,6 +175,76 @@ function Invoke-VmRawCommand {
     return $result
 }
 
+function Invoke-VmHarnessAbortCleanup {
+    param(
+        [Parameter(Mandatory = $true)]$Bundle,
+        [Parameter(Mandatory = $true)][string]$RootPath,
+        [Parameter(Mandatory = $true)][string]$Reason,
+        [string]$ResultName
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RootPath) -or $RootPath.Length -lt 8 -or $RootPath.TrimEnd('\') -notmatch '\\') {
+        Write-Warning "Skipping remote harness abort cleanup because RootPath is not specific enough: '$RootPath'"
+        return
+    }
+
+    $escapedRoot = $RootPath.Replace("'", "''")
+    $escapedReason = $Reason.Replace("'", "''")
+    $escapedResultName = if ([string]::IsNullOrWhiteSpace($ResultName)) { '' } else { $ResultName.Replace("'", "''") }
+    $command = @"
+`$root = '$escapedRoot'
+`$reason = '$escapedReason'
+`$resultName = '$escapedResultName'
+`$cleanupFailures = [System.Collections.Generic.List[string]]::new()
+`$processNames = @(
+    'PortfolioSaver.VmAgent',
+    'PortfolioSaver.Config',
+    'PortfolioSaver.Desktop',
+    'PortfolioSaver.Screensaver',
+    'WinAppDriver'
+)
+Get-Process -Name `$processNames -ErrorAction SilentlyContinue |
+    Stop-Process -Force -ErrorAction SilentlyContinue
+
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object {
+        `$_.CommandLine -and
+        `$_.CommandLine.Contains(`$root) -and
+        `$_.ProcessId -ne `$PID
+    } |
+    ForEach-Object {
+        `$process = `$_
+        try {
+            Stop-Process -Id `$process.ProcessId -Force -ErrorAction Stop
+        }
+        catch {
+            `$failure = "Failed to stop PID `$(`$process.ProcessId): `$(`$_.Exception.Message)"
+            `$cleanupFailures.Add(`$failure)
+            Write-Warning `$failure
+        }
+    }
+
+`$abortRoot = Join-Path `$root 'results'
+New-Item -ItemType Directory -Force -Path `$abortRoot | Out-Null
+`$abortMarker = Join-Path `$abortRoot 'harness-aborted.json'
+`$marker = [ordered]@{
+    Result = 'Aborted'
+    Reason = `$reason
+    ResultName = `$resultName
+    WrittenAt = (Get-Date).ToString('o')
+    CleanupFailures = @(`$cleanupFailures)
+}
+`$marker | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath `$abortMarker -Encoding UTF8
+"@
+
+    try {
+        Invoke-VmPwshCommand -Bundle $Bundle -Command $command -TimeOutSeconds 120 | Out-Null
+    }
+    catch {
+        Write-Warning ("Remote harness abort cleanup failed: {0}" -f $_.Exception.Message)
+    }
+}
+
 function Ensure-VmDirectory {
     param(
         [Parameter(Mandatory = $true)]$Bundle,

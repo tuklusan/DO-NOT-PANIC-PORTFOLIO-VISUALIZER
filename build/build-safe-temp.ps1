@@ -34,6 +34,7 @@ function Invoke-ProcessWithTimeout {
     $stderrLines = [System.Collections.Concurrent.ConcurrentQueue[string]]::new()
     $stdoutComplete = [System.Threading.ManualResetEventSlim]::new($false)
     $stderrComplete = [System.Threading.ManualResetEventSlim]::new($false)
+    $started = $false
     $proc.add_OutputDataReceived({
         if ($null -eq $EventArgs.Data) {
             $stdoutComplete.Set()
@@ -51,16 +52,30 @@ function Invoke-ProcessWithTimeout {
         }
     })
 
-    $null = $proc.Start()
-    $proc.BeginOutputReadLine()
-    $proc.BeginErrorReadLine()
+    try {
+        $null = $proc.Start()
+        $started = $true
+        $proc.BeginOutputReadLine()
+        $proc.BeginErrorReadLine()
 
-    if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
-        try { $proc.Kill($true) } catch {}
-        throw "Command timed out after $TimeoutSeconds seconds: $FilePath $Arguments"
+        if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
+            try { $proc.Kill($true) } catch {}
+            throw "Command timed out after $TimeoutSeconds seconds: $FilePath $Arguments"
+        }
+
+        $proc.WaitForExit()
     }
-
-    $proc.WaitForExit()
+    finally {
+        if ($null -ne $proc -and $started) {
+            try {
+                if (-not $proc.HasExited) {
+                    try { $proc.CancelOutputRead() } catch {}
+                    try { $proc.CancelErrorRead() } catch {}
+                    $proc.Kill($true)
+                }
+            } catch {}
+        }
+    }
     [void]$stdoutComplete.Wait([TimeSpan]::FromSeconds(5))
     [void]$stderrComplete.Wait([TimeSpan]::FromSeconds(5))
     $stdout = [string]::Join([Environment]::NewLine, $stdoutLines.ToArray())

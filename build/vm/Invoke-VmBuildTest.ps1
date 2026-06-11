@@ -28,6 +28,8 @@ $hostArtifactsRoot = Join-Path $repoRoot 'build\vm\artifacts\ssh-runs'
 $bundle = $null
 $localAgentCommandPath = $null
 $uxResultName = 'ux-deep-ssh-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
+$runCompleted = $false
+$runFailureReason = $null
 $vmCredParts = Get-VmSshCredentialPartsFromEnv
 $effectiveCaptureIntervalSeconds = if ($GuestScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }
 $effectiveUxTimeoutSeconds = [Math]::Max($UxTimeoutSeconds, ($GuestScreensaverDurationMinutes * 60) + 1800)
@@ -320,8 +322,19 @@ Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensa
             }
         }
     }
+
+    $runCompleted = $true
+}
+catch {
+    $runFailureReason = $_.Exception.Message
+    throw
 }
 finally {
+    if (-not $runCompleted -and $null -ne $bundle) {
+        Write-VmSshStep "Run did not complete; requesting remote harness abort cleanup"
+        $abortReason = if ([string]::IsNullOrWhiteSpace($runFailureReason)) { 'Invoke-VmBuildTest exited before completion without an exception message.' } else { $runFailureReason }
+        Invoke-VmHarnessAbortCleanup -Bundle $bundle -RootPath $RootPath -Reason $abortReason -ResultName $uxResultName
+    }
     if ($null -ne $bundle) {
         Remove-VmSshSessionBundle -Bundle $bundle
     }

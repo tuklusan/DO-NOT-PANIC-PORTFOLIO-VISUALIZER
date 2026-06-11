@@ -89,6 +89,24 @@ public sealed class VmHarnessScriptTests
     }
 
     [Fact]
+    public void BuildSafeTemp_KillsChildProcessOnCancellationOrAbort()
+    {
+        string script = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "build-safe-temp.ps1"));
+
+        Assert.Contains("finally {", script, StringComparison.Ordinal);
+        Assert.Contains("$started = $false", script, StringComparison.Ordinal);
+        Assert.Contains("$started = $true", script, StringComparison.Ordinal);
+        Assert.Contains("if ($null -ne $proc -and $started)", script, StringComparison.Ordinal);
+        Assert.Contains("if (-not $proc.HasExited)", script, StringComparison.Ordinal);
+        Assert.Contains("$proc.CancelOutputRead()", script, StringComparison.Ordinal);
+        Assert.Contains("$proc.CancelErrorRead()", script, StringComparison.Ordinal);
+        Assert.Contains("$proc.Kill($true)", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PublishSafeTemp_SeedsImportedYFinanceServerTargets()
     {
         string script = File.ReadAllText(Path.Combine(
@@ -160,6 +178,40 @@ public sealed class VmHarnessScriptTests
         Assert.DoesNotContain("$remotePassword", script, StringComparison.Ordinal);
         Assert.DoesNotContain("-Password", script, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("PsExec.exe", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void InvokeVmBuildTest_CleansRemoteProcessesWhenAborted()
+    {
+        string script = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "Invoke-VmBuildTest.ps1"));
+        string helper = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "VmSshCommon.ps1"));
+
+        Assert.Contains("$runCompleted = $false", script, StringComparison.Ordinal);
+        Assert.Contains("$runCompleted = $true", script, StringComparison.Ordinal);
+        Assert.Contains("$runFailureReason = $null", script, StringComparison.Ordinal);
+        Assert.Contains("$runFailureReason = $_.Exception.Message", script, StringComparison.Ordinal);
+        Assert.Contains("Run did not complete; requesting remote harness abort cleanup", script, StringComparison.Ordinal);
+        Assert.Contains("$abortReason = if ([string]::IsNullOrWhiteSpace($runFailureReason))", script, StringComparison.Ordinal);
+        Assert.Contains("Invoke-VmHarnessAbortCleanup -Bundle $bundle -RootPath $RootPath -Reason $abortReason", script, StringComparison.Ordinal);
+        Assert.Contains("function Invoke-VmHarnessAbortCleanup", helper, StringComparison.Ordinal);
+        Assert.Contains("RootPath is not specific enough", helper, StringComparison.Ordinal);
+        Assert.Contains("harness-aborted.json", helper, StringComparison.Ordinal);
+        Assert.Contains("Result = 'Aborted'", helper, StringComparison.Ordinal);
+        Assert.Contains("CleanupFailures = @(`$cleanupFailures)", helper, StringComparison.Ordinal);
+        Assert.Contains("Get-CimInstance Win32_Process", helper, StringComparison.Ordinal);
+        Assert.Contains("$process = `$_", helper, StringComparison.Ordinal);
+        Assert.Contains("Stop-Process -Id `$process.ProcessId", helper, StringComparison.Ordinal);
+        Assert.Contains("$_.CommandLine.Contains(`$root)", helper, StringComparison.Ordinal);
+        Assert.DoesNotContain("$rootPattern = $root.Replace", helper, StringComparison.Ordinal);
+        Assert.Contains("Stop-Process -Force", helper, StringComparison.Ordinal);
     }
 
     [Fact]
