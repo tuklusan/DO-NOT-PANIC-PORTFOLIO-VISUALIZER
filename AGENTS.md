@@ -34,7 +34,7 @@ Use:
 .\build\Run-DeepSeekCodeReview.ps1 -IncludeUntracked -SendForReview -AcknowledgeSecretScan
 ```
 
-Resolve actionable findings and rerun the review when fixes are made. If no DeepSeek API key is available through `DEEPSEEK_API_KEY`, `PORTFOLIOSAVER_DEEPSEEK_API_KEY`, or `build\vm\test-secrets.json`, treat code commit/test/VM validation as blocked until the key is available or the user explicitly waives the gate for that specific change.
+Resolve actionable findings and rerun the review when fixes are made. In the non-critical CR lane, a commit/push is not required before DeepSeek review. Commit and push remain mandatory before any local validation, VM validation, harness run, or other test cycle. If no DeepSeek API key is available through `DEEPSEEK_API_KEY`, `PORTFOLIOSAVER_DEEPSEEK_API_KEY`, or `build\vm\test-secrets.json`, treat code commit/test/VM validation as blocked until the key is available or the user explicitly waives the gate for that specific change.
 
 This repository is explicitly authorized by the project owner to use DeepSeek as an external code reviewer for pending code changes, but secrets and local-only credentials must never be included in review packets. The script performs best-effort secret scanning only; manually inspect/redact sensitive changes before using `-SendForReview -AcknowledgeSecretScan`. When editing the review gate itself, first run `.\build\Run-DeepSeekCodeReview.ps1 -SelfTest`, then run the normal DeepSeek review gate.
 
@@ -50,7 +50,7 @@ Treat Codex as the chief architect and the configured DeepSeek review/generation
 - Blind drop: For heavy boilerplate, WiX/installer authoring, large XAML layouts, generated tests, or complex algorithm scaffolding, have DeepSeek generate the file and write it directly to disk. Do not read the generated file unless build, tests, review, or targeted validation fail.
 - Delegated reading: Do not read large files just to understand them. Ask DeepSeek to summarize the file structure, key methods/properties, and exact line targets, then operate from the summary plus small local spot checks.
 - Test generation: After implementation, delegate xUnit test creation to DeepSeek and have it save tests directly under the test project. Codex should review failures and stitch integration, not manually author repetitive test bodies.
-- Review gate still applies: All generated or modified files must still pass the mandatory DeepSeek code-review gate before staging, committing, pushing, or local/VM validation.
+- Review gate still applies: All generated or modified files must still pass the mandatory DeepSeek code-review gate before staging, committing, pushing, or local/VM validation. Non-critical CR work does not require a commit/push before the DeepSeek review itself; commit/push is retained as the required checkpoint before local or VM test cycles.
 - Full reviews: Full tracked codebase and documentation end-to-end reviews must be preserved as versioned synthesis documents under `docs/` using names like `DEEPSEEK_FULL_RC_REVIEW_YYYY-MM-DD.md`, with review date, reviewer, scope, artifact directory, verdict, and synthesis. Raw packets remain transient under ignored `build/deepseek-review/`.
 - Local inspection is still required for safety-critical final checks: compile/test failures, diffs before commit, small targeted code reads, generated-file smoke checks, git status, process cleanup, and any place where DeepSeek output conflicts with build/runtime evidence.
 
