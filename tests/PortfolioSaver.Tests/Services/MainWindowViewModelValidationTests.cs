@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using PortfolioSaver.Config.Services;
@@ -143,13 +144,13 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
-    public void EnsureValidationConnectivity_ForcesFreshProbeBeforeBlockingValidation()
+    public async Task EnsureValidationConnectivityAsync_ForcesFreshProbeBeforeBlockingValidation()
     {
         FakeConnectivityService connectivity = new(initiallyAvailable: false);
         MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
         connectivity.SetAvailable(true);
 
-        bool available = InvokePrivate<bool>(vm, "EnsureValidationConnectivity", []);
+        bool available = await InvokePrivate<Task<bool>>(vm, "EnsureValidationConnectivityAsync", []);
 
         Assert.True(available);
         Assert.True(vm.IsNetworkAvailable);
@@ -396,6 +397,9 @@ public sealed class MainWindowViewModelValidationTests
         public int ForceProbeCalls { get; private set; }
 
         public bool IsInternetAvailable() => _available;
+
+        public Task<bool> IsInternetAvailableAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(_available);
 
         public void ForceProbe()
         {

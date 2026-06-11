@@ -10,6 +10,9 @@ public sealed class ConfigConnectivityService
     public bool IsInternetAvailable()
         => _probe.IsInternetAvailable();
 
+    public Task<bool> IsInternetAvailableAsync(CancellationToken cancellationToken = default)
+        => _probe.IsInternetAvailableAsync(cancellationToken);
+
     public void ForceProbe()
         => _probe.InvalidateCache();
 }

@@ -9,6 +9,9 @@ public sealed class NetworkAvailabilityService
     public bool IsNetworkAvailable()
         => _probe.IsInternetAvailable();
 
+    public Task<bool> IsNetworkAvailableAsync(CancellationToken cancellationToken = default)
+        => _probe.IsInternetAvailableAsync(cancellationToken);
+
     public void ForceProbe()
         => _probe.InvalidateCache();
 }

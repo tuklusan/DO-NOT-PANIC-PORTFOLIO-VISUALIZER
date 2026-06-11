@@ -15,38 +15,48 @@ public sealed class InternetProbeService
     private readonly int _attempts;
     private readonly int _timeoutMilliseconds;
     private readonly TimeSpan _cacheDuration;
+    private readonly Func<HttpMessageHandler>? _messageHandlerFactory;
     private readonly object _sync = new();
 
     private DateTimeOffset _lastProbeUtc = DateTimeOffset.MinValue;
     private bool _lastProbeResult;
+    private Task<bool>? _inFlightProbe;
 
     public InternetProbeService(
         IEnumerable<string>? probeUrls = null,
         int attempts = 2,
         int timeoutMilliseconds = 1500,
-        TimeSpan? cacheDuration = null)
+        TimeSpan? cacheDuration = null,
+        Func<HttpMessageHandler>? messageHandlerFactory = null)
     {
         _probeUrls = NormalizeProbeUrls(probeUrls);
         _attempts = Math.Max(1, attempts);
         _timeoutMilliseconds = Math.Clamp(timeoutMilliseconds, 250, 5000);
         _cacheDuration = cacheDuration ?? TimeSpan.FromSeconds(10);
+        _messageHandlerFactory = messageHandlerFactory;
     }
 
     public bool IsInternetAvailable()
+        => IsInternetAvailableAsync().GetAwaiter().GetResult();
+
+    public async Task<bool> IsInternetAvailableAsync(CancellationToken cancellationToken = default)
     {
+        Task<bool> probeTask;
         lock (_sync)
         {
             if (DateTimeOffset.UtcNow - _lastProbeUtc <= _cacheDuration)
                 return _lastProbeResult;
+
+            if (_inFlightProbe is not null)
+                probeTask = _inFlightProbe;
+            else
+            {
+                probeTask = ProbeAndCacheAsync(cancellationToken);
+                _inFlightProbe = probeTask;
+            }
         }
 
-        bool available = ProbeInternet();
-        lock (_sync)
-        {
-            _lastProbeResult = available;
-            _lastProbeUtc = DateTimeOffset.UtcNow;
-            return _lastProbeResult;
-        }
+        return await probeTask.ConfigureAwait(false);
     }
 
     public void InvalidateCache()
@@ -55,36 +65,58 @@ public sealed class InternetProbeService
             _lastProbeUtc = DateTimeOffset.MinValue;
     }
 
-    private bool ProbeInternet()
+    private async Task<bool> ProbeAndCacheAsync(CancellationToken cancellationToken)
     {
-        using HttpClient client = new()
+        try
         {
-            Timeout = TimeSpan.FromMilliseconds(_timeoutMilliseconds)
-        };
+            bool available = await ProbeInternetAsync(cancellationToken).ConfigureAwait(false);
+            lock (_sync)
+            {
+                _lastProbeResult = available;
+                _lastProbeUtc = DateTimeOffset.UtcNow;
+                return _lastProbeResult;
+            }
+        }
+        finally
+        {
+            lock (_sync)
+                _inFlightProbe = null;
+        }
+    }
+
+    private async Task<bool> ProbeInternetAsync(CancellationToken cancellationToken)
+    {
+        using HttpClient client = _messageHandlerFactory is null
+            ? new HttpClient { Timeout = TimeSpan.FromMilliseconds(_timeoutMilliseconds) }
+            : new HttpClient(_messageHandlerFactory()) { Timeout = TimeSpan.FromMilliseconds(_timeoutMilliseconds) };
 
         for (int attempt = 0; attempt < _attempts; attempt++)
         {
             foreach (string probeUrl in _probeUrls)
             {
-                if (TryProbeUrl(client, probeUrl))
+                if (await TryProbeUrlAsync(client, probeUrl, cancellationToken).ConfigureAwait(false))
                     return true;
             }
 
             if (attempt < _attempts - 1)
-                Thread.Sleep(250);
+                await Task.Delay(250, cancellationToken).ConfigureAwait(false);
         }
 
         return false;
     }
 
-    private static bool TryProbeUrl(HttpClient client, string probeUrl)
+    private static async Task<bool> TryProbeUrlAsync(HttpClient client, string probeUrl, CancellationToken cancellationToken)
     {
         try
         {
             using HttpRequestMessage request = new(HttpMethod.Get, probeUrl);
-            using HttpResponseMessage response = client.Send(request, HttpCompletionOption.ResponseHeadersRead);
+            using HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             int statusCode = (int)response.StatusCode;
             return statusCode >= 200 && statusCode < 500;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch
         {

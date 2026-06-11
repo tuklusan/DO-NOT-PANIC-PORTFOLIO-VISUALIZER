@@ -1,3 +1,4 @@
+using System.Net;
 using System.Reflection;
 using PortfolioSaver.Shared.Services;
 using Xunit;
@@ -63,6 +64,28 @@ public sealed class InternetProbeServiceTests
         Assert.Equal(new[] { "https://example.com" }, GetPrivateField<string[]>(service, "_probeUrls"));
     }
 
+    [Fact]
+    public async Task IsInternetAvailableAsync_CollapsesConcurrentCacheMissesToSingleProbe()
+    {
+        int requestCount = 0;
+        InternetProbeService service = new(
+            probeUrls: ["https://probe.test"],
+            attempts: 1,
+            timeoutMilliseconds: 1000,
+            cacheDuration: TimeSpan.FromMinutes(1),
+            messageHandlerFactory: () => new FakeProbeHandler(async (_, cancellationToken) =>
+            {
+                Interlocked.Increment(ref requestCount);
+                await Task.Delay(100, cancellationToken);
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }));
+
+        bool[] results = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => service.IsInternetAvailableAsync()));
+
+        Assert.All(results, Assert.True);
+        Assert.Equal(1, requestCount);
+    }
+
     private static T GetPrivateField<T>(object instance, string fieldName)
     {
         FieldInfo? field = instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
@@ -76,5 +99,12 @@ public sealed class InternetProbeServiceTests
         FieldInfo? field = instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull(field);
         field!.SetValue(instance, value);
+    }
+
+    private sealed class FakeProbeHandler(
+        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> responder) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => responder(request, cancellationToken);
     }
 }

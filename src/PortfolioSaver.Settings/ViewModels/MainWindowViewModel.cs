@@ -80,7 +80,7 @@ public sealed class MainWindowViewModel : BindableBase
             AddGroup();
 
         HookEditors();
-        UpdateConnectivityState();
+        _ = UpdateConnectivityStateAsync();
         ResetAllSymbolValidationStates("Pending validation");
 
         _stateTimer.Start();
@@ -271,7 +271,7 @@ public sealed class MainWindowViewModel : BindableBase
         if (_isApplying || _isValidationClosePending)
             return;
 
-        if (!EnsureValidationConnectivity())
+        if (!await EnsureValidationConnectivityAsync())
         {
             StatusMessage = "Internet connection is required before validation can run.";
             WpfMessageBox.Show(
@@ -640,8 +640,7 @@ public sealed class MainWindowViewModel : BindableBase
 
     private async Task OnStateTimerTickAsync()
     {
-        UpdateConnectivityState();
-        await Task.CompletedTask;
+        await UpdateConnectivityStateAsync();
     }
 
     private AppSettings BuildCandidateSettings()
@@ -733,18 +732,26 @@ public sealed class MainWindowViewModel : BindableBase
         => Groups.SelectMany(group => group.Tickers);
 
     private void RetryConnectivity()
+        => _ = RetryConnectivityAsync();
+
+    private async Task RetryConnectivityAsync()
     {
         _connectivityService.ForceProbe();
-        UpdateConnectivityState();
+        await UpdateConnectivityStateAsync();
         StatusMessage = IsNetworkAvailable
             ? "Internet connection detected. Continue with Validate."
             : "Internet connection not detected yet.";
     }
 
     private void UpdateConnectivityState()
+        => ApplyConnectivityState(_connectivityService.IsInternetAvailable());
+
+    private async Task UpdateConnectivityStateAsync(CancellationToken cancellationToken = default)
+        => ApplyConnectivityState(await _connectivityService.IsInternetAvailableAsync(cancellationToken));
+
+    private void ApplyConnectivityState(bool connected)
     {
         bool wasNetworkAvailable = _isNetworkAvailable;
-        bool connected = _connectivityService.IsInternetAvailable();
         IsNetworkAvailable = connected;
         if (!connected)
         {
@@ -761,13 +768,13 @@ public sealed class MainWindowViewModel : BindableBase
         }
     }
 
-    private bool EnsureValidationConnectivity()
+    private async Task<bool> EnsureValidationConnectivityAsync()
     {
         if (IsNetworkAvailable)
             return true;
 
         _connectivityService.ForceProbe();
-        UpdateConnectivityState();
+        await UpdateConnectivityStateAsync();
         return IsNetworkAvailable;
     }
 
@@ -1038,3 +1045,5 @@ public sealed class MainWindowViewModel : BindableBase
         string Message,
         string SourceTag);
 }
+
+
