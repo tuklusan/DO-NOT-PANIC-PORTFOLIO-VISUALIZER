@@ -1955,7 +1955,7 @@
       "priority": 3,
       "area": "Cancellation / Background tasks",
       "title": "Missing cancellation propagation in `ExchangePhotoCacheService` background download",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -1973,7 +1973,9 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Resolved on 2026-06-11 by threading caller cancellation into default background warmup, using explicit gate-acquired release guards, treating background cancellation as normal completion, cleaning temporary downloads on cancellation, and adding direct/background cancellation tests.",
+        "Validation: DeepSeek corrected CR-025 review artifact postcommit-review-cr025-corrected-20260611-161719 plus test-fix review postcommit-review-cr025-testfix-20260611-162007 reported no blockers and no high findings; local Release build passed with 0 warnings/errors; local Release tests passed 299/299."
       ]
     },
     {
