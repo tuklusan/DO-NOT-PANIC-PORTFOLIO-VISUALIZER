@@ -150,7 +150,9 @@ public sealed class MainWindowViewModelValidationTests
         MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
         connectivity.SetAvailable(true);
 
-        bool available = await InvokePrivate<Task<bool>>(vm, "EnsureValidationConnectivityAsync", []);
+        Task<bool> probeTask = InvokePrivate<Task<bool>>(vm, "EnsureValidationConnectivityAsync", []);
+        PumpDispatcherUntil(probeTask, TimeSpan.FromSeconds(5));
+        bool available = probeTask.GetAwaiter().GetResult();
 
         Assert.True(available);
         Assert.True(vm.IsNetworkAvailable);
@@ -179,13 +181,26 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
-    public void ValidateButton_RemainsEnabledBeforeFreshConnectivityProbe()
+    public void ValidateCommand_RemainsEnabledBeforeFreshConnectivityProbe()
     {
         MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: false));
 
-        Assert.True(vm.IsConfigActive);
-        Assert.False(vm.ShowNetworkLockOverlay);
+        Assert.False(vm.IsConfigActive);
+        Assert.True(vm.ShowNetworkLockOverlay);
         Assert.True(vm.IsValidationActionEnabled);
+    }
+
+    [Fact]
+    public void EnsureValidationConnectivityAsync_ReturnsFalseWhenFreshProbeStillOffline()
+    {
+        FakeConnectivityService connectivity = new(initiallyAvailable: false);
+        MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
+
+        bool available = await InvokePrivate<Task<bool>>(vm, "EnsureValidationConnectivityAsync", []);
+
+        Assert.False(available);
+        Assert.False(vm.IsNetworkAvailable);
+        Assert.Equal(1, connectivity.ForceProbeCalls);
     }
 
     [Fact]

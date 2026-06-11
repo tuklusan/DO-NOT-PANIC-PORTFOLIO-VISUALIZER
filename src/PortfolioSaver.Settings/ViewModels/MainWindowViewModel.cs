@@ -126,8 +126,8 @@ public sealed class MainWindowViewModel : BindableBase
         }
     }
 
-    public bool IsConfigActive => !_isApplying;
-    public bool ShowNetworkLockOverlay => false;
+    public bool IsConfigActive => IsNetworkAvailable && !_isApplying;
+    public bool ShowNetworkLockOverlay => !IsNetworkAvailable;
     public bool IsApplying => _isApplying;
     public bool IsValidationActionEnabled => CanExecuteValidate();
 
