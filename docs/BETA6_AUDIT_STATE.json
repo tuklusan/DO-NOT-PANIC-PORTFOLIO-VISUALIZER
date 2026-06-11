@@ -1618,18 +1618,23 @@
       "priority": 1,
       "area": "UI fluidity / Async",
       "title": "UI thread blocked by synchronous InternetProbeService probe every second",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Critical",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-1: UI thread blocked by synchronous InternetProbeService probe every second.",
         "`Settings/MainWindowViewModel.OnStateTimerTickAsync` → `UpdateConnectivityState` → `InternetProbeService.IsInternetAvailable()`; `Shared/Services/InternetProbeService.cs` – `ProbeInternet` uses sync `HttpClient.Send` + `Thread.Sleep`.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
-        "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
+        "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438",
+        "Resolved by making InternetProbeService async, replacing sync HttpClient.Send/Thread.Sleep with SendAsync/Task.Delay, adding single-flight cache-miss behavior, and moving config UI timer/retry/validation connectivity paths to async probing.",
+        "Implementation commits: 4af62fc Make internet connectivity probing async; 408d519 Observe background connectivity updates.",
+        "DeepSeek post-commit review passed with no findings: build/deepseek-review/postcommit-review-20260611-100557.md.",
+        "Validation: dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors; dotnet test PortfolioScreensaver.sln -c Release --no-build passed 280/280."
       ],
       "notes": [
         "Dispatcher timer ticks every 1 s; worst‑case blocks WPF dispatcher up to 6 s, making the config window unresponsive.",
-        "Suggested verification: Mock HTTP handler with 2 s delay; confirm UI buttons are clickable while probe runs. Use `DispatcherTimer` + `async Task` probe."
+        "Suggested verification: Mock HTTP handler with 2 s delay; confirm UI buttons are clickable while probe runs. Use `DispatcherTimer` + `async Task` probe.",
+        "CR-035 single-flight cache-expiry behavior was also materially improved by the same InternetProbeService change, but CR-035 remains open until separately verified/closed in priority order."
       ],
       "acceptance": [
         "UI remains responsive during periodic probe ticks; no mouse freeze or input lag.",
