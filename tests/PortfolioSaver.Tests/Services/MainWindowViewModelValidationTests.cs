@@ -200,8 +200,11 @@ public sealed class MainWindowViewModelValidationTests
             "MainWindowViewModel.cs"));
 
         Assert.Contains("await SaveTrustedSymbolProfilesAsync(symbolValidation);", source, StringComparison.Ordinal);
-        Assert.Contains("private Task SaveTrustedSymbolProfilesAsync(YahooSymbolValidationResult validation)", source, StringComparison.Ordinal);
-        Assert.Contains("Task.Run(() => SaveTrustedSymbolProfiles(validation))", source, StringComparison.Ordinal);
+        Assert.Contains("private readonly SemaphoreSlim _symbolProfileSaveGate = new(1, 1);", source, StringComparison.Ordinal);
+        Assert.Contains("private async Task SaveTrustedSymbolProfilesAsync(YahooSymbolValidationResult validation)", source, StringComparison.Ordinal);
+        Assert.Contains("await _symbolProfileSaveGate.WaitAsync();", source, StringComparison.Ordinal);
+        Assert.Contains("await Task.Run(() => SaveTrustedSymbolProfiles(validation));", source, StringComparison.Ordinal);
+        Assert.Contains("_symbolProfileSaveGate.Release();", source, StringComparison.Ordinal);
         Assert.DoesNotContain("            SaveTrustedSymbolProfiles(symbolValidation);", source, StringComparison.Ordinal);
     }
 

@@ -32,6 +32,7 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly SymbolProfileStore _symbolProfileStore;
     private readonly DispatcherTimer _stateTimer;
     private readonly Dispatcher _uiDispatcher;
+    private readonly SemaphoreSlim _symbolProfileSaveGate = new(1, 1);
     private readonly HashSet<TickerGroupEditorViewModel> _trackedGroups = [];
     private readonly HashSet<TickerItemEditorViewModel> _trackedTickers = [];
 
@@ -640,8 +641,18 @@ public sealed class MainWindowViewModel : BindableBase
         _symbolProfileStore.Save(merged.Values);
     }
 
-    private Task SaveTrustedSymbolProfilesAsync(YahooSymbolValidationResult validation)
-        => Task.Run(() => SaveTrustedSymbolProfiles(validation));
+    private async Task SaveTrustedSymbolProfilesAsync(YahooSymbolValidationResult validation)
+    {
+        await _symbolProfileSaveGate.WaitAsync();
+        try
+        {
+            await Task.Run(() => SaveTrustedSymbolProfiles(validation));
+        }
+        finally
+        {
+            _symbolProfileSaveGate.Release();
+        }
+    }
 
     private async Task OnStateTimerTickAsync()
     {
