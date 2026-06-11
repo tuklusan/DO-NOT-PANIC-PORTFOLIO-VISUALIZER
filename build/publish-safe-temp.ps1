@@ -162,7 +162,7 @@ try {
 
     Test-Deadline -Deadline $deadline -NextStep "restore yfinance server"
     Write-Step "Restoring YFinance server project"
-    & $dotnetCli restore $serverProject --disable-parallel --ignore-failed-sources -m:1 -v minimal
+    & $dotnetCli restore $serverProject -r $RuntimeIdentifier --disable-parallel --ignore-failed-sources -m:1 -v minimal
     if ($LASTEXITCODE -ne 0) { throw "Restore failed for YFinance server" }
 
     Test-Deadline -Deadline $deadline -NextStep "publish screensaver"
