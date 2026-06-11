@@ -341,7 +341,7 @@ public sealed class MainWindowViewModel : BindableBase
             int autoNamedCount = ApplyResolvedDisplayNames(symbolValidation);
             candidate = BuildCandidateSettings();
             Settings = candidate;
-            SaveTrustedSymbolProfiles(symbolValidation);
+            await SaveTrustedSymbolProfilesAsync(symbolValidation);
             if (symbolValidation.WasRateLimited || symbolValidation.DeferredSymbols.Count > 0)
             {
                 string deferredList = string.Join(", ", symbolValidation.DeferredSymbols.Take(8));
@@ -639,6 +639,9 @@ public sealed class MainWindowViewModel : BindableBase
 
         _symbolProfileStore.Save(merged.Values);
     }
+
+    private Task SaveTrustedSymbolProfilesAsync(YahooSymbolValidationResult validation)
+        => Task.Run(() => SaveTrustedSymbolProfiles(validation));
 
     private async Task OnStateTimerTickAsync()
     {

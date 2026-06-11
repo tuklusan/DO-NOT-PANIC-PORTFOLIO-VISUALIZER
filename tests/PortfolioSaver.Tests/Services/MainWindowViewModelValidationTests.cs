@@ -190,6 +190,22 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
+    public void Validation_OffloadsTrustedSymbolProfileSave()
+    {
+        string source = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Settings",
+            "ViewModels",
+            "MainWindowViewModel.cs"));
+
+        Assert.Contains("await SaveTrustedSymbolProfilesAsync(symbolValidation);", source, StringComparison.Ordinal);
+        Assert.Contains("private Task SaveTrustedSymbolProfilesAsync(YahooSymbolValidationResult validation)", source, StringComparison.Ordinal);
+        Assert.Contains("Task.Run(() => SaveTrustedSymbolProfiles(validation))", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("            SaveTrustedSymbolProfiles(symbolValidation);", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void EnsureValidationConnectivityAsync_ReturnsFalseWhenFreshProbeStillOffline()
     {
         FakeConnectivityService connectivity = new(initiallyAvailable: false);
