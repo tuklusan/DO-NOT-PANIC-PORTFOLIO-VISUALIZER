@@ -118,6 +118,8 @@ public sealed class YFinanceClientServerProtocolTests
         Assert.Contains("OwnedServerShutdownQueue.QueueShutdown(\"Screensaver.App\")", screensaverApp, StringComparison.Ordinal);
         Assert.DoesNotContain("StopOwnedServerAsync().GetAwaiter().GetResult()", screensaverApp, StringComparison.Ordinal);
         Assert.Contains("YFinanceServerProcessManager.StopOwnedServerAsync(timeout.Token)", shutdownQueue, StringComparison.Ordinal);
+        Assert.Contains("IsBackground = false", shutdownQueue, StringComparison.Ordinal);
+        Assert.DoesNotContain("Task.Run", shutdownQueue, StringComparison.Ordinal);
     }
 
     [Fact]

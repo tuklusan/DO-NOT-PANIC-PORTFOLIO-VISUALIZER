@@ -7,12 +7,13 @@ public static class OwnedServerShutdownQueue
     public static void QueueShutdown(string sourceName)
     {
         TraceLog.Info(sourceName, "Queueing owned YFinance server shutdown.");
-        _ = Task.Run(async () =>
+        Thread shutdownThread = new(static state =>
         {
+            string sourceName = (string)state!;
             using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(1));
             try
             {
-                await YFinanceServerProcessManager.StopOwnedServerAsync(timeout.Token).ConfigureAwait(false);
+                YFinanceServerProcessManager.StopOwnedServerAsync(timeout.Token).GetAwaiter().GetResult();
                 TraceLog.Info(sourceName, "Owned YFinance server shutdown completed.");
             }
             catch (OperationCanceledException)
@@ -23,6 +24,12 @@ public static class OwnedServerShutdownQueue
             {
                 TraceLog.Error(sourceName, "Owned YFinance server shutdown failed.", ex);
             }
-        });
+        })
+        {
+            IsBackground = false,
+            Name = "Owned YFinance shutdown"
+        };
+
+        shutdownThread.Start(sourceName);
     }
 }
