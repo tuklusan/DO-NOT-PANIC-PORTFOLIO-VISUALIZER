@@ -229,6 +229,32 @@ public sealed class ExchangePhotoCacheServiceTests
         Assert.Empty(Directory.EnumerateFiles(cacheFolder, "*.TMP", SearchOption.TopDirectoryOnly));
         Assert.False(File.Exists(Path.Combine(cacheFolder, "shanghai-skyline-2007.jpg")));
     }
+
+    [Fact]
+    public async Task WarmDefaultManifestCacheAsync_StopsPromptlyWhenDownloadIsCanceled()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        string cacheFolder = Path.Combine(tempRoot, "cache");
+        Directory.CreateDirectory(cacheFolder);
+
+        AppSettings settings = Defaults.CreateSettings();
+        settings.UseCustomBackgroundImageFolder = false;
+        settings.BackgroundImageFolder = cacheFolder;
+
+        BlockingImageHandler handler = new();
+        using HttpClient httpClient = new(handler);
+        ExchangePhotoCacheService service = new(() => httpClient);
+        using CancellationTokenSource cts = new();
+
+        Task warmup = service.WarmDefaultManifestCacheAsync(settings, cts.Token);
+        await handler.RequestStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        cts.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => warmup.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Empty(Directory.EnumerateFiles(cacheFolder, "*.TMP", SearchOption.TopDirectoryOnly));
+    }
+
     private static byte[] CreateMinimalJpegBytes()
         => [0xFF, 0xD8, 0xFF, 0xD9];
 
@@ -284,6 +310,21 @@ public sealed class ExchangePhotoCacheServiceTests
             {
                 Interlocked.Decrement(ref _currentRequests);
             }
+        }
+    }
+
+    private sealed class BlockingImageHandler : HttpMessageHandler
+    {
+        public TaskCompletionSource<bool> RequestStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            RequestStarted.TrySetResult(true);
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(CreateMinimalJpegBytes())
+            };
         }
     }
 }

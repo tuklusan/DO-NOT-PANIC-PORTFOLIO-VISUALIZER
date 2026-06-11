@@ -90,7 +90,7 @@ public sealed class ExchangePhotoCacheService
     {
         IReadOnlyList<string> immediateBackgrounds = GetImmediateBackgrounds(settings);
         if (networkAvailable && !settings.UseCustomBackgroundImageFolder)
-            StartDefaultManifestWarmup(settings.BackgroundImageFolder);
+            StartDefaultManifestWarmup(settings.BackgroundImageFolder, cancellationToken);
 
         return Task.FromResult(immediateBackgrounds);
     }
@@ -246,7 +246,7 @@ public sealed class ExchangePhotoCacheService
         return "Unknown, Unknown license";
     }
 
-    private void StartDefaultManifestWarmup(string cacheFolder)
+    private void StartDefaultManifestWarmup(string cacheFolder, CancellationToken cancellationToken)
     {
         lock (_downloadLock)
         {
@@ -257,11 +257,11 @@ public sealed class ExchangePhotoCacheService
             {
                 try
                 {
-                    await _downloadGate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+                    await _downloadGate.WaitAsync(cancellationToken).ConfigureAwait(false);
                     try
                     {
-                        await PrepareDefaultCacheFolderAsync(cacheFolder, CancellationToken.None).ConfigureAwait(false);
-                        bool changed = await DownloadMissingManifestImagesAsync(cacheFolder, CancellationToken.None).ConfigureAwait(false);
+                        await PrepareDefaultCacheFolderAsync(cacheFolder, cancellationToken).ConfigureAwait(false);
+                        bool changed = await DownloadMissingManifestImagesAsync(cacheFolder, cancellationToken).ConfigureAwait(false);
                         if (changed)
                             BackgroundCacheWarmupCompleted?.Invoke();
                     }
@@ -270,11 +270,15 @@ public sealed class ExchangePhotoCacheService
                         _downloadGate.Release();
                     }
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    Trace.TraceInformation("Background image warmup canceled.");
+                }
                 catch (Exception ex)
                 {
                     Trace.TraceWarning("Background image warmup failed: {0}: {1}", ex.GetType().Name, ex.Message);
                 }
-            });
+            }, cancellationToken);
         }
     }
 
@@ -348,15 +352,32 @@ public sealed class ExchangePhotoCacheService
                     _cacheGate.Release();
                 }
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                TryDeleteTempDownload(tempPath);
+                throw;
+            }
             catch (Exception ex)
             {
                 Trace.TraceWarning("Background image download failed for {0}: {1}: {2}", entry.LocalFileName, ex.GetType().Name, ex.Message);
-                if (File.Exists(tempPath))
-                    File.Delete(tempPath);
+                TryDeleteTempDownload(tempPath);
             }
         }
 
         return changed;
+    }
+
+    private static void TryDeleteTempDownload(string tempPath)
+    {
+        try
+        {
+            if (File.Exists(tempPath))
+                File.Delete(tempPath);
+        }
+        catch
+        {
+            // A locked partial remains ignored by selectors and will be retried on a future warm-up.
+        }
     }
 
 
