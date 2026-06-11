@@ -1588,17 +1588,21 @@
       "priority": 1,
       "area": "settings_persistence",
       "title": "Make SettingsFileService.Save atomic and corruption-resistant",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_full_rc_review_2026_06_05",
       "evidence": [
         "High H-7 from DeepSeek full RC review: direct File.WriteAllText can corrupt settings on crash/power loss.",
-        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md"
+        "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md",
+        "Resolved on 2026-06-11 by serializing SettingsFileService Load/Save on the same instance, adding an optional explicit settings-path override, and replacing direct settings writes with a same-directory temp-file write/flush/File.Move overwrite path.",
+        "DeepSeek review gate completed with no high-severity findings on final form: build/deepseek-review/deepseek-review-20260611-084240.md; assertion cleanup also reviewed cleanly in build/deepseek-review/deepseek-review-20260611-084639.md.",
+        "Validation after pre-test commits: dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors; dotnet test PortfolioScreensaver.sln -c Release --no-build passed 279/279."
       ],
       "notes": [
         "Write settings to a temporary file in the same directory, flush, then atomically replace/move into place.",
         "Preserve existing secret sanitization behavior while making persistence atomic.",
         "Add tests for write failure and existing settings preservation.",
-        "Consider backup/rollback behavior for corrupted existing settings."
+        "Consider backup/rollback behavior for corrupted existing settings.",
+        "Implementation commits: f7d8e35 Harden settings file persistence; 72ba91e Clean settings persistence test assertions."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
