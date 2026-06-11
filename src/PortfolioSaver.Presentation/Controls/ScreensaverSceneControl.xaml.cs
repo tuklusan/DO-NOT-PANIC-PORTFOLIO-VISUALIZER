@@ -3906,29 +3906,38 @@ public partial class ScreensaverSceneControl : UserControl
 
         foreach (string staleKey in _graphControlsByKey.Keys.Where(key => !visibleKeys.Contains(key)).ToList())
         {
-            FloatingGraphCanvas.Children.Remove(_graphControlsByKey[staleKey]);
+            FloatingGraphControl staleControl = _graphControlsByKey[staleKey];
+            staleControl.DataContext = null;
+            FloatingGraphCanvas.Children.Remove(staleControl);
             _graphControlsByKey.Remove(staleKey);
         }
 
-        foreach (FloatingGraphViewModel graph in visibleGraphs)
+        for (int index = 0; index < visibleGraphs.Count; index++)
         {
+            FloatingGraphViewModel graph = visibleGraphs[index];
             string graphKey = GetGraphKey(graph);
             if (_graphControlsByKey.TryGetValue(graphKey, out FloatingGraphControl? control))
             {
                 if (!ReferenceEquals(control.DataContext, graph))
                     control.DataContext = graph;
-                continue;
+            }
+            else
+            {
+                control = new FloatingGraphControl
+                {
+                    DataContext = graph
+                };
+                control.SetBinding(Canvas.LeftProperty, new Binding(nameof(FloatingGraphViewModel.X)));
+                control.SetBinding(Canvas.TopProperty, new Binding(nameof(FloatingGraphViewModel.Y)));
+                Panel.SetZIndex(control, 12);
+                _graphControlsByKey[graphKey] = control;
+                FloatingGraphCanvas.Children.Add(control);
             }
 
-            control = new FloatingGraphControl
-            {
-                DataContext = graph
-            };
-            control.SetBinding(Canvas.LeftProperty, new Binding(nameof(FloatingGraphViewModel.X)));
-            control.SetBinding(Canvas.TopProperty, new Binding(nameof(FloatingGraphViewModel.Y)));
-            Panel.SetZIndex(control, 12);
-            _graphControlsByKey[graphKey] = control;
-            FloatingGraphCanvas.Children.Add(control);
+            if (FloatingGraphCanvas.Children.IndexOf(control) != index)
+                FloatingGraphCanvas.Children.Remove(control);
+            if (FloatingGraphCanvas.Children.IndexOf(control) != index)
+                FloatingGraphCanvas.Children.Insert(index, control);
         }
     }
 }

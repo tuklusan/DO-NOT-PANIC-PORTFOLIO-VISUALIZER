@@ -75,7 +75,9 @@ public sealed class ScreensaverRenderBehaviorTests
 
         Assert.Contains("_graphControlsByKey", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_graphControlsByKey.TryGetValue(graphKey", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("FloatingGraphCanvas.Children.Remove(_graphControlsByKey[staleKey])", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("staleControl.DataContext = null;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("FloatingGraphCanvas.Children.Remove(staleControl)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("FloatingGraphCanvas.Children.Insert(index, control)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("FloatingGraphCanvas.Children.Add(control)", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("FloatingGraphCanvas.Children.Clear()", codeBehind, StringComparison.Ordinal);
     }
