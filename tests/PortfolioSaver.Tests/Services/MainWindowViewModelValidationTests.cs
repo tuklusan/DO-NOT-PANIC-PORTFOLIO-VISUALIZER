@@ -215,6 +215,8 @@ public sealed class MainWindowViewModelValidationTests
         vm.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(MainWindowViewModel.IsNetworkAvailable) ||
+                args.PropertyName == nameof(MainWindowViewModel.IsConfigActive) ||
+                args.PropertyName == nameof(MainWindowViewModel.ShowNetworkLockOverlay) ||
                 args.PropertyName == nameof(MainWindowViewModel.IsValidationActionEnabled))
             {
                 notificationThreadIds.Add(Environment.CurrentManagedThreadId);
@@ -227,8 +229,10 @@ public sealed class MainWindowViewModelValidationTests
         PumpDispatcherUntil(updateTask, TimeSpan.FromSeconds(5));
 
         Assert.True(vm.IsNetworkAvailable);
+        Assert.True(vm.IsConfigActive);
+        Assert.False(vm.ShowNetworkLockOverlay);
         Assert.True(vm.IsValidationActionEnabled);
-        Assert.NotEmpty(notificationThreadIds);
+        Assert.Contains(uiThreadId, notificationThreadIds);
         Assert.All(notificationThreadIds, threadId => Assert.Equal(uiThreadId, threadId));
     }
 

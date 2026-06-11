@@ -79,7 +79,11 @@ public sealed class ConfigTextConsistencyTests
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
         int primaryBindingCount = xaml.Split("Content=\"{Binding PrimaryButtonText}\"", StringSplitOptions.None).Length - 1;
+        int networkLockedContentIndex = xaml.IndexOf("IsEnabled=\"{Binding IsConfigActive}\"", StringComparison.Ordinal);
+        int primaryFooterButtonIndex = xaml.IndexOf("AutomationProperties.AutomationId=\"ConfigPrimaryButton\"", StringComparison.Ordinal);
         Assert.Equal(1, primaryBindingCount);
+        Assert.True(networkLockedContentIndex >= 0);
+        Assert.True(primaryFooterButtonIndex > networkLockedContentIndex);
         Assert.Contains("AutomationProperties.AutomationId=\"ConfigPrimaryButton\"", xaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.Name=\"{Binding PrimaryButtonText}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.AutomationId=\"ConfigCancelButton\"", xaml, StringComparison.Ordinal);
