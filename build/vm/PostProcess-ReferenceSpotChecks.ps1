@@ -222,7 +222,12 @@ $combinedTracePath = Join-Path $ResultRoot 'combined-trace-tail.txt'
 $traceText = Read-CircularTraceText -LogPath $tracePath -IndexPath $indexPath
 $yfinanceTraceText = Read-CircularTraceText -LogPath $yfinanceTracePath -IndexPath $yfinanceIndexPath
 $yfinanceEvidenceStatus = if ([string]::IsNullOrWhiteSpace($yfinanceTraceText)) { 'missing' } else { 'present' }
-$samples = @(Parse-DisplayedTapeSamples -TraceText $traceText)
+$samples = if ([string]::IsNullOrWhiteSpace($traceText)) {
+    @()
+}
+else {
+    @(Parse-DisplayedTapeSamples -TraceText $traceText)
+}
 
 $sampleRecords = @()
 $comparisonRecords = @()
