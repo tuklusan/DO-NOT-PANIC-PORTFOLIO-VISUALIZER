@@ -179,6 +179,16 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
+    public void ValidateButton_RemainsEnabledBeforeFreshConnectivityProbe()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: false));
+
+        Assert.True(vm.IsConfigActive);
+        Assert.False(vm.ShowNetworkLockOverlay);
+        Assert.True(vm.IsValidationActionEnabled);
+    }
+
+    [Fact]
     public void ConnectivityStateUpdates_FromBackgroundThread_AreRaisedOnUiDispatcher()
     {
         int uiThreadId = Environment.CurrentManagedThreadId;
