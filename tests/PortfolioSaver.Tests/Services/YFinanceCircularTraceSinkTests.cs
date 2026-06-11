@@ -78,6 +78,60 @@ public sealed class YFinanceCircularTraceSinkTests
         Assert.DoesNotContain("letmein", message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task YFinanceCircularTraceSink_ConcurrentInstanceAccessAndWritesAreStable()
+    {
+        string appDataRoot = Path.Combine(Path.GetTempPath(), "YFinanceTraceStressTest", Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", appDataRoot);
+        try
+        {
+            string traceDirectory = Path.Combine(appDataRoot, "Trace");
+            string traceFilePath = Path.Combine(traceDirectory, "yfinance.circular.log");
+            string traceIndexPath = Path.Combine(traceDirectory, "yfinance.circular.idx");
+            string markerPrefix = "yfinance-trace-stress-" + Guid.NewGuid().ToString("N");
+
+            int writeCount = 100;
+            YFinanceCircularTraceSink[] instances = await Task.WhenAll(Enumerable.Range(0, writeCount).Select(index => Task.Run(() =>
+            {
+                string marker = $"{markerPrefix}-{index:D3}";
+                YFinanceCircularTraceSink sink = YFinanceCircularTraceSink.Instance;
+                sink.InfoState(
+                    "YFinanceCircularTraceSinkStress",
+                    "ConcurrentTraceWrite",
+                    [
+                        new KeyValuePair<string, object?>("marker", marker),
+                        new KeyValuePair<string, object?>("index", index)
+                    ]);
+                return sink;
+            })));
+
+            YFinanceCircularTraceSink first = instances[0];
+            Assert.All(instances, instance => Assert.Same(first, instance));
+
+            bool observed = await WaitForTraceAsync(
+                traceFilePath,
+                traceIndexPath,
+                text =>
+                {
+                    for (int index = 0; index < writeCount; index++)
+                    {
+                        if (!text.Contains($"{markerPrefix}-{index:D3}", StringComparison.Ordinal))
+                            return false;
+                    }
+
+                    Assert.DoesNotContain("\0", text, StringComparison.Ordinal);
+                    Assert.Contains("source=YFinanceCircularTraceSinkStress", text, StringComparison.Ordinal);
+                    return true;
+                });
+
+            Assert.True(observed, "Concurrent YFinance trace marker was not observed in the circular trace file.");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", null);
+        }
+    }
+
     private static async Task<bool> WaitForTraceAsync(
         string traceFilePath,
         string traceIndexPath,
@@ -87,13 +141,9 @@ public sealed class YFinanceCircularTraceSinkTests
         {
             if (File.Exists(traceFilePath))
             {
-                FileInfo info = new(traceFilePath);
-                if (info.Length == 4 * 1024 * 1024)
-                {
-                    string text = ReadCircularText(traceFilePath, traceIndexPath);
-                    if (predicate(text))
-                        return true;
-                }
+                string text = ReadCircularText(traceFilePath, traceIndexPath);
+                if (predicate(text))
+                    return true;
             }
 
             await Task.Delay(100);

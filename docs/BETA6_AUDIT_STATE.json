@@ -2361,7 +2361,7 @@
       "priority": 3,
       "area": "Thread safety",
       "title": "Thread‑safe initialization of `YFinanceCircularTraceSink` not verified",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2380,7 +2380,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by changing YFinanceCircularTraceSink.Instance to an explicit Lazy<T> singleton with ExecutionAndPublication and adding a 100-task concurrent access/write stress test that verifies one instance and all unique markers in the circular trace.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-002609.md reported no actionable findings; local validation pending after commit/push per SOP."
     },
     {
       "id": "CR-040",

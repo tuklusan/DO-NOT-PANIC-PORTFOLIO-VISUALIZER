@@ -20,9 +20,12 @@ public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
     private static readonly string ProgramName = Process.GetCurrentProcess().ProcessName;
     private static readonly string HostName = GetHostNameSafe();
     private static readonly string LocalIp = GetPrimaryIpSafe();
+    private static readonly Lazy<YFinanceCircularTraceSink> LazyInstance = new(
+        static () => new YFinanceCircularTraceSink(),
+        LazyThreadSafetyMode.ExecutionAndPublication);
     private static int _workerStarted;
 
-    public static YFinanceCircularTraceSink Instance { get; } = new();
+    public static YFinanceCircularTraceSink Instance => LazyInstance.Value;
 
     private YFinanceCircularTraceSink()
     {
