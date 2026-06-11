@@ -112,7 +112,9 @@ public sealed class YFinanceClientServerProtocolTests
         Assert.Contains("YFinanceServerProcessManager.EnsureOwnedServerAsync(\"PortfolioSaver.Config\")", configApp, StringComparison.Ordinal);
         Assert.Contains("YFinanceServerProcessManager.StopOwnedServerAsync()", configApp, StringComparison.Ordinal);
         Assert.Contains("YFinanceServerProcessManager.EnsureOwnedServerAsync(\"PortfolioSaver.Screensaver\")", screensaverApp, StringComparison.Ordinal);
-        Assert.Contains("YFinanceServerProcessManager.StopOwnedServerAsync()", screensaverApp, StringComparison.Ordinal);
+        Assert.Contains("QueueOwnedServerShutdown()", screensaverApp, StringComparison.Ordinal);
+        Assert.Contains("YFinanceServerProcessManager.StopOwnedServerAsync(timeout.Token)", screensaverApp, StringComparison.Ordinal);
+        Assert.DoesNotContain("StopOwnedServerAsync().GetAwaiter().GetResult()", screensaverApp, StringComparison.Ordinal);
     }
 
     [Fact]

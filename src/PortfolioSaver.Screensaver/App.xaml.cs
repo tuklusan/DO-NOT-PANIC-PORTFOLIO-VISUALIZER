@@ -55,17 +55,29 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        try
+        QueueOwnedServerShutdown();
+        base.OnExit(e);
+    }
+
+    private static void QueueOwnedServerShutdown()
+    {
+        TraceLog.Info("Screensaver.App", "Queueing owned YFinance server shutdown.");
+        _ = Task.Run(async () =>
         {
-            YFinanceServerProcessManager.StopOwnedServerAsync().GetAwaiter().GetResult();
-        }
-        catch (Exception ex)
-        {
-            TraceLog.Error("Screensaver.App", "Owned YFinance server shutdown failed.", ex);
-        }
-        finally
-        {
-            base.OnExit(e);
-        }
+            using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(1));
+            try
+            {
+                await YFinanceServerProcessManager.StopOwnedServerAsync(timeout.Token).ConfigureAwait(false);
+                TraceLog.Info("Screensaver.App", "Owned YFinance server shutdown completed.");
+            }
+            catch (OperationCanceledException)
+            {
+                TraceLog.Warn("Screensaver.App", "Owned YFinance server shutdown timed out; owned server will also exit when owner PID disappears.");
+            }
+            catch (Exception ex)
+            {
+                TraceLog.Error("Screensaver.App", "Owned YFinance server shutdown failed.", ex);
+            }
+        });
     }
 }
