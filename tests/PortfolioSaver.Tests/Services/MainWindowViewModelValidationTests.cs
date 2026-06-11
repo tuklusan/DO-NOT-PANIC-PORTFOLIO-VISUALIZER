@@ -90,9 +90,9 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
-    public async Task OnStateTimerTickAsync_DoesNotTriggerBackgroundSymbolValidation()
+    public void OnStateTimerTickAsync_DoesNotTriggerBackgroundSymbolValidation()
     {
-        MainWindowViewModel vm = CreateIsolatedViewModel();
+        MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));
 
         TickerItemEditorViewModel ticker = new(new TickerItem { Symbol = "AAPL", Enabled = true });
         ticker.ValidationState = SymbolValidationState.Unknown;
@@ -104,22 +104,22 @@ public sealed class MainWindowViewModelValidationTests
         vm.Groups.Add(group);
 
         Task task = InvokePrivate<Task>(vm, "OnStateTimerTickAsync", []);
-        await task;
+        PumpDispatcherUntil(task, TimeSpan.FromSeconds(5));
 
         Assert.Equal(SymbolValidationState.Unknown, ticker.ValidationState);
         Assert.Equal("Pending validation", ticker.ValidationMessage);
     }
 
     [Fact]
-    public async Task OnStateTimerTickAsync_WhenValidated_DoesNotInvalidateIdleValidatedState()
+    public void OnStateTimerTickAsync_WhenValidated_DoesNotInvalidateIdleValidatedState()
     {
-        MainWindowViewModel vm = CreateIsolatedViewModel();
+        MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));
         SetPrivateField(vm, "_isValidated", true);
         SetPrivateField(vm, "_validatedFingerprint", "idle-fingerprint");
         vm.StatusMessage = "Validation passed. Click OK to save/apply, or Cancel to discard.";
 
         Task task = InvokePrivate<Task>(vm, "OnStateTimerTickAsync", []);
-        await task;
+        PumpDispatcherUntil(task, TimeSpan.FromSeconds(5));
 
         Assert.True(vm.IsValidated);
         Assert.Equal("Validate", vm.PrimaryButtonText);
