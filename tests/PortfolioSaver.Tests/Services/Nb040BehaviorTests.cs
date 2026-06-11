@@ -438,6 +438,9 @@ public sealed class Nb040BehaviorTests
             return completion.Task;
         }
 
+        public Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(true);
+
         public void Complete(string symbol, QuoteSnapshot quote)
             => _pending[symbol].SetResult([quote]);
     }
