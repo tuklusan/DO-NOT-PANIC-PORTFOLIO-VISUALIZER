@@ -285,7 +285,7 @@ public sealed class ExchangePhotoCacheServiceTests
 
         cts.Cancel();
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => warmup.WaitAsync(TimeSpan.FromSeconds(5)));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => warmup.WaitAsync(TimeSpan.FromSeconds(5)));
         Assert.Empty(Directory.EnumerateFiles(cacheFolder, "*.TMP", SearchOption.TopDirectoryOnly));
     }
 
