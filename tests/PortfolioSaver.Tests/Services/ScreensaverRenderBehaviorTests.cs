@@ -250,9 +250,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("int transitionGeneration = ++_backgroundTransitionGeneration;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundTransitionSkipped", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private bool TryPromoteCommittedBackgroundSource()", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("private bool TryRecoverActiveBackgroundSource()", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private bool TryRecoverOrQueueActiveBackgroundSource()", codeBehind, StringComparison.Ordinal);
         Assert.Contains("bool promotedCommittedSource = TryPromoteCommittedBackgroundSource();", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("if (!promotedCommittedSource && TryRecoverActiveBackgroundSource())", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("if (!promotedCommittedSource && TryRecoverOrQueueActiveBackgroundSource())", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundSourceRecovered", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void FinalizeBackgroundTransition(Image activeImage, Image standbyImage, ImageSource source)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void CanonicalizeBackgroundLayers(ImageSource source)", codeBehind, StringComparison.Ordinal);
@@ -278,6 +278,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("if (recoveryGeneration == _backgroundRecoveryReloadGeneration)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void CancelBackgroundRecoveryReload()", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundRecoveryReloadCanceled", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("BackgroundRecoveryReloadCancelFailed", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("recoverySource = _currentBackgroundBitmap = CreateBackgroundBitmap(_currentBackgroundPath!);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_backgroundTransitionInFlight", codeBehind, StringComparison.Ordinal);
         Assert.Contains("SetBackgroundZoomRunning(false, \"background-transitioning\");", codeBehind, StringComparison.Ordinal);

@@ -3002,7 +3002,7 @@ public partial class ScreensaverSceneControl : UserControl
     private void EnsureBackgroundSlowZoomRunning()
     {
         bool promotedCommittedSource = TryPromoteCommittedBackgroundSource();
-        if (!promotedCommittedSource && TryRecoverActiveBackgroundSource())
+        if (!promotedCommittedSource && TryRecoverOrQueueActiveBackgroundSource())
         {
             TraceSceneState(
                 "BackgroundSourceRecovered",
@@ -3022,7 +3022,7 @@ public partial class ScreensaverSceneControl : UserControl
     private void StepBackgroundSlowZoom()
     {
         bool promotedCommittedSource = TryPromoteCommittedBackgroundSource();
-        if (!promotedCommittedSource && TryRecoverActiveBackgroundSource())
+        if (!promotedCommittedSource && TryRecoverOrQueueActiveBackgroundSource())
         {
             TraceSceneState(
                 "BackgroundSourceRecovered",
@@ -3067,7 +3067,7 @@ public partial class ScreensaverSceneControl : UserControl
         return true;
     }
 
-    private bool TryRecoverActiveBackgroundSource()
+    private bool TryRecoverOrQueueActiveBackgroundSource()
     {
         if (_activeBackgroundImage?.Source is not null && _activeBackgroundImage.Opacity > 0.01d)
             return false;
@@ -3150,8 +3150,11 @@ public partial class ScreensaverSceneControl : UserControl
         {
             cancellation.Cancel();
         }
-        catch
+        catch (Exception ex)
         {
+            TraceSceneState(
+                "BackgroundRecoveryReloadCancelFailed",
+                new KeyValuePair<string, object?>("error", ex.Message));
         }
     }
 
