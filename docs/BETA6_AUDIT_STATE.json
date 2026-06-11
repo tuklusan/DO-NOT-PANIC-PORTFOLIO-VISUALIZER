@@ -1926,7 +1926,7 @@
       "priority": 3,
       "area": "Shutdown / UI fluidity",
       "title": "Config/Desktop `App.OnExit` blocks UI thread with synchronous wait on async shutdown",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -1944,7 +1944,9 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Resolved on 2026-06-11 by routing Config, Desktop, and Screensaver OnExit through OwnedServerShutdownQueue, which starts a bounded foreground worker thread so the WPF UI close path returns immediately while the process remains alive briefly enough to stop the owned YFinance server or time out.",
+        "Validation: DeepSeek CR-024 re-review artifact postcommit-review-cr024-rereview-20260611-160556 reported no blockers and no high findings; local Release build passed with 0 warnings/errors; local Release tests passed 297/297."
       ]
     },
     {
