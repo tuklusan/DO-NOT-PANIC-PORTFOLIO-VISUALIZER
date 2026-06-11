@@ -2295,7 +2295,7 @@
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
       ],
       "resolution": "Resolved on 2026-06-11 by introducing a thread-safe CappedFileLogWriter with 10 MB primary-log rotation, one backup file, serialized writes, and release-safe Trace fallback for VmAgent log failures.",
-      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-211031.md reported no actionable bugs; focused local Release CappedFileLogWriter tests passed 2/2 and direct VmAgent Release build passed before full validation."
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-211031.md reported no actionable bugs; focused local Release CappedFileLogWriter tests passed 2/2, direct VmAgent Release build passed, and full local Release tests passed 379/379."
     },
     {
       "id": "CR-037",
