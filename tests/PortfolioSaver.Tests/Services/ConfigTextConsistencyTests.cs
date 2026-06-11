@@ -108,11 +108,16 @@ public sealed class ConfigTextConsistencyTests
         Assert.NotNull(validateButton);
         Assert.DoesNotContain(
             validateButton!.Ancestors(),
-            ancestor => string.Equals((string?)ancestor.Attribute("IsEnabled"), "{Binding IsConfigActive}", StringComparison.Ordinal));
+            HasNetworkLockedIsEnabledBinding);
         Assert.Contains(
             document.Descendants(),
-            element => string.Equals((string?)element.Attribute("IsEnabled"), "{Binding IsConfigActive}", StringComparison.Ordinal));
+            HasNetworkLockedIsEnabledBinding);
     }
+
+    private static bool HasNetworkLockedIsEnabledBinding(XElement element)
+        => element.Attributes().Any(attribute =>
+            string.Equals(attribute.Name.LocalName, "IsEnabled", StringComparison.Ordinal) &&
+            string.Equals(attribute.Value, "{Binding IsConfigActive}", StringComparison.Ordinal));
 
     [Fact]
     public void ConfigApp_ForcesSoftwareRendering_ToAvoidVirtualizedTextCorruption()
