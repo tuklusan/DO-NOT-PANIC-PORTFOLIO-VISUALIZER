@@ -32,6 +32,48 @@ $vmCredParts = Get-VmSshCredentialPartsFromEnv
 $effectiveCaptureIntervalSeconds = if ($GuestScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }
 $effectiveUxTimeoutSeconds = [Math]::Max($UxTimeoutSeconds, ($GuestScreensaverDurationMinutes * 60) + 1800)
 
+function ConvertTo-RemoteSingleQuotedLiteral {
+    param([Parameter(Mandatory = $true)][string]$Value)
+
+    return $Value.Replace("'", "''")
+}
+
+function New-RemoteSharedJsonReadCommand {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $escapedPath = ConvertTo-RemoteSingleQuotedLiteral -Value $Path
+    return @"
+`$path = '$escapedPath'
+if (Test-Path `$path) {
+    for (`$attempt = 0; `$attempt -lt 12; `$attempt++) {
+        try {
+            `$stream = [System.IO.File]::Open(
+                `$path,
+                [System.IO.FileMode]::Open,
+                [System.IO.FileAccess]::Read,
+                [System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete)
+            try {
+                `$reader = [System.IO.StreamReader]::new(`$stream)
+                try {
+                    `$reader.ReadToEnd()
+                }
+                finally {
+                    `$reader.Dispose()
+                }
+                break
+            }
+            finally {
+                `$stream.Dispose()
+            }
+        }
+        catch {
+            Start-Sleep -Milliseconds 250
+        }
+    }
+}
+"@
+}
+
 if ($PushWorkspace) {
     & (Join-Path $PSScriptRoot 'Push-VmWorkspace.ps1') -VmHost $VmHost -VmPort $VmPort -RootPath $RootPath -Bootstrap:$Bootstrap
 }
@@ -161,11 +203,7 @@ if (`$LASTEXITCODE -ne 0) { throw 'Failed to run interactive desktop-session age
             $agentDeadline = (Get-Date).AddSeconds(120)
             do {
                 Start-Sleep -Seconds 5
-                $pollAgentCommand = @"
-if (Test-Path '$remoteAgentStatus') {
-    Get-Content -LiteralPath '$remoteAgentStatus' -Raw
-}
-"@
+                $pollAgentCommand = New-RemoteSharedJsonReadCommand -Path $remoteAgentStatus
                 $agentPoll = Invoke-VmPwshCommand -Bundle $bundle -Command $pollAgentCommand -TimeOutSeconds 60
                 $agentJson = ($agentPoll.Output -join [Environment]::NewLine).Trim()
                 if (-not [string]::IsNullOrWhiteSpace($agentJson)) {
@@ -226,11 +264,7 @@ schtasks /Delete /TN "PortfolioSaverVmAgent" /F >`$null 2>&1
         $commandDeadline = (Get-Date).AddSeconds(120)
         do {
             Start-Sleep -Seconds 5
-            $pollCommandResult = @"
-if (Test-Path '$remoteAgentResult') {
-    Get-Content -LiteralPath '$remoteAgentResult' -Raw
-}
-"@
+            $pollCommandResult = New-RemoteSharedJsonReadCommand -Path $remoteAgentResult
             $resultPoll = Invoke-VmPwshCommand -Bundle $bundle -Command $pollCommandResult -TimeOutSeconds 60
             $resultJson = ($resultPoll.Output -join [Environment]::NewLine).Trim()
             if (-not [string]::IsNullOrWhiteSpace($resultJson)) {
@@ -246,11 +280,7 @@ if (Test-Path '$remoteAgentResult') {
         $deadline = (Get-Date).AddSeconds($effectiveUxTimeoutSeconds)
         do {
             Start-Sleep -Seconds 15
-            $pollCommand = @"
-if (Test-Path '$remoteUxSummary') {
-    Get-Content -LiteralPath '$remoteUxSummary' -Raw
-}
-"@
+            $pollCommand = New-RemoteSharedJsonReadCommand -Path $remoteUxSummary
             $poll = Invoke-VmPwshCommand -Bundle $bundle -Command $pollCommand -TimeOutSeconds 120
             $json = ($poll.Output -join [Environment]::NewLine).Trim()
             if (-not [string]::IsNullOrWhiteSpace($json)) {
