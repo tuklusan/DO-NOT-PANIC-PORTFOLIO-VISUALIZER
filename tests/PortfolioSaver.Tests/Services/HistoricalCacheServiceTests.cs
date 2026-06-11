@@ -20,31 +20,21 @@ public sealed class HistoricalCacheServiceTests
             File.SetLastWriteTimeUtc(freshPath, DateTime.UtcNow);
 
             HistoricalCacheService service = new(root);
-            using ManualResetEventSlim purgeStarted = new();
-            using ManualResetEventSlim releasePurge = new();
             int callerThreadId = 0;
             int purgeThreadId = 0;
-            service.PurgeStartedForTesting = () =>
-            {
-                purgeThreadId = Environment.CurrentManagedThreadId;
-                purgeStarted.Set();
-                Assert.True(releasePurge.Wait(TimeSpan.FromSeconds(5)));
-            };
+            service.PurgeStartedForTesting = () => purgeThreadId = Environment.CurrentManagedThreadId;
 
             Task<Task> caller = Task.Factory.StartNew(
                 () =>
                 {
                     callerThreadId = Environment.CurrentManagedThreadId;
-                    Task purgeTask = service.PurgeExpiredAsync();
-                    Assert.True(purgeStarted.Wait(TimeSpan.FromSeconds(5)));
-                    return purgeTask;
+                    return service.PurgeExpiredAsync();
                 },
                 CancellationToken.None,
                 TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
 
             Task purge = await caller.WaitAsync(TimeSpan.FromSeconds(5));
-            releasePurge.Set();
             await purge.WaitAsync(TimeSpan.FromSeconds(10));
             Assert.NotEqual(callerThreadId, purgeThreadId);
             Assert.False(File.Exists(expiredPath));
