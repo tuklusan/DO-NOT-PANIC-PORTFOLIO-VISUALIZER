@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using PortfolioSaver.Shared;
 using Xunit;
 
@@ -79,11 +80,8 @@ public sealed class ConfigTextConsistencyTests
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
         int primaryBindingCount = xaml.Split("Content=\"{Binding PrimaryButtonText}\"", StringSplitOptions.None).Length - 1;
-        int networkLockedContentIndex = xaml.IndexOf("IsEnabled=\"{Binding IsConfigActive}\"", StringComparison.Ordinal);
-        int primaryFooterButtonIndex = xaml.IndexOf("AutomationProperties.AutomationId=\"ConfigPrimaryButton\"", StringComparison.Ordinal);
         Assert.Equal(1, primaryBindingCount);
-        Assert.True(networkLockedContentIndex >= 0);
-        Assert.True(primaryFooterButtonIndex > networkLockedContentIndex);
+        AssertValidateButtonIsOutsideNetworkLockedRegion(xaml);
         Assert.Contains("AutomationProperties.AutomationId=\"ConfigPrimaryButton\"", xaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.Name=\"{Binding PrimaryButtonText}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.AutomationId=\"ConfigCancelButton\"", xaml, StringComparison.Ordinal);
@@ -96,6 +94,24 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("FontSize=\"10\"", xaml, StringComparison.Ordinal);
         Assert.Contains("TextTrimming=\"CharacterEllipsis\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("<Menu", xaml, StringComparison.Ordinal);
+    }
+
+    private static void AssertValidateButtonIsOutsideNetworkLockedRegion(string xaml)
+    {
+        XDocument document = XDocument.Parse(xaml);
+        XElement? validateButton = document
+            .Descendants()
+            .FirstOrDefault(element => element.Attributes().Any(attribute =>
+                attribute.Name.LocalName.EndsWith("AutomationId", StringComparison.Ordinal) &&
+                string.Equals(attribute.Value, "ConfigPrimaryButton", StringComparison.Ordinal)));
+
+        Assert.NotNull(validateButton);
+        Assert.DoesNotContain(
+            validateButton!.Ancestors(),
+            ancestor => string.Equals((string?)ancestor.Attribute("IsEnabled"), "{Binding IsConfigActive}", StringComparison.Ordinal));
+        Assert.Contains(
+            document.Descendants(),
+            element => string.Equals((string?)element.Attribute("IsEnabled"), "{Binding IsConfigActive}", StringComparison.Ordinal));
     }
 
     [Fact]
