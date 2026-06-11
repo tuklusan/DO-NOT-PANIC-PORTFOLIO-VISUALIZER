@@ -179,7 +179,7 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
-    public async Task ConnectivityStateUpdates_FromBackgroundThread_AreRaisedOnUiDispatcher()
+    public void ConnectivityStateUpdates_FromBackgroundThread_AreRaisedOnUiDispatcher()
     {
         int uiThreadId = Environment.CurrentManagedThreadId;
         FakeConnectivityService connectivity = new(initiallyAvailable: true);
@@ -196,10 +196,10 @@ public sealed class MainWindowViewModelValidationTests
             }
         };
 
-        Task updateTask = Task.Run(async () =>
-            await InvokePrivate<Task>(vm, "UpdateConnectivityStateAsync", [CancellationToken.None]));
+        Task updateTask = Task.Run(() =>
+            InvokePrivate<Task>(vm, "UpdateConnectivityStateAsync", [CancellationToken.None]).GetAwaiter().GetResult());
 
-        await PumpDispatcherUntilAsync(updateTask);
+        PumpDispatcherUntil(updateTask, TimeSpan.FromSeconds(5));
 
         Assert.True(vm.IsNetworkAvailable);
         Assert.True(vm.IsValidationActionEnabled);
@@ -396,16 +396,23 @@ public sealed class MainWindowViewModelValidationTests
         throw new DirectoryNotFoundException("Could not locate repo root from test AppContext.BaseDirectory.");
     }
 
-    private static async Task PumpDispatcherUntilAsync(Task task)
+    private static void PumpDispatcherUntil(Task task, TimeSpan timeout)
     {
         Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+        DateTimeOffset deadline = DateTimeOffset.UtcNow + timeout;
         while (!task.IsCompleted)
         {
-            await dispatcher.InvokeAsync(static () => { }, DispatcherPriority.Background);
-            await Task.Delay(10);
+            if (DateTimeOffset.UtcNow >= deadline)
+                throw new TimeoutException("Dispatcher did not complete the background connectivity update in time.");
+
+            DispatcherFrame frame = new();
+            dispatcher.BeginInvoke(
+                DispatcherPriority.Background,
+                new Action(() => frame.Continue = false));
+            Dispatcher.PushFrame(frame);
         }
 
-        await task;
+        task.GetAwaiter().GetResult();
     }
 
     private static T InvokePrivate<T>(object instance, string methodName, object?[] args)
