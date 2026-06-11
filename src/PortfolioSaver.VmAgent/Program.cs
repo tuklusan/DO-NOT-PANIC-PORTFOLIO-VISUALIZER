@@ -4,6 +4,7 @@ using System.Drawing.Imaging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows.Forms;
+using PortfolioSaver.Shared.Diagnostics;
 
 namespace PortfolioSaver.VmAgent;
 
@@ -43,6 +44,7 @@ internal static class Program
 
     private sealed class VmDesktopAgent
     {
+        private const long MaxAgentLogBytes = 10 * 1024 * 1024;
         private readonly string _rootPath;
         private readonly string _commandsPath;
         private readonly string _processingPath;
@@ -58,6 +60,7 @@ internal static class Program
         private readonly string _uxScript;
         private readonly string _pwshPath;
         private readonly string _winAppDriverPath;
+        private readonly CappedFileLogWriter _logWriter;
 
         public VmDesktopAgent(string rootPath)
         {
@@ -76,6 +79,7 @@ internal static class Program
             _uxScript = Path.Combine(_repoRoot, "build", "vm", "Guest-UxDeepExercise.ps1");
             _pwshPath = ResolvePwshPath();
             _winAppDriverPath = @"C:\Program Files (x86)\Windows Application Driver\WinAppDriver.exe";
+            _logWriter = new CappedFileLogWriter(_logPath, MaxAgentLogBytes);
         }
 
         public async Task RunAsync()
@@ -406,8 +410,14 @@ internal static class Program
 
         private void Log(string message)
         {
-            string line = $"[{DateTime.Now:O}] {message}{Environment.NewLine}";
-            File.AppendAllText(_logPath, line);
+            try
+            {
+                _logWriter.WriteLine($"[{DateTime.Now:O}] {message}");
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine("VmAgent log write failed: " + ex);
+            }
         }
 
         private static string ResolvePwshPath()

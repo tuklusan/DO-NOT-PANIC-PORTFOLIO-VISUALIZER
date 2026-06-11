@@ -2274,7 +2274,7 @@
       "priority": 3,
       "area": "Resource management",
       "title": "`VmAgent` unbounded log growth",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2293,7 +2293,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-11 by introducing a thread-safe CappedFileLogWriter with 10 MB primary-log rotation, one backup file, serialized writes, and release-safe Trace fallback for VmAgent log failures.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-211031.md reported no actionable bugs; focused local Release CappedFileLogWriter tests passed 2/2 and direct VmAgent Release build passed before full validation."
     },
     {
       "id": "CR-037",
