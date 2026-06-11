@@ -21,6 +21,9 @@ public sealed class HistoricalCacheService : IHistoricalCacheService
         Directory.CreateDirectory(_rootFolder);
     }
 
+    internal Action? PurgeStartedForTesting { get; set; }
+    internal Action? PurgeIterationForTesting { get; set; }
+
     public async Task<TickerHistorySnapshot?> LoadAsync(string symbol, CancellationToken cancellationToken = default)
     {
         string path = GetPath(symbol);
@@ -51,8 +54,13 @@ public sealed class HistoricalCacheService : IHistoricalCacheService
 
     private void PurgeExpired(CancellationToken cancellationToken)
     {
+        if (!Directory.Exists(_rootFolder))
+            return;
+
+        PurgeStartedForTesting?.Invoke();
         foreach (string file in Directory.EnumerateFiles(_rootFolder, "*.json", SearchOption.TopDirectoryOnly))
         {
+            PurgeIterationForTesting?.Invoke();
             cancellationToken.ThrowIfCancellationRequested();
 
             FileInfo info = new(file);
