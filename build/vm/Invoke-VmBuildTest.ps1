@@ -55,7 +55,7 @@ if (Test-Path `$path) {
                 [System.IO.FileAccess]::Read,
                 [System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete)
             try {
-                `$reader = New-Object System.IO.StreamReader(`$stream)
+                `$reader = New-Object System.IO.StreamReader -ArgumentList `$stream
                 try {
                     `$reader.ReadToEnd()
                 }
