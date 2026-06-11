@@ -2332,7 +2332,7 @@
       "priority": 3,
       "area": "Async cleanup",
       "title": "Unobserved background receive loop exception in `YFinanceServerClient` dispose path",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2351,7 +2351,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by making YFinanceServerClient disposal idempotent, observing late receive-loop faults, draining the receive loop during async disposal, settling pending requests on teardown, preserving best-effort async goodbye on an existing connection, and adding sync/async disposal regression tests.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-001404.md reported no blocking findings; local validation pending after commit/push per SOP."
     },
     {
       "id": "CR-039",
