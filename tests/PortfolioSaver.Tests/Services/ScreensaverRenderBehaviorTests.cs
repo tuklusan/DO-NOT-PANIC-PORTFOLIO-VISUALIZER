@@ -267,7 +267,11 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("private double _currentBackgroundOpacity = 0.45d;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_currentBackgroundBitmap = incomingBitmap;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private static double GetBackgroundPresentationOpacity(BitmapSource bitmap)", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("recoverySource = _currentBackgroundBitmap = CreateBackgroundBitmap(_currentBackgroundPath!);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private bool _backgroundRecoveryReloadInFlight;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("QueueBackgroundRecoveryReload(_currentBackgroundPath!);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private async Task ReloadBackgroundForRecoveryAsync(string path)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("await LoadBackgroundAsync(path).ConfigureAwait(true);", codeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("recoverySource = _currentBackgroundBitmap = CreateBackgroundBitmap(_currentBackgroundPath!);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_backgroundTransitionInFlight", codeBehind, StringComparison.Ordinal);
         Assert.Contains("SetBackgroundZoomRunning(false, \"background-transitioning\");", codeBehind, StringComparison.Ordinal);
         Assert.Contains("TimeSpan duration = TimeSpan.FromMilliseconds(450);", codeBehind, StringComparison.Ordinal);

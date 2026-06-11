@@ -50,6 +50,7 @@ public partial class ScreensaverSceneControl : UserControl
     private readonly DispatcherTimer _worldDataTimer = new();
     private DispatcherTimer? _backgroundTransitionCompletionTimer;
     private bool _backgroundTransitionInFlight;
+    private bool _backgroundRecoveryReloadInFlight;
     private int _backgroundTransitionGeneration;
     private readonly DispatcherTimer _demoFlashTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private readonly DispatcherTimer _motionTimer = new() { Interval = TimeSpan.FromMilliseconds(33) };
@@ -3074,7 +3075,10 @@ public partial class ScreensaverSceneControl : UserControl
             ?? _inactiveBackgroundImage.Source
             ?? _currentBackgroundBitmap;
         if (recoverySource is null && IsSupportedBackgroundReference(_currentBackgroundPath))
-            recoverySource = _currentBackgroundBitmap = CreateBackgroundBitmap(_currentBackgroundPath!);
+        {
+            QueueBackgroundRecoveryReload(_currentBackgroundPath!);
+            return false;
+        }
 
         if (recoverySource is null)
             return false;
@@ -3082,6 +3086,37 @@ public partial class ScreensaverSceneControl : UserControl
         bool sourceWasMissing = _activeBackgroundImage?.Source is null;
         CanonicalizeBackgroundLayers(recoverySource);
         return sourceWasMissing;
+    }
+
+    private void QueueBackgroundRecoveryReload(string path)
+    {
+        if (_backgroundRecoveryReloadInFlight)
+            return;
+
+        _backgroundRecoveryReloadInFlight = true;
+        _ = ReloadBackgroundForRecoveryAsync(path);
+    }
+
+    private async Task ReloadBackgroundForRecoveryAsync(string path)
+    {
+        try
+        {
+            TraceSceneState(
+                "BackgroundRecoveryReloadQueued",
+                new KeyValuePair<string, object?>("path", Path.GetFileName(path)));
+            await LoadBackgroundAsync(path).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            TraceSceneState(
+                "BackgroundRecoveryReloadFailed",
+                new KeyValuePair<string, object?>("path", Path.GetFileName(path)),
+                new KeyValuePair<string, object?>("error", ex.Message));
+        }
+        finally
+        {
+            _backgroundRecoveryReloadInFlight = false;
+        }
     }
 
     private void FinalizeBackgroundTransition(Image activeImage, Image standbyImage, ImageSource source)
