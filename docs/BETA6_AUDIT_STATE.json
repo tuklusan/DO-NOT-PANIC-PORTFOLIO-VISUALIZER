@@ -1761,7 +1761,7 @@
       "priority": 1,
       "area": "Async / Shutdown",
       "title": "Screensaver `App.OnExit` sync‑over‑async deadlock",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Critical",
       "evidence": [
@@ -1780,6 +1780,18 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Resolved on 2026-06-11 by removing the screensaver App.OnExit sync-over-async StopOwnedServerAsync().GetAwaiter().GetResult() call.",
+        "Screensaver OnExit now queues a best-effort owned server shutdown on the thread pool with a 1-second cancellation timeout and immediately calls base.OnExit, avoiding UI dispatcher deadlock risk.",
+        "Owned server orphan risk remains bounded by the existing --owner-pid server monitor, which shuts the owned server down when the screensaver process exits.",
+        "Updated owned-mode wiring tests to assert the screensaver path uses QueueOwnedServerShutdown and no longer contains the blocking StopOwnedServerAsync().GetAwaiter().GetResult() pattern."
+      ],
+      "validation": [
+        "Implementation commit pushed: 8b2e53e Make screensaver owned-server shutdown nonblocking.",
+        "DeepSeek post-commit review build/deepseek-review/postcommit-review-20260611-105340.md reported no findings.",
+        "Local validation on 2026-06-11: dotnet build PortfolioScreensaver.sln -c Release succeeded with 0 warnings and 0 errors.",
+        "Local validation on 2026-06-11: dotnet test PortfolioScreensaver.sln -c Release --no-build passed 286/286 tests."
       ]
     },
     {
