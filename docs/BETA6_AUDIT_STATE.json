@@ -1650,14 +1650,18 @@
       "priority": 1,
       "area": "Build infrastructure / Pipe I/O",
       "title": "Process output stream deadlock in `Invoke-ProcessWithTimeout`",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Critical",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-2: Process output stream deadlock in `Invoke-ProcessWithTimeout`.",
         "`build/build-safe-temp.ps1`, function `Invoke-ProcessWithTimeout` (reads stdout/stderr *after* `WaitForExit`, causing full‑pipe block).",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
-        "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
+        "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438",
+        "Resolved by starting asynchronous stdout/stderr process reads immediately after process start, replacing post-WaitForExit ReadToEnd calls, and capturing output through thread-safe ConcurrentQueue instances with ManualResetEventSlim end-of-stream synchronization.",
+        "Implementation commits: 32d2c16 Drain safe-temp build process output asynchronously; 227bd7f Make safe-temp output capture thread-safe.",
+        "DeepSeek post-commit review passed with no findings: build/deepseek-review/postcommit-review-20260611-101413.md.",
+        "Validation: dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors; dotnet test PortfolioScreensaver.sln -c Release --no-build passed 281/281."
       ],
       "notes": [
         "Classic deadlock; child process hangs, build spuriously fails.",
