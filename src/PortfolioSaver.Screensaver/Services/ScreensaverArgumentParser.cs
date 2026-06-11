@@ -60,15 +60,26 @@ public sealed class ScreensaverArgumentParser
         if (string.IsNullOrWhiteSpace(value))
             return IntPtr.Zero;
 
-        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out long hwnd))
-            return new IntPtr(hwnd);
+        if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            return ParsePositiveHandle(value[2..], NumberStyles.HexNumber);
+        }
 
-        string hexValue = value.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
-            ? value[2..]
-            : value;
+        // HWND values are unsigned in practice; reject negative sentinels instead of passing them to native hosting.
+        IntPtr decimalHandle = ParsePositiveHandle(value, NumberStyles.Integer);
+        if (decimalHandle != IntPtr.Zero)
+            return decimalHandle;
 
-        return long.TryParse(hexValue, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out hwnd)
-            ? new IntPtr(hwnd)
+        // Windows normally supplies decimal HWND values; bare hex is kept for compatibility with older harnesses.
+        return ParsePositiveHandle(value, NumberStyles.HexNumber);
+    }
+
+    private static IntPtr ParsePositiveHandle(string value, NumberStyles styles)
+    {
+        return long.TryParse(value, styles, CultureInfo.InvariantCulture, out long handle)
+            && handle > 0
+            && handle <= (long)IntPtr.MaxValue
+            ? new IntPtr(handle)
             : IntPtr.Zero;
     }
 }

@@ -41,15 +41,55 @@ public sealed class ScreensaverArgumentParserTests
         Assert.Equal(new IntPtr(12345), result.PreviewHandle);
     }
 
+    [Fact]
+    public void Parse_PreviewArgumentsWithDecimalHandleThatCouldBeHex_PrefersDecimal()
+    {
+        ScreensaverLaunchArguments result = new ScreensaverArgumentParser().Parse(["/p:10"]);
+
+        Assert.Equal(ScreensaverMode.Preview, result.Mode);
+        Assert.Equal(new IntPtr(10), result.PreviewHandle);
+    }
+
     [Theory]
     [InlineData("/p")]
-    [InlineData("/p:abc")]
+    [InlineData("/p:0")]
+    [InlineData("/p:-1")]
+    [InlineData("/p:invalid")]
+    [InlineData("/p:0x")]
+    [InlineData("/p:0xFFFFFFFFFFFFFFFFF")]
     public void Parse_PreviewArgumentsWithoutValidHandle_ReturnPreviewWithZeroHandle(string arg)
     {
         ScreensaverLaunchArguments result = new ScreensaverArgumentParser().Parse([arg]);
 
         Assert.Equal(ScreensaverMode.Preview, result.Mode);
         Assert.Equal(IntPtr.Zero, result.PreviewHandle);
+    }
+
+    [Fact]
+    public void Parse_PreviewArgumentsWithInvalidSeparateHandle_ReturnPreviewWithZeroHandle()
+    {
+        ScreensaverLaunchArguments result = new ScreensaverArgumentParser().Parse(["/p", "-1"]);
+
+        Assert.Equal(ScreensaverMode.Preview, result.Mode);
+        Assert.Equal(IntPtr.Zero, result.PreviewHandle);
+    }
+
+    [Fact]
+    public void Parse_PreviewArgumentsWithSeparatePrefixedHexHandle_ReturnPreview()
+    {
+        ScreensaverLaunchArguments result = new ScreensaverArgumentParser().Parse(["/p", "0xFF"]);
+
+        Assert.Equal(ScreensaverMode.Preview, result.Mode);
+        Assert.Equal(new IntPtr(255), result.PreviewHandle);
+    }
+
+    [Fact]
+    public void Parse_PreviewArgumentsWithUnprefixedHexHandle_ReturnPreview()
+    {
+        ScreensaverLaunchArguments result = new ScreensaverArgumentParser().Parse(["/p:FF"]);
+
+        Assert.Equal(ScreensaverMode.Preview, result.Mode);
+        Assert.Equal(new IntPtr(255), result.PreviewHandle);
     }
 
     [Fact]
@@ -61,12 +101,10 @@ public sealed class ScreensaverArgumentParserTests
         Assert.Equal(new IntPtr(12345), result.PreviewHandle);
     }
 
-    [Theory]
-    [InlineData("/p:0x3039")]
-    [InlineData("/p:3039")]
-    public void Parse_PreviewArgumentsWithHexHandle_ReturnPreview(string arg)
+    [Fact]
+    public void Parse_PreviewArgumentsWithPrefixedHexHandle_ReturnPreview()
     {
-        ScreensaverLaunchArguments result = new ScreensaverArgumentParser().Parse([arg]);
+        ScreensaverLaunchArguments result = new ScreensaverArgumentParser().Parse(["/p:0x3039"]);
 
         Assert.Equal(ScreensaverMode.Preview, result.Mode);
         Assert.Equal(new IntPtr(12345), result.PreviewHandle);

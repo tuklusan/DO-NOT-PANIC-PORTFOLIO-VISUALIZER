@@ -2956,7 +2956,7 @@
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
       ],
       "resolution": "Resolved on 2026-06-11 by making screensaver launch parsing explicit for /s fullscreen, /p preview with separate or inline decimal/hex HWND values, /c configuration, and /showconfig configuration, with safe configure fallback for unknown arguments.",
-      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-185129.md reported no actionable findings. Local validation pending commit/push checkpoint."
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-190342.md reported no critical findings; the remaining medium note about negative HWND rejection is intentional because Windows screensaver preview requires a non-negative real host HWND and invalid/sentinel values should safely fall back to zero. Follow-up tests document decimal preference, explicit/bare hex handling, negative rejection, empty hex, overflow, and invalid text. Local validation pending commit/push checkpoint."
     }
   ],
   "remaining_validation_gaps": [],
