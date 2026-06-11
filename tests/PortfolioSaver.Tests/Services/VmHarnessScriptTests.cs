@@ -60,6 +60,30 @@ public sealed class VmHarnessScriptTests
     }
 
     [Fact]
+    public void BuildSafeTemp_DrainsProcessOutputBeforeWaitForExit()
+    {
+        string script = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "build-safe-temp.ps1"));
+
+        int startIndex = script.IndexOf("$null = $proc.Start()", StringComparison.Ordinal);
+        int beginOutputIndex = script.IndexOf("$proc.BeginOutputReadLine()", StringComparison.Ordinal);
+        int beginErrorIndex = script.IndexOf("$proc.BeginErrorReadLine()", StringComparison.Ordinal);
+        int timedWaitIndex = script.IndexOf("$proc.WaitForExit($TimeoutSeconds * 1000)", StringComparison.Ordinal);
+
+        Assert.True(startIndex >= 0);
+        Assert.True(beginOutputIndex > startIndex);
+        Assert.True(beginErrorIndex > startIndex);
+        Assert.True(timedWaitIndex > beginOutputIndex);
+        Assert.True(timedWaitIndex > beginErrorIndex);
+        Assert.Contains("add_OutputDataReceived", script, StringComparison.Ordinal);
+        Assert.Contains("add_ErrorDataReceived", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("StandardOutput.ReadToEnd()", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("StandardError.ReadToEnd()", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void InvokeVmBuildTest_UsesDesktopSessionAgentAndPollsForFinishedSummary()
     {
         string script = File.ReadAllText(Path.Combine(

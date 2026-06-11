@@ -30,15 +30,31 @@ function Invoke-ProcessWithTimeout {
 
     $proc = New-Object System.Diagnostics.Process
     $proc.StartInfo = $startInfo
+    $stdoutBuilder = New-Object System.Text.StringBuilder
+    $stderrBuilder = New-Object System.Text.StringBuilder
+    $proc.add_OutputDataReceived({
+        if ($null -ne $EventArgs.Data) {
+            [void]$stdoutBuilder.AppendLine($EventArgs.Data)
+        }
+    })
+    $proc.add_ErrorDataReceived({
+        if ($null -ne $EventArgs.Data) {
+            [void]$stderrBuilder.AppendLine($EventArgs.Data)
+        }
+    })
+
     $null = $proc.Start()
+    $proc.BeginOutputReadLine()
+    $proc.BeginErrorReadLine()
 
     if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
         try { $proc.Kill($true) } catch {}
         throw "Command timed out after $TimeoutSeconds seconds: $FilePath $Arguments"
     }
 
-    $stdout = $proc.StandardOutput.ReadToEnd()
-    $stderr = $proc.StandardError.ReadToEnd()
+    $proc.WaitForExit()
+    $stdout = $stdoutBuilder.ToString()
+    $stderr = $stderrBuilder.ToString()
     if (-not [string]::IsNullOrWhiteSpace($stdout)) { Write-Host $stdout.TrimEnd() }
     if (-not [string]::IsNullOrWhiteSpace($stderr)) { Write-Host $stderr.TrimEnd() }
     if ($proc.ExitCode -ne 0) {
