@@ -90,6 +90,339 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
+    public void OnEditorChanged_WithNonPersistedTickerProperty_DoesNotInvalidate()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        TickerItemEditorViewModel ticker = new(new TickerItem { Symbol = "AAPL", Enabled = true });
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", true);
+
+        InvokePrivate<object?>(vm, "OnEditorChanged", [ticker, new PropertyChangedEventArgs(nameof(TickerItemEditorViewModel.ValidationBadgeText))]);
+
+        Assert.True(vm.IsValidated);
+        Assert.Equal("fingerprint", GetPrivateField<string>(vm, "_validatedFingerprint"));
+        Assert.True(GetPrivateField<bool>(vm, "_allowClose"));
+    }
+
+    [Fact]
+    public void OnEditorChanged_WithUnknownTickerProperty_DoesNotInvalidate()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        TickerItemEditorViewModel ticker = new(new TickerItem { Symbol = "AAPL", Enabled = true });
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", true);
+
+        InvokePrivate<object?>(vm, "OnEditorChanged", [ticker, new PropertyChangedEventArgs("FutureUiOnlyProperty")]);
+
+        Assert.True(vm.IsValidated);
+        Assert.Equal("fingerprint", GetPrivateField<string>(vm, "_validatedFingerprint"));
+        Assert.True(GetPrivateField<bool>(vm, "_allowClose"));
+    }
+
+    [Fact]
+    public void OnEditorChanged_WithNormalizedTickerMatch_DoesNotInvalidate()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        TickerItemEditorViewModel ticker = new(new TickerItem { Symbol = " AAPL ", Enabled = true });
+        TickerGroupEditorViewModel group = new();
+        group.Tickers.Clear();
+        group.Tickers.Add(ticker);
+        vm.Groups.Clear();
+        vm.Groups.Add(group);
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", true);
+        AppSettings validated = Defaults.CreateSettings();
+        validated.Groups =
+        [
+            new TickerGroup
+            {
+                Name = group.Name,
+                Enabled = group.Enabled,
+                Speed = group.SpeedValue,
+                RenderMode = group.RenderMode,
+                Direction = group.Direction,
+                RowHeight = group.RowHeight,
+                Tickers = [new TickerItem { Symbol = "AAPL", DisplayName = ticker.DisplayName, Enabled = true }]
+            }
+        ];
+        SetPrivateField(vm, "_validatedCandidateSettings", validated);
+        InvokePrivate<object?>(vm, "CaptureValidatedEditorSnapshots", [validated]);
+
+        InvokePrivate<object?>(vm, "OnEditorChanged", [ticker, new PropertyChangedEventArgs(nameof(TickerItemEditorViewModel.Symbol))]);
+
+        Assert.True(vm.IsValidated);
+        Assert.Equal("fingerprint", GetPrivateField<string>(vm, "_validatedFingerprint"));
+        Assert.True(GetPrivateField<bool>(vm, "_allowClose"));
+    }
+
+    [Fact]
+    public void OnEditorChanged_WithNormalizedGroupNameMatch_DoesNotInvalidate()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        TickerGroupEditorViewModel group = new(new TickerGroup { Name = " Core " });
+        vm.Groups.Clear();
+        vm.Groups.Add(group);
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", true);
+        AppSettings validated = Defaults.CreateSettings();
+        validated.Groups =
+        [
+            new TickerGroup
+            {
+                Name = "Core",
+                Enabled = group.Enabled,
+                Speed = group.SpeedValue,
+                RenderMode = group.RenderMode,
+                Direction = group.Direction,
+                RowHeight = group.RowHeight
+            }
+        ];
+        SetPrivateField(vm, "_validatedCandidateSettings", validated);
+        InvokePrivate<object?>(vm, "CaptureValidatedEditorSnapshots", [validated]);
+
+        InvokePrivate<object?>(vm, "OnEditorChanged", [group, new PropertyChangedEventArgs(nameof(TickerGroupEditorViewModel.Name))]);
+
+        Assert.True(vm.IsValidated);
+        Assert.Equal("fingerprint", GetPrivateField<string>(vm, "_validatedFingerprint"));
+        Assert.True(GetPrivateField<bool>(vm, "_allowClose"));
+    }
+
+    [Fact]
+    public void GroupsMove_InvalidatesValidatedState()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        vm.Groups.Clear();
+        vm.Groups.Add(new TickerGroupEditorViewModel(new TickerGroup { Name = "A" }));
+        vm.Groups.Add(new TickerGroupEditorViewModel(new TickerGroup { Name = "B" }));
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", true);
+
+        vm.Groups.Move(0, 1);
+
+        Assert.False(vm.IsValidated);
+        Assert.Equal(string.Empty, GetPrivateField<string>(vm, "_validatedFingerprint"));
+        Assert.False(GetPrivateField<bool>(vm, "_allowClose"));
+    }
+
+    [Fact]
+    public void TickerReplacementAtSameIndex_InvalidatesValidatedState()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        TickerGroupEditorViewModel group = new();
+        group.Tickers.Clear();
+        group.Tickers.Add(new TickerItemEditorViewModel(new TickerItem { Symbol = "AAPL" }));
+        vm.Groups.Clear();
+        vm.Groups.Add(group);
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", true);
+
+        group.Tickers[0] = new TickerItemEditorViewModel(new TickerItem { Symbol = "AAPL" });
+
+        Assert.False(vm.IsValidated);
+        Assert.Equal(string.Empty, GetPrivateField<string>(vm, "_validatedFingerprint"));
+        Assert.False(GetPrivateField<bool>(vm, "_allowClose"));
+    }
+
+    [Fact]
+    public void TickerAdd_InvalidatesValidatedState()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        TickerGroupEditorViewModel group = new();
+        group.Tickers.Clear();
+        vm.Groups.Clear();
+        vm.Groups.Add(group);
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", true);
+
+        group.Tickers.Add(new TickerItemEditorViewModel(new TickerItem { Symbol = "AAPL" }));
+
+        Assert.False(vm.IsValidated);
+        Assert.Equal(string.Empty, GetPrivateField<string>(vm, "_validatedFingerprint"));
+        Assert.False(GetPrivateField<bool>(vm, "_allowClose"));
+    }
+
+    [Fact]
+    public void TickerRemove_InvalidatesValidatedState()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        TickerGroupEditorViewModel group = new();
+        TickerItemEditorViewModel ticker = new(new TickerItem { Symbol = "AAPL" });
+        group.Tickers.Clear();
+        group.Tickers.Add(ticker);
+        vm.Groups.Clear();
+        vm.Groups.Add(group);
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", true);
+
+        group.Tickers.Remove(ticker);
+
+        Assert.False(vm.IsValidated);
+        Assert.Equal(string.Empty, GetPrivateField<string>(vm, "_validatedFingerprint"));
+        Assert.False(GetPrivateField<bool>(vm, "_allowClose"));
+    }
+
+    [Fact]
+    public void TickerClear_UnhooksOldTickersAndInvalidatesValidatedState()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        TickerGroupEditorViewModel group = new();
+        TickerItemEditorViewModel oldTicker = new(new TickerItem { Symbol = "AAPL" });
+        group.Tickers.Clear();
+        group.Tickers.Add(oldTicker);
+        vm.Groups.Clear();
+        vm.Groups.Add(group);
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", true);
+
+        group.Tickers.Clear();
+
+        Assert.False(vm.IsValidated);
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", true);
+        oldTicker.Symbol = "MSFT";
+
+        Assert.True(vm.IsValidated);
+        Assert.Equal("fingerprint", GetPrivateField<string>(vm, "_validatedFingerprint"));
+        Assert.True(GetPrivateField<bool>(vm, "_allowClose"));
+    }
+
+    [Fact]
+    public void TickerMove_InvalidatesValidatedState()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        TickerGroupEditorViewModel group = new();
+        group.Tickers.Clear();
+        group.Tickers.Add(new TickerItemEditorViewModel(new TickerItem { Symbol = "AAPL" }));
+        group.Tickers.Add(new TickerItemEditorViewModel(new TickerItem { Symbol = "MSFT" }));
+        vm.Groups.Clear();
+        vm.Groups.Add(group);
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", true);
+
+        group.Tickers.Move(0, 1);
+
+        Assert.False(vm.IsValidated);
+        Assert.Equal(string.Empty, GetPrivateField<string>(vm, "_validatedFingerprint"));
+        Assert.False(GetPrivateField<bool>(vm, "_allowClose"));
+    }
+
+    [Fact]
+    public void GroupsReset_UnhooksOldGroupsAndHooksNewGroups()
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        TickerGroupEditorViewModel oldGroup = new(new TickerGroup { Name = "Old" });
+        vm.Groups.Clear();
+        vm.Groups.Add(oldGroup);
+
+        vm.Groups.Clear();
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", true);
+        oldGroup.Name = "Old changed";
+
+        Assert.True(vm.IsValidated);
+        Assert.Equal("fingerprint", GetPrivateField<string>(vm, "_validatedFingerprint"));
+
+        TickerGroupEditorViewModel newGroup = new(new TickerGroup { Name = "New" });
+        vm.Groups.Add(newGroup);
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", true);
+
+        newGroup.Name = "New changed";
+
+        Assert.False(vm.IsValidated);
+        Assert.Equal(string.Empty, GetPrivateField<string>(vm, "_validatedFingerprint"));
+        Assert.False(GetPrivateField<bool>(vm, "_allowClose"));
+    }
+
+    [Fact]
+    public void PersistedEditorPropertyContract_CoversPersistedModels()
+    {
+        // If persisted model properties change, update this mapping and IsPersistedEditorProperty together.
+        Dictionary<string, string> tickerMapping = new()
+        {
+            [nameof(TickerItem.Symbol)] = nameof(TickerItemEditorViewModel.Symbol),
+            [nameof(TickerItem.DisplayName)] = nameof(TickerItemEditorViewModel.DisplayName),
+            [nameof(TickerItem.Quantity)] = nameof(TickerItemEditorViewModel.Quantity),
+            [nameof(TickerItem.CostBasis)] = nameof(TickerItemEditorViewModel.CostBasis),
+            [nameof(TickerItem.Currency)] = nameof(TickerItemEditorViewModel.Currency),
+            [nameof(TickerItem.Enabled)] = nameof(TickerItemEditorViewModel.Enabled)
+        };
+        Dictionary<string, string> groupMapping = new()
+        {
+            [nameof(TickerGroup.Name)] = nameof(TickerGroupEditorViewModel.Name),
+            [nameof(TickerGroup.Enabled)] = nameof(TickerGroupEditorViewModel.Enabled),
+            [nameof(TickerGroup.Speed)] = nameof(TickerGroupEditorViewModel.SpeedValue),
+            [nameof(TickerGroup.RenderMode)] = nameof(TickerGroupEditorViewModel.RenderMode),
+            [nameof(TickerGroup.Direction)] = nameof(TickerGroupEditorViewModel.Direction),
+            [nameof(TickerGroup.RowHeight)] = nameof(TickerGroupEditorViewModel.RowHeight)
+        };
+
+        string[] tickerModelProperties = typeof(TickerItem).GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Select(property => property.Name)
+            .Order()
+            .ToArray();
+        string[] groupModelProperties = typeof(TickerGroup).GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Select(property => property.Name)
+            .Except([nameof(TickerGroup.Id), nameof(TickerGroup.Tickers)])
+            .Order()
+            .ToArray();
+
+        Assert.Equal(tickerModelProperties, tickerMapping.Keys.Order().ToArray());
+        Assert.Equal(groupModelProperties, groupMapping.Keys.Order().ToArray());
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        foreach (string propertyName in tickerMapping.Values)
+        {
+            Assert.True(InvokePrivate<bool>(
+                vm,
+                "IsPersistedEditorProperty",
+                [new TickerItemEditorViewModel(), propertyName]));
+        }
+
+        foreach (string propertyName in groupMapping.Values)
+        {
+            Assert.True(InvokePrivate<bool>(
+                vm,
+                "IsPersistedEditorProperty",
+                [new TickerGroupEditorViewModel(), propertyName]));
+        }
+    }
+
+    [Theory]
+    [InlineData(nameof(TickerGroupEditorViewModel.Name))]
+    [InlineData(nameof(TickerGroupEditorViewModel.Enabled))]
+    [InlineData(nameof(TickerGroupEditorViewModel.SpeedValue))]
+    [InlineData(nameof(TickerGroupEditorViewModel.RenderMode))]
+    [InlineData(nameof(TickerGroupEditorViewModel.Direction))]
+    [InlineData(nameof(TickerGroupEditorViewModel.RowHeight))]
+    public void OnEditorChanged_WithPersistedGroupProperty_InvalidatesValidatedState(string propertyName)
+    {
+        MainWindowViewModel vm = CreateIsolatedViewModel();
+        TickerGroupEditorViewModel group = new();
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "fingerprint");
+        SetPrivateField(vm, "_allowClose", true);
+
+        InvokePrivate<object?>(vm, "OnEditorChanged", [group, new PropertyChangedEventArgs(propertyName)]);
+
+        Assert.False(vm.IsValidated);
+        Assert.Equal(string.Empty, GetPrivateField<string>(vm, "_validatedFingerprint"));
+        Assert.False(GetPrivateField<bool>(vm, "_allowClose"));
+    }
+
+    [Fact]
     public void OnStateTimerTickAsync_DoesNotTriggerBackgroundSymbolValidation()
     {
         MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));

@@ -35,6 +35,7 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly SemaphoreSlim _symbolProfileSaveGate = new(1, 1);
     private readonly HashSet<TickerGroupEditorViewModel> _trackedGroups = [];
     private readonly HashSet<TickerItemEditorViewModel> _trackedTickers = [];
+    private readonly Dictionary<TickerGroupEditorViewModel, HashSet<TickerItemEditorViewModel>> _trackedTickersByGroup = [];
 
     private AppSettings _settings;
     private string _statusMessage = $"{PortfolioVersion.DisplayName} ready";
@@ -44,6 +45,8 @@ public sealed class MainWindowViewModel : BindableBase
     private bool _allowClose;
     private bool _isNetworkAvailable;
     private string _validatedFingerprint = string.Empty;
+    private readonly Dictionary<TickerGroupEditorViewModel, TickerGroup> _validatedGroupSnapshots = [];
+    private readonly Dictionary<TickerItemEditorViewModel, TickerItem> _validatedTickerSnapshots = [];
     private string _validationLogText = string.Empty;
     private AppSettings? _validatedCandidateSettings;
     private List<QuoteSnapshot> _validatedQuoteSeeds = [];
@@ -82,6 +85,7 @@ public sealed class MainWindowViewModel : BindableBase
         if (Groups.Count == 0)
             AddGroup();
 
+        Groups.CollectionChanged += OnGroupsChanged;
         HookEditors();
         RunConnectivityUpdateInBackground();
         ResetAllSymbolValidationStates("Pending validation");
@@ -258,15 +262,11 @@ public sealed class MainWindowViewModel : BindableBase
 
         TickerGroupEditorViewModel group = new(Defaults.CreateEmptyTickerGroup(Groups.Count), RemoveGroup);
         Groups.Add(group);
-        HookGroup(group);
-        InvalidateValidationState("Configuration changed. Click Validate.");
     }
 
     private void RemoveGroup(TickerGroupEditorViewModel group)
     {
-        UnhookGroup(group);
         Groups.Remove(group);
-        InvalidateValidationState("Configuration changed. Click Validate.");
     }
 
     private async Task ExecutePrimaryAsync()
@@ -391,6 +391,7 @@ public sealed class MainWindowViewModel : BindableBase
             _validatedFingerprint = BuildFingerprint(candidate);
             _allowClose = false;
             _validatedCandidateSettings = AppSettingsNormalizer.Normalize(candidate);
+            CaptureValidatedEditorSnapshots(_validatedCandidateSettings);
             _validatedQuoteSeeds = symbolValidation.ValidatedQuotes.Values
                 .Select(CloneQuote)
                 .ToList();
@@ -875,6 +876,8 @@ public sealed class MainWindowViewModel : BindableBase
         IsValidated = false;
         _allowClose = false;
         _validatedFingerprint = string.Empty;
+        _validatedGroupSnapshots.Clear();
+        _validatedTickerSnapshots.Clear();
         _validatedCandidateSettings = null;
         _validatedQuoteSeeds = [];
         if (!string.IsNullOrWhiteSpace(statusMessage))
@@ -894,8 +897,9 @@ public sealed class MainWindowViewModel : BindableBase
 
         group.PropertyChanged += OnEditorChanged;
         group.Tickers.CollectionChanged += OnGroupTickersChanged;
+        _trackedTickersByGroup[group] = [];
         foreach (TickerItemEditorViewModel ticker in group.Tickers)
-            HookTicker(ticker);
+            HookTicker(group, ticker);
     }
 
     private void UnhookGroup(TickerGroupEditorViewModel group)
@@ -905,16 +909,39 @@ public sealed class MainWindowViewModel : BindableBase
 
         group.PropertyChanged -= OnEditorChanged;
         group.Tickers.CollectionChanged -= OnGroupTickersChanged;
-        foreach (TickerItemEditorViewModel ticker in group.Tickers)
-            UnhookTicker(ticker);
+        if (_trackedTickersByGroup.Remove(group, out HashSet<TickerItemEditorViewModel>? tickers))
+        {
+            foreach (TickerItemEditorViewModel ticker in tickers.ToArray())
+                UnhookTicker(ticker);
+        }
+        else
+        {
+            foreach (TickerItemEditorViewModel ticker in group.Tickers)
+                UnhookTicker(ticker);
+        }
     }
 
-    private void HookTicker(TickerItemEditorViewModel ticker)
+    private void HookTicker(TickerGroupEditorViewModel group, TickerItemEditorViewModel ticker)
     {
         if (!_trackedTickers.Add(ticker))
             return;
 
+        if (!_trackedTickersByGroup.TryGetValue(group, out HashSet<TickerItemEditorViewModel>? tickers))
+        {
+            tickers = [];
+            _trackedTickersByGroup[group] = tickers;
+        }
+
+        tickers.Add(ticker);
         ticker.PropertyChanged += OnEditorChanged;
+    }
+
+    private void UnhookTickerFromGroup(TickerGroupEditorViewModel group, TickerItemEditorViewModel ticker)
+    {
+        if (_trackedTickersByGroup.TryGetValue(group, out HashSet<TickerItemEditorViewModel>? tickers))
+            tickers.Remove(ticker);
+
+        UnhookTicker(ticker);
     }
 
     private void UnhookTicker(TickerItemEditorViewModel ticker)
@@ -922,21 +949,94 @@ public sealed class MainWindowViewModel : BindableBase
         if (!_trackedTickers.Remove(ticker))
             return;
 
+        foreach (HashSet<TickerItemEditorViewModel> tickers in _trackedTickersByGroup.Values)
+            tickers.Remove(ticker);
+
         ticker.PropertyChanged -= OnEditorChanged;
+    }
+
+    private TickerGroupEditorViewModel? FindGroupForTickerCollection(object? collection)
+    {
+        foreach (TickerGroupEditorViewModel group in Groups)
+        {
+            if (ReferenceEquals(group.Tickers, collection))
+                return group;
+        }
+
+        return null;
+    }
+
+    private void OnGroupsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action == NotifyCollectionChangedAction.Reset)
+        {
+            foreach (TickerGroupEditorViewModel group in _trackedGroups.ToArray())
+                UnhookGroup(group);
+
+            _trackedTickers.Clear();
+            _trackedTickersByGroup.Clear();
+            foreach (TickerGroupEditorViewModel group in Groups)
+                HookGroup(group);
+        }
+        else if (e.Action == NotifyCollectionChangedAction.Move)
+        {
+            // Move still invalidates below; subscriptions remain attached to the same group instances.
+        }
+        else
+        {
+            if (e.OldItems is not null)
+            {
+                foreach (TickerGroupEditorViewModel group in e.OldItems.OfType<TickerGroupEditorViewModel>())
+                    UnhookGroup(group);
+            }
+
+            if (e.NewItems is not null)
+            {
+                foreach (TickerGroupEditorViewModel group in e.NewItems.OfType<TickerGroupEditorViewModel>())
+                    HookGroup(group);
+            }
+        }
+
+        InvalidateValidationState("Configuration changed. Click Validate.");
     }
 
     private void OnGroupTickersChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.OldItems is not null)
+        if (e.Action == NotifyCollectionChangedAction.Reset)
         {
-            foreach (TickerItemEditorViewModel ticker in e.OldItems.OfType<TickerItemEditorViewModel>())
-                UnhookTicker(ticker);
-        }
+            TickerGroupEditorViewModel? group = FindGroupForTickerCollection(sender);
+            if (group is not null)
+            {
+                if (_trackedTickersByGroup.TryGetValue(group, out HashSet<TickerItemEditorViewModel>? oldTickers))
+                {
+                    foreach (TickerItemEditorViewModel ticker in oldTickers.ToArray())
+                        UnhookTicker(ticker);
+                }
 
-        if (e.NewItems is not null)
+                foreach (TickerItemEditorViewModel ticker in group.Tickers)
+                    HookTicker(group, ticker);
+            }
+        }
+        else
         {
-            foreach (TickerItemEditorViewModel ticker in e.NewItems.OfType<TickerItemEditorViewModel>())
-                HookTicker(ticker);
+            TickerGroupEditorViewModel? group = FindGroupForTickerCollection(sender);
+            if (e.OldItems is not null)
+            {
+                foreach (TickerItemEditorViewModel ticker in e.OldItems.OfType<TickerItemEditorViewModel>())
+                    if (group is not null)
+                        UnhookTickerFromGroup(group, ticker);
+                    else
+                        UnhookTicker(ticker);
+            }
+
+            if (e.NewItems is not null)
+            {
+                foreach (TickerItemEditorViewModel ticker in e.NewItems.OfType<TickerItemEditorViewModel>())
+                {
+                    if (group is not null)
+                        HookTicker(group, ticker);
+                }
+            }
         }
 
         InvalidateValidationState("Configuration changed. Click Validate.");
@@ -954,30 +1054,25 @@ public sealed class MainWindowViewModel : BindableBase
             return;
         }
 
-        if (string.Equals(e.PropertyName, nameof(TickerItemEditorViewModel.ValidationState), StringComparison.Ordinal) ||
-            string.Equals(e.PropertyName, nameof(TickerItemEditorViewModel.ValidationMessage), StringComparison.Ordinal) ||
-            string.Equals(e.PropertyName, nameof(TickerItemEditorViewModel.ValidationBadgeText), StringComparison.Ordinal))
+        if (IsValidationStatusProperty(e.PropertyName) ||
+            !IsPersistedEditorProperty(sender, e.PropertyName))
         {
             TraceValidation(
                 "EditorChangeIgnored",
-                ("reason", "validation-status"),
+                ("reason", "non-persisted-property"),
                 ("property", e.PropertyName),
                 ("sender_type", sender?.GetType().Name ?? "<null>"));
             return;
         }
 
-        if (IsValidated)
+        if (IsValidated && IsCurrentEditorPropertyEqualToValidatedSnapshot(sender, e.PropertyName))
         {
-            string currentFingerprint = BuildFingerprint(BuildCandidateSettings());
-            if (string.Equals(_validatedFingerprint, currentFingerprint, StringComparison.Ordinal))
-            {
-                TraceValidation(
-                    "EditorChangeIgnored",
-                    ("reason", "validated-fingerprint-match"),
-                    ("property", e.PropertyName),
-                    ("sender_type", sender?.GetType().Name ?? "<null>"));
-                return;
-            }
+            TraceValidation(
+                "EditorChangeIgnored",
+                ("reason", "validated-property-match"),
+                ("property", e.PropertyName),
+                ("sender_type", sender?.GetType().Name ?? "<null>"));
+            return;
         }
 
         TraceValidation(
@@ -986,8 +1081,91 @@ public sealed class MainWindowViewModel : BindableBase
             ("sender_type", sender?.GetType().Name ?? "<null>"),
             ("is_validated", IsValidated));
 
+        // Keep typing cheap: compare only the changed field; collection handlers invalidate ordering changes.
         InvalidateValidationState("Configuration changed. Click Validate.");
     }
+
+    private bool IsCurrentEditorPropertyEqualToValidatedSnapshot(object? sender, string? propertyName)
+    {
+        if (sender is TickerGroupEditorViewModel group)
+            return _validatedGroupSnapshots.TryGetValue(group, out TickerGroup? validated) &&
+                IsGroupPropertyEqual(group, validated, propertyName);
+
+        if (sender is TickerItemEditorViewModel ticker)
+            return _validatedTickerSnapshots.TryGetValue(ticker, out TickerItem? validated) &&
+                IsTickerPropertyEqual(ticker, validated, propertyName);
+
+        return false;
+    }
+
+    private void CaptureValidatedEditorSnapshots(AppSettings validatedSettings)
+    {
+        _validatedGroupSnapshots.Clear();
+        _validatedTickerSnapshots.Clear();
+
+        for (int groupIndex = 0; groupIndex < Groups.Count && groupIndex < validatedSettings.Groups.Count; groupIndex++)
+        {
+            TickerGroupEditorViewModel groupEditor = Groups[groupIndex];
+            TickerGroup groupSnapshot = validatedSettings.Groups[groupIndex];
+            _validatedGroupSnapshots[groupEditor] = groupSnapshot;
+
+            for (int tickerIndex = 0; tickerIndex < groupEditor.Tickers.Count && tickerIndex < groupSnapshot.Tickers.Count; tickerIndex++)
+                _validatedTickerSnapshots[groupEditor.Tickers[tickerIndex]] = groupSnapshot.Tickers[tickerIndex];
+        }
+    }
+
+    private static bool IsGroupPropertyEqual(TickerGroupEditorViewModel current, TickerGroup validated, string? propertyName)
+        => propertyName switch
+        {
+            nameof(TickerGroupEditorViewModel.Name) => string.Equals(NormalizeString(current.Name), NormalizeString(validated.Name), StringComparison.Ordinal),
+            nameof(TickerGroupEditorViewModel.Enabled) => current.Enabled == validated.Enabled,
+            nameof(TickerGroupEditorViewModel.SpeedValue) => current.SpeedValue.Equals(validated.Speed),
+            nameof(TickerGroupEditorViewModel.RenderMode) => current.RenderMode == validated.RenderMode,
+            nameof(TickerGroupEditorViewModel.Direction) => current.Direction == validated.Direction,
+            nameof(TickerGroupEditorViewModel.RowHeight) => current.RowHeight.Equals(validated.RowHeight),
+            _ => false
+        };
+
+    private static bool IsTickerPropertyEqual(TickerItemEditorViewModel current, TickerItem validated, string? propertyName)
+        => propertyName switch
+        {
+            nameof(TickerItemEditorViewModel.Symbol) => string.Equals(NormalizeString(current.Symbol), NormalizeString(validated.Symbol), StringComparison.OrdinalIgnoreCase),
+            nameof(TickerItemEditorViewModel.DisplayName) => string.Equals(NormalizeString(current.DisplayName), NormalizeString(validated.DisplayName), StringComparison.Ordinal),
+            nameof(TickerItemEditorViewModel.Quantity) => current.Quantity == validated.Quantity,
+            nameof(TickerItemEditorViewModel.CostBasis) => current.CostBasis == validated.CostBasis,
+            nameof(TickerItemEditorViewModel.Currency) => string.Equals(NormalizeString(current.Currency), NormalizeString(validated.Currency), StringComparison.OrdinalIgnoreCase),
+            nameof(TickerItemEditorViewModel.Enabled) => current.Enabled == validated.Enabled,
+            _ => false
+        };
+
+    private static string NormalizeString(string? value)
+        => (value ?? string.Empty).Trim();
+
+    private bool IsPersistedEditorProperty(object? sender, string? propertyName)
+        => sender switch
+        {
+            TickerItemEditorViewModel => propertyName is
+                nameof(TickerItemEditorViewModel.Symbol) or
+                nameof(TickerItemEditorViewModel.DisplayName) or
+                nameof(TickerItemEditorViewModel.Quantity) or
+                nameof(TickerItemEditorViewModel.CostBasis) or
+                nameof(TickerItemEditorViewModel.Currency) or
+                nameof(TickerItemEditorViewModel.Enabled),
+            TickerGroupEditorViewModel => propertyName is
+                nameof(TickerGroupEditorViewModel.Name) or
+                nameof(TickerGroupEditorViewModel.Enabled) or
+                nameof(TickerGroupEditorViewModel.SpeedValue) or
+                nameof(TickerGroupEditorViewModel.RenderMode) or
+                nameof(TickerGroupEditorViewModel.Direction) or
+                nameof(TickerGroupEditorViewModel.RowHeight),
+            _ => true
+        };
+
+    private static bool IsValidationStatusProperty(string? propertyName)
+        => propertyName is
+            nameof(TickerItemEditorViewModel.ValidationState) or
+            nameof(TickerItemEditorViewModel.ValidationMessage) or
+            nameof(TickerItemEditorViewModel.ValidationBadgeText);
 
     private void CancelValidatedCloseSequence()
     {
