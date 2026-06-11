@@ -1629,6 +1629,8 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void ApplyClockMarketData(bool force)
     {
+        Dispatcher.VerifyAccess();
+
         if (_clockViewModel is null)
             return;
 
@@ -1686,7 +1688,7 @@ public partial class ScreensaverSceneControl : UserControl
                 }
 
                 if (force || shouldAppend || city.MiniGraphPoints.Count == 0)
-                    city.MiniGraphPoints = BuildMiniGraphPoints(history, 72d, 12d);
+                    SetMiniGraphPointsIfChanged(city, history, 72d, 12d);
             }
         }
 
@@ -1704,7 +1706,13 @@ public partial class ScreensaverSceneControl : UserControl
         }
     }
 
-    private static PointCollection BuildMiniGraphPoints(IReadOnlyList<decimal> values, double width, double height)
+    private static void SetMiniGraphPointsIfChanged(ClockCityViewModel target, IReadOnlyList<decimal> values, double width, double height)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        target.SetMiniGraphPointsIfChanged(BuildMiniGraphPointList(values, width, height));
+    }
+
+    private static IReadOnlyList<Point> BuildMiniGraphPointList(IReadOnlyList<decimal> values, double width, double height)
     {
         if (values.Count == 0)
             return [];
@@ -1719,7 +1727,7 @@ public partial class ScreensaverSceneControl : UserControl
             range = 1;
 
         double stepX = width / (values.Count - 1);
-        PointCollection points = [];
+        List<Point> points = new(values.Count);
         for (int index = 0; index < values.Count; index++)
         {
             decimal normalized = (values[index] - min) / range;
@@ -2027,6 +2035,8 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void ApplyWorldMarketsLaneSnapshot(WorldMarketsLaneSnapshot snapshot)
     {
+        Dispatcher.VerifyAccess();
+
         if (_isValidationPaused || _clockViewModel is null || _statusViewModel is null || snapshot.ClockTitle is null)
             return;
 
@@ -2060,7 +2070,7 @@ public partial class ScreensaverSceneControl : UserControl
             target.MiniGraphStroke = source.MiniGraphStroke;
             target.CardBackground = source.CardBackground;
             target.CardBorderBrush = source.CardBorderBrush;
-            target.MiniGraphPoints = new PointCollection(source.MiniGraphPoints);
+            target.SetMiniGraphPointsIfChanged(source.MiniGraphPoints);
         }
     }
 
@@ -2289,9 +2299,6 @@ public partial class ScreensaverSceneControl : UserControl
             0,
             0);
     }
-
-    private static IReadOnlyList<Point> BuildMiniGraphPointList(IReadOnlyList<decimal> values, double width, double height)
-        => BuildMiniGraphPoints(values, width, height).ToList();
 
     private void ApplyWeatherToClock()
     {

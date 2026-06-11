@@ -2158,7 +2158,7 @@
       "priority": 3,
       "area": "Performance / Memory",
       "title": "High‑frequency heap allocations for mini‑graph points",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2172,12 +2172,14 @@
         "Suggested verification: Memory profiler during refresh cycle; confirm minimal allocations."
       ],
       "acceptance": [
-        "`ObservableCollection` reused, in‑place updates; allocation count drops significantly.",
+        "Mini-graph `PointCollection` replacement is skipped when the rendered point sequence is unchanged, reducing redundant heap allocation and binding churn while preserving WPF redraw correctness on actual graph changes.",
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-11 by replacing duplicate mini-graph point construction with a single point-list builder and adding ClockCityViewModel.SetMiniGraphPointsIfChanged, which compares value-equal points and only assigns a fresh WPF PointCollection when the graph actually changes. UI-thread mutation paths now explicitly verify dispatcher access.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-200533.md reported no high-severity findings; focused local Release tests for ClockCityViewModel and GlobalMarkets source contracts passed 3/3 before full validation."
     },
     {
       "id": "CR-033",

@@ -1373,6 +1373,40 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void ClockCityViewModel_SetMiniGraphPointsIfChanged_ReplacesCollectionOnlyWhenPointsChange()
+    {
+        ClockCityViewModel city = new();
+        PointCollection original = city.MiniGraphPoints;
+        List<string?> changedProperties = [];
+        city.PropertyChanged += (_, args) => changedProperties.Add(args.PropertyName);
+
+        bool changed = city.SetMiniGraphPointsIfChanged([new Point(1, 2), new Point(3, 4)]);
+
+        Assert.True(changed);
+        Assert.NotSame(original, city.MiniGraphPoints);
+        Assert.Equal(2, city.MiniGraphPoints.Count);
+        Assert.Equal(new Point(1, 2), city.MiniGraphPoints[0]);
+        Assert.Contains(nameof(ClockCityViewModel.MiniGraphPoints), changedProperties);
+
+        PointCollection firstReplacement = city.MiniGraphPoints;
+        changedProperties.Clear();
+
+        changed = city.SetMiniGraphPointsIfChanged([new Point(1, 2), new Point(3, 4)]);
+
+        Assert.False(changed);
+        Assert.Same(firstReplacement, city.MiniGraphPoints);
+        Assert.Empty(changedProperties);
+    }
+
+    [Fact]
+    public void ClockCityViewModel_SetMiniGraphPointsIfChanged_RejectsNullInput()
+    {
+        ClockCityViewModel city = new();
+
+        Assert.Throws<ArgumentNullException>(() => city.SetMiniGraphPointsIfChanged(null!));
+    }
+
+    [Fact]
     public void GlobalMarkets_UseLiveQuoteStateWithoutSeparateInitialWaitingLane()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
@@ -1689,6 +1723,12 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("private void UpdateClockEntries(DateTimeOffset referenceUtc, bool refreshAncillary)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private async Task<WorldMarketsLaneSnapshot> BuildWorldMarketsLaneSnapshotAsync(bool refreshAncillary, CancellationToken cancellationToken)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void ApplyWorldMarketsLaneSnapshot(WorldMarketsLaneSnapshot snapshot)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Dispatcher.VerifyAccess();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("target.SetMiniGraphPointsIfChanged(source.MiniGraphPoints);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SetMiniGraphPointsIfChanged(city, history, 72d, 12d);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ArgumentNullException.ThrowIfNull(target);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("target.MiniGraphPoints = new PointCollection(source.MiniGraphPoints);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("city.MiniGraphPoints = BuildMiniGraphPoints(history, 72d, 12d);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("city.TimeText = FormatClockTimeWithZone(cityTime, zone);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("FormatClockTimeWithZone(", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_statusViewModel.ClockText = FormatClockTimeWithZone(", sceneCodeBehind, StringComparison.Ordinal);

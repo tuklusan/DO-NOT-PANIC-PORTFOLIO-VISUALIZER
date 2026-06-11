@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Media;
 using PortfolioSaver.Shared.Infrastructure;
 
@@ -181,6 +182,35 @@ public sealed class ClockCityViewModel : BindableBase
     {
         get => _miniGraphPoints;
         set => SetProperty(ref _miniGraphPoints, value);
+    }
+
+    /// <summary>
+    /// Replaces the WPF point collection only when the rendered points changed.
+    /// Call from the UI dispatcher, before WPF starts the next render/layout pass.
+    /// </summary>
+    public bool SetMiniGraphPointsIfChanged(IEnumerable<Point> points)
+    {
+        ArgumentNullException.ThrowIfNull(points);
+        IReadOnlyList<Point> updatedPoints = points as IReadOnlyList<Point> ?? points.ToArray();
+
+        if (_miniGraphPoints.Count == updatedPoints.Count)
+        {
+            bool unchanged = true;
+            for (int index = 0; index < updatedPoints.Count; index++)
+            {
+                if (_miniGraphPoints[index] == updatedPoints[index])
+                    continue;
+
+                unchanged = false;
+                break;
+            }
+
+            if (unchanged)
+                return false;
+        }
+
+        MiniGraphPoints = new PointCollection(updatedPoints);
+        return true;
     }
 
     public Brush CardBackground
