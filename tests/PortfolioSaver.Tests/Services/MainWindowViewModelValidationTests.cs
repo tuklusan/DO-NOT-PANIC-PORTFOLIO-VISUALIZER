@@ -196,8 +196,8 @@ public sealed class MainWindowViewModelValidationTests
             }
         };
 
-        Task updateTask = Task.Run(() =>
-            InvokePrivate<Task>(vm, "UpdateConnectivityStateAsync", [CancellationToken.None]).GetAwaiter().GetResult());
+        Task updateTask = Task.Run(async () =>
+            await InvokePrivate<Task>(vm, "UpdateConnectivityStateAsync", [CancellationToken.None]));
 
         PumpDispatcherUntil(updateTask, TimeSpan.FromSeconds(5));
 
@@ -407,7 +407,7 @@ public sealed class MainWindowViewModelValidationTests
 
             DispatcherFrame frame = new();
             dispatcher.BeginInvoke(
-                DispatcherPriority.Background,
+                DispatcherPriority.SystemIdle,
                 new Action(() => frame.Continue = false));
             Dispatcher.PushFrame(frame);
         }
