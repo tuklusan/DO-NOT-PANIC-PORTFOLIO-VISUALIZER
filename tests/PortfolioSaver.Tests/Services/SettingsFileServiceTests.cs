@@ -44,7 +44,7 @@ public sealed class SettingsFileServiceTests
         {
             SettingsFileService service = new();
             AppSettings settings = Defaults.CreateSettings();
-            settings.DeepSeekApiKey = "live-deepseek-key";
+            settings.DeepSeekApiKey = "placeholder-value";
 
             service.Save(settings);
 
@@ -52,7 +52,7 @@ public sealed class SettingsFileServiceTests
             AppSettings persisted = JsonSerializer.Deserialize<AppSettings>(json)!;
 
             Assert.True(string.IsNullOrWhiteSpace(persisted.DeepSeekApiKey));
-            Assert.DoesNotContain("live-deepseek-key", json, StringComparison.Ordinal);
+            Assert.DoesNotContain("placeholder-value", json, StringComparison.Ordinal);
         }
         finally
         {
@@ -106,7 +106,7 @@ public sealed class SettingsFileServiceTests
         {
             SettingsFileService service = new();
             AppSettings settings = Defaults.CreateSettings();
-            settings.DeepSeekApiKey = "live-deepseek-key";
+            settings.DeepSeekApiKey = "placeholder-value";
 
             service.Save(settings);
 
@@ -114,22 +114,135 @@ public sealed class SettingsFileServiceTests
             string secretsPath = Path.Combine(tempRoot, "provider-secrets.json");
             string secretsJson = File.ReadAllText(secretsPath);
 
-            Assert.DoesNotContain("live-deepseek-key", settingsJson, StringComparison.Ordinal);
-            Assert.DoesNotContain("live-deepseek-key", secretsJson, StringComparison.Ordinal);
+            Assert.DoesNotContain("placeholder-value", settingsJson, StringComparison.Ordinal);
+            Assert.DoesNotContain("placeholder-value", secretsJson, StringComparison.Ordinal);
 
             AppSettings configLoaded = service.Load();
             ScreensaverSettingsService runtimeService = new();
             AppSettings runtimeLoaded = runtimeService.Load();
 
-            Assert.Equal("live-deepseek-key", configLoaded.DeepSeekApiKey);
+            Assert.Equal("placeholder-value", configLoaded.DeepSeekApiKey);
 
-            Assert.Equal("live-deepseek-key", runtimeLoaded.DeepSeekApiKey);
+            Assert.Equal("placeholder-value", runtimeLoaded.DeepSeekApiKey);
         }
         finally
         {
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
             Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", previousDeepSeek);
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY", previousPortfolioSaverDeepSeek);
+            if (Directory.Exists(tempRoot))
+                DeleteDirectoryWithRetry(tempRoot);
+        }
+    }
+
+    [Fact]
+    public void Save_UsesAtomicReplacementWithoutLeavingTempFiles()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
+
+        try
+        {
+            SettingsFileService service = new();
+            AppSettings settings = Defaults.CreateSettings();
+            settings.NewsRefreshMinutes = 15;
+
+            service.Save(settings);
+            settings.NewsRefreshMinutes = 30;
+            service.Save(settings);
+
+            string json = File.ReadAllText(service.SettingsPath);
+            AppSettings persisted = JsonSerializer.Deserialize<AppSettings>(json)!;
+
+            Assert.Equal(30, persisted.NewsRefreshMinutes);
+            Assert.False(Directory.EnumerateFiles(tempRoot).Any(path => path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
+            if (Directory.Exists(tempRoot))
+                DeleteDirectoryWithRetry(tempRoot);
+        }
+    }
+
+    [Fact]
+    public void Save_AndLoad_HonorExplicitSettingsPathOverride()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
+
+        try
+        {
+            string explicitSettingsPath = Path.Combine(tempRoot, "CustomSettings", "settings.custom.json");
+            SettingsFileService service = new(explicitSettingsPath);
+            AppSettings settings = Defaults.CreateSettings();
+            settings.NewsRefreshMinutes = 45;
+
+            service.Save(settings);
+            AppSettings loaded = service.Load();
+
+            Assert.Equal(explicitSettingsPath, service.SettingsPath);
+            Assert.True(File.Exists(explicitSettingsPath));
+            Assert.False(File.Exists(Path.Combine(tempRoot, "settings.json")));
+            Assert.Equal(45, loaded.NewsRefreshMinutes);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
+            if (Directory.Exists(tempRoot))
+                DeleteDirectoryWithRetry(tempRoot);
+        }
+    }
+
+    [Fact]
+    public void Constructor_WhitespaceSettingsPathOverrideUsesDefaultPath()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
+
+        try
+        {
+            SettingsFileService service = new("   ");
+
+            Assert.Equal(Path.Combine(tempRoot, "settings.json"), service.SettingsPath);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
+            if (Directory.Exists(tempRoot))
+                DeleteDirectoryWithRetry(tempRoot);
+        }
+    }
+
+    [Fact]
+    public async Task Save_SerializesConcurrentCallsOnSameServiceInstance()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
+
+        try
+        {
+            SettingsFileService service = new();
+            await Task.WhenAll(Enumerable.Range(0, 8).Select(index => Task.Run(() =>
+            {
+                AppSettings settings = Defaults.CreateSettings();
+                settings.NewsRefreshMinutes = 15 + index;
+                service.Save(settings);
+            })));
+
+            string json = File.ReadAllText(service.SettingsPath);
+            AppSettings persisted = JsonSerializer.Deserialize<AppSettings>(json)!;
+
+            Assert.InRange(persisted.NewsRefreshMinutes, 15, 22);
+            Assert.False(Directory.EnumerateFiles(tempRoot).Any(path => path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
             if (Directory.Exists(tempRoot))
                 DeleteDirectoryWithRetry(tempRoot);
         }

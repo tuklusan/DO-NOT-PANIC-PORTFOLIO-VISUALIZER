@@ -16,29 +16,44 @@ public sealed class SettingsFileService
     };
 
     private readonly ProviderSecretStoreService _providerSecretStoreService = new();
+    private readonly object _sync = new();
+    private readonly string? _settingsPathOverride;
 
-    public string SettingsPath => Path.Combine(PathHelper.GetAppDataDirectory(), "settings.json");
+    public SettingsFileService(string? settingsPath = null)
+    {
+        _settingsPathOverride = string.IsNullOrWhiteSpace(settingsPath)
+            ? null
+            : settingsPath;
+    }
+
+    public string SettingsPath => _settingsPathOverride ?? Path.Combine(PathHelper.GetAppDataDirectory(), "settings.json");
 
     public AppSettings Load()
     {
-        AppSettings settings = Defaults.CreateSettings();
-        if (File.Exists(SettingsPath))
+        lock (_sync)
         {
-            string json = File.ReadAllText(SettingsPath);
-            settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? settings;
-        }
+            AppSettings settings = Defaults.CreateSettings();
+            if (File.Exists(SettingsPath))
+            {
+                string json = File.ReadAllText(SettingsPath);
+                settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? settings;
+            }
 
-        _providerSecretStoreService.OverlaySecrets(settings);
-        return AppSettingsNormalizer.Normalize(settings);
+            _providerSecretStoreService.OverlaySecrets(settings);
+            return AppSettingsNormalizer.Normalize(settings);
+        }
     }
 
     public void Save(AppSettings settings)
     {
-        _providerSecretStoreService.Save(settings);
+        lock (_sync)
+        {
+            _providerSecretStoreService.Save(settings);
 
-        AppSettings persisted = CreateSanitizedCopy(settings);
-        string json = JsonSerializer.Serialize(persisted, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(SettingsPath, json);
+            AppSettings persisted = CreateSanitizedCopy(settings);
+            string json = JsonSerializer.Serialize(persisted, new JsonSerializerOptions { WriteIndented = true });
+            WriteAllTextAtomically(SettingsPath, json);
+        }
     }
 
     private static AppSettings CreateSanitizedCopy(AppSettings settings)
@@ -50,5 +65,40 @@ public sealed class SettingsFileService
         copy.DeepSeekApiKey = string.Empty;
 
         return copy;
+    }
+
+    /// <summary>
+    /// Writes a complete file through a flushed same-directory temporary file before replacing the target.
+    /// </summary>
+    private static void WriteAllTextAtomically(string path, string contents)
+    {
+        string targetPath = Path.GetFullPath(path);
+        string directory = Path.GetDirectoryName(targetPath) ?? Environment.CurrentDirectory;
+        Directory.CreateDirectory(directory);
+
+        string tempPath = Path.Combine(directory, Path.GetFileName(targetPath) + "." + Path.GetRandomFileName() + ".tmp");
+        try
+        {
+            using (FileStream stream = new(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            using (StreamWriter writer = new(stream))
+            {
+                writer.Write(contents);
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(tempPath, targetPath, overwrite: true);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
+            }
+            catch
+            {
+            }
+        }
     }
 }
