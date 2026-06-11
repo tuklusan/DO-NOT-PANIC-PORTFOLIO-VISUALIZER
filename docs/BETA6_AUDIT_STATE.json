@@ -1681,7 +1681,7 @@
       "priority": 1,
       "area": "Concurrency / Thread safety",
       "title": "Race condition in quote pipeline dictionary access",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Critical",
       "evidence": [
@@ -1700,6 +1700,19 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Resolved on 2026-06-11 by serializing all access to StartupCoordinator._pendingQuotePipeline with _pendingQuotePipelineGate.",
+        "DrainCompletedQuotePipelineAsync now snapshots/removes completed requests under the gate, then awaits/observes the already-completed tasks outside the gate so each request is processed at most once without holding the lock across awaits.",
+        "QueueQuotePipelineRequests now computes capacity and reserves symbols under the same gate, preventing overlapping scene builds from concurrently enumerating or mutating the pending dictionary.",
+        "Quote resolution tracing now uses SnapshotQuotePipeline instead of directly enumerating _pendingQuotePipeline.Keys while another build may mutate the dictionary.",
+        "Added behavioral regression tests proving concurrent drain calls claim exactly four completed requests once, and partial drains leave incomplete requests pending for a later drain."
+      ],
+      "validation": [
+        "Implementation commits pushed: c9accff Serialize quote pipeline access; cec5445 Add behavioral quote pipeline concurrency test; 47ccd10 Harden quote pipeline concurrency tests; 4108f4f Use countdown gate in quote pipeline concurrency test; 41cfffd Complete quote pipeline test provider contract.",
+        "DeepSeek post-commit review build/deepseek-review/postcommit-review-20260611-102823.md reported no blocking correctness findings after the start-gated behavioral tests and partial-completion lifecycle test were added.",
+        "Local validation on 2026-06-11: dotnet build PortfolioScreensaver.sln -c Release succeeded with 0 warnings and 0 errors.",
+        "Local validation on 2026-06-11: dotnet test PortfolioScreensaver.sln -c Release --no-build passed 284/284 tests."
       ]
     },
     {
