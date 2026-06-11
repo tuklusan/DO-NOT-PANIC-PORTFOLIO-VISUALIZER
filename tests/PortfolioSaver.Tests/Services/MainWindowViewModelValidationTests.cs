@@ -144,15 +144,14 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
-    public async Task EnsureValidationConnectivityAsync_ForcesFreshProbeBeforeBlockingValidation()
+    public void EnsureValidationConnectivityAsync_ForcesFreshProbeBeforeBlockingValidation()
     {
         FakeConnectivityService connectivity = new(initiallyAvailable: false);
         MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
         connectivity.SetAvailable(true);
 
         Task<bool> probeTask = InvokePrivate<Task<bool>>(vm, "EnsureValidationConnectivityAsync", []);
-        PumpDispatcherUntil(probeTask, TimeSpan.FromSeconds(5));
-        bool available = probeTask.GetAwaiter().GetResult();
+        bool available = PumpDispatcherUntil(probeTask, TimeSpan.FromSeconds(5));
 
         Assert.True(available);
         Assert.True(vm.IsNetworkAvailable);
@@ -196,7 +195,8 @@ public sealed class MainWindowViewModelValidationTests
         FakeConnectivityService connectivity = new(initiallyAvailable: false);
         MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
 
-        bool available = await InvokePrivate<Task<bool>>(vm, "EnsureValidationConnectivityAsync", []);
+        Task<bool> probeTask = InvokePrivate<Task<bool>>(vm, "EnsureValidationConnectivityAsync", []);
+        bool available = PumpDispatcherUntil(probeTask, TimeSpan.FromSeconds(5));
 
         Assert.False(available);
         Assert.False(vm.IsNetworkAvailable);
@@ -442,6 +442,12 @@ public sealed class MainWindowViewModelValidationTests
         }
 
         task.GetAwaiter().GetResult();
+    }
+
+    private static T PumpDispatcherUntil<T>(Task<T> task, TimeSpan timeout)
+    {
+        PumpDispatcherUntil((Task)task, timeout);
+        return task.GetAwaiter().GetResult();
     }
 
     private static T InvokePrivate<T>(object instance, string methodName, object?[] args)
