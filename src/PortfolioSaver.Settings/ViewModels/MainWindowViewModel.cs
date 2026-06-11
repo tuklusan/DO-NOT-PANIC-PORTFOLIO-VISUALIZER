@@ -80,7 +80,7 @@ public sealed class MainWindowViewModel : BindableBase
             AddGroup();
 
         HookEditors();
-        _ = UpdateConnectivityStateAsync();
+        RunConnectivityUpdateInBackground();
         ResetAllSymbolValidationStates("Pending validation");
 
         _stateTimer.Start();
@@ -732,7 +732,7 @@ public sealed class MainWindowViewModel : BindableBase
         => Groups.SelectMany(group => group.Tickers);
 
     private void RetryConnectivity()
-        => _ = RetryConnectivityAsync();
+        => RunConnectivityUpdateInBackground(forceProbe: true);
 
     private async Task RetryConnectivityAsync()
     {
@@ -748,6 +748,24 @@ public sealed class MainWindowViewModel : BindableBase
 
     private async Task UpdateConnectivityStateAsync(CancellationToken cancellationToken = default)
         => ApplyConnectivityState(await _connectivityService.IsInternetAvailableAsync(cancellationToken));
+
+    private void RunConnectivityUpdateInBackground(bool forceProbe = false)
+        => _ = RunConnectivityUpdateInBackgroundAsync(forceProbe);
+
+    private async Task RunConnectivityUpdateInBackgroundAsync(bool forceProbe)
+    {
+        try
+        {
+            if (forceProbe)
+                await RetryConnectivityAsync();
+            else
+                await UpdateConnectivityStateAsync();
+        }
+        catch (Exception ex)
+        {
+            TraceLog.Error("Config.Connectivity", "Background connectivity update failed.", ex);
+        }
+    }
 
     private void ApplyConnectivityState(bool connected)
     {
