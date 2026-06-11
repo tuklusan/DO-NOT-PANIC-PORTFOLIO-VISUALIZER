@@ -179,21 +179,32 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
-    public void ConnectivityStateUpdates_AreAppliedThroughUiDispatcher()
+    public async Task ConnectivityStateUpdates_FromBackgroundThread_AreRaisedOnUiDispatcher()
     {
-        string source = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "src",
-            "PortfolioSaver.Settings",
-            "ViewModels",
-            "MainWindowViewModel.cs"));
+        int uiThreadId = Environment.CurrentManagedThreadId;
+        FakeConnectivityService connectivity = new(initiallyAvailable: true);
+        MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
+        SetPrivateField(vm, "_isNetworkAvailable", false);
+        List<int> notificationThreadIds = [];
 
-        Assert.Contains("private readonly Dispatcher _uiDispatcher;", source, StringComparison.Ordinal);
-        Assert.Contains("_uiDispatcher = Dispatcher.CurrentDispatcher;", source, StringComparison.Ordinal);
-        Assert.Contains("ApplyConnectivityStateOnUiThread", source, StringComparison.Ordinal);
-        Assert.Contains("ApplyConnectivityStateOnUiThreadAsync", source, StringComparison.Ordinal);
-        Assert.Contains("DispatcherPriority.Send", source, StringComparison.Ordinal);
-        Assert.Contains("ConnectivityStateUpdated", source, StringComparison.Ordinal);
+        vm.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainWindowViewModel.IsNetworkAvailable) ||
+                args.PropertyName == nameof(MainWindowViewModel.IsValidationActionEnabled))
+            {
+                notificationThreadIds.Add(Environment.CurrentManagedThreadId);
+            }
+        };
+
+        Task updateTask = Task.Run(async () =>
+            await InvokePrivate<Task>(vm, "UpdateConnectivityStateAsync", [CancellationToken.None]));
+
+        await PumpDispatcherUntilAsync(updateTask);
+
+        Assert.True(vm.IsNetworkAvailable);
+        Assert.True(vm.IsValidationActionEnabled);
+        Assert.NotEmpty(notificationThreadIds);
+        Assert.All(notificationThreadIds, threadId => Assert.Equal(uiThreadId, threadId));
     }
 
     [Fact]
@@ -383,6 +394,18 @@ public sealed class MainWindowViewModelValidationTests
         }
 
         throw new DirectoryNotFoundException("Could not locate repo root from test AppContext.BaseDirectory.");
+    }
+
+    private static async Task PumpDispatcherUntilAsync(Task task)
+    {
+        Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+        while (!task.IsCompleted)
+        {
+            await dispatcher.InvokeAsync(static () => { }, DispatcherPriority.Background);
+            await Task.Delay(10);
+        }
+
+        await task;
     }
 
     private static T InvokePrivate<T>(object instance, string methodName, object?[] args)
