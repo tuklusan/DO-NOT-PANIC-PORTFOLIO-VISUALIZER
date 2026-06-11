@@ -2324,7 +2324,7 @@
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
       ],
       "resolution": "Resolved on 2026-06-11 by adding abort-safe cleanup to build-safe-temp local child processes and VM SSH harness runs. Local child dotnet processes are killed on cancellation/abort, VM abort cleanup stops harness-owned remote processes, writes a harness-aborted.json marker, records cleanup failures, and refuses unsafe generic RootPath values.",
-      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-212319.md reported no critical or high-severity findings; focused local Release VmHarnessScriptTests and full local Release tests are required after commit/push per current SOP."
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-212319.md reported no critical or high-severity findings. Focused local Release VmHarnessScriptTests passed 18/18 and full local Release tests passed 381/381 after commit/push."
     },
     {
       "id": "CR-038",
@@ -3871,3 +3871,4 @@
     }
   ]
 }
+
