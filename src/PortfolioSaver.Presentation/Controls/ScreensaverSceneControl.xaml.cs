@@ -51,6 +51,7 @@ public partial class ScreensaverSceneControl : UserControl
     private DispatcherTimer? _backgroundTransitionCompletionTimer;
     private bool _backgroundTransitionInFlight;
     private bool _backgroundRecoveryReloadInFlight;
+    private int _backgroundRecoveryReloadGeneration;
     private int _backgroundTransitionGeneration;
     private readonly DispatcherTimer _demoFlashTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private readonly DispatcherTimer _motionTimer = new() { Interval = TimeSpan.FromMilliseconds(33) };
@@ -3101,10 +3102,11 @@ public partial class ScreensaverSceneControl : UserControl
         CancellationTokenSource cancellation = new();
         _backgroundRecoveryReloadCancellation = cancellation;
         _backgroundRecoveryReloadInFlight = true;
-        _ = ReloadBackgroundForRecoveryAsync(path, cancellation);
+        int recoveryGeneration = ++_backgroundRecoveryReloadGeneration;
+        _ = ReloadBackgroundForRecoveryAsync(path, cancellation, recoveryGeneration);
     }
 
-    private async Task ReloadBackgroundForRecoveryAsync(string path, CancellationTokenSource cancellation)
+    private async Task ReloadBackgroundForRecoveryAsync(string path, CancellationTokenSource cancellation, int recoveryGeneration)
     {
         try
         {
@@ -3128,10 +3130,12 @@ public partial class ScreensaverSceneControl : UserControl
         }
         finally
         {
-            if (ReferenceEquals(_backgroundRecoveryReloadCancellation, cancellation))
+            if (recoveryGeneration == _backgroundRecoveryReloadGeneration)
+            {
                 _backgroundRecoveryReloadCancellation = null;
+                _backgroundRecoveryReloadInFlight = false;
+            }
             cancellation.Dispose();
-            _backgroundRecoveryReloadInFlight = false;
         }
     }
 

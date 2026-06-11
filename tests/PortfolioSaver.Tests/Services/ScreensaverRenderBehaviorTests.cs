@@ -270,9 +270,12 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("private static double GetBackgroundPresentationOpacity(BitmapSource bitmap)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private bool _backgroundRecoveryReloadInFlight;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private CancellationTokenSource? _backgroundRecoveryReloadCancellation;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private int _backgroundRecoveryReloadGeneration;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("QueueBackgroundRecoveryReload(_currentBackgroundPath!);", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("private async Task ReloadBackgroundForRecoveryAsync(string path, CancellationTokenSource cancellation)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("int recoveryGeneration = ++_backgroundRecoveryReloadGeneration;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private async Task ReloadBackgroundForRecoveryAsync(string path, CancellationTokenSource cancellation, int recoveryGeneration)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("await LoadBackgroundAsync(path, cancellation.Token).ConfigureAwait(true);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("if (recoveryGeneration == _backgroundRecoveryReloadGeneration)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void CancelBackgroundRecoveryReload()", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundRecoveryReloadCanceled", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("recoverySource = _currentBackgroundBitmap = CreateBackgroundBitmap(_currentBackgroundPath!);", codeBehind, StringComparison.Ordinal);
