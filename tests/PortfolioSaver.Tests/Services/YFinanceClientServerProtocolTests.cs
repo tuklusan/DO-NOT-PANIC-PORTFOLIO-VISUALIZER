@@ -106,15 +106,18 @@ public sealed class YFinanceClientServerProtocolTests
         string desktopApp = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Desktop", "App.xaml.cs"));
         string configApp = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Config", "App.xaml.cs"));
         string screensaverApp = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Screensaver", "App.xaml.cs"));
+        string shutdownQueue = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Shared", "Services", "OwnedServerShutdownQueue.cs"));
 
         Assert.Contains("YFinanceServerProcessManager.EnsureOwnedServerAsync(\"PortfolioSaver.Desktop\")", desktopApp, StringComparison.Ordinal);
-        Assert.Contains("YFinanceServerProcessManager.StopOwnedServerAsync()", desktopApp, StringComparison.Ordinal);
+        Assert.Contains("OwnedServerShutdownQueue.QueueShutdown(\"Desktop.App\")", desktopApp, StringComparison.Ordinal);
+        Assert.DoesNotContain("StopOwnedServerAsync().GetAwaiter().GetResult()", desktopApp, StringComparison.Ordinal);
         Assert.Contains("YFinanceServerProcessManager.EnsureOwnedServerAsync(\"PortfolioSaver.Config\")", configApp, StringComparison.Ordinal);
-        Assert.Contains("YFinanceServerProcessManager.StopOwnedServerAsync()", configApp, StringComparison.Ordinal);
+        Assert.Contains("OwnedServerShutdownQueue.QueueShutdown(\"Config.App\")", configApp, StringComparison.Ordinal);
+        Assert.DoesNotContain("StopOwnedServerAsync().GetAwaiter().GetResult()", configApp, StringComparison.Ordinal);
         Assert.Contains("YFinanceServerProcessManager.EnsureOwnedServerAsync(\"PortfolioSaver.Screensaver\")", screensaverApp, StringComparison.Ordinal);
-        Assert.Contains("QueueOwnedServerShutdown()", screensaverApp, StringComparison.Ordinal);
-        Assert.Contains("YFinanceServerProcessManager.StopOwnedServerAsync(timeout.Token)", screensaverApp, StringComparison.Ordinal);
+        Assert.Contains("OwnedServerShutdownQueue.QueueShutdown(\"Screensaver.App\")", screensaverApp, StringComparison.Ordinal);
         Assert.DoesNotContain("StopOwnedServerAsync().GetAwaiter().GetResult()", screensaverApp, StringComparison.Ordinal);
+        Assert.Contains("YFinanceServerProcessManager.StopOwnedServerAsync(timeout.Token)", shutdownQueue, StringComparison.Ordinal);
     }
 
     [Fact]

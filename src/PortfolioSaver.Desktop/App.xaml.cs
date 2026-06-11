@@ -65,17 +65,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        try
-        {
-            YFinanceServerProcessManager.StopOwnedServerAsync().GetAwaiter().GetResult();
-        }
-        catch (Exception ex)
-        {
-            TraceLog.Error("Desktop.App", "Owned YFinance server shutdown failed.", ex);
-        }
-        finally
-        {
-            base.OnExit(e);
-        }
+        OwnedServerShutdownQueue.QueueShutdown("Desktop.App");
+        base.OnExit(e);
     }
 }
