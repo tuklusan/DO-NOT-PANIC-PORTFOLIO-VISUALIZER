@@ -250,11 +250,11 @@ public sealed class Nb040BehaviorTests
             provider.Complete(symbol, new QuoteSnapshot { Symbol = symbol, Last = 100m, FetchTimestampUtc = DateTimeOffset.UtcNow });
 
         using ManualResetEventSlim startGate = new(false);
-        int readyCount = 0;
+        using CountdownEvent readyGate = new(8);
         Task<(int CompletedCount, int ResultCount)>[] drains = Enumerable.Range(0, 8)
             .Select(_ => Task.Run(async () =>
             {
-                Interlocked.Increment(ref readyCount);
+                readyGate.Signal();
                 startGate.Wait();
                 Dictionary<string, QuoteSnapshot> results = new(StringComparer.OrdinalIgnoreCase);
                 object taskObject = drainMethod.Invoke(coordinator, [results])!;
@@ -265,7 +265,7 @@ public sealed class Nb040BehaviorTests
             }))
             .ToArray();
 
-        SpinWait.SpinUntil(() => Volatile.Read(ref readyCount) == drains.Length, TimeSpan.FromSeconds(5));
+        Assert.True(readyGate.Wait(TimeSpan.FromSeconds(5)));
         startGate.Set();
 
         (int CompletedCount, int ResultCount)[] outcomes = await Task.WhenAll(drains);
