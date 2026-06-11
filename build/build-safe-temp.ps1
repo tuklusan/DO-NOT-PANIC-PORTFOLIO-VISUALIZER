@@ -30,16 +30,24 @@ function Invoke-ProcessWithTimeout {
 
     $proc = New-Object System.Diagnostics.Process
     $proc.StartInfo = $startInfo
-    $stdoutBuilder = New-Object System.Text.StringBuilder
-    $stderrBuilder = New-Object System.Text.StringBuilder
+    $stdoutLines = [System.Collections.Concurrent.ConcurrentQueue[string]]::new()
+    $stderrLines = [System.Collections.Concurrent.ConcurrentQueue[string]]::new()
+    $stdoutComplete = [System.Threading.ManualResetEventSlim]::new($false)
+    $stderrComplete = [System.Threading.ManualResetEventSlim]::new($false)
     $proc.add_OutputDataReceived({
-        if ($null -ne $EventArgs.Data) {
-            [void]$stdoutBuilder.AppendLine($EventArgs.Data)
+        if ($null -eq $EventArgs.Data) {
+            $stdoutComplete.Set()
+        }
+        else {
+            $stdoutLines.Enqueue($EventArgs.Data)
         }
     })
     $proc.add_ErrorDataReceived({
-        if ($null -ne $EventArgs.Data) {
-            [void]$stderrBuilder.AppendLine($EventArgs.Data)
+        if ($null -eq $EventArgs.Data) {
+            $stderrComplete.Set()
+        }
+        else {
+            $stderrLines.Enqueue($EventArgs.Data)
         }
     })
 
@@ -53,8 +61,10 @@ function Invoke-ProcessWithTimeout {
     }
 
     $proc.WaitForExit()
-    $stdout = $stdoutBuilder.ToString()
-    $stderr = $stderrBuilder.ToString()
+    [void]$stdoutComplete.Wait([TimeSpan]::FromSeconds(5))
+    [void]$stderrComplete.Wait([TimeSpan]::FromSeconds(5))
+    $stdout = [string]::Join([Environment]::NewLine, $stdoutLines.ToArray())
+    $stderr = [string]::Join([Environment]::NewLine, $stderrLines.ToArray())
     if (-not [string]::IsNullOrWhiteSpace($stdout)) { Write-Host $stdout.TrimEnd() }
     if (-not [string]::IsNullOrWhiteSpace($stderr)) { Write-Host $stderr.TrimEnd() }
     if ($proc.ExitCode -ne 0) {

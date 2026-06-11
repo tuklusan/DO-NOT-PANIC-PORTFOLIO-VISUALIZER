@@ -79,8 +79,13 @@ public sealed class VmHarnessScriptTests
         Assert.True(timedWaitIndex > beginErrorIndex);
         Assert.Contains("add_OutputDataReceived", script, StringComparison.Ordinal);
         Assert.Contains("add_ErrorDataReceived", script, StringComparison.Ordinal);
+        Assert.Contains("ConcurrentQueue[string]", script, StringComparison.Ordinal);
+        Assert.Contains("ManualResetEventSlim", script, StringComparison.Ordinal);
+        Assert.Contains("$stdoutComplete.Wait([TimeSpan]::FromSeconds(5))", script, StringComparison.Ordinal);
+        Assert.Contains("$stderrComplete.Wait([TimeSpan]::FromSeconds(5))", script, StringComparison.Ordinal);
         Assert.DoesNotContain("StandardOutput.ReadToEnd()", script, StringComparison.Ordinal);
         Assert.DoesNotContain("StandardError.ReadToEnd()", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("StringBuilder", script, StringComparison.Ordinal);
     }
 
     [Fact]
