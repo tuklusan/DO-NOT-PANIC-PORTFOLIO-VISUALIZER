@@ -1984,7 +1984,7 @@
       "priority": 3,
       "area": "Cancellation / Async",
       "title": "Missing `CancellationToken` in `SymbolProfileStore.Load`",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2002,7 +2002,9 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Resolved on 2026-06-11 by adding SymbolProfileStore.LoadAsync(CancellationToken) with async FileStream/JsonSerializer I/O, preserving the synchronous Load API, and switching StartupCoordinator graph profile loading to await the cancellable async path.",
+        "Validation: DeepSeek final CR-026 review artifact postcommit-review-cr026-final-20260611-162740 reported no blockers and no high findings; local Release build passed with 0 warnings/errors; local Release tests passed 302/302."
       ]
     },
     {
