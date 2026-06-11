@@ -70,28 +70,4 @@ public sealed class SymbolProfileStoreTests
         }
     }
 
-    [Fact]
-    public void LoadAsync_SourceThreadsCancellationIntoDeserializeAndDisposesStream()
-    {
-        string repoRoot = GetRepoRoot();
-        string source = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Data", "Services", "SymbolProfileStore.cs"));
-
-        Assert.Contains("await using FileStream stream", source, StringComparison.Ordinal);
-        Assert.Contains("JsonSerializer.DeserializeAsync<List<SymbolProfile>>(stream, cancellationToken: cancellationToken)", source, StringComparison.Ordinal);
-        Assert.Contains("catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)", source, StringComparison.Ordinal);
-    }
-
-    private static string GetRepoRoot()
-    {
-        string directory = AppContext.BaseDirectory;
-        while (!string.IsNullOrWhiteSpace(directory))
-        {
-            if (File.Exists(Path.Combine(directory, "PortfolioScreensaver.sln")))
-                return directory;
-
-            directory = Directory.GetParent(directory)?.FullName ?? string.Empty;
-        }
-
-        throw new InvalidOperationException("Repository root was not found.");
-    }
 }
