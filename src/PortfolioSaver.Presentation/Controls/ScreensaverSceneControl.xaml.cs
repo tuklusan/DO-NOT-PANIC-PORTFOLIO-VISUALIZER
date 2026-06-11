@@ -3931,13 +3931,16 @@ public partial class ScreensaverSceneControl : UserControl
                 control.SetBinding(Canvas.TopProperty, new Binding(nameof(FloatingGraphViewModel.Y)));
                 Panel.SetZIndex(control, 12);
                 _graphControlsByKey[graphKey] = control;
-                FloatingGraphCanvas.Children.Add(control);
+                FloatingGraphCanvas.Children.Insert(Math.Min(index, FloatingGraphCanvas.Children.Count), control);
+                continue;
             }
 
-            if (FloatingGraphCanvas.Children.IndexOf(control) != index)
+            int currentIndex = FloatingGraphCanvas.Children.IndexOf(control);
+            if (currentIndex >= 0 && currentIndex != index)
+            {
                 FloatingGraphCanvas.Children.Remove(control);
-            if (FloatingGraphCanvas.Children.IndexOf(control) != index)
-                FloatingGraphCanvas.Children.Insert(index, control);
+                FloatingGraphCanvas.Children.Insert(Math.Min(index, FloatingGraphCanvas.Children.Count), control);
+            }
         }
     }
 }
