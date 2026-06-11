@@ -1839,7 +1839,7 @@
       "priority": 2,
       "area": "UI performance",
       "title": "Incremental graph additions cause repeated full visual‑tree rebuild, stalling UI",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "High",
       "evidence": [
@@ -1857,7 +1857,9 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Resolved on 2026-06-11 by replacing full FloatingGraphCanvas child clearing with keyed incremental graph-control sync, clearing stale DataContext values only for removed controls, and preserving control order without add/remove churn for unchanged graph cards.",
+        "Validation: DeepSeek post-commit reviews reported no blocking findings; local Release build passed with 0 warnings/errors; local Release tests passed 292/292; canonical VM UX run ux-deep-ssh-20260611-151748 completed with remote build/tests passing 292/292, config phase Completed, desktop phase Completed, and version checks Passed."
       ]
     },
     {
