@@ -2353,7 +2353,7 @@
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
       ],
       "resolution": "Resolved on 2026-06-12 by making YFinanceServerClient disposal idempotent, observing late receive-loop faults, draining the receive loop during async disposal, settling pending requests on teardown, preserving best-effort async goodbye on an existing connection, and adding sync/async disposal regression tests.",
-      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-001404.md reported no blocking findings; local validation pending after commit/push per SOP."
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-001404.md reported no blocking findings; final follow-up review build/deepseek-review/deepseek-review-20260612-001404.md plus local focused YFinanceServerClientPipelineTests passed 9/9 and full local Release tests passed 389/389."
     },
     {
       "id": "CR-039",
@@ -3873,4 +3873,5 @@
     }
   ]
 }
+
 
