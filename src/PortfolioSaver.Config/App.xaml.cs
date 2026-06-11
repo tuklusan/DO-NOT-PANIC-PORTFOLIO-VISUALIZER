@@ -26,7 +26,6 @@ public partial class App : Application
         };
 
         TraceLog.Info("Config.App", $"Startup args: {string.Join(" ", e.Args)}");
-        QueueReleaseIntegrityValidation();
         try
         {
             await YFinanceServerProcessManager.EnsureOwnedServerAsync("PortfolioSaver.Config");
@@ -43,6 +42,7 @@ public partial class App : Application
         var window = new MainWindow();
         MainWindow = window;
         window.Show();
+        QueueReleaseIntegrityValidation();
     }
 
     private void QueueReleaseIntegrityValidation()
@@ -50,6 +50,9 @@ public partial class App : Application
             "Config.App",
             integritySummary => Dispatcher.BeginInvoke(new Action(() =>
             {
+                if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                    return;
+
                 MessageBox.Show(
                     "Release integrity check failed. This build may be stale or corrupted." +
                     Environment.NewLine + Environment.NewLine +

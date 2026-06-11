@@ -125,6 +125,9 @@ public static class ReleaseManifestValidator
 public static class ReleaseManifestGuard
 {
     public static void ValidateCurrentExecutableInBackground(string source, Action<string> onValidationFailed)
+        => _ = ValidateCurrentExecutableInBackgroundAsync(source, onValidationFailed);
+
+    private static async Task ValidateCurrentExecutableInBackgroundAsync(string source, Action<string> onValidationFailed)
     {
 #if DEBUG
         TraceLog.Info(source, "Release integrity validation skipped in DEBUG build.");
@@ -136,33 +139,38 @@ public static class ReleaseManifestGuard
             return;
         }
 
-        _ = Task.Run(() => ReleaseManifestValidator.ValidateDirectory(AppContext.BaseDirectory))
-            .ContinueWith(
-                task =>
-                {
-                    if (task.IsFaulted)
-                    {
-                        string message = $"Release integrity validation failed: {task.Exception?.GetBaseException().Message ?? "unknown error"}";
-                        TraceLog.Error(source, message);
-                        onValidationFailed(message);
-                        return;
-                    }
+        try
+        {
+            ReleaseManifestValidationResult result = await Task.Run(() => ReleaseManifestValidator.ValidateDirectory(AppContext.BaseDirectory)).ConfigureAwait(false);
+            if (result.IsValid)
+            {
+                TraceLog.Info(source, result.Summary);
+                return;
+            }
 
-                    ReleaseManifestValidationResult result = task.Result;
-                    if (result.IsValid)
-                    {
-                        TraceLog.Info(source, result.Summary);
-                        return;
-                    }
-
-                    foreach (string error in result.Errors.Take(10))
-                        TraceLog.Error(source, error);
-                    onValidationFailed(result.Summary);
-                },
-                CancellationToken.None,
-                TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default);
+            foreach (string error in result.Errors.Take(10))
+                TraceLog.Error(source, error);
+            TryNotifyValidationFailed(source, onValidationFailed, result.Summary);
+        }
+        catch (Exception ex)
+        {
+            string message = $"Release integrity validation failed: {ex.GetBaseException().Message}";
+            TraceLog.Error(source, message);
+            TryNotifyValidationFailed(source, onValidationFailed, message);
+        }
 #endif
+    }
+
+    private static void TryNotifyValidationFailed(string source, Action<string> onValidationFailed, string message)
+    {
+        try
+        {
+            onValidationFailed(message);
+        }
+        catch (Exception ex)
+        {
+            TraceLog.Error(source, "Release integrity failure callback failed.", ex);
+        }
     }
 
     public static bool ValidateCurrentExecutable(string source, out string summary)
