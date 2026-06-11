@@ -869,9 +869,9 @@ public sealed class FinanceNewsServiceTests
             (delay, token) =>
             {
                 requestedDelays.Add(delay);
-                return Task.Delay(Timeout.InfiniteTimeSpan, token);
+                return Task.FromException(new OperationCanceledException("forced test backoff cancellation"));
             },
-            TimeSpan.FromMilliseconds(10));
+            TimeSpan.FromSeconds(5));
         AppSettings settings = new()
         {
             NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
