@@ -2912,7 +2912,7 @@
       "priority": 4,
       "area": "Test infrastructure",
       "title": "Repeated synchronous `File.ReadAllText` in test fixtures slows test suite",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2931,7 +2931,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by adding Lazy<string>-backed source text caching to VmHarnessScriptTests, including lazy repo-root discovery and a ConcurrentDictionary keyed by absolute source path. The densest VM harness source-reading fixture now reuses cached contents instead of repeatedly calling File.ReadAllText for the same scripts.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-152255.md reported no blocking findings. Focused local Release VmHarnessScriptTests passed 19/19."
     },
     {
       "id": "CR-059",
