@@ -2651,7 +2651,7 @@
       "priority": 4,
       "area": "Performance / Memory",
       "title": "`HistoricalGraphBuilder` allocates new `PointCollection` on every build",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2670,7 +2670,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by adding a bounded graph-build cache in StartupCoordinator so unchanged history snapshots reuse existing FloatingGraphViewModel and PointCollection instances, with structured case-insensitive keys, length-prefixed snapshot signatures, LRU trimming, and rebuilds when history/fetch timestamp/bounce settings change.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-111909.md reported no high/medium findings after final bounce-setting signature update. Focused local Release StartupCoordinatorGraphSelectionTests passed 9/9. Full local Release tests passed 413/413 after commit/push."
     },
     {
       "id": "CR-050",
