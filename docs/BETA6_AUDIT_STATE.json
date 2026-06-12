@@ -2709,7 +2709,7 @@
       "priority": 4,
       "area": "Robustness",
       "title": "Aggressive connection teardown on a single integrity failure",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2728,7 +2728,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by changing YFinanceServerClient receive-loop envelope verification to per-message handling: corrupt events are warned and skipped; corrupt responses fail only the matching pending request or warn as no-pending if already cancelled; unreadable frames still fail fast. Added corrupt response, corrupt event, and already-cancelled corrupt response regression tests.",
+      "validation": "DeepSeek reviews build/deepseek-review/deepseek-review-20260612-113858.md, 20260612-114219.md, and 20260612-114540.md reported no actionable findings after cleanup. Focused local Release YFinanceServerClientPipelineTests passed 12/12. Full local Release tests passed 416/416 after commit/push."
     },
     {
       "id": "CR-052",
