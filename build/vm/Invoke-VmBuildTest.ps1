@@ -34,52 +34,68 @@ $vmCredParts = Get-VmSshCredentialPartsFromEnv
 $effectiveCaptureIntervalSeconds = if ($GuestScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }
 $effectiveUxTimeoutSeconds = [Math]::Max($UxTimeoutSeconds, ($GuestScreensaverDurationMinutes * 60) + 1800)
 
-function ConvertTo-RemoteSingleQuotedLiteral {
-    param([Parameter(Mandatory = $true)][string]$Value)
+function Read-VmSharedJsonViaSftp {
+    param(
+        [Parameter(Mandatory = $true)]$Bundle,
+        [Parameter(Mandatory = $true)][string]$RemotePath,
+        [ValidateRange(1, 120)]
+        [int]$Attempts = 12,
+        [ValidateRange(1, 60000)]
+        [int]$RetryDelayMilliseconds = 250
+    )
 
-    return $Value.Replace("'", "''")
-}
+    # Returns raw JSON text only after a complete parse succeeds. Empty means
+    # "not written or still mid-write"; exhausted SFTP errors are surfaced.
+    if ($null -eq $Bundle -or
+        $null -eq $Bundle.PSObject.Properties['SftpSession'] -or
+        $null -eq $Bundle.SftpSession) {
+        throw 'SFTP session is missing from the VM SSH session bundle.'
+    }
 
-function New-RemoteSharedJsonReadCommand {
-    param([Parameter(Mandatory = $true)][string]$Path)
+    if ($null -eq (Get-Command ConvertTo-SftpRemotePath -ErrorAction SilentlyContinue)) {
+        throw 'Required helper ConvertTo-SftpRemotePath is unavailable; VmSshCommon.ps1 must be loaded before polling remote JSON via SFTP.'
+    }
 
-    $escapedPath = ConvertTo-RemoteSingleQuotedLiteral -Value $Path
-    return @"
-`$path = '$escapedPath'
-if (Test-Path `$path) {
-    for (`$attempt = 0; `$attempt -lt 12; `$attempt++) {
+    $sftpPath = ConvertTo-SftpRemotePath -Path $RemotePath
+    $lastSftpError = $null
+    $lastJsonError = $null
+    for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
         try {
-            `$stream = `$null
-            `$reader = `$null
-            `$stream = [System.IO.File]::Open(
-                `$path,
-                [System.IO.FileMode]::Open,
-                [System.IO.FileAccess]::Read,
-                [System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete)
-            try {
-                `$reader = New-Object System.IO.StreamReader -ArgumentList `$stream
-                try {
-                    `$reader.ReadToEnd()
-                }
-                finally {
-                    if (`$null -ne `$reader) {
-                        `$reader.Dispose()
-                    }
-                }
-                break
+            if (-not (Test-SFTPPath -SFTPSession $Bundle.SftpSession -Path $sftpPath -ErrorAction Stop)) {
+                return ''
             }
-            finally {
-                if (`$null -ne `$stream) {
-                    `$stream.Dispose()
-                }
+
+            $content = Get-SFTPContent -SFTPSession $Bundle.SftpSession -Path $sftpPath -Encoding UTF8 -ErrorAction Stop
+            $json = (($content | ForEach-Object { [string]$_ }) -join [Environment]::NewLine).Trim()
+            if ([string]::IsNullOrWhiteSpace($json)) {
+                return ''
             }
         }
         catch {
-            Start-Sleep -Milliseconds 250
+            $lastSftpError = $_.Exception
+            if ($attempt -ge $Attempts) {
+                throw "Failed to read remote JSON through SFTP after $Attempts attempts: $RemotePath - $($lastSftpError.Message)"
+            }
+
+            Start-Sleep -Milliseconds $RetryDelayMilliseconds
+            continue
+        }
+
+        try {
+            $null = $json | ConvertFrom-Json -ErrorAction Stop
+            return $json
+        }
+        catch {
+            $lastJsonError = $_.Exception
+            if ($attempt -ge $Attempts) {
+                throw "Remote JSON remained malformed after $Attempts SFTP read attempts: $RemotePath - $($lastJsonError.Message)"
+            }
+
+            Start-Sleep -Milliseconds $RetryDelayMilliseconds
         }
     }
-}
-"@
+
+    return ''
 }
 
 if ($PushWorkspace) {
@@ -211,9 +227,7 @@ if (`$LASTEXITCODE -ne 0) { throw 'Failed to run interactive desktop-session age
             $agentDeadline = (Get-Date).AddSeconds(120)
             do {
                 Start-Sleep -Seconds 5
-                $pollAgentCommand = New-RemoteSharedJsonReadCommand -Path $remoteAgentStatus
-                $agentPoll = Invoke-VmPwshCommand -Bundle $bundle -Command $pollAgentCommand -TimeOutSeconds 60
-                $agentJson = ($agentPoll.Output -join [Environment]::NewLine).Trim()
+                $agentJson = Read-VmSharedJsonViaSftp -Bundle $bundle -RemotePath $remoteAgentStatus
                 if (-not [string]::IsNullOrWhiteSpace($agentJson)) {
                     $agentStatus = $agentJson | ConvertFrom-Json
                     $heartbeatUtc = [datetime]$agentStatus.LastHeartbeatUtc
@@ -272,9 +286,7 @@ schtasks /Delete /TN "PortfolioSaverVmAgent" /F >`$null 2>&1
         $commandDeadline = (Get-Date).AddSeconds(120)
         do {
             Start-Sleep -Seconds 5
-            $pollCommandResult = New-RemoteSharedJsonReadCommand -Path $remoteAgentResult
-            $resultPoll = Invoke-VmPwshCommand -Bundle $bundle -Command $pollCommandResult -TimeOutSeconds 60
-            $resultJson = ($resultPoll.Output -join [Environment]::NewLine).Trim()
+            $resultJson = Read-VmSharedJsonViaSftp -Bundle $bundle -RemotePath $remoteAgentResult
             if (-not [string]::IsNullOrWhiteSpace($resultJson)) {
                 break
             }
@@ -288,9 +300,7 @@ schtasks /Delete /TN "PortfolioSaverVmAgent" /F >`$null 2>&1
         $deadline = (Get-Date).AddSeconds($effectiveUxTimeoutSeconds)
         do {
             Start-Sleep -Seconds 15
-            $pollCommand = New-RemoteSharedJsonReadCommand -Path $remoteUxSummary
-            $poll = Invoke-VmPwshCommand -Bundle $bundle -Command $pollCommand -TimeOutSeconds 120
-            $json = ($poll.Output -join [Environment]::NewLine).Trim()
+            $json = Read-VmSharedJsonViaSftp -Bundle $bundle -RemotePath $remoteUxSummary
             if (-not [string]::IsNullOrWhiteSpace($json)) {
                 $summary = $json | ConvertFrom-Json
                 $hasFinishedAt = $summary.PSObject.Properties.Name -contains 'FinishedAt'
