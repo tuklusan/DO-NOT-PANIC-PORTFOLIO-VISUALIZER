@@ -7,7 +7,8 @@ public sealed record ServerOptions(
     IPAddress BindAddress,
     bool OwnedMode,
     int? OwnerProcessId,
-    int MaxConcurrentClients)
+    int MaxConcurrentClients,
+    bool EnableUpstreamSyncCheck)
 {
     public static ServerOptions Parse(string[] args)
     {
@@ -17,6 +18,7 @@ public sealed record ServerOptions(
         bool ownedMode = false;
         int? ownerPid = null;
         int maxClients = Protocol.Constants.ProtocolConstants.MaxConcurrentClients;
+        bool enableUpstreamSyncCheck = true;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -50,12 +52,15 @@ public sealed record ServerOptions(
                     maxClients = parsedClients;
                     i++;
                     break;
+                case "--no-upstream-sync":
+                    enableUpstreamSyncCheck = false;
+                    break;
             }
         }
 
         if (ownedMode && !IPAddress.IsLoopback(bindAddress))
             throw new ArgumentException("Owned mode requires a loopback bind address.");
 
-        return new ServerOptions(port, bindAddress, ownedMode, ownerPid, maxClients);
+        return new ServerOptions(port, bindAddress, ownedMode, ownerPid, maxClients, enableUpstreamSyncCheck);
     }
 }

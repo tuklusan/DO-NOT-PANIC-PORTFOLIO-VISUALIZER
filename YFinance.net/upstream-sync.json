@@ -1,0 +1,8 @@
+{
+  "upstreamRepository": "https://github.com/ranaroussi/yfinance",
+  "forkRepository": "https://github.com/tuklusan/yfinance",
+  "reviewedCommit": "125b12e058fe37971390e32333d2cf9edb2a8a50",
+  "reviewedCommitDate": "2026-05-28T21:01:28+01:00",
+  "reviewedVersion": "1.4.1",
+  "reviewedByCr": "CR-062"
+}

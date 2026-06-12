@@ -3050,6 +3050,36 @@
       ],
       "resolution": "Resolved on 2026-06-12 by comparing synchronized ranaroussi/yfinance and tuklusan/yfinance commit 125b12e058fe37971390e32333d2cf9edb2a8a50 (Version 1.4.1, 2026-05-28) against YFinance.NET responsibilities, documenting the mapping in docs/YFINANCE_NET_UPSTREAM_SYNC_2026-06-12.md, and implementing the applicable active-surface changes: configurable lang/region locale scoping for quote, quoteSummary, chart/history, and market-timing requests; upstream-compatible chart:null fail-soft handling for history and market timing; explicit exceptions for absent or malformed chart nodes; and obsolete no-locale legacy constructor bridges for direct service callers.",
       "validation": "DeepSeek pre-commit review artifacts build/deepseek-review/deepseek-review-20260612-193609.md and build/deepseek-review/deepseek-review-20260612-194146.md reported no blocking issues after final fixes. Focused locale/chart parser tests passed 15/15. Full local Release test suite passed 436/436 with only pre-existing xUnit1030 warnings in YFinanceServerClientPipelineTests. Live YFinance.NET exerciser validation passed for AAPL, MSFT, and VOO: 3/3 history lanes returned 5 bars and 3/3 quotes resolved with locale-scoped Yahoo requests."
+    },
+    {
+      "id": "CR-063",
+      "tracking_number": "CR-063",
+      "priority": 2,
+      "area": "YFinance.NET upstream sync diagnostics",
+      "title": "Trace yfinance upstream commit drift for end-user diagnostics",
+      "status": "open",
+      "source": "user_request_2026_06_12",
+      "severity": "Medium",
+      "evidence": [
+        "User confirmed the diagnostic goal: when end-user traces are requested for debugging, the trace should show how far behind YFinance.NET is compared to upstream GitHub yfinance commit versions.",
+        "CR-062 established the reviewed upstream yfinance baseline as commit 125b12e058fe37971390e32333d2cf9edb2a8a50."
+      ],
+      "notes": [
+        "Record the last-reviewed upstream yfinance commit in project-owned metadata.",
+        "At YFinance.NET server startup and then periodically, check the latest upstream GitHub commit on a best-effort background path.",
+        "Log trace information that includes reviewed commit, reviewed date, upstream commit, upstream date, repository URL, and check interval.",
+        "If the latest upstream commit differs from the reviewed commit, log a warning indicating an upstream-sync review may be required.",
+        "Network failures or GitHub throttling must not block startup, quote retrieval, or user-visible runtime flow."
+      ],
+      "acceptance": [
+        "The YFinance.NET server emits trace evidence of the reviewed upstream yfinance baseline.",
+        "The upstream check is non-blocking and periodic, with a conservative default interval.",
+        "If GitHub reports a newer/different upstream commit, the circular trace receives a warning containing both commits and dates.",
+        "If GitHub cannot be reached, the trace records a low-noise non-fatal check failure.",
+        "Local tests cover same-commit, newer/different-commit, and failure paths without making live GitHub calls.",
+        "DeepSeek review and local validation pass before closure.",
+        "Ticket is marked closed with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

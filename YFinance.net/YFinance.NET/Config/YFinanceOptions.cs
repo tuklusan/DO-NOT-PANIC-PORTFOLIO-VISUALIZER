@@ -20,6 +20,14 @@ public sealed class YFinanceOptions
     public int MaxSymbolsPerQuoteRequest { get; init; } = 25;
     public string Language { get; init; } = "en-US";
     public string Region { get; init; } = "US";
+    /// <summary>
+    /// Enables the trace-only GitHub freshness check that helps support diagnose whether YFinance.NET is behind upstream yfinance.
+    /// The standalone server enables this by default for support traces; library consumers must opt in explicitly.
+    /// </summary>
+    public bool EnableUpstreamSyncCheck { get; init; } = false;
+    public Uri UpstreamSyncCommitsApiUri { get; init; } = new("https://api.github.com/repos/ranaroussi/yfinance/commits?per_page=1");
+    public TimeSpan UpstreamSyncCheckInterval { get; init; } = TimeSpan.FromHours(24);
+    public TimeSpan UpstreamSyncCheckTimeout { get; init; } = TimeSpan.FromSeconds(10);
     public string UserAgent { get; init; } = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0 Safari/537.36";
     public IYFinanceTraceSink TraceSink { get; init; } = YFinanceCircularTraceSink.Instance;
     public string PersistentCacheRootPath { get; init; } = ResolvePersistentCacheRootPath();

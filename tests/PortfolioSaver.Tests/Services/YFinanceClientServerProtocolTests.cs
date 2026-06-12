@@ -147,6 +147,15 @@ public sealed class YFinanceClientServerProtocolTests
         ServerOptions options = ServerOptions.Parse([]);
 
         Assert.Equal(IPAddress.Loopback, options.BindAddress);
+        Assert.True(options.EnableUpstreamSyncCheck);
+    }
+
+    [Fact]
+    public void ServerOptions_CanDisableUpstreamSyncCheck()
+    {
+        ServerOptions options = ServerOptions.Parse(["--no-upstream-sync"]);
+
+        Assert.False(options.EnableUpstreamSyncCheck);
     }
 
     [Fact]

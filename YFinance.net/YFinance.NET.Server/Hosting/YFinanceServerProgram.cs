@@ -52,7 +52,7 @@ internal static class YFinanceServerProgram
         AppDomain.CurrentDomain.ProcessExit += (_, _) => cts.Cancel();
 
         YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ServerStartup",
-        [new("port", options.Port), new("bind_address", options.BindAddress.ToString()), new("owned_mode", options.OwnedMode), new("owner_pid", options.OwnerProcessId), new("max_clients", options.MaxConcurrentClients)]);
+        [new("port", options.Port), new("bind_address", options.BindAddress.ToString()), new("owned_mode", options.OwnedMode), new("owner_pid", options.OwnerProcessId), new("max_clients", options.MaxConcurrentClients), new("upstream_sync_check_enabled", options.EnableUpstreamSyncCheck)]);
 
         try
         {
@@ -72,10 +72,13 @@ internal static class YFinanceServerProgram
 
     private static async Task RunAsync(ServerOptions options, CancellationToken cancellationToken)
     {
-        YFinanceClient client = CreateDomainClient();
+        YFinanceOptions domainOptions = CreateDomainOptions(options);
+        YFinanceClient client = new(domainOptions);
         bool disposeDomainClient = true;
         TcpListener? listener = null;
         CancellationTokenSource? linkedCts = null;
+        YFinanceUpstreamSyncMonitor? upstreamSyncMonitor = null;
+        Task? upstreamSyncTask = null;
         object clientHandlersGate = new();
         List<Task> clientHandlers = [];
         try
@@ -87,6 +90,11 @@ internal static class YFinanceServerProgram
             Task? ownerMonitor = options.OwnedMode && options.OwnerProcessId is int ownerPid
                 ? MonitorOwnerAsync(ownerPid, linkedCts)
                 : null;
+            if (domainOptions.EnableUpstreamSyncCheck)
+            {
+                upstreamSyncMonitor = new YFinanceUpstreamSyncMonitor(domainOptions, new YFinanceTrace(YFinanceCircularTraceSink.Instance));
+                upstreamSyncTask = upstreamSyncMonitor.RunPeriodicAsync(linkedCts.Token);
+            }
 
             DateTimeOffset startedUtc = DateTimeOffset.UtcNow;
             int activeConnections = 0;
@@ -188,6 +196,15 @@ internal static class YFinanceServerProgram
             listener?.Stop();
             listener?.Dispose();
             disposeDomainClient = await AwaitClientHandlersAsync(clientHandlers, clientHandlersGate).ConfigureAwait(false);
+            bool upstreamSyncMonitorStopped = upstreamSyncTask is null || await AwaitUpstreamSyncMonitorAsync(upstreamSyncTask, domainOptions.UpstreamSyncCheckTimeout + TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+            if (upstreamSyncMonitorStopped)
+                upstreamSyncMonitor?.Dispose();
+            else
+            {
+                // Process shutdown is already underway; avoid disposing an owned HttpClient
+                // while the monitor may still be inside an in-flight HTTP cancellation.
+                YFinanceCircularTraceSink.Instance.WarnState("YFinance.UpstreamSync", "UpstreamSyncMonitorDisposeSkipped", [new("reason", "monitor_task_still_running_after_shutdown_timeout")]);
+            }
             linkedCts?.Dispose();
 
             if (disposeDomainClient)
@@ -233,8 +250,8 @@ internal static class YFinanceServerProgram
         }
     }
 
-    private static YFinanceClient CreateDomainClient()
-        => new(new YFinanceOptions
+    private static YFinanceOptions CreateDomainOptions(ServerOptions serverOptions)
+        => new()
         {
             MinimumRequestSpacing = TimeSpan.FromSeconds(1),
             MaxRetries = 3,
@@ -242,8 +259,32 @@ internal static class YFinanceServerProgram
             SummaryCacheTtl = TimeSpan.FromMinutes(10),
             PersistentMetadataCacheTtl = TimeSpan.FromMinutes(10),
             MaxSymbolsPerQuoteRequest = 25,
+            EnableUpstreamSyncCheck = serverOptions.EnableUpstreamSyncCheck,
             TraceSink = YFinanceCircularTraceSink.Instance
-        });
+        };
+
+    private static async Task<bool> AwaitUpstreamSyncMonitorAsync(Task upstreamSyncTask, TimeSpan shutdownTimeout)
+    {
+        try
+        {
+            await upstreamSyncTask.WaitAsync(shutdownTimeout).ConfigureAwait(false);
+            return true;
+        }
+        catch (TimeoutException)
+        {
+            YFinanceCircularTraceSink.Instance.WarnState("YFinance.UpstreamSync", "UpstreamSyncMonitorStopTimedOut", [new("timeout_seconds", shutdownTimeout.TotalSeconds)]);
+            return false;
+        }
+        catch (OperationCanceledException)
+        {
+            return true;
+        }
+        catch (Exception ex)
+        {
+            YFinanceCircularTraceSink.Instance.WarnState("YFinance.UpstreamSync", "UpstreamSyncMonitorFailed", [new("message", ex.ToString())]);
+            return true;
+        }
+    }
 
     private static async Task MonitorOwnerAsync(int ownerPid, CancellationTokenSource shutdown)
     {
