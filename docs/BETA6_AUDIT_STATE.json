@@ -2622,7 +2622,7 @@
       "priority": 4,
       "area": "Async",
       "title": "Synchronous `File.Exists` in async path of `YFinanceServerProcessManager.ResolveLaunchCommand`",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2641,7 +2641,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by caching successful YFinance.NET server launch-path resolution per normalized base directory, using OS-appropriate path comparison, invalidating stale cache entries when the binary disappears, and serializing process-manager protocol tests that touch static state.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-110407.md reported no blocking implementation issues after audit that only YFinanceClientServerProtocolTests touches YFinanceServerProcessManager static state. Focused local Release YFinanceClientServerProtocolTests passed 18/18. Full local Release tests passed 406/406 after commit/push."
     },
     {
       "id": "CR-049",
