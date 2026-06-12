@@ -108,7 +108,8 @@ function Assert-VmTargetConfigured {
 
 function Save-ValidationCycleSummary {
     param($Cycles,[int]$ConsecutiveClean)
-    $summary = [ordered]@{ generatedAt=(Get-Date).ToString('o'); requiredConsecutiveCleanRuns=$RequiredConsecutiveCleanRuns; consecutiveCleanRuns=$ConsecutiveClean; vmCyclesRequested=$VmCycles; guestScreensaverDurationMinutes=$GuestScreensaverDurationMinutes; captureIntervalSeconds=$CaptureIntervalSeconds; completed=($ConsecutiveClean -ge $RequiredConsecutiveCleanRuns); cycles=@($Cycles) }
+    $cycleArray = if ($null -eq $Cycles) { @() } else { @(foreach ($cycle in $Cycles) { $cycle }) }
+    $summary = [ordered]@{ generatedAt=(Get-Date).ToString('o'); requiredConsecutiveCleanRuns=$RequiredConsecutiveCleanRuns; consecutiveCleanRuns=$ConsecutiveClean; vmCyclesRequested=$VmCycles; guestScreensaverDurationMinutes=$GuestScreensaverDurationMinutes; captureIntervalSeconds=$CaptureIntervalSeconds; completed=($ConsecutiveClean -ge $RequiredConsecutiveCleanRuns); cycles=$cycleArray }
     $path = Join-Path $artifactRoot ('autonomous-visual-validation-summary-{0}.json' -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
     $summary | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $path -Encoding UTF8
     Write-Output ("AUTONOMOUS_VALIDATION_SUMMARY=" + $path)
