@@ -2825,7 +2825,7 @@
       "priority": 4,
       "area": "Build robustness",
       "title": "File‑Replacement Atomicity retry loop excessive",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2844,7 +2844,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by parameterizing Guest-UxDeepExercise.ps1 atomic text replacement retries, preserving safe 20x80ms helper defaults, and applying an explicit bounded 3-attempt/50ms summary-write budget at the high-frequency summary callsite. Primary/legacy summary writes are attempted independently; at least one must update, dual failures aggregate both exceptions, and failures are recorded in summary notes/warnings.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-145618.md reported no critical or blocking issues. Focused local Release VmHarnessScriptTests passed 19/19. PowerShell parser validation passed for build/vm/Guest-UxDeepExercise.ps1."
     },
     {
       "id": "CR-056",
