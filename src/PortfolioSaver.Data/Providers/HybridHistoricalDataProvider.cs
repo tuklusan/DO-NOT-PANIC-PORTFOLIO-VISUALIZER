@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Data.Interfaces;
 using PortfolioSaver.Data.Services;
@@ -8,17 +9,43 @@ namespace PortfolioSaver.Data.Providers;
 
 public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
 {
+    private const int MaxConcurrentHistoryRequests = 2;
+    private const int MaxHistoryFetchAttempts = 2;
     private readonly IHistoricalCacheService _cacheService;
     private readonly TimeSpan _cacheFreshness;
+    private readonly HistoryFetchAsync _historyFetchAsync;
 
     public HybridHistoricalDataProvider(
         IHistoricalCacheService cacheService,
-        HttpClient? httpClient = null,
-        TimeSpan? cacheFreshness = null,
-        int rotationSeed = 0,
-        IReadOnlyDictionary<string, SymbolProfile>? symbolProfiles = null)
+        TimeSpan? cacheFreshness = null)
     {
         _cacheService = cacheService;
+        _cacheFreshness = cacheFreshness ?? TimeSpan.FromHours(12);
+        _historyFetchAsync = FetchHistoryFromYFinanceAsync;
+    }
+
+    [Obsolete("Use HybridHistoricalDataProvider(IHistoricalCacheService, TimeSpan?) instead. Extra legacy parameters were unused and are ignored.")]
+    public HybridHistoricalDataProvider(
+        IHistoricalCacheService cacheService,
+        HttpClient? httpClient,
+        TimeSpan? cacheFreshness,
+        int rotationSeed = 0,
+        IReadOnlyDictionary<string, SymbolProfile>? symbolProfiles = null)
+        : this(cacheService, cacheFreshness)
+    {
+        _ = httpClient;
+        _ = rotationSeed;
+        _ = symbolProfiles;
+    }
+
+
+    internal HybridHistoricalDataProvider(
+        IHistoricalCacheService cacheService,
+        HistoryFetchAsync historyFetchAsync,
+        TimeSpan? cacheFreshness = null)
+    {
+        _cacheService = cacheService;
+        _historyFetchAsync = historyFetchAsync;
         _cacheFreshness = cacheFreshness ?? TimeSpan.FromHours(12);
     }
 
@@ -38,7 +65,7 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
 
         await _cacheService.PurgeExpiredAsync(cancellationToken).ConfigureAwait(false);
 
-        Dictionary<string, TickerHistorySnapshot> resolved = new(StringComparer.OrdinalIgnoreCase);
+        ConcurrentDictionary<string, TickerHistorySnapshot> resolved = new(StringComparer.OrdinalIgnoreCase);
         Dictionary<string, TickerHistorySnapshot> staleCache = new(StringComparer.OrdinalIgnoreCase);
         List<string> pending = [];
 
@@ -66,48 +93,11 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
             DateTimeOffset endUtc = DateTimeOffset.UtcNow;
             DateTimeOffset startUtc = endUtc.AddDays(-Math.Max(1, lookbackDays));
 
-            foreach (string symbol in pending)
-            {
-                string operationId = YFinanceRuntimeClientFactory.CreateOperationId("history");
-                try
-                {
-                    string requestSymbol = YFinanceSymbolMapper.ToRequestSymbol(symbol);
-                    TraceLog.InfoState(
-                        "YFinanceUiBridge",
-                        "HistoryRequestStart",
-                        [new("operation_id", operationId), new("symbol", symbol), new("request_symbol", requestSymbol), new("lookback_days", lookbackDays)]);
-                    HistoryResponseDto response = await YFinanceRuntimeClientFactory
-                        .RunSerializedAsync(
-                            "history",
-                            operationId,
-                            (client, token) => client.GetHistoryAsync(requestSymbol, startUtc, endUtc, ResolveInterval(lookbackDays), token),
-                            cancellationToken)
-                        .ConfigureAwait(false);
-
-                    TickerHistorySnapshot snapshot = MapHistory(symbol, lookbackDays, response);
-                    if (snapshot.Points.Count > 0)
-                    {
-                        resolved[symbol] = snapshot;
-                        await _cacheService.SaveAsync(snapshot, cancellationToken).ConfigureAwait(false);
-                    }
-
-                    TraceLog.InfoState(
-                        "YFinanceUiBridge",
-                        "HistoryRequestComplete",
-                        [new("operation_id", operationId), new("symbol", symbol), new("point_count", snapshot.Points.Count), new("metadata_timezone", response.Metadata?.ExchangeTimezoneName)]);
-                }
-                catch (Exception ex)
-                {
-                    TraceLog.WarnState(
-                        "YFinanceUiBridge",
-                        "HistoryRequestFailed",
-                        [new("operation_id", operationId), new("symbol", symbol), new("lookback_days", lookbackDays), new("message", ex.Message)]);
-                    TraceLog.WarnState(
-                        "YFinanceNetHistoricalProvider",
-                        "HistoryFetchFailed",
-                        [new("symbol", symbol), new("lookback_days", lookbackDays), new("message", ex.Message)]);
-                }
-            }
+            using SemaphoreSlim historyGate = new(MaxConcurrentHistoryRequests, MaxConcurrentHistoryRequests);
+            Task[] fetchTasks = pending
+                .Select(symbol => FetchAndCacheHistoryAsync(symbol, lookbackDays, startUtc, endUtc, historyGate, resolved, cancellationToken))
+                .ToArray();
+            await Task.WhenAll(fetchTasks).ConfigureAwait(false);
         }
 
         List<TickerHistorySnapshot> results = [];
@@ -146,6 +136,123 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
         return results;
     }
 
+    private async Task FetchAndCacheHistoryAsync(
+        string symbol,
+        int lookbackDays,
+        DateTimeOffset startUtc,
+        DateTimeOffset endUtc,
+        SemaphoreSlim historyGate,
+        ConcurrentDictionary<string, TickerHistorySnapshot> resolved,
+        CancellationToken cancellationToken)
+    {
+        bool acquired = false;
+        string operationId = YFinanceRuntimeClientFactory.CreateOperationId("history");
+        try
+        {
+            await historyGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            acquired = true;
+            string requestSymbol = YFinanceSymbolMapper.ToRequestSymbol(symbol);
+            TraceLog.InfoState(
+                "YFinanceUiBridge",
+                "HistoryRequestStart",
+                [new("operation_id", operationId), new("symbol", symbol), new("request_symbol", requestSymbol), new("lookback_days", lookbackDays)]);
+            HistoryResponseDto response = await FetchHistoryWithRetryAsync(
+                    requestSymbol,
+                    startUtc,
+                    endUtc,
+                    ResolveInterval(lookbackDays),
+                    operationId,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            TickerHistorySnapshot snapshot = MapHistory(symbol, lookbackDays, response);
+            if (snapshot.Points.Count > 0)
+            {
+                resolved[symbol] = snapshot;
+                await _cacheService.SaveAsync(snapshot, cancellationToken).ConfigureAwait(false);
+            }
+
+            TraceLog.InfoState(
+                "YFinanceUiBridge",
+                "HistoryRequestComplete",
+                [new("operation_id", operationId), new("symbol", symbol), new("point_count", snapshot.Points.Count), new("metadata_timezone", response.Metadata?.ExchangeTimezoneName)]);
+        }
+        catch (Exception ex)
+        {
+            TraceLog.WarnState(
+                "YFinanceUiBridge",
+                "HistoryRequestFailed",
+                [new("operation_id", operationId), new("symbol", symbol), new("lookback_days", lookbackDays), new("message", ex.Message)]);
+            TraceLog.WarnState(
+                "YFinanceNetHistoricalProvider",
+                "HistoryFetchFailed",
+                [new("symbol", symbol), new("lookback_days", lookbackDays), new("message", ex.Message)]);
+        }
+        finally
+        {
+            if (acquired)
+                historyGate.Release();
+        }
+    }
+
+    private async Task<HistoryResponseDto> FetchHistoryWithRetryAsync(
+        string requestSymbol,
+        DateTimeOffset startUtc,
+        DateTimeOffset endUtc,
+        string interval,
+        string operationId,
+        CancellationToken cancellationToken)
+    {
+        Exception? lastException = null;
+        for (int attempt = 1; attempt <= MaxHistoryFetchAttempts; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                string attemptOperationId = attempt == 1
+                    ? operationId
+                    : YFinanceRuntimeClientFactory.CreateOperationId("history-retry");
+                return await _historyFetchAsync(
+                        requestSymbol,
+                        startUtc,
+                        endUtc,
+                        interval,
+                        attemptOperationId,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex) when (attempt < MaxHistoryFetchAttempts && IsTransientHistoryException(ex))
+            {
+                lastException = ex;
+                await Task.Delay(TimeSpan.FromMilliseconds(300 * attempt), cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        throw lastException ?? new InvalidOperationException("History fetch retry failed without a captured exception.");
+    }
+
+    private static bool IsTransientHistoryException(Exception ex)
+        => ex is HttpRequestException or IOException or TimeoutException;
+
+    private static async Task<HistoryResponseDto> FetchHistoryFromYFinanceAsync(
+        string requestSymbol,
+        DateTimeOffset startUtc,
+        DateTimeOffset endUtc,
+        string interval,
+        string operationId,
+        CancellationToken cancellationToken)
+        => await YFinanceRuntimeClientFactory
+            .RunSerializedAsync(
+                "history",
+                operationId,
+                (client, token) => client.GetHistoryAsync(requestSymbol, startUtc, endUtc, interval, token),
+                cancellationToken)
+            .ConfigureAwait(false);
+
     private static TickerHistorySnapshot MapHistory(string originalSymbol, int lookbackDays, HistoryResponseDto response)
     {
         return new TickerHistorySnapshot
@@ -168,4 +275,12 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
 
     private static string ResolveInterval(int lookbackDays)
         => lookbackDays <= 1 ? "1h" : "1d";
+
+    internal delegate Task<HistoryResponseDto> HistoryFetchAsync(
+        string requestSymbol,
+        DateTimeOffset startUtc,
+        DateTimeOffset endUtc,
+        string interval,
+        string operationId,
+        CancellationToken cancellationToken);
 }

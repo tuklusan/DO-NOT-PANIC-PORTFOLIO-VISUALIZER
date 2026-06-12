@@ -246,15 +246,10 @@ public sealed class StartupCoordinator
             yield break;
 
         bool networkAvailable = _isNetworkAvailable();
-        IReadOnlyDictionary<string, SymbolProfile> symbolProfiles = await _symbolProfileStore.LoadAsync(cancellationToken).ConfigureAwait(false);
-        using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
         IHistoricalCacheService cacheService = new HistoricalCacheService(settings.HistoricalCacheRootFolder);
         IHistoricalDataProvider historicalProvider = new HybridHistoricalDataProvider(
             cacheService,
-            httpClient,
-            TimeSpan.FromHours(Math.Max(1, settings.HistoricalRefreshHours)),
-            graphRotationSeed,
-            symbolProfiles);
+            TimeSpan.FromHours(Math.Max(1, settings.HistoricalRefreshHours)));
 
         List<(TickerGroup Group, TickerItem Ticker)> graphPairs = SelectGraphTickerPairs(settings).ToList();
         Dictionary<string, TickerHistorySnapshot> cachedBySymbol = new(StringComparer.OrdinalIgnoreCase);

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Net.Http;
 using System.Text.Json;
@@ -14,6 +15,7 @@ using PortfolioSaver.Shared.Helpers;
 using Xunit;
 using YFinance.NET.Client;
 using YFinance.NET.Config;
+using YFinance.NET.Protocol.Dtos;
 using YFinance.NET.Transport;
 
 namespace PortfolioSaver.Tests.Services;
@@ -242,6 +244,98 @@ public sealed class Nb040BehaviorTests
         Assert.Same(exchangeHandler, ExchangePhotoCacheService.DefaultHttpHandlerForTests);
         Assert.Equal(TimeSpan.FromMinutes(5), exchangeHandler.PooledConnectionLifetime);
         Assert.Equal(TimeSpan.FromSeconds(30), exchangeHandler.PooledConnectionIdleTimeout);
+    }
+
+    [Fact]
+    public async Task HybridHistoricalDataProvider_FetchesPendingSymbolsWithBoundedParallelism()
+    {
+        InMemoryHistoricalCacheService cache = new();
+        int concurrent = 0;
+        int maxConcurrent = 0;
+        int enteredFetches = 0;
+        object concurrencySync = new();
+        TaskCompletionSource twoFetchesEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource releaseFetches = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        HybridHistoricalDataProvider provider = new(
+            cache,
+            async (requestSymbol, _, _, _, _, token) =>
+            {
+                int now = Interlocked.Increment(ref concurrent);
+                lock (concurrencySync)
+                {
+                    maxConcurrent = Math.Max(maxConcurrent, now);
+                }
+
+                if (Interlocked.Increment(ref enteredFetches) == 2)
+                    twoFetchesEntered.SetResult();
+
+                await releaseFetches.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+                Interlocked.Decrement(ref concurrent);
+                return CreateHistoryResponse(requestSymbol);
+            });
+
+        Task<IReadOnlyList<TickerHistorySnapshot>> historyTask = provider.GetHistoryAsync(
+            ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF"],
+            30);
+
+        await twoFetchesEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(2, maxConcurrent);
+        releaseFetches.SetResult();
+        IReadOnlyList<TickerHistorySnapshot> snapshots = await historyTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(6, snapshots.Count);
+        Assert.All(snapshots, snapshot => Assert.Single(snapshot.Points));
+        Assert.Equal(2, maxConcurrent);
+        Assert.Equal(6, cache.SavedCount);
+    }
+
+    [Fact]
+    public async Task HybridHistoricalDataProvider_RetriesTransientHistoryFetch()
+    {
+        InMemoryHistoricalCacheService cache = new();
+        int attempts = 0;
+        List<string> operationIds = [];
+        HybridHistoricalDataProvider provider = new(
+            cache,
+            (requestSymbol, _, _, _, operationId, _) =>
+            {
+                operationIds.Add(operationId);
+                if (Interlocked.Increment(ref attempts) == 1)
+                    return Task.FromException<HistoryResponseDto>(new HttpRequestException("transient"));
+
+                return Task.FromResult(CreateHistoryResponse(requestSymbol));
+            });
+
+        IReadOnlyList<TickerHistorySnapshot> snapshots = await provider.GetHistoryAsync(["AAA"], 30);
+
+        Assert.Equal(2, attempts);
+        Assert.Equal(2, operationIds.Distinct(StringComparer.Ordinal).Count());
+        TickerHistorySnapshot snapshot = Assert.Single(snapshots);
+        Assert.Single(snapshot.Points);
+        Assert.Equal(1, cache.SavedCount);
+    }
+
+    [Fact]
+    public async Task HybridHistoricalDataProvider_FallsBackToStaleCacheWhenFetchFails()
+    {
+        InMemoryHistoricalCacheService cache = new();
+        TickerHistorySnapshot stale = new()
+        {
+            Symbol = "AAA",
+            LookbackDays = 30,
+            FetchTimestampUtc = DateTimeOffset.UtcNow.AddDays(-2),
+            Points = [new HistoricalPricePoint { TimestampUtc = DateTimeOffset.UtcNow.AddDays(-2), Close = 123m }]
+        };
+        cache.Seed(stale);
+        HybridHistoricalDataProvider provider = new(
+            cache,
+            (_, _, _, _, _, _) => Task.FromException<HistoryResponseDto>(new InvalidOperationException("forced failure")),
+            TimeSpan.FromMinutes(1));
+
+        IReadOnlyList<TickerHistorySnapshot> snapshots = await provider.GetHistoryAsync(["AAA"], 30);
+
+        TickerHistorySnapshot snapshot = Assert.Single(snapshots);
+        Assert.Same(stale, snapshot);
     }
 
     [Fact]
@@ -542,6 +636,13 @@ public sealed class Nb040BehaviorTests
         connectGate.Release();
     }
 
+    private static HistoryResponseDto CreateHistoryResponse(string requestSymbol)
+        => new(
+            requestSymbol,
+            [new HistoryBarDto(DateTimeOffset.UtcNow.AddDays(-1), 1m, 2m, 1m, 2m, 100)],
+            new HistoryMetadataDto(null, null, "USD", "America/New_York", "EST", null, null, null),
+            new CacheMetadataDto("test", 0, false));
+
     private sealed class ControlledQuoteProvider : IQuoteProvider
     {
         private readonly Dictionary<string, TaskCompletionSource<IReadOnlyList<QuoteSnapshot>>> _pending = new(StringComparer.OrdinalIgnoreCase);
@@ -562,6 +663,33 @@ public sealed class Nb040BehaviorTests
 
         public void Complete(string symbol, QuoteSnapshot quote)
             => _pending[symbol].SetResult([quote]);
+    }
+
+    private sealed class InMemoryHistoricalCacheService : IHistoricalCacheService
+    {
+        private readonly ConcurrentDictionary<string, TickerHistorySnapshot> _snapshots = new(StringComparer.OrdinalIgnoreCase);
+
+        public int SavedCount => _snapshots.Count;
+
+        public void Seed(TickerHistorySnapshot snapshot)
+        {
+            _snapshots[snapshot.Symbol] = snapshot;
+        }
+
+        public Task<TickerHistorySnapshot?> LoadAsync(string symbol, CancellationToken cancellationToken = default)
+        {
+            _snapshots.TryGetValue(symbol, out TickerHistorySnapshot? snapshot);
+            return Task.FromResult(snapshot);
+        }
+
+        public Task SaveAsync(TickerHistorySnapshot snapshot, CancellationToken cancellationToken = default)
+        {
+            _snapshots[snapshot.Symbol] = snapshot;
+            return Task.CompletedTask;
+        }
+
+        public Task PurgeExpiredAsync(CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 }
 
