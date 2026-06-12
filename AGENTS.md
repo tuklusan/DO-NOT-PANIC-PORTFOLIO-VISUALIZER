@@ -54,6 +54,17 @@ Treat Codex as the chief architect and the configured DeepSeek review/generation
 - Full reviews: Full tracked codebase and documentation end-to-end reviews must be preserved as versioned synthesis documents under `docs/` using names like `DEEPSEEK_FULL_RC_REVIEW_YYYY-MM-DD.md`, with review date, reviewer, scope, artifact directory, verdict, and synthesis. Raw packets remain transient under ignored `build/deepseek-review/`.
 - Local inspection is still required for safety-critical final checks: compile/test failures, diffs before commit, small targeted code reads, generated-file smoke checks, git status, process cleanup, and any place where DeepSeek output conflicts with build/runtime evidence.
 
+## Autonomous visual validation workflow
+Use `build\validation\Invoke-AutonomousVisualValidation.ps1` for unattended visual and logic release-candidate checks. The script runs the DeepSeek gate, local restore/build/tests, commits and pushes pending changes before VM validation, runs the SSH-first VM UX harness, analyzes pulled screenshots/traces, and can create audit CRs from anomalies without chat prompting.
+
+Default unattended command:
+
+```powershell
+.\build\validation\Invoke-AutonomousVisualValidation.ps1 -VmHost 192.168.56.102 -VmCycles 2 -RequiredConsecutiveCleanRuns 2 -GuestScreensaverDurationMinutes 30 -CaptureIntervalSeconds 10 -CreateChangeRequests -CommitBeforeValidation -PushBeforeValidation -AcknowledgeExternalReviewSecretScan
+```
+
+The VM guest harness currently forces a 120-second background rotation interval during these validation runs so background transitions are observable in finite time. Commit and push are explicit switches so the operator deliberately opts into that project checkpoint; if later validation fails, the resulting checkpoint commit must be fixed forward or reverted deliberately. Treat any generated CR as canonical work queue input: fix, review, build/test, commit/push before the next VM cycle, and rerun until the requested consecutive clean runs are achieved. The process-management rule still applies: do not report completion while any local project process or test instance remains running.
+
 ## Visual note
 Green for upward segments, red for downward segments. The line should be split by movement direction, not just colored by final result.
 

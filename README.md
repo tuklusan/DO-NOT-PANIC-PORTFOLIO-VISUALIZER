@@ -163,15 +163,19 @@ Do not spend time re-optimizing or re-architecting the working harness glue unle
 - it is broken, or
 - a new product requirement cannot be met with the current flow
 
-## License
+## Autonomous Validation
 
+For unattended visual and logic validation, use:
+
+```powershell
+.\build\validation\Invoke-AutonomousVisualValidation.ps1 -VmHost 192.168.56.102 -VmCycles 2 -RequiredConsecutiveCleanRuns 2 -GuestScreensaverDurationMinutes 30 -CaptureIntervalSeconds 10 -CreateChangeRequests -CommitBeforeValidation -PushBeforeValidation -AcknowledgeExternalReviewSecretScan
+```
+
+This wrapper runs the mandatory DeepSeek review gate, local Release restore/build/tests, optionally commits and pushes declared pending changes before VM validation, executes the SSH-first UX harness, scans pulled screenshots and trace files, and appends project-native CRs for detected anomalies. The default VM path uses 30-minute runs and the guest harness' 120-second background interval so background rotation can be observed without a multi-hour soak.
+
+## License
 This project is licensed under the **MIT LICENSE**.
 
 - Bundled full text: [LICENSE](LICENSE)
 - Official text: [https://opensource.org/license/mit/](https://opensource.org/license/mit/)
-
-
-
-
-
 

@@ -1,0 +1,6 @@
+UpstreamSyncCheckUnavailable
+UpstreamYFinanceNewerThanReviewed
+Display mode enumeration cache initialization took
+External reference lookup disabled
+reference-missing
+yfinance-evidence-missing
