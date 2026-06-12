@@ -32,15 +32,18 @@ public sealed class QuoteSummaryService
 
         string normalizedSymbol = symbol.Trim().ToUpperInvariant();
         _trace.InfoState("YFinance.Summary", "SummaryRequestStart", ("symbol", normalizedSymbol), ("modules", moduleList), ("module_count", moduleList.Length));
+        Dictionary<string, string?> query = new()
+        {
+            ["modules"] = string.Join(',', moduleList),
+            ["corsDomain"] = "finance.yahoo.com",
+            ["formatted"] = "false",
+            ["symbol"] = normalizedSymbol
+        };
+        _options.AddLocaleQueryParameters(query);
+
         JsonDocument json = await _httpClient.GetCachedJsonAsync(
             $"/v10/finance/quoteSummary/{Uri.EscapeDataString(normalizedSymbol)}",
-            new Dictionary<string, string?>
-            {
-                ["modules"] = string.Join(',', moduleList),
-                ["corsDomain"] = "finance.yahoo.com",
-                ["formatted"] = "false",
-                ["symbol"] = normalizedSymbol
-            },
+            query,
             _options.SummaryCacheTtl,
             cancellationToken).ConfigureAwait(false);
 

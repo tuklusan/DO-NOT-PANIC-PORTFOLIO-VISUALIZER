@@ -18,12 +18,24 @@ public sealed class YFinanceOptions
     public TimeSpan SummaryCacheTtl { get; init; } = TimeSpan.FromMinutes(10);
     public TimeSpan PersistentMetadataCacheTtl { get; init; } = TimeSpan.FromMinutes(10);
     public int MaxSymbolsPerQuoteRequest { get; init; } = 25;
+    public string Language { get; init; } = "en-US";
+    public string Region { get; init; } = "US";
     public string UserAgent { get; init; } = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0 Safari/537.36";
     public IYFinanceTraceSink TraceSink { get; init; } = YFinanceCircularTraceSink.Instance;
     public string PersistentCacheRootPath { get; init; } = ResolvePersistentCacheRootPath();
 
     public string MetadataCacheDirectoryPath => Path.Combine(PersistentCacheRootPath, CacheBuckets.Metadata);
     public string MarketTimingCacheDirectoryPath => Path.Combine(MetadataCacheDirectoryPath, "market-timing");
+
+    /// <remarks>Whitespace language or region values intentionally omit the corresponding Yahoo query parameter.</remarks>
+    internal void AddLocaleQueryParameters(IDictionary<string, string?> query)
+    {
+        if (!string.IsNullOrWhiteSpace(Language))
+            query["lang"] = Language.Trim();
+
+        if (!string.IsNullOrWhiteSpace(Region))
+            query["region"] = Region.Trim();
+    }
 
     private static string ResolvePersistentCacheRootPath()
     {

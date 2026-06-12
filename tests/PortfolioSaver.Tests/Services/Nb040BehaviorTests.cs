@@ -16,6 +16,8 @@ using PortfolioSaver.Shared.Helpers;
 using Xunit;
 using YFinance.NET.Client;
 using YFinance.NET.Config;
+using YFinance.NET.Exceptions;
+using YFinance.NET.Features.History;
 using YFinance.NET.Features.Quotes;
 using YFinance.NET.Protocol.Dtos;
 using YFinance.NET.Transport;
@@ -44,6 +46,8 @@ public sealed class Nb040BehaviorTests
             Assert.Equal(TimeSpan.FromMinutes(10), options.DefaultCacheTtl);
             Assert.Equal(TimeSpan.FromMinutes(10), options.SummaryCacheTtl);
             Assert.Equal(TimeSpan.FromMinutes(10), options.PersistentMetadataCacheTtl);
+            Assert.Equal("en-US", options.Language);
+            Assert.Equal("US", options.Region);
             Assert.Equal(
                 Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -88,6 +92,142 @@ public sealed class Nb040BehaviorTests
             if (Directory.Exists(overrideRoot))
                 Directory.Delete(overrideRoot, recursive: true);
         }
+    }
+
+    [Fact]
+    public void YFinanceOptions_AddLocaleQueryParameters_DefaultsToUpstreamLocaleScope()
+    {
+        YFinanceOptions options = new();
+        Dictionary<string, string?> query = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["symbols"] = "AAPL",
+            ["formatted"] = "false"
+        };
+
+        options.AddLocaleQueryParameters(query);
+
+        Assert.Equal("en-US", query["lang"]);
+        Assert.Equal("US", query["region"]);
+    }
+
+    [Fact]
+    public void YFinanceOptions_AddLocaleQueryParameters_RespectsCustomLocaleScope()
+    {
+        YFinanceOptions options = new()
+        {
+            Language = "en-GB",
+            Region = "GB"
+        };
+        Dictionary<string, string?> query = new();
+
+        options.AddLocaleQueryParameters(query);
+
+        Assert.Equal("en-GB", query["lang"]);
+        Assert.Equal("GB", query["region"]);
+    }
+
+    [Fact]
+    public void HistoryParsing_ChartNull_ReturnsEmptyResponse()
+    {
+        using JsonDocument document = JsonDocument.Parse("""{"chart":null}""");
+
+        YFinance.NET.Models.HistoryResponse response = HistoryService.ParseHistoryResponse("AAPL", DateTimeOffset.UtcNow, document.RootElement);
+
+        Assert.Equal("AAPL", response.Symbol);
+        Assert.Empty(response.Bars);
+        Assert.Null(response.Metadata);
+    }
+
+    [Fact]
+    public void HistoryParsing_ChartMissing_ThrowsYFinanceApiException()
+    {
+        using JsonDocument document = JsonDocument.Parse("""{"finance":{"result":[]}}""");
+
+        YFinanceApiException exception = Assert.Throws<YFinanceApiException>(
+            () => HistoryService.ParseHistoryResponse("AAPL", DateTimeOffset.UtcNow, document.RootElement));
+
+        Assert.Contains("did not contain a chart node", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("""{"chart":[]}""")]
+    [InlineData("""{"chart":"not-a-chart"}""")]
+    [InlineData("""{"chart":42}""")]
+    public void HistoryParsing_ChartUnexpectedType_ThrowsYFinanceApiException(string payload)
+    {
+        using JsonDocument document = JsonDocument.Parse(payload);
+
+        YFinanceApiException exception = Assert.Throws<YFinanceApiException>(
+            () => HistoryService.ParseHistoryResponse("AAPL", DateTimeOffset.UtcNow, document.RootElement));
+
+        Assert.Contains("instead of an object", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void HistoryParsing_ChartError_ThrowsYFinanceApiException()
+    {
+        using JsonDocument document = JsonDocument.Parse("""{"chart":{"error":{"description":"symbol not found"}}}""");
+
+        YFinanceApiException exception = Assert.Throws<YFinanceApiException>(
+            () => HistoryService.ParseHistoryResponse("AAPL", DateTimeOffset.UtcNow, document.RootElement));
+
+        Assert.Contains("symbol not found", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void MarketTimingParsing_ChartNull_ReturnsNull()
+    {
+        using JsonDocument document = JsonDocument.Parse("""{"chart":null}""");
+
+        YFinance.NET.Models.MarketTimingSnapshot? snapshot = MarketTimingService.ParseMarketTiming("AAPL", document.RootElement);
+
+        Assert.Null(snapshot);
+    }
+
+    [Fact]
+    public void MarketTimingParsing_EmptyResult_ReturnsNull()
+    {
+        using JsonDocument document = JsonDocument.Parse("""{"chart":{"result":[]}}""");
+
+        YFinance.NET.Models.MarketTimingSnapshot? snapshot = MarketTimingService.ParseMarketTiming("AAPL", document.RootElement);
+
+        Assert.Null(snapshot);
+    }
+
+    [Fact]
+    public void MarketTimingParsing_ChartMissing_ThrowsYFinanceApiException()
+    {
+        using JsonDocument document = JsonDocument.Parse("""{"finance":{"result":[]}}""");
+
+        YFinanceApiException exception = Assert.Throws<YFinanceApiException>(
+            () => MarketTimingService.ParseMarketTiming("AAPL", document.RootElement));
+
+        Assert.Contains("did not contain a chart node", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("""{"chart":[]}""")]
+    [InlineData("""{"chart":"not-a-chart"}""")]
+    [InlineData("""{"chart":42}""")]
+    public void MarketTimingParsing_ChartUnexpectedType_ThrowsYFinanceApiException(string payload)
+    {
+        using JsonDocument document = JsonDocument.Parse(payload);
+
+        YFinanceApiException exception = Assert.Throws<YFinanceApiException>(
+            () => MarketTimingService.ParseMarketTiming("AAPL", document.RootElement));
+
+        Assert.Contains("instead of an object", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void MarketTimingParsing_ChartError_ThrowsYFinanceApiException()
+    {
+        using JsonDocument document = JsonDocument.Parse("""{"chart":{"error":{"description":"symbol not found"}}}""");
+
+        YFinanceApiException exception = Assert.Throws<YFinanceApiException>(
+            () => MarketTimingService.ParseMarketTiming("AAPL", document.RootElement));
+
+        Assert.Contains("symbol not found", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

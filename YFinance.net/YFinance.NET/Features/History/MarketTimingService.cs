@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using YFinance.NET.Caching;
+using YFinance.NET.Config;
 using YFinance.NET.Diagnostics;
 using YFinance.NET.Exceptions;
 using YFinance.NET.Transport;
@@ -11,17 +12,38 @@ namespace YFinance.NET.Features.History;
 public sealed class MarketTimingService
 {
     private readonly YahooFinanceHttpClient _httpClient;
+    private readonly YFinanceOptions _options;
     private readonly PersistentTtlCache<MarketTimingSnapshot> _cache;
     private readonly YFinanceTrace _trace;
     private readonly TimeSpan _minimumCacheTtl;
 
     public MarketTimingService(
         YahooFinanceHttpClient httpClient,
+        YFinanceOptions options,
+        YFinanceTrace? trace = null)
+        : this(httpClient, options, options.MarketTimingCacheDirectoryPath, options.PersistentMetadataCacheTtl, trace)
+    {
+    }
+
+    [Obsolete("Use MarketTimingService(YahooFinanceHttpClient, YFinanceOptions, YFinanceTrace?). This legacy overload preserves only cacheRootPath, minimumCacheTtl, and old no-locale-query behavior; all other YFinanceOptions fields use defaults.")]
+    public MarketTimingService(
+        YahooFinanceHttpClient httpClient,
         string cacheRootPath,
         TimeSpan minimumCacheTtl,
         YFinanceTrace? trace = null)
+        : this(httpClient, new YFinanceOptions { PersistentMetadataCacheTtl = minimumCacheTtl, Language = string.Empty, Region = string.Empty }, cacheRootPath, minimumCacheTtl, trace)
+    {
+    }
+
+    private MarketTimingService(
+        YahooFinanceHttpClient httpClient,
+        YFinanceOptions options,
+        string cacheRootPath,
+        TimeSpan minimumCacheTtl,
+        YFinanceTrace? trace)
     {
         _httpClient = httpClient;
+        _options = options;
         _cache = new PersistentTtlCache<MarketTimingSnapshot>(cacheRootPath);
         _minimumCacheTtl = minimumCacheTtl;
         _trace = trace ?? new YFinanceTrace();
@@ -39,17 +61,25 @@ public sealed class MarketTimingService
         }
 
         _trace.InfoState("YFinance.MarketTiming", "MarketTimingRequestStart", ("symbol", normalized));
+        Dictionary<string, string?> query = new()
+        {
+            ["range"] = "1d",
+            ["interval"] = "1d",
+            ["includeTimestamps"] = "false",
+            ["includePrePost"] = "true"
+        };
+        _options.AddLocaleQueryParameters(query);
+
         using JsonDocument json = await _httpClient.GetCachedJsonAsync(
             $"/v8/finance/chart/{Uri.EscapeDataString(normalized)}",
-            new Dictionary<string, string?>
-            {
-                ["range"] = "1d",
-                ["interval"] = "1d",
-                ["includeTimestamps"] = "false",
-                ["includePrePost"] = "true"
-            },
+            query,
             _minimumCacheTtl,
             cancellationToken).ConfigureAwait(false);
+
+        if (!HistoryService.TryGetChartObject(json.RootElement, out _))
+        {
+            _trace.WarnState("YFinance.MarketTiming", "MarketTimingChartPayloadMalformed", ("symbol", normalized), ("chart_state", HistoryService.DescribeChartPayload(json.RootElement)));
+        }
 
         MarketTimingSnapshot? snapshot = ParseMarketTiming(normalized, json.RootElement);
         if (snapshot is null)
@@ -70,11 +100,21 @@ public sealed class MarketTimingService
         return snapshot;
     }
 
-    private static MarketTimingSnapshot? ParseMarketTiming(string symbol, JsonElement root)
+    internal static MarketTimingSnapshot? ParseMarketTiming(string symbol, JsonElement root)
     {
         if (!root.TryGetProperty("chart", out JsonElement chart))
         {
             throw new YFinanceApiException($"Yahoo chart payload for {symbol} did not contain a chart node.");
+        }
+
+        if (chart.ValueKind == JsonValueKind.Null)
+        {
+            return null;
+        }
+
+        if (chart.ValueKind != JsonValueKind.Object)
+        {
+            throw new YFinanceApiException($"Yahoo chart payload for {symbol} contained a {chart.ValueKind} chart node instead of an object.");
         }
 
         if (chart.TryGetProperty("error", out JsonElement error) &&

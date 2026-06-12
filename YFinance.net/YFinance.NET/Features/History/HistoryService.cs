@@ -1,4 +1,5 @@
 using System.Text.Json;
+using YFinance.NET.Config;
 using YFinance.NET.Diagnostics;
 using YFinance.NET.Exceptions;
 using YFinance.NET.Features.Quotes;
@@ -10,12 +11,25 @@ namespace YFinance.NET.Features.History;
 public sealed class HistoryService
 {
     private readonly YahooFinanceHttpClient _httpClient;
+    private readonly YFinanceOptions _options;
     private readonly TimeSpan _cacheTtl;
     private readonly YFinanceTrace _trace;
 
+    public HistoryService(YahooFinanceHttpClient httpClient, YFinanceOptions options, YFinanceTrace? trace = null)
+        : this(httpClient, options, options.DefaultCacheTtl, trace)
+    {
+    }
+
+    [Obsolete("Use HistoryService(YahooFinanceHttpClient, YFinanceOptions, YFinanceTrace?). This legacy overload preserves only cacheTtl and old no-locale-query behavior; all other YFinanceOptions fields use defaults.")]
     public HistoryService(YahooFinanceHttpClient httpClient, TimeSpan cacheTtl, YFinanceTrace? trace = null)
+        : this(httpClient, new YFinanceOptions { DefaultCacheTtl = cacheTtl, Language = string.Empty, Region = string.Empty }, cacheTtl, trace)
+    {
+    }
+
+    private HistoryService(YahooFinanceHttpClient httpClient, YFinanceOptions options, TimeSpan cacheTtl, YFinanceTrace? trace)
     {
         _httpClient = httpClient;
+        _options = options;
         _cacheTtl = cacheTtl;
         _trace = trace ?? new YFinanceTrace();
     }
@@ -27,29 +41,47 @@ public sealed class HistoryService
     {
         string normalized = symbol.Trim().ToUpperInvariant();
         _trace.InfoState("YFinance.History", "HistoryRequestStart", ("symbol", normalized), ("start_utc", startUtc), ("end_utc", endUtc), ("interval", interval));
+        Dictionary<string, string?> query = new()
+        {
+            ["period1"] = startUtc.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["period2"] = endUtc.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["interval"] = interval,
+            ["events"] = "div,splits,capitalGains",
+            ["includePrePost"] = "false"
+        };
+        _options.AddLocaleQueryParameters(query);
+
         JsonDocument json = await _httpClient.GetCachedJsonAsync(
             $"/v8/finance/chart/{Uri.EscapeDataString(normalized)}",
-            new Dictionary<string, string?>
-            {
-                ["period1"] = startUtc.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture),
-                ["period2"] = endUtc.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture),
-                ["interval"] = interval,
-                ["events"] = "div,splits,capitalGains",
-                ["includePrePost"] = "false"
-            },
+            query,
             _cacheTtl,
             cancellationToken).ConfigureAwait(false);
+
+        if (!TryGetChartObject(json.RootElement, out _))
+        {
+            _trace.WarnState("YFinance.History", "HistoryChartPayloadMalformed", ("symbol", normalized), ("chart_state", DescribeChartPayload(json.RootElement)));
+        }
 
         HistoryResponse response = ParseHistoryResponse(normalized, endUtc, json.RootElement);
         _trace.InfoState("YFinance.History", "HistoryRequestComplete", ("symbol", normalized), ("bar_count", response.Bars.Count), ("timezone", response.Metadata?.ExchangeTimezoneName ?? "n/a"), ("granularity", response.Metadata?.DataGranularity ?? "n/a"));
         return response;
     }
 
-    private static HistoryResponse ParseHistoryResponse(string symbol, DateTimeOffset? endUtc, JsonElement root)
+    internal static HistoryResponse ParseHistoryResponse(string symbol, DateTimeOffset? endUtc, JsonElement root)
     {
         if (!root.TryGetProperty("chart", out JsonElement chart))
         {
             throw new YFinanceApiException($"Yahoo chart payload for {symbol} did not contain a chart node.");
+        }
+
+        if (chart.ValueKind == JsonValueKind.Null)
+        {
+            return new HistoryResponse(symbol, Array.Empty<HistoricalBar>(), null);
+        }
+
+        if (chart.ValueKind != JsonValueKind.Object)
+        {
+            throw new YFinanceApiException($"Yahoo chart payload for {symbol} contained a {chart.ValueKind} chart node instead of an object.");
         }
 
         if (chart.TryGetProperty("error", out JsonElement error) &&
@@ -70,6 +102,19 @@ public sealed class HistoryService
         HistoryMetadata? metadata = ParseMetadata(symbol, result);
         IReadOnlyList<HistoricalBar> bars = ParseBars(result, endUtc);
         return new HistoryResponse(symbol, bars, metadata);
+    }
+
+    internal static bool TryGetChartObject(JsonElement root, out JsonElement chart)
+        => root.TryGetProperty("chart", out chart) && chart.ValueKind == JsonValueKind.Object;
+
+    internal static string DescribeChartPayload(JsonElement root)
+    {
+        if (!root.TryGetProperty("chart", out JsonElement chart))
+        {
+            return "Absent";
+        }
+
+        return chart.ValueKind.ToString();
     }
 
     internal static HistoryMetadata? ParseMetadata(string symbol, JsonElement result)
