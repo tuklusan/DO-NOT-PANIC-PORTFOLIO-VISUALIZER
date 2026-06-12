@@ -2419,7 +2419,7 @@
       "priority": 3,
       "area": "Diagnostics",
       "title": "`GlobalMarketsTapeControl` swallows exceptions for missing flag images",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2438,7 +2438,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by adding fail-soft TraceLog.WarnState diagnostics for GlobalMarketsTapeControl flag image load failures while preserving the fallback badge behavior.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-093435.md reported no blocking findings after final fixes. Focused local Release ScreensaverRenderBehaviorTests passed 67/67. Full local Release tests passed 393/393 after commit/push."
     },
     {
       "id": "CR-042",
