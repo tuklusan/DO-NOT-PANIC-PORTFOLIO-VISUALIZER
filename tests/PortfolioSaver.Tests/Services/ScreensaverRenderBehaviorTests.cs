@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
@@ -939,12 +940,175 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("TeleprinterCursor", newsCode, StringComparison.Ordinal);
         Assert.Contains("Canvas.SetTop(ActiveHeadlineBlock, _currentVerticalOffset);", newsCode, StringComparison.Ordinal);
         Assert.Contains("MeasureHeadlineHeight", newsCode, StringComparison.Ordinal);
+        Assert.Contains("private bool IsViewportReady()", newsCode, StringComparison.Ordinal);
+        Assert.Contains("ViewportHost?.ActualWidth ?? 0d", newsCode, StringComparison.Ordinal);
+        Assert.Contains("ViewportHost?.ActualHeight ?? 0d", newsCode, StringComparison.Ordinal);
+        Assert.Contains("double.IsFinite(width)", newsCode, StringComparison.Ordinal);
+        Assert.Contains("double.IsFinite(height)", newsCode, StringComparison.Ordinal);
+        Assert.Contains("RestartPlaybackForViewportChange", newsCode, StringComparison.Ordinal);
+        Assert.Contains("LayoutUpdated += OnLayoutUpdated;", newsCode, StringComparison.Ordinal);
+        Assert.Contains("LayoutUpdated -= OnLayoutUpdated;", newsCode, StringComparison.Ordinal);
+        Assert.Contains("RecoverPlaybackWhenViewportReady", newsCode, StringComparison.Ordinal);
+        Assert.Contains("if (!IsViewportReady())", newsCode, StringComparison.Ordinal);
+        Assert.Contains("double GetSafeViewportWidth()", newsCode, StringComparison.Ordinal);
+        Assert.Contains("PausePlaybackUntilViewportReady", newsCode, StringComparison.Ordinal);
+        Assert.Contains("ResumePlaybackWhenViewportReady", newsCode, StringComparison.Ordinal);
+        Assert.Contains("_playbackTimer.Stop();", newsCode, StringComparison.Ordinal);
         Assert.Contains("_headlineWidthCache", newsCode, StringComparison.Ordinal);
         Assert.Contains("MeasurementCacheKey", newsCode, StringComparison.Ordinal);
         Assert.Contains("MaxWidthMeasurementCacheEntries = 256", newsCode, StringComparison.Ordinal);
         Assert.Contains("TelegraphVerticalScrollPixelsPerSecond = 42d", newsCode, StringComparison.Ordinal);
         Assert.Contains("TypewriterCharactersPerTick = 2", newsCode, StringComparison.Ordinal);
         Assert.DoesNotContain("nameof(NewsFlasherViewModel.MarqueeText)", newsCode, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NewsFlasherControl_PreLayoutPlaybackTickDoesNotThrow()
+    {
+        RunOnSta(() =>
+        {
+            NewsFlasherControl control = new();
+            NewsFlasherViewModel viewModel = new()
+            {
+                Speed = 1d
+            };
+            viewModel.Headlines.Add(new NewsHeadlineViewModel
+            {
+                Text = "A pre-layout financial headline should wait for a real viewport before text measurement begins."
+            });
+
+            MethodInfo subscribeMethod = typeof(NewsFlasherControl).GetMethod("SubscribeToFlasher", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.SubscribeToFlasher not found.");
+            MethodInfo tickMethod = typeof(NewsFlasherControl).GetMethod("OnPlaybackTick", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.OnPlaybackTick not found.");
+            FieldInfo awaitingViewportField = typeof(NewsFlasherControl).GetField("_awaitingViewport", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._awaitingViewport not found.");
+
+            subscribeMethod.Invoke(control, [viewModel]);
+            tickMethod.Invoke(control, [null, EventArgs.Empty]);
+            Assert.True((bool)(awaitingViewportField.GetValue(control) ?? false));
+
+            Window? host = null;
+            try
+            {
+                control.Width = 420;
+                control.Height = 54;
+                host = HostControlForLayout(control, 500, 120);
+
+                TextBlock activeHeadlineBlock = (TextBlock)(control.FindName("ActiveHeadlineBlock")
+                    ?? throw new InvalidOperationException("ActiveHeadlineBlock not found."));
+                Assert.NotNull(activeHeadlineBlock);
+                tickMethod.Invoke(control, [null, EventArgs.Empty]);
+                Assert.False((bool)(awaitingViewportField.GetValue(control) ?? true));
+                Assert.False(string.IsNullOrWhiteSpace(activeHeadlineBlock.Text));
+            }
+            finally
+            {
+                host?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void NewsFlasherControl_ResumesPlaybackWhenViewportBecomesReady()
+    {
+        RunOnSta(() =>
+        {
+            NewsFlasherControl control = new()
+            {
+                Width = 0,
+                Height = 0
+            };
+            NewsFlasherViewModel viewModel = new()
+            {
+                Speed = 1d
+            };
+            viewModel.Headlines.Add(new NewsHeadlineViewModel
+            {
+                Text = "A zero-size news flasher should sleep quietly, then resume when real layout arrives."
+            });
+
+            MethodInfo tickMethod = typeof(NewsFlasherControl).GetMethod("OnPlaybackTick", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.OnPlaybackTick not found.");
+            FieldInfo awaitingViewportField = typeof(NewsFlasherControl).GetField("_awaitingViewport", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._awaitingViewport not found.");
+            FieldInfo timerField = typeof(NewsFlasherControl).GetField("_playbackTimer", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._playbackTimer not found.");
+            DispatcherTimer playbackTimer = (DispatcherTimer)(timerField.GetValue(control)
+                ?? throw new InvalidOperationException("NewsFlasherControl._playbackTimer was null."));
+
+            Window? host = null;
+            try
+            {
+                control.DataContext = viewModel;
+                host = HostControlForLayout(control, 120, 80);
+
+                tickMethod.Invoke(control, [null, EventArgs.Empty]);
+                Assert.True((bool)(awaitingViewportField.GetValue(control) ?? false));
+                Assert.False(playbackTimer.IsEnabled);
+
+                control.Width = 420;
+                control.Height = 54;
+                host.Width = 500;
+                host.Height = 120;
+                control.Measure(new Size(420, 54));
+                control.Arrange(new Rect(0, 0, 420, 54));
+                control.ApplyTemplate();
+                host.UpdateLayout();
+                control.UpdateLayout();
+
+                Assert.False((bool)(awaitingViewportField.GetValue(control) ?? true));
+                Assert.True(playbackTimer.IsEnabled);
+            }
+            finally
+            {
+                host?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void NewsFlasherControl_ViewportRecoveryRestartsCurrentHeadline()
+    {
+        RunOnSta(() =>
+        {
+            NewsFlasherControl control = new()
+            {
+                Width = 420,
+                Height = 54
+            };
+
+            FieldInfo awaitingViewportField = typeof(NewsFlasherControl).GetField("_awaitingViewport", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._awaitingViewport not found.");
+            FieldInfo pauseTicksField = typeof(NewsFlasherControl).GetField("_pauseTicksRemaining", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._pauseTicksRemaining not found.");
+            FieldInfo activeTextField = typeof(NewsFlasherControl).GetField("_activeText", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._activeText not found.");
+            FieldInfo segmentIndexField = typeof(NewsFlasherControl).GetField("_segmentIndex", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl._segmentIndex not found.");
+            MethodInfo recoverMethod = typeof(NewsFlasherControl).GetMethod("RecoverPlaybackWhenViewportReady", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("NewsFlasherControl.RecoverPlaybackWhenViewportReady not found.");
+
+            Window? host = null;
+            try
+            {
+                host = HostControlForLayout(control, 500, 120);
+                awaitingViewportField.SetValue(control, true);
+                pauseTicksField.SetValue(control, 7);
+                segmentIndexField.SetValue(control, 2);
+                activeTextField.SetValue(control, "This active headline should restart after viewport recovery.");
+
+                recoverMethod.Invoke(control, []);
+
+                Assert.False((bool)(awaitingViewportField.GetValue(control) ?? true));
+                Assert.Equal(0, Assert.IsType<int>(pauseTicksField.GetValue(control)));
+                Assert.Equal(0, Assert.IsType<int>(segmentIndexField.GetValue(control)));
+            }
+            finally
+            {
+                host?.Close();
+            }
+        });
     }
 
     [Fact]
@@ -967,14 +1131,11 @@ public sealed class ScreensaverRenderBehaviorTests
             });
 
             control.DataContext = viewModel;
+            control.ApplyTemplate();
             control.Measure(new Size(1180, 54));
             control.Arrange(new Rect(0, 0, 1180, 54));
             control.UpdateLayout();
 
-            MethodInfo subscribeMethod = typeof(NewsFlasherControl).GetMethod("SubscribeToFlasher", BindingFlags.Instance | BindingFlags.NonPublic)
-                ?? throw new InvalidOperationException("NewsFlasherControl.SubscribeToFlasher not found.");
-            MethodInfo resetMethod = typeof(NewsFlasherControl).GetMethod("ResetPlayback", BindingFlags.Instance | BindingFlags.NonPublic)
-                ?? throw new InvalidOperationException("NewsFlasherControl.ResetPlayback not found.");
             MethodInfo tickMethod = typeof(NewsFlasherControl).GetMethod("OnPlaybackTick", BindingFlags.Instance | BindingFlags.NonPublic)
                 ?? throw new InvalidOperationException("NewsFlasherControl.OnPlaybackTick not found.");
             FieldInfo phaseField = typeof(NewsFlasherControl).GetField("_phase", BindingFlags.Instance | BindingFlags.NonPublic)
@@ -983,9 +1144,6 @@ public sealed class ScreensaverRenderBehaviorTests
                 ?? throw new InvalidOperationException("NewsFlasherControl._pendingRefresh not found.");
             TextBlock headlineBlock = (TextBlock)(control.FindName("ActiveHeadlineBlock")
                 ?? throw new InvalidOperationException("ActiveHeadlineBlock not found."));
-
-            subscribeMethod.Invoke(control, [viewModel]);
-            resetMethod.Invoke(control, []);
 
             bool sawScrolling = false;
             bool sawNegativeOffset = false;
@@ -1024,6 +1182,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 Height = 54
             };
 
+            control.ApplyTemplate();
             control.Measure(new Size(360, 54));
             control.Arrange(new Rect(0, 0, 360, 54));
             control.UpdateLayout();

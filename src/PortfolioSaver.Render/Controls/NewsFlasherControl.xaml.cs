@@ -39,6 +39,8 @@ public partial class NewsFlasherControl : UserControl
     private string _displayBottomLine = string.Empty;
     private string _activeText = string.Empty;
     private Brush _activeForeground = Brushes.WhiteSmoke;
+    private bool _awaitingViewport;
+    private bool _layoutUpdatedSubscribed;
 
     public NewsFlasherControl()
     {
@@ -50,13 +52,17 @@ public partial class NewsFlasherControl : UserControl
         {
             ClearMeasurementCache();
             RefreshLayoutForCurrentState();
+            RecoverPlaybackWhenViewportReady();
         };
+        SubscribeToLayoutUpdated();
         DataContextChanged += OnDataContextChanged;
         _playbackTimer.Tick += OnPlaybackTick;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        SubscribeToLayoutUpdated();
+        _awaitingViewport = false;
         if (_flasher is null)
             SubscribeToFlasher(DataContext as NewsFlasherViewModel);
 
@@ -67,7 +73,32 @@ public partial class NewsFlasherControl : UserControl
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         _playbackTimer.Stop();
+        _awaitingViewport = false;
+        UnsubscribeFromLayoutUpdated();
         UnsubscribeFromFlasher(_flasher);
+    }
+
+    private void SubscribeToLayoutUpdated()
+    {
+        if (_layoutUpdatedSubscribed)
+            return;
+
+        LayoutUpdated += OnLayoutUpdated;
+        _layoutUpdatedSubscribed = true;
+    }
+
+    private void UnsubscribeFromLayoutUpdated()
+    {
+        if (!_layoutUpdatedSubscribed)
+            return;
+
+        LayoutUpdated -= OnLayoutUpdated;
+        _layoutUpdatedSubscribed = false;
+    }
+
+    private void OnLayoutUpdated(object? sender, EventArgs e)
+    {
+        RecoverPlaybackWhenViewportReady();
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -138,6 +169,13 @@ public partial class NewsFlasherControl : UserControl
 
     private void OnPlaybackTick(object? sender, EventArgs e)
     {
+        if (!IsViewportReady())
+        {
+            PausePlaybackUntilViewportReady();
+            return;
+        }
+
+        _awaitingViewport = false;
         IReadOnlyList<NewsHeadlineViewModel> headlines = GetPlaybackHeadlines();
         if (headlines.Count == 0)
         {
@@ -178,6 +216,11 @@ public partial class NewsFlasherControl : UserControl
 
     private void PrepareHeadline(NewsHeadlineViewModel headline)
     {
+        if (!IsViewportReady())
+        {
+            return;
+        }
+
         _activeText = FormatHeadline(headline.Text);
         ClearMeasurementCache();
         _wrappedLines = BuildWrappedLines(_activeText);
@@ -208,7 +251,7 @@ public partial class NewsFlasherControl : UserControl
         _currentVerticalOffset = 0d;
         SetPhase(PlaybackPhase.Typing);
         ActiveHeadlineBlock.Foreground = _activeForeground;
-        ActiveHeadlineBlock.Width = Math.Max(1d, ViewportHost.ActualWidth);
+        ActiveHeadlineBlock.Width = GetSafeViewportWidth();
         Canvas.SetLeft(ActiveHeadlineBlock, 0d);
         Canvas.SetTop(ActiveHeadlineBlock, 0d);
         SetDisplayedHeadlineText(BuildVisibleText(includeCursor: true));
@@ -242,7 +285,7 @@ public partial class NewsFlasherControl : UserControl
 
         SetDisplayedHeadlineText(BuildVisibleText(includeCursor: _visibleCharacterCount < GetTypingTargetLength()));
         ActiveHeadlineBlock.Foreground = _activeForeground;
-        ActiveHeadlineBlock.Width = Math.Max(1d, ViewportHost.ActualWidth);
+        ActiveHeadlineBlock.Width = GetSafeViewportWidth();
         Canvas.SetLeft(ActiveHeadlineBlock, 0d);
         Canvas.SetTop(ActiveHeadlineBlock, 0d);
 
@@ -330,6 +373,7 @@ public partial class NewsFlasherControl : UserControl
         _displayBottomLine = string.Empty;
         _activeText = string.Empty;
         _activeHeadlineHeight = 0d;
+        _awaitingViewport = false;
         ClearMeasurementCache();
         ClearDisplay();
     }
@@ -347,6 +391,9 @@ public partial class NewsFlasherControl : UserControl
 
     private void ClearDisplay()
     {
+        if (ActiveHeadlineBlock is null)
+            return;
+
         SetDisplayedHeadlineText(string.Empty, includeCursor: false);
         Canvas.SetLeft(ActiveHeadlineBlock, 0d);
         Canvas.SetTop(ActiveHeadlineBlock, 0d);
@@ -354,9 +401,36 @@ public partial class NewsFlasherControl : UserControl
 
     private void RefreshLayoutForCurrentState()
     {
-        ActiveHeadlineBlock.Width = Math.Max(1d, ViewportHost.ActualWidth);
+        if (!IsViewportReady())
+        {
+            return;
+        }
+
+        ActiveHeadlineBlock.Width = GetSafeViewportWidth();
         if (_phase == PlaybackPhase.Scrolling)
             Canvas.SetTop(ActiveHeadlineBlock, _currentVerticalOffset);
+    }
+
+    private void RestartPlaybackForViewportChange()
+    {
+        if (!_awaitingViewport || !IsViewportReady() || string.IsNullOrWhiteSpace(_activeText))
+            return;
+
+        // A recovered viewport may have different wrapping; restart this headline rather than
+        // preserving stale line breaks or scroll offsets from the invalid layout.
+        ClearMeasurementCache();
+        _pendingRefresh = false;
+        _phase = PlaybackPhase.Idle;
+        _lastTracedPhase = PlaybackPhase.Idle;
+        _visibleCharacterCount = 0;
+        _pauseTicksRemaining = 0;
+        _segmentIndex = 0;
+        _currentVerticalOffset = 0d;
+        _wrappedLines = [];
+        _displayTopLine = string.Empty;
+        _displayBottomLine = string.Empty;
+        _activeHeadlineHeight = 0d;
+        ClearDisplay();
     }
 
     private int GetPauseTicks(double seconds)
@@ -383,7 +457,7 @@ public partial class NewsFlasherControl : UserControl
             Brushes.White,
             dpi)
         {
-            MaxTextWidth = Math.Max(1d, ViewportHost.ActualWidth)
+            MaxTextWidth = GetSafeViewportWidth()
         };
 
         return Math.Ceiling(formatted.Height);
@@ -400,7 +474,7 @@ public partial class NewsFlasherControl : UserControl
     private List<string> BuildWrappedLines(string text)
     {
         List<string> lines = [];
-        double widthLimit = Math.Max(1d, ViewportHost.ActualWidth);
+        double widthLimit = GetSafeViewportWidth();
         string normalized = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
         string[] logicalLines = normalized.Split('\n', StringSplitOptions.None);
         foreach (string logicalLine in logicalLines)
@@ -535,6 +609,52 @@ public partial class NewsFlasherControl : UserControl
 
         _headlineWidthCache[key] = width;
         return width;
+    }
+
+    private bool IsViewportReady()
+    {
+        double width = ViewportHost?.ActualWidth ?? 0d;
+        double height = ViewportHost?.ActualHeight ?? 0d;
+        return double.IsFinite(width)
+            && double.IsFinite(height)
+            && width > 0d
+            && height > 0d;
+    }
+
+    private void PausePlaybackUntilViewportReady()
+    {
+        if (!_awaitingViewport)
+        {
+            _awaitingViewport = true;
+            ClearDisplay();
+        }
+
+        _playbackTimer.Stop();
+    }
+
+    private void ResumePlaybackWhenViewportReady()
+    {
+        if (!IsLoaded || !_awaitingViewport || !IsViewportReady())
+            return;
+
+        _awaitingViewport = false;
+        _playbackTimer.Start();
+    }
+
+    private void RecoverPlaybackWhenViewportReady()
+    {
+        if (!_awaitingViewport || !IsViewportReady())
+            return;
+
+        RestartPlaybackForViewportChange();
+        RefreshLayoutForCurrentState();
+        ResumePlaybackWhenViewportReady();
+    }
+
+    private double GetSafeViewportWidth()
+    {
+        double width = ViewportHost?.ActualWidth ?? 0d;
+        return double.IsFinite(width) && width > 0d ? Math.Max(1d, width) : 1d;
     }
 
     private MeasurementCacheKey CreateMeasurementCacheKey(string text)
