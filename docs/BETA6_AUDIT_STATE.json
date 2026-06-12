@@ -2535,7 +2535,7 @@
       "priority": 4,
       "area": "Performance",
       "title": "`TickerInfoService` resolves summaries sequentially",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2554,7 +2554,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by adding bounded four-wide parallel summary resolution to YFinance.NET TickerInfoService with internal delegate seams and a behavioral concurrency regression test.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-103308.md had no remaining blocking findings after semaphore disposal fix. Focused local Release Nb040BehaviorTests passed 21/21. Full local Release tests passed 399/399 after commit/push."
     },
     {
       "id": "CR-046",
