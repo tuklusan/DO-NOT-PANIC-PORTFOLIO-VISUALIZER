@@ -2970,7 +2970,7 @@
       "priority": 4,
       "area": "Test infrastructure",
       "title": "Blocking `.GetAwaiter().GetResult()` in test HTTP handler risks deadlock under `SynchronizationContext`",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2988,7 +2988,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by changing the FinanceNewsServiceTests fake HTTP handler to support asynchronous responders and replacing request-content captures that used ReadAsStringAsync().GetAwaiter().GetResult() with awaited ReadAsStringAsync(cancellationToken). Existing synchronous responders remain supported through a sync constructor wrapper.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-154038.md returned \"Clean commit; proceed\" with no actionable issues. Focused local Release FinanceNewsServiceTests passed 16/16 on 2026-06-12. Only known pre-existing xUnit1030 warnings in YFinanceServerClientPipelineTests appeared."
     },
     {
       "id": "CR-061",
