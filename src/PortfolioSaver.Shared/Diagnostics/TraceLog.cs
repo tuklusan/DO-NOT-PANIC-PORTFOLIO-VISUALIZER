@@ -35,6 +35,18 @@ public static class TraceLog
     private static string CircularIndexPath
         => Path.Combine(TraceDirectory, "trace.circular.idx");
 
+    internal static void ResetCircularStateForTests()
+    {
+        lock (FileSync)
+        {
+            while (Queue.TryDequeue(out _))
+            {
+            }
+
+            _circularWritePosition = -1;
+        }
+    }
+
     public static void Info(string source, string message, [CallerMemberName] string functionName = "")
         => Enqueue("INFO", source, message, null, functionName);
 
