@@ -137,10 +137,11 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[ValidateRange(1, 10080)]", script, StringComparison.Ordinal);
         Assert.Contains("[ValidateSet('Apply', 'Cancel')]", script, StringComparison.Ordinal);
         Assert.Contains("[string]$ValidationCompletionMode = 'Apply'", script, StringComparison.Ordinal);
-        Assert.Contains("function New-RemoteSharedJsonReadCommand", script, StringComparison.Ordinal);
-        Assert.Contains("[System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete", script, StringComparison.Ordinal);
-        Assert.Contains("New-Object System.IO.StreamReader -ArgumentList `$stream", script, StringComparison.Ordinal);
-        Assert.Contains("if (`$null -ne `$stream)", script, StringComparison.Ordinal);
+        Assert.Contains("function Read-VmSharedJsonViaSftp", script, StringComparison.Ordinal);
+        Assert.Contains("SFTP session is missing from the VM SSH session bundle.", script, StringComparison.Ordinal);
+        Assert.Contains("Get-SFTPContent -SFTPSession $Bundle.SftpSession -Path $sftpPath -Encoding UTF8", script, StringComparison.Ordinal);
+        Assert.Contains("$null = $json | ConvertFrom-Json -ErrorAction Stop", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("function New-RemoteSharedJsonReadCommand", script, StringComparison.Ordinal);
         Assert.Contains("[int]$DisplayWidth", script, StringComparison.Ordinal);
         Assert.Contains("[int]$DisplayHeight", script, StringComparison.Ordinal);
         Assert.Contains("[string]$DisplayProfile", script, StringComparison.Ordinal);
@@ -158,9 +159,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Set-Content -LiteralPath $localAgentCommandPath -Encoding UTF8", script, StringComparison.Ordinal);
         Assert.Contains("Send-VmItem -Bundle $bundle -LocalPath $localAgentCommandPath", script, StringComparison.Ordinal);
         Assert.Contains("ValidationCompletionMode = $ValidationCompletionMode", script, StringComparison.Ordinal);
-        Assert.Contains("New-RemoteSharedJsonReadCommand -Path $remoteAgentStatus", script, StringComparison.Ordinal);
-        Assert.Contains("New-RemoteSharedJsonReadCommand -Path $remoteAgentResult", script, StringComparison.Ordinal);
-        Assert.Contains("New-RemoteSharedJsonReadCommand -Path $remoteUxSummary", script, StringComparison.Ordinal);
+        Assert.Contains("Read-VmSharedJsonViaSftp -Bundle $bundle -RemotePath $remoteAgentStatus", script, StringComparison.Ordinal);
+        Assert.Contains("Read-VmSharedJsonViaSftp -Bundle $bundle -RemotePath $remoteAgentResult", script, StringComparison.Ordinal);
+        Assert.Contains("Read-VmSharedJsonViaSftp -Bundle $bundle -RemotePath $remoteUxSummary", script, StringComparison.Ordinal);
         Assert.Contains("DisplayWidth = if ($DisplayWidth -gt 0) { $DisplayWidth } else { $null }", script, StringComparison.Ordinal);
         Assert.Contains("DisplayHeight = if ($DisplayHeight -gt 0) { $DisplayHeight } else { $null }", script, StringComparison.Ordinal);
         Assert.Contains("DisplayProfile = if (-not [string]::IsNullOrWhiteSpace($DisplayProfile)) { $DisplayProfile } else { $null }", script, StringComparison.Ordinal);
