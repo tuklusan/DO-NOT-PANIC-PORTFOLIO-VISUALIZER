@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Reflection;
 using System.Net.Http;
 using System.Text.Json;
@@ -247,6 +248,71 @@ public sealed class Nb040BehaviorTests
         Assert.Same(exchangeHandler, ExchangePhotoCacheService.DefaultHttpHandlerForTests);
         Assert.Equal(TimeSpan.FromMinutes(5), exchangeHandler.PooledConnectionLifetime);
         Assert.Equal(TimeSpan.FromSeconds(30), exchangeHandler.PooledConnectionIdleTimeout);
+    }
+
+    [Fact]
+    public async Task RateLimitGuard_SerializesConcurrentCallers()
+    {
+        using RateLimitGuard guard = new();
+        TimeSpan minimumInterval = TimeSpan.FromMilliseconds(75);
+        Stopwatch stopwatch = Stopwatch.StartNew();
+
+        await Task.WhenAll(Enumerable.Range(0, 4)
+            .Select(_ => Task.Run(() => guard.WaitIfNeededAsync(minimumInterval))));
+        stopwatch.Stop();
+
+        Assert.True(stopwatch.Elapsed >= TimeSpan.FromMilliseconds(220), $"Expected shared guard to space concurrent callers, elapsed {stopwatch.Elapsed}.");
+    }
+
+    [Fact]
+    public async Task RateLimitGuard_CancellationDuringDelayDoesNotLeakGate()
+    {
+        using RateLimitGuard guard = new();
+        await guard.WaitIfNeededAsync(TimeSpan.Zero);
+        using CancellationTokenSource cts = new(TimeSpan.FromMilliseconds(50));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            guard.WaitIfNeededAsync(TimeSpan.FromSeconds(5), cts.Token));
+
+        await guard.WaitIfNeededAsync(TimeSpan.Zero).WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.Equal(1, guard.CurrentCountForTests);
+    }
+
+    [Fact]
+    public async Task RateLimitGuard_CancellationBeforeGateAcquisitionDoesNotLeakGate()
+    {
+        using RateLimitGuard guard = new();
+        await guard.WaitIfNeededAsync(TimeSpan.Zero);
+        Task holder = guard.WaitIfNeededAsync(TimeSpan.FromMilliseconds(300));
+        using CancellationTokenSource cts = new(TimeSpan.FromMilliseconds(50));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            guard.WaitIfNeededAsync(TimeSpan.Zero, cts.Token));
+
+        await holder.WaitAsync(TimeSpan.FromSeconds(1));
+        await guard.WaitIfNeededAsync(TimeSpan.Zero).WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.Equal(1, guard.CurrentCountForTests);
+    }
+
+    [Fact]
+    public async Task RateLimitGuard_AlreadyCancelledTokenDoesNotAcquireGate()
+    {
+        using RateLimitGuard guard = new();
+        using CancellationTokenSource cts = new();
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            guard.WaitIfNeededAsync(TimeSpan.Zero, cts.Token));
+
+        Assert.Equal(1, guard.CurrentCountForTests);
+    }
+
+    [Fact]
+    public async Task RateLimitGuard_DisposesAfterCompletedWaits()
+    {
+        using RateLimitGuard guard = new();
+
+        await guard.WaitIfNeededAsync(TimeSpan.Zero);
     }
 
     [Fact]
