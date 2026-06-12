@@ -3019,6 +3019,35 @@
       ],
       "resolution": "Resolved on 2026-06-11 by making screensaver launch parsing explicit for /s fullscreen, /p preview with separate or inline decimal/hex HWND values, /c configuration, and /showconfig configuration, with safe configure fallback for unknown arguments.",
       "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260611-190617.md reported no blocking, critical, or medium findings after final polish; local Release build passed with 0 warnings/errors; local Release tests passed 338/338."
+    },
+    {
+      "id": "CR-062",
+      "tracking_number": "CR-062",
+      "priority": 2,
+      "area": "YFinance.NET upstream sync",
+      "title": "Analyze recent upstream yfinance changes and synchronize YFinance.NET if required",
+      "status": "open",
+      "source": "user_request_2026_06_12",
+      "severity": "High",
+      "evidence": [
+        "YFinance.NET is documented as a clean-room .NET port derived from the tuklusan/yfinance Python fork and shaped to remain upstream-sync friendly.",
+        "User reports the upstream yfinance project was updated recently and the fork synchronized.",
+        "The product relies on YFinance.NET as the only Yahoo market-data runtime, so upstream Yahoo transport, quote, history, crumb/cookie, and timing changes must be assessed deliberately."
+      ],
+      "notes": [
+        "Compare current upstream yfinance and the tuklusan fork against the responsibilities documented in YFinance.net/PORTING_PLAN.md.",
+        "Identify whether upstream changes affect YFinance.NET quote, quoteSummary, chart/history, cache, crumb/cookie/session, rate-limit, or market-timing behavior.",
+        "If applicable changes are identified, implement the corresponding YFinance.NET updates, run DeepSeek review, local tests, and any practical live/exerciser validation before closure."
+      ],
+      "acceptance": [
+        "The analysis identifies the current upstream/fork revision examined and summarizes relevant upstream yfinance changes.",
+        "Every relevant upstream change is mapped to: already covered, not applicable to the current product surface, deferred with rationale, or implemented.",
+        "Any required YFinance.NET code/documentation updates are implemented.",
+        "DeepSeek pre-commit code review gate reports no blocking findings for any code changes.",
+        "Local build/test validation passes.",
+        "Live YFinance.NET validation is run when the change affects Yahoo transport/quote/history behavior and network conditions allow it.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
