@@ -2506,7 +2506,7 @@
       "priority": 4,
       "area": "Performance / Concurrency",
       "title": "`HybridHistoricalDataProvider` fetches symbols one‑by‑one",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2525,7 +2525,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by converting HybridHistoricalDataProvider pending live history fetches to bounded two-wide parallel execution with transient retry/backoff, an injectable history-fetch seam, and tests for bounded concurrency, retry, and stale-cache fallback.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-102126.md reported no remaining blocking findings after final fallback fix. Focused local Release Nb040BehaviorTests passed 20/20. Full local Release tests passed 398/398 after commit/push."
     },
     {
       "id": "CR-045",
