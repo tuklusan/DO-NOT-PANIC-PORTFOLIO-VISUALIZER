@@ -2738,7 +2738,7 @@
       "priority": 4,
       "area": "Shutdown",
       "title": "Server does not await active client handlers before process exit",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2757,7 +2757,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by tracking accepted YFinance.NET server client handler tasks, removing completed handlers from the tracker, cancelling/stopping on every RunAsync exit path, draining active handlers with a bounded shutdown timeout, logging drain completion/timeout/cancellation/faults, disposing TcpListener explicitly, and deferring shared domain-client disposal only when handlers do not drain before timeout.",
+      "validation": "DeepSeek reviews build/deepseek-review/deepseek-review-20260612-141631.md and build/deepseek-review/deepseek-review-20260612-141819.md found no critical blockers after fixes; remaining integration-test suggestion noted as medium future coverage risk. Focused local Release YFinanceClientServerProtocolTests passed 21/21. Full local Release suite passed 419/419."
     },
     {
       "id": "CR-053",
