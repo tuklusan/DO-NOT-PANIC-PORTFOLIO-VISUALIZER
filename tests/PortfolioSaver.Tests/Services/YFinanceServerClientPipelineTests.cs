@@ -50,6 +50,114 @@ public sealed class YFinanceServerClientPipelineTests
     }
 
     [Fact]
+    public async Task Client_SkipsCorruptResponseAndProcessesSubsequentValidResponse()
+    {
+        using TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using CancellationTokenSource cts = new(TimeSpan.FromSeconds(10));
+
+        Task serverTask = Task.Run(async () =>
+        {
+            await using NetworkStream stream = (await listener.AcceptTcpClientAsync(cts.Token).ConfigureAwait(false)).GetStream();
+
+            ProtocolRequest<JsonElement> requestA = await ReadRequestAsync(stream, cts.Token).ConfigureAwait(false);
+            ProtocolRequest<JsonElement> requestB = await ReadRequestAsync(stream, cts.Token).ConfigureAwait(false);
+
+            await WriteCorruptQuoteResponseAsync(stream, requestA, cts.Token).ConfigureAwait(false);
+            await WriteQuoteResponseAsync(stream, requestB, cts.Token).ConfigureAwait(false);
+        }, cts.Token);
+
+        await using YFinanceServerClient client = new(new YFinanceServerConnectionOptions(
+            "127.0.0.1",
+            port,
+            TimeSpan.FromSeconds(3),
+            NullYFinanceServerClientTraceSink.Instance));
+
+        Task<QuoteDto> corrupt = client.GetQuoteAsync("BAD", cts.Token);
+        Task<QuoteDto> valid = client.GetQuoteAsync("GOOD", cts.Token);
+
+        IOException ex = await Assert.ThrowsAsync<IOException>(async () => await corrupt.ConfigureAwait(false)).ConfigureAwait(false);
+        QuoteDto validQuote = await valid.WaitAsync(cts.Token).ConfigureAwait(false);
+
+        Assert.Contains("payload checksum mismatch", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("GOOD", validQuote.Symbol);
+        await serverTask;
+    }
+
+    [Fact]
+    public async Task Client_SkipsCorruptEventAndProcessesSubsequentValidResponse()
+    {
+        using TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using CancellationTokenSource cts = new(TimeSpan.FromSeconds(10));
+
+        Task serverTask = Task.Run(async () =>
+        {
+            await using NetworkStream stream = (await listener.AcceptTcpClientAsync(cts.Token).ConfigureAwait(false)).GetStream();
+
+            ProtocolRequest<JsonElement> request = await ReadRequestAsync(stream, cts.Token).ConfigureAwait(false);
+            await WriteCorruptEventAsync(stream, cts.Token).ConfigureAwait(false);
+            await WriteQuoteResponseAsync(stream, request, cts.Token).ConfigureAwait(false);
+        }, cts.Token);
+
+        RecordingClientTraceSink traceSink = new();
+        await using YFinanceServerClient client = new(new YFinanceServerConnectionOptions(
+            "127.0.0.1",
+            port,
+            TimeSpan.FromSeconds(3),
+            traceSink));
+
+        QuoteDto validQuote = await client.GetQuoteAsync("GOOD", cts.Token).ConfigureAwait(false);
+
+        Assert.Equal("GOOD", validQuote.Symbol);
+        Assert.Contains(traceSink.WarnEvents, eventName => string.Equals(eventName, "ClientEventIntegrityFailure", StringComparison.Ordinal));
+        await serverTask;
+    }
+
+    [Fact]
+    public async Task Client_SkipsCorruptResponseForAlreadyCancelledRequest()
+    {
+        using TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using CancellationTokenSource cts = new(TimeSpan.FromSeconds(10));
+        using CancellationTokenSource requestCts = new();
+        TaskCompletionSource firstRequestRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task serverTask = Task.Run(async () =>
+        {
+            await using NetworkStream stream = (await listener.AcceptTcpClientAsync(cts.Token).ConfigureAwait(false)).GetStream();
+
+            ProtocolRequest<JsonElement> requestA = await ReadRequestAsync(stream, cts.Token).ConfigureAwait(false);
+            firstRequestRead.SetResult();
+            ProtocolRequest<JsonElement> requestB = await ReadRequestAsync(stream, cts.Token).ConfigureAwait(false);
+
+            await WriteCorruptQuoteResponseAsync(stream, requestA, cts.Token).ConfigureAwait(false);
+            await WriteQuoteResponseAsync(stream, requestB, cts.Token).ConfigureAwait(false);
+        }, cts.Token);
+
+        RecordingClientTraceSink traceSink = new();
+        await using YFinanceServerClient client = new(new YFinanceServerConnectionOptions(
+            "127.0.0.1",
+            port,
+            TimeSpan.FromSeconds(3),
+            traceSink));
+
+        Task<QuoteDto> cancelled = client.GetQuoteAsync("BAD", requestCts.Token);
+        await firstRequestRead.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+        requestCts.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await cancelled.ConfigureAwait(false)).ConfigureAwait(false);
+
+        QuoteDto validQuote = await client.GetQuoteAsync("GOOD", cts.Token).ConfigureAwait(false);
+
+        Assert.Equal("GOOD", validQuote.Symbol);
+        Assert.Contains(traceSink.WarnEvents, eventName => string.Equals(eventName, "ClientCorruptResponseNoPendingRequest", StringComparison.Ordinal));
+        await serverTask;
+    }
+
+    [Fact]
     public async Task Client_DisposeWhileRequestPending_CompletesAndSettlesPendingRequest()
     {
         using TcpListener listener = new(IPAddress.Loopback, 0);
@@ -277,6 +385,57 @@ public sealed class YFinanceServerClientPipelineTests
         await LengthPrefixedProtocolStream.WriteAsync(stream, ProtocolJson.Serialize(response), cancellationToken).ConfigureAwait(false);
     }
 
+    private static async Task WriteCorruptQuoteResponseAsync(NetworkStream stream, ProtocolRequest<JsonElement> request, CancellationToken cancellationToken)
+    {
+        GetQuoteRequestDto? payload = request.Payload.Deserialize<GetQuoteRequestDto>(ProtocolJson.SerializerOptions);
+        Assert.NotNull(payload);
+        QuoteDto quote = new(
+            payload!.Symbol,
+            payload.Symbol,
+            payload.Symbol,
+            payload.Symbol,
+            "USD",
+            "TEST",
+            "America/New_York",
+            "EDT",
+            "INDEX",
+            "REGULAR",
+            123.45m,
+            120.00m,
+            121.00m,
+            124.00m,
+            119.00m,
+            3.45m,
+            2.88m,
+            null,
+            null,
+            DateTimeOffset.Now,
+            new CacheMetadataDto("live", 0, false));
+
+        ProtocolResponse<QuoteDto> response = new()
+        {
+            RequestId = request.RequestId,
+            Operation = request.Operation,
+            Status = "ok",
+            Payload = quote
+        };
+        ProtocolIntegrity.Stamp(response, response.Payload);
+        response.PayloadChecksum = "corrupt-checksum";
+        await LengthPrefixedProtocolStream.WriteAsync(stream, ProtocolJson.Serialize(response), cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task WriteCorruptEventAsync(NetworkStream stream, CancellationToken cancellationToken)
+    {
+        ProtocolEvent<HealthResponseDto> protocolEvent = new()
+        {
+            EventType = "test_corrupt_event",
+            Payload = new HealthResponseDto("ok", 1.0, 1, 0, "test")
+        };
+        ProtocolIntegrity.Stamp(protocolEvent, protocolEvent.Payload);
+        protocolEvent.PayloadChecksum = "corrupt-checksum";
+        await LengthPrefixedProtocolStream.WriteAsync(stream, ProtocolJson.Serialize(protocolEvent), cancellationToken).ConfigureAwait(false);
+    }
+
     private static async Task WriteHealthResponseAsync(NetworkStream stream, ProtocolRequest<JsonElement> request, CancellationToken cancellationToken)
     {
         HealthResponseDto health = new("ok", 1.0, 1, 0, "test");
@@ -302,5 +461,34 @@ public sealed class YFinanceServerClientPipelineTests
         };
         ProtocolIntegrity.Stamp(response, response.Payload);
         await LengthPrefixedProtocolStream.WriteAsync(stream, ProtocolJson.Serialize(response), cancellationToken).ConfigureAwait(false);
+    }
+
+    private sealed class RecordingClientTraceSink : IYFinanceServerClientTraceSink
+    {
+        private readonly object _sync = new();
+        private readonly List<string> _warnEvents = [];
+
+        public IReadOnlyList<string> WarnEvents
+        {
+            get
+            {
+                lock (_sync)
+                    return [.. _warnEvents];
+            }
+        }
+
+        public void Info(string eventName, IReadOnlyList<KeyValuePair<string, object?>> fields)
+        {
+        }
+
+        public void Warn(string eventName, IReadOnlyList<KeyValuePair<string, object?>> fields)
+        {
+            lock (_sync)
+                _warnEvents.Add(eventName);
+        }
+
+        public void Error(string eventName, IReadOnlyList<KeyValuePair<string, object?>> fields, Exception ex)
+        {
+        }
     }
 }

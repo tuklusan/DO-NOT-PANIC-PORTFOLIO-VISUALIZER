@@ -193,9 +193,20 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
                 {
                     ProtocolEvent<JsonElement>? protocolEvent = ProtocolJson.Deserialize<ProtocolEvent<JsonElement>>(responseBytes);
                     if (protocolEvent is null)
+                    {
                         throw new IOException("Event could not be deserialized.");
+                    }
 
-                    VerifyEnvelope(protocolEvent, protocolEvent.Payload, "event", protocolEvent.EventType, protocolEvent.EventType);
+                    if (!TryVerifyEnvelope(protocolEvent, protocolEvent.Payload, "event", protocolEvent.EventType, protocolEvent.EventType, out IOException? eventIntegrityFailure))
+                    {
+                        _options.TraceSink.Warn("ClientEventIntegrityFailure",
+                        [
+                            new("event_type", protocolEvent.EventType),
+                            new("reason", eventIntegrityFailure?.Message ?? "Unknown integrity failure.")
+                        ]);
+                        continue;
+                    }
+
                     _options.TraceSink.Info("ClientEventReceive",
                     [
                         new("event_type", protocolEvent.EventType),
@@ -207,9 +218,35 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
 
                 ProtocolResponse<JsonElement>? response = ProtocolJson.Deserialize<ProtocolResponse<JsonElement>>(responseBytes);
                 if (response is null)
+                {
                     throw new IOException("Response could not be deserialized.");
+                }
 
-                VerifyEnvelope(response, response.Payload, "response", response.Operation, response.RequestId);
+                if (!TryVerifyEnvelope(response, response.Payload, "response", response.Operation, response.RequestId, out IOException? integrityFailure))
+                {
+                    if (_pendingRequests.TryRemove(response.RequestId, out IPendingRequest? corruptPending))
+                    {
+                        _options.TraceSink.Warn("ClientResponseIntegrityFailure",
+                        [
+                            new("request_id", response.RequestId),
+                            new("operation", response.Operation),
+                            new("reason", integrityFailure?.Message ?? "Unknown integrity failure.")
+                        ]);
+                        corruptPending.TrySetException(integrityFailure);
+                    }
+                    else
+                    {
+                        _options.TraceSink.Warn("ClientCorruptResponseNoPendingRequest",
+                        [
+                            new("request_id", response.RequestId),
+                            new("operation", response.Operation),
+                            new("status", response.Status)
+                        ]);
+                    }
+
+                    continue;
+                }
+
                 _options.TraceSink.Info("ClientResponseReceive",
                 [
                     new("request_id", response.RequestId),
@@ -261,26 +298,26 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
         }
     }
 
-    private void VerifyEnvelope<TPayload>(ProtocolEnvelope envelope, TPayload? payload, string kind, string operationOrEvent, string requestId)
+    private bool TryVerifyEnvelope<TPayload>(ProtocolEnvelope envelope, TPayload? payload, string kind, string operationOrEvent, string requestId, out IOException? integrityFailure)
     {
         if (string.IsNullOrWhiteSpace(envelope.PayloadChecksum))
-            throw CreateIntegrityFailure(kind, operationOrEvent, requestId, "missing payload checksum");
+        {
+            integrityFailure = CreateIntegrityFailure(kind, operationOrEvent, requestId, "missing payload checksum");
+            return false;
+        }
 
         if (!ProtocolIntegrity.Verify(envelope, payload))
-            throw CreateIntegrityFailure(kind, operationOrEvent, requestId, "payload checksum mismatch");
+        {
+            integrityFailure = CreateIntegrityFailure(kind, operationOrEvent, requestId, "payload checksum mismatch");
+            return false;
+        }
+
+        integrityFailure = null;
+        return true;
     }
 
     private IOException CreateIntegrityFailure(string kind, string operationOrEvent, string requestId, string reason)
-    {
-        _options.TraceSink.Warn("ClientIntegrityFailure",
-        [
-            new("kind", kind),
-            new("operation_or_event", operationOrEvent),
-            new("request_id", requestId),
-            new("reason", reason)
-        ]);
-        return new IOException($"Protocol integrity failure for {kind} '{operationOrEvent}' ({requestId}): {reason}.");
-    }
+        => new($"Protocol integrity failure for {kind} '{operationOrEvent}' ({requestId}): {reason}.");
 
     private async ValueTask DisposeSocketAsync(bool waitForWrites)
     {
