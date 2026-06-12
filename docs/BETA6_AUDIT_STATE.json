@@ -2767,7 +2767,7 @@
       "priority": 4,
       "area": "Test harness",
       "title": "UI Automation Fixed‑Delay Sleeps in `Guest-UxDeepExercise` increase flakiness",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2786,7 +2786,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by adding Wait-UIAutomationCondition polling to Guest-UxDeepExercise.ps1 and replacing fixed config/open/selection/close sleeps with bounded readiness waits. The helper validates timeout/poll inputs and logs condition exceptions through config-window trace events.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-143247.md reported no high or medium blockers after fixes. Local PowerShell parser validation passed for build/vm/Guest-UxDeepExercise.ps1."
     },
     {
       "id": "CR-054",
