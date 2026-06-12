@@ -2448,7 +2448,7 @@
       "priority": 4,
       "area": "Test isolation",
       "title": "`YFinanceRuntimeClientFactory` `AsyncLocal` test suppression may leak across parallel tests",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2467,7 +2467,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by adding an internal YFinanceRuntimeClientFactory suppression-state seam and a parallel async-flow regression test proving server-startup suppression remains isolated to the owning async flow.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-094012.md reported no actionable findings. Focused local Release Nb040BehaviorTests passed 16/16. Full local Release tests passed 394/394 after commit/push."
     },
     {
       "id": "CR-043",
