@@ -2390,7 +2390,7 @@
       "priority": 3,
       "area": "UI robustness",
       "title": "`NewsFlasherControl` may use zero width causing layout errors",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2409,7 +2409,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by adding viewport readiness guards to NewsFlasherControl, safe finite viewport width fallback, pause/recover handling for unready layouts, recovery via SizeChanged/LayoutUpdated, and WPF regression coverage for pre-layout ticks and viewport recovery.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-092421.md reported no critical/high findings after final fixes. Focused local Release ScreensaverRenderBehaviorTests passed 67/67. Full local Release tests passed 393/393 after commit/push."
     },
     {
       "id": "CR-041",
@@ -3875,6 +3877,3 @@
     }
   ]
 }
-
-
-
