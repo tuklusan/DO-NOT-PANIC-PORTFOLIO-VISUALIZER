@@ -1,5 +1,7 @@
 using System.Reflection;
+using System.Windows.Media;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Render.ViewModels;
 using PortfolioSaver.Screensaver.Services;
 using Xunit;
 
@@ -107,5 +109,144 @@ public sealed class StartupCoordinatorGraphSelectionTests
         Assert.Equal(2, snapshot.Points.Count);
         Assert.Equal(509.11m, snapshot.Points[0].Close);
         Assert.Equal(512.34m, snapshot.Points[1].Close);
+    }
+
+    [Fact]
+    public void BuildGraph_ReusesCachedGraphWhenHistorySnapshotIsUnchanged()
+    {
+        StartupCoordinator coordinator = new();
+        MethodInfo method = GetBuildGraphMethod();
+        AppSettings settings = new() { EnableBouncingGraphCards = true };
+        TickerHistorySnapshot snapshot = CreateHistorySnapshot("VOO", 100m, 101m);
+
+        FloatingGraphViewModel first = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE", snapshot, settings]));
+        PointCollection originalGreenPoints = first.GreenPoints;
+        FloatingGraphViewModel second = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE", CreateHistorySnapshot("VOO", 100m, 101m), settings]));
+
+        Assert.Same(first, second);
+        Assert.Same(originalGreenPoints, second.GreenPoints);
+        Assert.True(second.BounceWithinViewport);
+    }
+
+    [Fact]
+    public void BuildGraph_RebuildsCachedGraphWhenHistorySnapshotChanges()
+    {
+        StartupCoordinator coordinator = new();
+        MethodInfo method = GetBuildGraphMethod();
+        AppSettings settings = new() { EnableBouncingGraphCards = true };
+
+        FloatingGraphViewModel first = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE", CreateHistorySnapshot("VOO", 100m, 101m), settings]));
+        FloatingGraphViewModel second = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE", CreateHistorySnapshot("VOO", 100m, 102m), settings]));
+
+        Assert.NotSame(first, second);
+        Assert.NotSame(first.GreenPoints, second.GreenPoints);
+    }
+
+    [Fact]
+    public void BuildGraph_RebuildsCachedGraphWhenFetchTimestampChanges()
+    {
+        StartupCoordinator coordinator = new();
+        MethodInfo method = GetBuildGraphMethod();
+        AppSettings settings = new();
+        TickerHistorySnapshot firstSnapshot = CreateHistorySnapshot("VOO", 100m, 101m);
+        TickerHistorySnapshot secondSnapshot = CreateHistorySnapshot("VOO", 100m, 101m);
+        secondSnapshot.FetchTimestampUtc = firstSnapshot.FetchTimestampUtc.AddMinutes(1);
+
+        FloatingGraphViewModel first = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE", firstSnapshot, settings]));
+        FloatingGraphViewModel second = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE", secondSnapshot, settings]));
+
+        Assert.NotSame(first, second);
+    }
+
+    [Fact]
+    public void BuildGraph_RebuildsCachedGraphWhenBounceSettingChanges()
+    {
+        StartupCoordinator coordinator = new();
+        MethodInfo method = GetBuildGraphMethod();
+        AppSettings firstSettings = new() { EnableBouncingGraphCards = true };
+        AppSettings secondSettings = new() { EnableBouncingGraphCards = false };
+
+        FloatingGraphViewModel first = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE", CreateHistorySnapshot("VOO", 100m, 101m), firstSettings]));
+        FloatingGraphViewModel second = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE", CreateHistorySnapshot("VOO", 100m, 101m), secondSettings]));
+
+        Assert.NotSame(first, second);
+        Assert.True(first.BounceWithinViewport);
+        Assert.False(second.BounceWithinViewport);
+    }
+
+    [Fact]
+    public void BuildGraph_CacheKeyDoesNotCollideWhenNamesContainSeparators()
+    {
+        StartupCoordinator coordinator = new();
+        MethodInfo method = GetBuildGraphMethod();
+        AppSettings settings = new();
+
+        FloatingGraphViewModel first = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE|VOO", CreateHistorySnapshot("ALT", 100m, 101m), settings]));
+        FloatingGraphViewModel second = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE", CreateHistorySnapshot("VOO|ALT", 100m, 101m), settings]));
+
+        Assert.NotSame(first, second);
+    }
+
+    [Fact]
+    public void BuildGraph_CacheKeyTreatsSymbolCaseInsensitively()
+    {
+        StartupCoordinator coordinator = new();
+        MethodInfo method = GetBuildGraphMethod();
+        AppSettings settings = new();
+
+        FloatingGraphViewModel first = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE", CreateHistorySnapshot("VOO", 100m, 101m), settings]));
+        FloatingGraphViewModel second = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE", CreateHistorySnapshot("voo", 100m, 101m), settings]));
+
+        Assert.Same(first, second);
+    }
+
+    [Fact]
+    public void BuildGraph_CacheEvictsLeastRecentlyUsedGraph()
+    {
+        StartupCoordinator coordinator = new();
+        MethodInfo method = GetBuildGraphMethod();
+        AppSettings settings = new();
+        FloatingGraphViewModel first = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE", CreateHistorySnapshot("S00", 100m, 101m), settings]));
+
+        for (int index = 1; index <= 64; index++)
+        {
+            _ = method.Invoke(coordinator, ["CORE", CreateHistorySnapshot($"S{index:00}", 100m, 101m), settings]);
+        }
+
+        Assert.Equal(64, GetGraphBuildCacheCount(coordinator));
+        FloatingGraphViewModel rebuiltFirst = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE", CreateHistorySnapshot("S00", 100m, 101m), settings]));
+
+        Assert.NotSame(first, rebuiltFirst);
+        Assert.Equal(64, GetGraphBuildCacheCount(coordinator));
+    }
+
+    private static MethodInfo GetBuildGraphMethod()
+        => typeof(StartupCoordinator).GetMethod("BuildGraph", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("BuildGraph not found.");
+
+    private static int GetGraphBuildCacheCount(StartupCoordinator coordinator)
+    {
+        FieldInfo field = typeof(StartupCoordinator).GetField("_graphBuildCache", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingFieldException(nameof(StartupCoordinator), "_graphBuildCache");
+        if (field.GetValue(coordinator) is not System.Collections.ICollection cache)
+            throw new InvalidOperationException("Graph build cache was not available.");
+
+        return cache.Count;
+    }
+
+    private static TickerHistorySnapshot CreateHistorySnapshot(string symbol, params decimal[] closes)
+    {
+        DateTimeOffset start = new(2000, 1, 1, 12, 0, 0, TimeSpan.Zero);
+        return new TickerHistorySnapshot
+        {
+            Symbol = symbol,
+            FetchTimestampUtc = start,
+            LookbackDays = 1,
+            Points = closes.Select((close, index) => new HistoricalPricePoint
+            {
+                TimestampUtc = start.AddMinutes(index),
+                Close = close
+            }).ToList()
+        };
     }
 }

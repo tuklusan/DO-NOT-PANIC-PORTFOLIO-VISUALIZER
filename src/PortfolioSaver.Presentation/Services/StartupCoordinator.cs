@@ -3,6 +3,7 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Media;
 using PortfolioSaver.Core.Constants;
@@ -25,6 +26,7 @@ public sealed class StartupCoordinator
     private const int MinimumTapeItemCount = 18;
     private const int SequentialQuotePipelineDepth = 4;
     private const int MaxSceneGraphCards = 16;
+    private const int MaxGraphBuildCacheEntries = 64;
     private const string StatusFreshnessAnchorSymbol = "^SPX";
 
     private readonly ScreensaverSettingsService _settingsService = new();
@@ -35,6 +37,9 @@ public sealed class StartupCoordinator
     private readonly FinanceNewsService _financeNewsService = new();
     private readonly SymbolProfileStore _symbolProfileStore = new(Path.Combine(PathHelper.GetLocalDataDirectory(), "symbol-profiles.json"));
     private readonly Dictionary<string, QuoteSnapshot> _runtimeQuoteMemory = new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _graphBuildCacheGate = new();
+    private readonly Dictionary<GraphBuildCacheKey, CachedGraphBuild> _graphBuildCache = [];
+    private long _graphBuildCacheSequence;
     private readonly Dictionary<string, PendingQuoteRequest> _pendingQuotePipeline = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _pendingQuotePipelineGate = new();
     private int _sequentialRuntimeCursor;
@@ -611,13 +616,80 @@ public sealed class StartupCoordinator
 
     private FloatingGraphViewModel BuildGraph(string tapeName, TickerHistorySnapshot snapshot, AppSettings settings)
     {
+        const double plotWidth = 132d;
+        const double plotHeight = 40d;
+        GraphBuildCacheKey cacheKey = new(tapeName, snapshot.Symbol);
+        string cacheSignature = BuildGraphCacheSignature(snapshot, plotWidth, plotHeight, settings.EnableBouncingGraphCards);
+        lock (_graphBuildCacheGate)
+        {
+            if (_graphBuildCache.TryGetValue(cacheKey, out CachedGraphBuild? cached) &&
+                string.Equals(cached.Signature, cacheSignature, StringComparison.Ordinal))
+            {
+                _graphBuildCache[cacheKey] = cached with { LastUsed = ++_graphBuildCacheSequence };
+                return cached.Graph;
+            }
+        }
+
         FloatingGraphViewModel graph = _historicalGraphBuilder.Build(tapeName, snapshot, new Size(132, 40));
         graph.Width = 186;
         graph.Height = 78;
         graph.PlotWidth = 132;
         graph.PlotHeight = 40;
         graph.BounceWithinViewport = settings.EnableBouncingGraphCards;
+        lock (_graphBuildCacheGate)
+        {
+            if (_graphBuildCache.TryGetValue(cacheKey, out CachedGraphBuild? cached) &&
+                string.Equals(cached.Signature, cacheSignature, StringComparison.Ordinal))
+            {
+                _graphBuildCache[cacheKey] = cached with { LastUsed = ++_graphBuildCacheSequence };
+                return cached.Graph;
+            }
+
+            _graphBuildCache[cacheKey] = new CachedGraphBuild(cacheSignature, graph, ++_graphBuildCacheSequence);
+            TrimGraphBuildCacheLocked();
+        }
+
         return graph;
+    }
+
+    private void TrimGraphBuildCacheLocked()
+    {
+        while (_graphBuildCache.Count > MaxGraphBuildCacheEntries)
+        {
+            GraphBuildCacheKey oldestKey = _graphBuildCache
+                .OrderBy(pair => pair.Value.LastUsed)
+                .Select(pair => pair.Key)
+                .First();
+            _graphBuildCache.Remove(oldestKey);
+        }
+    }
+
+    private static string BuildGraphCacheSignature(TickerHistorySnapshot snapshot, double plotWidth, double plotHeight, bool bounceWithinViewport)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot.Points);
+
+        StringBuilder builder = new();
+        AppendGraphSignatureField(builder, snapshot.Symbol.ToUpperInvariant());
+        AppendGraphSignatureField(builder, snapshot.FetchTimestampUtc.UtcTicks.ToString(CultureInfo.InvariantCulture));
+        AppendGraphSignatureField(builder, snapshot.LookbackDays.ToString(CultureInfo.InvariantCulture));
+        AppendGraphSignatureField(builder, plotWidth.ToString("0.###", CultureInfo.InvariantCulture));
+        AppendGraphSignatureField(builder, plotHeight.ToString("0.###", CultureInfo.InvariantCulture));
+        AppendGraphSignatureField(builder, bounceWithinViewport ? "1" : "0");
+        AppendGraphSignatureField(builder, snapshot.Points.Count.ToString(CultureInfo.InvariantCulture));
+        foreach (HistoricalPricePoint point in snapshot.Points)
+        {
+            AppendGraphSignatureField(builder, point.TimestampUtc.UtcTicks.ToString(CultureInfo.InvariantCulture));
+            AppendGraphSignatureField(builder, point.Close.ToString(CultureInfo.InvariantCulture));
+        }
+
+        return builder.ToString();
+    }
+
+    private static void AppendGraphSignatureField(StringBuilder builder, string value)
+    {
+        builder.Append(value.Length.ToString(CultureInfo.InvariantCulture));
+        builder.Append(':');
+        builder.Append(value);
     }
 
     private bool TryCreateFallbackGraphSnapshot(string symbol, int lookbackDays, out TickerHistorySnapshot? snapshot)
@@ -1180,4 +1252,19 @@ internal sealed record PendingQuoteRequest(
     Task<IReadOnlyList<QuoteSnapshot>> Task,
     DateTimeOffset StartedUtc);
 
+internal sealed record CachedGraphBuild(
+    string Signature,
+    FloatingGraphViewModel Graph,
+    long LastUsed);
 
+internal readonly record struct GraphBuildCacheKey
+{
+    public GraphBuildCacheKey(string tapeName, string symbol)
+    {
+        TapeName = (tapeName ?? string.Empty).ToUpperInvariant();
+        Symbol = (symbol ?? string.Empty).ToUpperInvariant();
+    }
+
+    public string TapeName { get; }
+    public string Symbol { get; }
+}
