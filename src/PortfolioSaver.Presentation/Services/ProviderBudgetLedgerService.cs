@@ -16,7 +16,10 @@ public sealed class ProviderBudgetLedgerService
 
     private readonly string _ledgerPath;
     private readonly object _sync = new();
+    private readonly object _saveSync = new();
     private ProviderBudgetLedger? _ledger;
+    private long _ledgerVersion;
+    private long _lastPersistedLedgerVersion;
 
     public ProviderBudgetLedgerService(string? ledgerPath = null)
     {
@@ -30,6 +33,8 @@ public sealed class ProviderBudgetLedgerService
         if (queryCost <= 0)
             return false;
 
+        ProviderBudgetLedger? snapshot = null;
+        long snapshotVersion = 0;
         lock (_sync)
         {
             ProviderBudgetEntry entry = GetEntry(policy.Kind);
@@ -64,19 +69,27 @@ public sealed class ProviderBudgetLedgerService
                 entry.QueryTimestampsUtc.Add(nowUtc);
 
             entry.LastQueryUtc = nowUtc;
-            SaveLedger();
-            return true;
+            snapshot = CloneLedger(_ledger ?? throw new InvalidOperationException("Provider budget ledger has not been loaded."));
+            snapshotVersion = ++_ledgerVersion;
         }
+
+        SaveLedger(snapshot, snapshotVersion);
+        return true;
     }
 
     public void NoteRateLimit(DataSourceKind kind, TimeSpan cooldown, DateTimeOffset nowUtc)
     {
+        ProviderBudgetLedger snapshot;
+        long snapshotVersion;
         lock (_sync)
         {
             ProviderBudgetEntry entry = GetEntry(kind);
             entry.CooldownUntilUtc = nowUtc.Add(cooldown);
-            SaveLedger();
+            snapshot = CloneLedger(_ledger ?? throw new InvalidOperationException("Provider budget ledger has not been loaded."));
+            snapshotVersion = ++_ledgerVersion;
         }
+
+        SaveLedger(snapshot, snapshotVersion);
     }
 
     private ProviderBudgetEntry GetEntry(DataSourceKind kind)
@@ -130,38 +143,61 @@ public sealed class ProviderBudgetLedgerService
         }
     }
 
-    private void SaveLedger()
+    private void SaveLedger(ProviderBudgetLedger ledger, long ledgerVersion)
     {
-        ProviderBudgetLedger ledger = _ledger ?? throw new InvalidOperationException("Provider budget ledger has not been loaded.");
-        string targetPath = Path.GetFullPath(_ledgerPath);
-        string directory = Path.GetDirectoryName(targetPath) ?? Environment.CurrentDirectory;
-        Directory.CreateDirectory(directory);
-
-        string tempPath = Path.Combine(directory, Path.GetFileName(targetPath) + "." + Guid.NewGuid().ToString("N") + ".tmp");
-        string json = JsonSerializer.Serialize(ledger, JsonOptions);
-        try
+        lock (_saveSync)
         {
-            using (FileStream stream = new(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
-            using (StreamWriter writer = new(stream))
-            {
-                writer.Write(json);
-                writer.Flush();
-                stream.Flush(flushToDisk: true);
-            }
+            if (ledgerVersion <= _lastPersistedLedgerVersion)
+                return;
 
-            File.Move(tempPath, targetPath, overwrite: true);
-        }
-        finally
-        {
+            string targetPath = Path.GetFullPath(_ledgerPath);
+            string directory = Path.GetDirectoryName(targetPath) ?? Environment.CurrentDirectory;
+            Directory.CreateDirectory(directory);
+
+            string tempPath = Path.Combine(directory, Path.GetFileName(targetPath) + "." + Guid.NewGuid().ToString("N") + ".tmp");
+            string json = JsonSerializer.Serialize(ledger, JsonOptions);
             try
             {
-                if (File.Exists(tempPath))
-                    File.Delete(tempPath);
+                using (FileStream stream = new(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                using (StreamWriter writer = new(stream))
+                {
+                    writer.Write(json);
+                    writer.Flush();
+                    stream.Flush(flushToDisk: true);
+                }
+
+                File.Move(tempPath, targetPath, overwrite: true);
+                _lastPersistedLedgerVersion = ledgerVersion;
             }
-            catch
+            finally
             {
+                try
+                {
+                    if (File.Exists(tempPath))
+                        File.Delete(tempPath);
+                }
+                catch
+                {
+                }
             }
         }
+    }
+
+    private static ProviderBudgetLedger CloneLedger(ProviderBudgetLedger ledger)
+    {
+        // The ledger is intentionally tiny; cloning lets disk I/O happen without holding the state lock.
+        ProviderBudgetLedger clone = new();
+        foreach ((DataSourceKind kind, ProviderBudgetEntry entry) in ledger.Entries)
+        {
+            clone.Entries[kind] = new ProviderBudgetEntry
+            {
+                QueryTimestampsUtc = [.. entry.QueryTimestampsUtc],
+                LastQueryUtc = entry.LastQueryUtc,
+                CooldownUntilUtc = entry.CooldownUntilUtc
+            };
+        }
+
+        return clone;
     }
 
     private sealed class ProviderBudgetLedger

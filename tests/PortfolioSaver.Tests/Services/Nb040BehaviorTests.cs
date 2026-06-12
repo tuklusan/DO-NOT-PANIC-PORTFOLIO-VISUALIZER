@@ -732,6 +732,35 @@ public sealed class Nb040BehaviorTests
         }
     }
 
+    [Fact]
+    public void ProviderBudgetLedgerService_SkipsStaleSnapshotWrites()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string ledgerPath = Path.Combine(tempRoot, "provider-query-usage.json");
+        try
+        {
+            ProviderBudgetLedgerService service = new(ledgerPath);
+            MethodInfo saveLedger = typeof(ProviderBudgetLedgerService).GetMethod("SaveLedger", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new MissingMethodException(nameof(ProviderBudgetLedgerService), "SaveLedger");
+
+            object staleLedger = CreateProviderBudgetLedgerSnapshot(1);
+            object latestLedger = CreateProviderBudgetLedgerSnapshot(2);
+
+            saveLedger.Invoke(service, [latestLedger, 2L]);
+            saveLedger.Invoke(service, [staleLedger, 1L]);
+
+            string json = File.ReadAllText(ledgerPath);
+            using JsonDocument document = JsonDocument.Parse(json);
+            JsonProperty entryProperty = Assert.Single(document.RootElement.GetProperty("Entries").EnumerateObject());
+            Assert.Equal(2, entryProperty.Value.GetProperty("QueryTimestampsUtc").GetArrayLength());
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+                Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
     private static string GetRepoRoot()
     {
         DirectoryInfo? current = new(AppContext.BaseDirectory);
@@ -744,6 +773,33 @@ public sealed class Nb040BehaviorTests
         }
 
         throw new DirectoryNotFoundException("Could not locate repo root from test AppContext.BaseDirectory.");
+    }
+
+    private static object CreateProviderBudgetLedgerSnapshot(int timestampCount)
+    {
+        Type serviceType = typeof(ProviderBudgetLedgerService);
+        Type ledgerType = serviceType.GetNestedType("ProviderBudgetLedger", BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(nameof(ProviderBudgetLedgerService), "ProviderBudgetLedger");
+        Type entryType = serviceType.GetNestedType("ProviderBudgetEntry", BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(nameof(ProviderBudgetLedgerService), "ProviderBudgetEntry");
+        object ledger = Activator.CreateInstance(ledgerType)
+            ?? throw new InvalidOperationException("Could not create provider budget ledger.");
+        object entry = Activator.CreateInstance(entryType)
+            ?? throw new InvalidOperationException("Could not create provider budget entry.");
+
+        PropertyInfo timestampsProperty = entryType.GetProperty("QueryTimestampsUtc")
+            ?? throw new MissingMemberException("ProviderBudgetEntry", "QueryTimestampsUtc");
+        timestampsProperty.SetValue(entry, Enumerable.Range(0, timestampCount)
+            .Select(offset => DateTimeOffset.UtcNow.AddSeconds(offset))
+            .ToList());
+
+        PropertyInfo entriesProperty = ledgerType.GetProperty("Entries")
+            ?? throw new MissingMemberException("ProviderBudgetLedger", "Entries");
+        if (entriesProperty.GetValue(ledger) is not System.Collections.IDictionary entries)
+            throw new InvalidOperationException("Provider budget entries dictionary was not available.");
+
+        entries.Add(DataSourceKind.YahooFinance, entry);
+        return ledger;
     }
 
     private static void AssertYFinanceClientNotDisposed(YFinanceServerClient client)
