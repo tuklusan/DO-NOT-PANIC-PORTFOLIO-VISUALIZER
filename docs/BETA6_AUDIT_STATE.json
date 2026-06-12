@@ -3057,7 +3057,7 @@
       "priority": 2,
       "area": "YFinance.NET upstream sync diagnostics",
       "title": "Trace yfinance upstream commit drift for end-user diagnostics",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_12",
       "severity": "Medium",
       "evidence": [
@@ -3079,7 +3079,9 @@
         "Local tests cover same-commit, newer/different-commit, and failure paths without making live GitHub calls.",
         "DeepSeek review and local validation pass before closure.",
         "Ticket is marked closed with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by adding project-owned upstream sync metadata, YFinanceUpstreamSyncMetadata constants, and a non-blocking YFinanceUpstreamSyncMonitor. The standalone YFinance.NET server now enables the trace-only GitHub freshness check by default, logs reviewed and latest upstream commit metadata, warns with both commit identifiers when upstream differs, and supports --no-upstream-sync for restricted environments. The reusable YFinanceOptions default remains opt-in for library consumers.",
+      "validation": "DeepSeek review artifact build/deepseek-review/deepseek-review-20260612-200819.md reported no blocking findings before commit; final review artifact build/deepseek-review/deepseek-review-20260612-200601.md identified only non-blocking follow-ups, addressed by metadata sync tests and server option coverage. Focused YFinanceUpstreamSyncMonitor and ServerOptions tests passed 15/15. Full local Release test suite passed 447/447 with only pre-existing xUnit1030 warnings. Real local YFinance.NET server startup on temporary port 14999 emitted ServerStartup, UpstreamSyncCheckStart, and UpstreamSyncCurrent trace lines showing reviewed_commit and upstream_commit both equal 125b12e058fe37971390e32333d2cf9edb2a8a50; the server process was explicitly terminated and temporary trace data removed."
     }
   ],
   "remaining_validation_gaps": [],
