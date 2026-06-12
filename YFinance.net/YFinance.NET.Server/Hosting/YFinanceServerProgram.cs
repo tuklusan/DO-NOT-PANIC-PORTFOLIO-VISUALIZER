@@ -18,6 +18,7 @@ namespace YFinance.NET.Server.Hosting;
 
 internal static class YFinanceServerProgram
 {
+    private static readonly TimeSpan ClientHandlerShutdownTimeout = TimeSpan.FromSeconds(5);
     private static readonly string TraceRoot = ResolveTraceRoot();
 
     public static int Run(string[] args)
@@ -71,66 +72,165 @@ internal static class YFinanceServerProgram
 
     private static async Task RunAsync(ServerOptions options, CancellationToken cancellationToken)
     {
-        using YFinanceClient client = CreateDomainClient();
-        using TcpListener listener = new(options.BindAddress, options.Port);
-        listener.Start(options.MaxConcurrentClients);
-
-        using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        Task? ownerMonitor = options.OwnedMode && options.OwnerProcessId is int ownerPid
-            ? MonitorOwnerAsync(ownerPid, linkedCts)
-            : null;
-
-        DateTimeOffset startedUtc = DateTimeOffset.UtcNow;
-        int activeConnections = 0;
-
-        while (!linkedCts.IsCancellationRequested)
+        YFinanceClient client = CreateDomainClient();
+        bool disposeDomainClient = true;
+        TcpListener? listener = null;
+        CancellationTokenSource? linkedCts = null;
+        object clientHandlersGate = new();
+        List<Task> clientHandlers = [];
+        try
         {
-            TcpClient tcpClient;
-            try
-            {
-                tcpClient = await listener.AcceptTcpClientAsync(linkedCts.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
+            listener = new TcpListener(options.BindAddress, options.Port);
+            listener.Start(options.MaxConcurrentClients);
 
-            int current = Interlocked.Increment(ref activeConnections);
-            if (current > options.MaxConcurrentClients)
+            linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            Task? ownerMonitor = options.OwnedMode && options.OwnerProcessId is int ownerPid
+                ? MonitorOwnerAsync(ownerPid, linkedCts)
+                : null;
+
+            DateTimeOffset startedUtc = DateTimeOffset.UtcNow;
+            int activeConnections = 0;
+
+            while (!linkedCts.IsCancellationRequested)
             {
-                Interlocked.Decrement(ref activeConnections);
-                await using NetworkStream rejected = tcpClient.GetStream();
-                ProtocolResponse<EmptyPayload> overload = new()
+                TcpClient tcpClient;
+                try
                 {
-                    RequestId = string.Empty,
-                    Operation = string.Empty,
-                    Status = ProtocolResponseStatuses.Error,
-                    Error = new ProtocolError(ProtocolErrorCodes.ServerOverloaded, "Server is overloaded.", true)
-                };
-                ProtocolIntegrity.Stamp(overload, overload.Payload);
-                await LengthPrefixedProtocolStream.WriteAsync(rejected, ProtocolJson.Serialize(overload), linkedCts.Token).ConfigureAwait(false);
-                tcpClient.Dispose();
-                continue;
+                    tcpClient = await listener.AcceptTcpClientAsync(linkedCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+
+                int current = Interlocked.Increment(ref activeConnections);
+                if (current > options.MaxConcurrentClients)
+                {
+                    Interlocked.Decrement(ref activeConnections);
+                    await using NetworkStream rejected = tcpClient.GetStream();
+                    ProtocolResponse<EmptyPayload> overload = new()
+                    {
+                        RequestId = string.Empty,
+                        Operation = string.Empty,
+                        Status = ProtocolResponseStatuses.Error,
+                        Error = new ProtocolError(ProtocolErrorCodes.ServerOverloaded, "Server is overloaded.", true)
+                    };
+                    ProtocolIntegrity.Stamp(overload, overload.Payload);
+                    await LengthPrefixedProtocolStream.WriteAsync(rejected, ProtocolJson.Serialize(overload), linkedCts.Token).ConfigureAwait(false);
+                    tcpClient.Dispose();
+                    continue;
+                }
+
+                // Do not pass linkedCts.Token to Task.Run: even during shutdown the handler
+                // must enter its finally block to release the socket and active counter.
+                Task clientHandler = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await HandleClientAsync(tcpClient, client, options, startedUtc, () => Volatile.Read(ref activeConnections), linkedCts.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (linkedCts.IsCancellationRequested)
+                    {
+                    }
+                    catch (Exception ex)
+                    {
+                        YFinanceCircularTraceSink.Instance.WarnState("YFinanceServer", "ClientHandlerFailed", [new("message", ex.ToString())]);
+                    }
+                    finally
+                    {
+                        Interlocked.Decrement(ref activeConnections);
+                        tcpClient.Dispose();
+                    }
+                }, CancellationToken.None);
+                lock (clientHandlersGate)
+                    clientHandlers.Add(clientHandler);
+                // The continuation is registered only after Add completes, so a very fast
+                // handler cannot remove itself before it is tracked.
+                _ = clientHandler.ContinueWith(
+                    completed =>
+                    {
+                        try
+                        {
+                            lock (clientHandlersGate)
+                                clientHandlers.Remove(completed);
+                        }
+                        catch (Exception ex)
+                        {
+                            YFinanceCircularTraceSink.Instance.WarnState("YFinanceServer", "ClientHandlerTrackingRemoveFailed", [new("message", ex.Message)]);
+                        }
+                    },
+                    CancellationToken.None,
+                    TaskContinuationOptions.None,
+                    TaskScheduler.Default);
             }
 
-            _ = Task.Run(async () =>
+            if (ownerMonitor is not null)
             {
                 try
                 {
-                    await HandleClientAsync(tcpClient, client, options, startedUtc, () => Volatile.Read(ref activeConnections), linkedCts.Token).ConfigureAwait(false);
+                    await ownerMonitor.ConfigureAwait(false);
                 }
-                finally
+                catch (OperationCanceledException)
                 {
-                    Interlocked.Decrement(ref activeConnections);
-                    tcpClient.Dispose();
                 }
-            }, linkedCts.Token);
+            }
         }
+        finally
+        {
+            try
+            {
+                linkedCts?.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
 
-        if (ownerMonitor is not null)
-            await ownerMonitor.ConfigureAwait(false);
+            listener?.Stop();
+            listener?.Dispose();
+            disposeDomainClient = await AwaitClientHandlersAsync(clientHandlers, clientHandlersGate).ConfigureAwait(false);
+            linkedCts?.Dispose();
 
-        listener.Stop();
+            if (disposeDomainClient)
+                client.Dispose();
+            else
+                YFinanceCircularTraceSink.Instance.WarnState("YFinanceServer", "DomainClientDisposeDeferred", [new("reason", "client_handlers_still_running_after_shutdown_timeout")]);
+        }
+    }
+
+    internal static async Task<bool> AwaitClientHandlersAsync(List<Task> clientHandlers, object clientHandlersGate, TimeSpan? shutdownTimeout = null)
+    {
+        // Drain active handlers for graceful shutdown, but never block process exit indefinitely.
+        Task[] handlers;
+        lock (clientHandlersGate)
+            handlers = [.. clientHandlers];
+
+        if (handlers.Length == 0)
+            return true;
+
+        TimeSpan timeout = shutdownTimeout ?? ClientHandlerShutdownTimeout;
+        YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ClientHandlerDrainStart", [new("handler_count", handlers.Length), new("timeout_seconds", timeout.TotalSeconds)]);
+        try
+        {
+            await Task.WhenAll(handlers).WaitAsync(timeout).ConfigureAwait(false);
+            YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ClientHandlerDrainComplete", [new("handler_count", handlers.Length)]);
+            return true;
+        }
+        catch (TimeoutException)
+        {
+            YFinanceCircularTraceSink.Instance.WarnState("YFinanceServer", "ClientHandlerDrainTimedOut", [new("handler_count", handlers.Length), new("timeout_seconds", timeout.TotalSeconds)]);
+            return false;
+        }
+        catch (OperationCanceledException)
+        {
+            YFinanceCircularTraceSink.Instance.WarnState("YFinanceServer", "ClientHandlerDrainCancelled", [new("handler_count", handlers.Length)]);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            YFinanceCircularTraceSink.Instance.ErrorState("YFinanceServer", "ClientHandlerDrainFailed", [new("handler_count", handlers.Length)], ex);
+            // Handler tasks are already completed when WhenAll faults; disposal is safe.
+            return true;
+        }
     }
 
     private static YFinanceClient CreateDomainClient()
@@ -174,7 +274,7 @@ internal static class YFinanceServerProgram
         string remote = tcpClient.Client.RemoteEndPoint?.ToString() ?? "unknown";
         YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ClientConnected", [new("remote", remote)]);
         await using NetworkStream stream = tcpClient.GetStream();
-        SemaphoreSlim writeGate = new(1, 1);
+        using SemaphoreSlim writeGate = new(1, 1);
         List<Task> inFlight = [];
         while (!cancellationToken.IsCancellationRequested)
         {

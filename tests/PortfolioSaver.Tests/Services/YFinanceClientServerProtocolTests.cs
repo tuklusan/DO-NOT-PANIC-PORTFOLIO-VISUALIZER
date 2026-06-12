@@ -217,6 +217,47 @@ public sealed class YFinanceClientServerProtocolTests
     }
 
     [Fact]
+    public async Task ServerProgram_AwaitsActiveClientHandlersOnShutdown()
+    {
+        object gate = new();
+        TaskCompletionSource releaseHandler = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task handler = releaseHandler.Task;
+        List<Task> handlers = [handler];
+
+        Task<bool> drainTask = YFinanceServerProgram.AwaitClientHandlersAsync(handlers, gate, TimeSpan.FromSeconds(1));
+        Task firstCompleted = await Task.WhenAny(drainTask, Task.Delay(150));
+
+        Assert.NotSame(drainTask, firstCompleted);
+
+        releaseHandler.SetResult();
+        Assert.True(await drainTask.WaitAsync(TimeSpan.FromSeconds(1)));
+    }
+
+    [Fact]
+    public async Task ServerProgram_ClientHandlerDrainReturnsFalseOnTimeout()
+    {
+        object gate = new();
+        TaskCompletionSource blockedHandler = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        List<Task> handlers = [blockedHandler.Task];
+
+        bool drained = await YFinanceServerProgram.AwaitClientHandlersAsync(handlers, gate, TimeSpan.FromMilliseconds(25));
+
+        Assert.False(drained);
+        blockedHandler.SetResult();
+    }
+
+    [Fact]
+    public async Task ServerProgram_ClientHandlerDrainReturnsTrueOnFaultedHandler()
+    {
+        object gate = new();
+        List<Task> handlers = [Task.FromException(new InvalidOperationException("handler failed"))];
+
+        bool drained = await YFinanceServerProgram.AwaitClientHandlersAsync(handlers, gate, TimeSpan.FromSeconds(1));
+
+        Assert.True(drained);
+    }
+
+    [Fact]
     public void ServerProcessManager_ResolvesOnlyDeploymentRelativeServerBinary()
     {
         using TempDirectory temp = TempDirectory.Create();
