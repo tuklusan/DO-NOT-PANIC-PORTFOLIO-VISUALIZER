@@ -434,6 +434,13 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Get-AvailableDisplayModes", script, StringComparison.Ordinal);
         Assert.Contains("function Get-CimSupportedDisplayModes", script, StringComparison.Ordinal);
         Assert.Contains("function Format-DisplayModeNames", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-CachedDisplayModes", script, StringComparison.Ordinal);
+        Assert.Contains("$script:cachedDisplayModes = $null", script, StringComparison.Ordinal);
+        Assert.Contains("$script:cachedDisplayModesTimestamp = $null", script, StringComparison.Ordinal);
+        Assert.Contains("($modes.Count -gt 0)", script, StringComparison.Ordinal);
+        Assert.Contains("TotalSeconds -lt 300", script, StringComparison.Ordinal);
+        Assert.Contains("$availableModes = @(Get-CachedDisplayModes)", script, StringComparison.Ordinal);
+        Assert.Contains("function Clear-CachedDisplayModes", script, StringComparison.Ordinal);
         Assert.Contains("function Find-TopLevelWindowByNameLike", script, StringComparison.Ordinal);
         Assert.Contains("function Try-ApplyDisplayResolutionViaSettings", script, StringComparison.Ordinal);
         Assert.Contains("Start-Process -FilePath 'cmd.exe' -ArgumentList '/c start \"\" ms-settings:display' | Out-Null", script, StringComparison.Ordinal);
@@ -447,6 +454,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("settings-applied", script, StringComparison.Ordinal);
         Assert.Contains("$mode.dmFields = 0x180000", script, StringComparison.Ordinal);
         Assert.Contains("[NativeDisplaySettings]::ChangeDisplaySettings([ref]$mode, 0)", script, StringComparison.Ordinal);
+        Assert.Contains("if ($payload.Applied)", script, StringComparison.Ordinal);
+        Assert.Contains("Clear-CachedDisplayModes", script, StringComparison.Ordinal);
         Assert.Contains("SupportedDisplayModes = @()", script, StringComparison.Ordinal);
         Assert.Contains("$summary.SupportedDisplayModes = @(Format-DisplayModeNames -Modes $displayApply.AvailableModes)", script, StringComparison.Ordinal);
         Assert.Contains("RequestedDisplayProfile", script, StringComparison.Ordinal);

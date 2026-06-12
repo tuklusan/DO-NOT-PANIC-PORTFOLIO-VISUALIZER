@@ -190,6 +190,8 @@ $targetFrames = [Math]::Max(1, [int][Math]::Ceiling(($ScreensaverDurationMinutes
 $previousDisableInputExit = $null
 
 $script:configWindowTracePath = Join-Path $results 'config-window-events.log'
+$script:cachedDisplayModes = $null
+$script:cachedDisplayModesTimestamp = $null
 Set-Content -LiteralPath $script:configWindowTracePath -Value '' -Encoding UTF8
 
 function Write-ConfigWindowTrace {
@@ -1154,6 +1156,36 @@ function Format-DisplayModeNames {
     return @($names | Sort-Object -Unique)
 }
 
+function Get-CachedDisplayModes {
+    if ($null -ne $script:cachedDisplayModes -and
+        $null -ne $script:cachedDisplayModesTimestamp -and
+        (([datetime]::UtcNow - $script:cachedDisplayModesTimestamp).TotalSeconds -lt 300)) {
+        return @($script:cachedDisplayModes)
+    }
+
+    $startedAt = [datetime]::UtcNow
+    $modes = @(Get-CimSupportedDisplayModes)
+    if ($modes.Count -eq 0) {
+        $modes = @(Get-AvailableDisplayModes)
+    }
+
+    $elapsedMs = [int](([datetime]::UtcNow - $startedAt).TotalMilliseconds)
+    if ($modes.Count -gt 0) {
+        $script:cachedDisplayModes = @($modes)
+        $script:cachedDisplayModesTimestamp = [datetime]::UtcNow
+    }
+    if ($elapsedMs -gt 2000) {
+        Write-Warning ("Display mode enumeration cache initialization took {0} ms for {1} mode(s)." -f $elapsedMs, $modes.Count)
+    }
+
+    return @($modes)
+}
+
+function Clear-CachedDisplayModes {
+    $script:cachedDisplayModes = $null
+    $script:cachedDisplayModesTimestamp = $null
+}
+
 function Find-TopLevelWindowByNameLike {
     param(
         [Parameter(Mandatory = $true)][string]$NameLike,
@@ -1324,7 +1356,7 @@ function Try-ApplyDisplayResolutionViaSettings {
                 RequestedWidth = $Width
                 RequestedHeight = $Height
                 ResultCode = 'settings-window-not-found'
-                AvailableModes = @(Format-DisplayModeNames -Modes (Get-CimSupportedDisplayModes))
+                AvailableModes = @(Format-DisplayModeNames -Modes (Get-CachedDisplayModes))
             }
         }
 
@@ -1341,7 +1373,7 @@ function Try-ApplyDisplayResolutionViaSettings {
                 RequestedWidth = $Width
                 RequestedHeight = $Height
                 ResultCode = 'settings-combo-not-found'
-                AvailableModes = @(Format-DisplayModeNames -Modes (Get-CimSupportedDisplayModes))
+                AvailableModes = @(Format-DisplayModeNames -Modes (Get-CachedDisplayModes))
             }
         }
 
@@ -1376,7 +1408,7 @@ function Try-ApplyDisplayResolutionViaSettings {
 
         $availableModes = @($modeItems | Sort-Object -Unique)
         if ($availableModes.Count -eq 0) {
-            $availableModes = @(Format-DisplayModeNames -Modes (Get-CimSupportedDisplayModes))
+            $availableModes = @(Format-DisplayModeNames -Modes (Get-CachedDisplayModes))
         }
         $targetItem = Find-DescendantByNameAndControlType -Root ([System.Windows.Automation.AutomationElement]::RootElement) -Name $targetName -ControlType ([System.Windows.Automation.ControlType]::ListItem)
         if ($null -eq $targetItem) {
@@ -1423,6 +1455,9 @@ function Try-ApplyDisplayResolutionViaSettings {
 
         $runtime = Get-CurrentVirtualScreenSize
         $applied = ($runtime.Width -eq $Width -and $runtime.Height -eq $Height)
+        if ($applied) {
+            Clear-CachedDisplayModes
+        }
         return [pscustomobject]@{
             Applied = $applied
             RequestedWidth = $Width
@@ -1437,7 +1472,7 @@ function Try-ApplyDisplayResolutionViaSettings {
             RequestedWidth = $Width
             RequestedHeight = $Height
             ResultCode = ('settings-error: ' + $_.Exception.Message)
-            AvailableModes = @(Format-DisplayModeNames -Modes (Get-CimSupportedDisplayModes))
+            AvailableModes = @(Format-DisplayModeNames -Modes (Get-CachedDisplayModes))
         }
     }
     finally {
@@ -1468,10 +1503,7 @@ function Try-ApplyDisplayResolution {
     $mode = New-Object NativeDisplaySettings+DEVMODE
     $mode.dmSize = [System.Runtime.InteropServices.Marshal]::SizeOf([type]([NativeDisplaySettings+DEVMODE]))
     $currentEnum = [NativeDisplaySettings]::EnumDisplaySettings($null, -1, [ref]$mode)
-    $availableModes = @(Get-CimSupportedDisplayModes)
-    if ($availableModes.Count -eq 0) {
-        $availableModes = @(Get-AvailableDisplayModes)
-    }
+    $availableModes = @(Get-CachedDisplayModes)
 
     if ($currentEnum -eq 0) {
         return Try-ApplyDisplayResolutionViaSettings -Width $Width -Height $Height
@@ -1488,6 +1520,9 @@ function Try-ApplyDisplayResolution {
         RequestedHeight = $Height
         ResultCode = $result
         AvailableModes = @($availableModes)
+    }
+    if ($payload.Applied) {
+        Clear-CachedDisplayModes
     }
     if (-not $payload.Applied) {
         $settingsFallback = Try-ApplyDisplayResolutionViaSettings -Width $Width -Height $Height
@@ -3054,3 +3089,4 @@ finally {
     Write-Output "RESULTS=$results"
     Write-Output "SUMMARY=$summaryPath"
 }
+
