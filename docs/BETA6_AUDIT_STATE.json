@@ -2883,7 +2883,7 @@
       "priority": 4,
       "area": "Performance",
       "title": "`TraceLog.WriteCircular` holds lock during synchronous index‑file I/O",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2902,7 +2902,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by caching TraceLog circular write position in memory after first index read, eliminating repeated index-file reads for every log line while keeping synchronous index persistence inside the circular-write lock for crash consistency. Added behavioral coverage proving subsequent writes advance from the in-memory cursor even if the on-disk index is tampered.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-151751.md reported no high-severity blockers after cleanup. Focused local Release TraceLogTests passed 5/5."
     },
     {
       "id": "CR-058",
