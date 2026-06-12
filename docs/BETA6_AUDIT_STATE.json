@@ -2564,7 +2564,7 @@
       "priority": 4,
       "area": "Thread safety",
       "title": "`RateLimitGuard` not thread‑safe when shared",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2583,7 +2583,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by serializing shared RateLimitGuard callers through a private SemaphoreSlim, documenting strict non-reentrant semantics, auditing that no production call sites currently instantiate the guard, and adding concurrent/cancellation/disposal regression coverage.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-104629.md raised no remaining code-correctness blockers after repository usage audit. Focused local Release Nb040BehaviorTests passed 26/26. Full local Release tests passed 404/404 after commit/push."
     },
     {
       "id": "CR-047",
