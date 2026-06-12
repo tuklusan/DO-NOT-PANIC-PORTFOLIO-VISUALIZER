@@ -13,6 +13,7 @@ using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
 
+[Collection("EnvironmentSerial")]
 public sealed class YFinanceClientServerProtocolTests
 {
     [Fact]
@@ -307,6 +308,32 @@ public sealed class YFinanceClientServerProtocolTests
             YFinanceServerProcessManager.ResolveLaunchCommand("test-token", appDirectory);
 
         Assert.Equal(trustedExe, fileName);
+    }
+
+    [Fact]
+    public void ServerProcessManager_InvalidatesCachedLaunchCommandWhenBinaryDisappears()
+    {
+        using TempDirectory temp = TempDirectory.Create();
+        string appDirectory = Path.Combine(temp.Path, "app");
+        string serverDirectory = Path.Combine(appDirectory, "YFinanceServer");
+        Directory.CreateDirectory(serverDirectory);
+
+        string trustedExe = Path.Combine(serverDirectory, "YFinance.NET.Server.exe");
+        string trustedDll = Path.Combine(serverDirectory, "YFinance.NET.Server.dll");
+        File.WriteAllText(trustedExe, string.Empty);
+
+        (string firstFileName, _, _) =
+            YFinanceServerProcessManager.ResolveLaunchCommand("first-token", appDirectory);
+        File.Delete(trustedExe);
+        File.WriteAllText(trustedDll, string.Empty);
+        (string secondFileName, string secondArguments, string secondTraceArguments) =
+            YFinanceServerProcessManager.ResolveLaunchCommand("second-token", appDirectory);
+
+        Assert.Equal(trustedExe, firstFileName);
+        Assert.Equal("dotnet", secondFileName);
+        Assert.Contains($"\"{trustedDll}\"", secondArguments, StringComparison.Ordinal);
+        Assert.Contains("--launch-token \"second-token\"", secondArguments, StringComparison.Ordinal);
+        Assert.Contains("--launch-token \"<redacted>\"", secondTraceArguments, StringComparison.Ordinal);
     }
 
     [Fact]

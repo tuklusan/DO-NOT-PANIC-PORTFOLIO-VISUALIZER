@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Collections.Concurrent;
 using System.Net.Sockets;
 using PortfolioSaver.Shared.Diagnostics;
 using PortfolioSaver.Shared.Helpers;
@@ -8,6 +9,10 @@ namespace PortfolioSaver.Shared.Services;
 public static class YFinanceServerProcessManager
 {
     private static readonly SemaphoreSlim Sync = new(1, 1);
+    private static readonly IEqualityComparer<string> PathComparer = OperatingSystem.IsWindows()
+        ? StringComparer.OrdinalIgnoreCase
+        : StringComparer.Ordinal;
+    private static readonly ConcurrentDictionary<string, string> ResolvedServerPathByBaseDirectory = new(PathComparer);
     private static Process? _ownedProcess;
     private static string? _launchToken;
 
@@ -141,7 +146,10 @@ public static class YFinanceServerProcessManager
 
     internal static (string FileName, string Arguments, string TraceArguments) ResolveLaunchCommand(string token, string? baseDirectoryOverride = null)
     {
-        string baseDirectory = baseDirectoryOverride ?? AppContext.BaseDirectory;
+        string baseDirectory = Path.GetFullPath(baseDirectoryOverride ?? AppContext.BaseDirectory);
+        if (TryGetCachedLaunchPath(baseDirectory) is string cachedPath)
+            return BuildLaunchCommandForPath(cachedPath, token);
+
         string[] exeCandidates =
         [
             Path.Combine(baseDirectory, "YFinanceServer", "YFinance.NET.Server.exe"),
@@ -151,7 +159,10 @@ public static class YFinanceServerProcessManager
         foreach (string candidate in exeCandidates)
         {
             if (File.Exists(candidate))
+            {
+                CacheResolvedLaunchPath(baseDirectory, candidate);
                 return BuildLaunchCommandForPath(candidate, token);
+            }
         }
 
         string[] dllCandidates =
@@ -163,10 +174,28 @@ public static class YFinanceServerProcessManager
         foreach (string candidate in dllCandidates)
         {
             if (File.Exists(candidate))
+            {
+                CacheResolvedLaunchPath(baseDirectory, candidate);
                 return BuildLaunchCommandForPath(candidate, token);
+            }
         }
 
         throw new FileNotFoundException("Could not locate YFinance.NET.Server executable or DLL. Expected the owned server bundle under the application YFinanceServer folder or the publish sibling server folder.");
+    }
+
+    private static void CacheResolvedLaunchPath(string baseDirectory, string path)
+        => ResolvedServerPathByBaseDirectory[baseDirectory] = path;
+
+    private static string? TryGetCachedLaunchPath(string baseDirectory)
+    {
+        if (!ResolvedServerPathByBaseDirectory.TryGetValue(baseDirectory, out string? cachedPath))
+            return null;
+
+        if (File.Exists(cachedPath))
+            return cachedPath;
+
+        ResolvedServerPathByBaseDirectory.TryRemove(new KeyValuePair<string, string>(baseDirectory, cachedPath));
+        return null;
     }
 
     private static (string FileName, string Arguments, string TraceArguments) BuildLaunchCommandForPath(string path, string token)
