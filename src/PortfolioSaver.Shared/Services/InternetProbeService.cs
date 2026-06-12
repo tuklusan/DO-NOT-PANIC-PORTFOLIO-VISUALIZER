@@ -5,6 +5,13 @@ namespace PortfolioSaver.Shared.Services;
 
 public sealed class InternetProbeService
 {
+    private static readonly SocketsHttpHandler SharedProbeHandler = new()
+    {
+        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+        PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30)
+    };
+
+    internal static SocketsHttpHandler SharedProbeHandlerForTests => SharedProbeHandler;
     private static readonly string[] DefaultProbeUrls =
     [
         "https://www.msftconnecttest.com/connecttest.txt",
@@ -86,9 +93,7 @@ public sealed class InternetProbeService
 
     private async Task<bool> ProbeInternetAsync(CancellationToken cancellationToken)
     {
-        using HttpClient client = _messageHandlerFactory is null
-            ? new HttpClient { Timeout = TimeSpan.FromMilliseconds(_timeoutMilliseconds) }
-            : new HttpClient(_messageHandlerFactory()) { Timeout = TimeSpan.FromMilliseconds(_timeoutMilliseconds) };
+        using HttpClient client = CreateProbeClient();
 
         for (int attempt = 0; attempt < _attempts; attempt++)
         {
@@ -104,6 +109,12 @@ public sealed class InternetProbeService
 
         return false;
     }
+
+    private HttpClient CreateProbeClient()
+        => _messageHandlerFactory is null
+            // The shared handler reuses sockets while bounded pooling lifetimes let network/DNS changes recover.
+            ? new HttpClient(SharedProbeHandler, disposeHandler: false) { Timeout = TimeSpan.FromMilliseconds(_timeoutMilliseconds) }
+            : new HttpClient(_messageHandlerFactory()) { Timeout = TimeSpan.FromMilliseconds(_timeoutMilliseconds) };
 
     private static async Task<bool> TryProbeUrlAsync(HttpClient client, string probeUrl, CancellationToken cancellationToken)
     {

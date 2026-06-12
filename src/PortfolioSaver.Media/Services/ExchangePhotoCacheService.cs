@@ -9,6 +9,13 @@ namespace PortfolioSaver.Media.Services;
 public sealed class ExchangePhotoCacheService
 {
     private const string BundledFolderName = "ExchangeBackgrounds";
+    private static readonly SocketsHttpHandler DefaultHttpHandler = new()
+    {
+        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+        PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30)
+    };
+
+    internal static SocketsHttpHandler DefaultHttpHandlerForTests => DefaultHttpHandler;
     private static readonly IReadOnlySet<string> BundledStarterFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "new-york-stock-exchange.jpg",
@@ -65,7 +72,7 @@ public sealed class ExchangePhotoCacheService
 
     private static HttpClient CreateDefaultHttpClient()
     {
-        HttpClient httpClient = new() { Timeout = TimeSpan.FromSeconds(45) };
+        HttpClient httpClient = new(DefaultHttpHandler, disposeHandler: false) { Timeout = TimeSpan.FromSeconds(45) };
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("DoNotPanicPortfolioVisualizer/6.0");
         return httpClient;
     }

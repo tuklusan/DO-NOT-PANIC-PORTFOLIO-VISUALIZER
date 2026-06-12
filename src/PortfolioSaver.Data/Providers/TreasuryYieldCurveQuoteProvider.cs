@@ -17,12 +17,19 @@ public sealed class TreasuryYieldCurveQuoteProvider : IQuoteProvider
         ["US10Y"] = "BC_10YEAR",
         ["^TNX"] = "BC_10YEAR"
     };
+    private static readonly SocketsHttpHandler SharedHttpHandler = new()
+    {
+        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+        PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30)
+    };
+
+    internal static SocketsHttpHandler SharedHttpHandlerForTests => SharedHttpHandler;
 
     private readonly HttpClient _httpClient;
 
     public TreasuryYieldCurveQuoteProvider(HttpClient? httpClient = null)
     {
-        _httpClient = httpClient ?? new HttpClient();
+        _httpClient = httpClient ?? new HttpClient(SharedHttpHandler, disposeHandler: false);
     }
 
     public async Task<IReadOnlyList<QuoteSnapshot>> GetQuotesAsync(IEnumerable<string> symbols, CancellationToken cancellationToken = default)

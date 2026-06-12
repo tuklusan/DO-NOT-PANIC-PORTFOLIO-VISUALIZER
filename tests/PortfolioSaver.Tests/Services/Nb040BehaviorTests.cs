@@ -1,10 +1,14 @@
 using System.Reflection;
+using System.Net.Http;
 using System.Text.Json;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Data.Interfaces;
+using PortfolioSaver.Data.Providers;
 using PortfolioSaver.Data.Services;
 using PortfolioSaver.Render.Services;
+using PortfolioSaver.Media.Services;
+using PortfolioSaver.Shared.Services;
 using PortfolioSaver.Screensaver.Services;
 using PortfolioSaver.Shared.Helpers;
 using Xunit;
@@ -219,6 +223,25 @@ public sealed class Nb040BehaviorTests
         releaseSuppressedFlow.SetResult();
         await suppressedFlow.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.False(YFinanceRuntimeClientFactory.IsServerStartupSuppressedForTests);
+    }
+
+    [Fact]
+    public void DefaultHttpClients_ReuseSharedHandlers()
+    {
+        SocketsHttpHandler treasuryHandler = TreasuryYieldCurveQuoteProvider.SharedHttpHandlerForTests;
+        Assert.Same(treasuryHandler, TreasuryYieldCurveQuoteProvider.SharedHttpHandlerForTests);
+        Assert.Equal(TimeSpan.FromMinutes(5), treasuryHandler.PooledConnectionLifetime);
+        Assert.Equal(TimeSpan.FromSeconds(30), treasuryHandler.PooledConnectionIdleTimeout);
+
+        SocketsHttpHandler probeHandler = InternetProbeService.SharedProbeHandlerForTests;
+        Assert.Same(probeHandler, InternetProbeService.SharedProbeHandlerForTests);
+        Assert.Equal(TimeSpan.FromMinutes(5), probeHandler.PooledConnectionLifetime);
+        Assert.Equal(TimeSpan.FromSeconds(30), probeHandler.PooledConnectionIdleTimeout);
+
+        SocketsHttpHandler exchangeHandler = ExchangePhotoCacheService.DefaultHttpHandlerForTests;
+        Assert.Same(exchangeHandler, ExchangePhotoCacheService.DefaultHttpHandlerForTests);
+        Assert.Equal(TimeSpan.FromMinutes(5), exchangeHandler.PooledConnectionLifetime);
+        Assert.Equal(TimeSpan.FromSeconds(30), exchangeHandler.PooledConnectionIdleTimeout);
     }
 
     [Fact]
