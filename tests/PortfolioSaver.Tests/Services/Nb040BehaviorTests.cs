@@ -713,9 +713,18 @@ public sealed class Nb040BehaviorTests
             };
             DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
 
-            // Use one timestamp so task scheduling order cannot turn this lock/persistence test into a reuse-interval test.
-            bool[] reservations = await Task.WhenAll(Enumerable.Range(0, 8)
-                .Select(_ => Task.Run(() => service.TryReserve(policy, 1, TimeSpan.Zero, nowUtc))));
+            // Use one timestamp and a barrier so this exercises concurrent lock/persistence behavior,
+            // not task scheduling order or reuse-interval logic.
+            using Barrier startGate = new(participantCount: 9);
+            Task<bool>[] reservationTasks = Enumerable.Range(0, 8)
+                .Select(_ => Task.Run(() =>
+                {
+                    startGate.SignalAndWait();
+                    return service.TryReserve(policy, 1, TimeSpan.Zero, nowUtc);
+                }))
+                .ToArray();
+            startGate.SignalAndWait();
+            bool[] reservations = await Task.WhenAll(reservationTasks);
 
             Assert.Equal(8, reservations.Count(result => result));
             string json = File.ReadAllText(ledgerPath);
