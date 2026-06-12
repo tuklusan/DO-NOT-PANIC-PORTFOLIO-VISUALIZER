@@ -1525,6 +1525,10 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("FlagImageCache", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("GetFlagImageSource(city.FlagCode)", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("pack://application:,,,/PortfolioSaver.Render;component/Assets/Flags/", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("TraceLog.WarnState", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("FlagImageLoadFailed", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("\"flag_code\"", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("flagCode", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("Stretch = Stretch.Uniform", globalTapeCode, StringComparison.Ordinal);
         Assert.DoesNotContain("BuildUnitedStatesFlag()", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("FontSize = 10", globalTapeCode, StringComparison.Ordinal);

@@ -12,6 +12,7 @@ using System.Windows.Threading;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Render.Services;
 using PortfolioSaver.Render.ViewModels;
+using PortfolioSaver.Shared.Diagnostics;
 
 namespace PortfolioSaver.Render.Controls;
 
@@ -537,8 +538,23 @@ public partial class GlobalMarketsTapeControl : UserControl
             FlagImageCache[flagCode] = bitmap;
             return bitmap;
         }
-        catch
+        catch (Exception ex)
         {
+            try
+            {
+                TraceLog.WarnState(
+                    "GlobalMarketsTapeControl",
+                    "FlagImageLoadFailed",
+                    [
+                        new("flag_code", flagCode),
+                        new("message", ex.Message)
+                    ]);
+            }
+            catch
+            {
+                // Flag badges must remain fail-soft even if diagnostics are unavailable.
+            }
+
             return null;
         }
     }
