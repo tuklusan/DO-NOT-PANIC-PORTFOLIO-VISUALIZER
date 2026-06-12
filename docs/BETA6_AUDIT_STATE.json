@@ -2477,7 +2477,7 @@
       "priority": 4,
       "area": "Resource management",
       "title": "Multiple services create raw `HttpClient` inside method bodies",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2496,7 +2496,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by replacing raw default HttpClient construction with shared pooled SocketsHttpHandler defaults for treasury yields, internet probes, and exchange-photo downloads while preserving injected client/handler test seams.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-095359.md reported no blocking findings. Focused local Release Nb040BehaviorTests passed 17/17. Full local Release tests passed 395/395 after commit/push."
     },
     {
       "id": "CR-044",
