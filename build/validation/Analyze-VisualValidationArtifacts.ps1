@@ -16,6 +16,12 @@ function New-Finding {
     [pscustomobject]@{ code=$Code; title=$Title; area=$Area; severity=$Severity; evidence=@($Evidence); notes=@($Notes) }
 }
 
+function Get-JsonPropertyValue {
+    param($Object,[string]$Name,$Default = $null)
+    if ($null -ne $Object -and $Object.PSObject.Properties.Name -contains $Name) { return $Object.$Name }
+    return $Default
+}
+
 function Get-ValidationRunDirectories {
     param([string]$Root)
     $rootItem = Get-Item -LiteralPath (Resolve-Path -LiteralPath $Root).Path
@@ -55,7 +61,7 @@ function Measure-ImageBrightness {
     finally { if ($null -ne $bitmap) { $bitmap.Dispose() }; $stream.Dispose() }
 }
 
-$runs = Get-ValidationRunDirectories -Root $ResultRoot
+$runs = @(Get-ValidationRunDirectories -Root $ResultRoot)
 if ($runs.Count -eq 0) { throw "No UX validation run directories with ux-deep-summary.json were found under $ResultRoot" }
 $findings = New-Object System.Collections.Generic.List[object]
 $runSummaries = New-Object System.Collections.Generic.List[object]
@@ -63,11 +69,11 @@ $runSummaries = New-Object System.Collections.Generic.List[object]
 foreach ($run in $runs) {
     $summaryPath = Join-Path $run.FullName 'ux-deep-summary.json'
     $summary = Get-Content -Raw -LiteralPath $summaryPath | ConvertFrom-Json
-    $runId = if ($summary.PSObject.Properties.Name -contains 'ResultName') { [string]$summary.ResultName } else { $run.Name }
-    [void]$runSummaries.Add([pscustomobject]@{ resultName=$runId; path=$run.FullName; configPhaseStatus=[string]$summary.ConfigPhaseStatus; desktopPhaseStatus=[string]$summary.DesktopPhaseStatus; fullScreenToggleStatus=[string]$summary.FullScreenToggleStatus; notes=@($summary.Notes) })
+    $runId = [string](Get-JsonPropertyValue -Object $summary -Name 'ResultName' -Default $run.Name)
+    [void]$runSummaries.Add([pscustomobject]@{ resultName=$runId; path=$run.FullName; configPhaseStatus=[string](Get-JsonPropertyValue -Object $summary -Name 'ConfigPhaseStatus'); desktopPhaseStatus=[string](Get-JsonPropertyValue -Object $summary -Name 'DesktopPhaseStatus'); fullScreenToggleStatus=[string](Get-JsonPropertyValue -Object $summary -Name 'FullScreenToggleStatus'); notes=@(Get-JsonPropertyValue -Object $summary -Name 'Notes' -Default @()) })
 
     foreach ($statusName in @('ConfigPhaseStatus','DesktopPhaseStatus','FullScreenToggleStatus')) {
-        $status = [string]$summary.$statusName
+        $status = [string](Get-JsonPropertyValue -Object $summary -Name $statusName)
         if ($status -ne 'Completed') {
             [void]$findings.Add((New-Finding -Code "harness-$($statusName.ToLowerInvariant())" -Title "VM validation phase did not complete: $statusName" -Area 'VM validation harness' -Severity 'High' -Evidence @("Run ${runId} reported ${statusName}=$status.", "Summary: $summaryPath") -Notes @('Incomplete harness phases are release-candidate blockers.')))
         }
@@ -116,7 +122,9 @@ foreach ($run in $runs) {
 
 if ([string]::IsNullOrWhiteSpace($OutputPath)) { $OutputPath = Join-Path $repoRoot ('build\validation\artifacts\visual-validation-analysis-{0}.json' -f (Get-Date -Format 'yyyyMMdd-HHmmss')) }
 New-Item -ItemType Directory -Force -Path (Split-Path -Path $OutputPath -Parent) | Out-Null
-$report = [ordered]@{ generatedAt=(Get-Date).ToString('o'); resultRoot=(Resolve-Path -LiteralPath $ResultRoot).Path; runCount=$runs.Count; clean=($findings.Count -eq 0); findings=@($findings); runs=@($runSummaries) }
+$findingArray = @($findings.ToArray())
+$runSummaryArray = @($runSummaries.ToArray())
+$report = [ordered]@{ generatedAt=(Get-Date).ToString('o'); resultRoot=(Resolve-Path -LiteralPath $ResultRoot).Path; runCount=$runs.Count; clean=($findingArray.Count -eq 0); findings=$findingArray; runs=$runSummaryArray }
 $report | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $OutputPath -Encoding UTF8
 
 if ($CreateChangeRequests -and $findings.Count -gt 0) {

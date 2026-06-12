@@ -14,7 +14,7 @@ param(
     [switch]$PushBeforeValidation,
     [switch]$AcknowledgeExternalReviewSecretScan,
     [string]$CommitMessage = 'Add autonomous visual validation loop',
-    [string[]]$CommitPaths = @('.gitignore','AGENTS.md','README.md','build/validation')
+    [string[]]$CommitPaths = @('.gitignore','AGENTS.md','README.md','build/validation','build/vm')
 )
 
 Set-StrictMode -Version Latest
@@ -134,6 +134,7 @@ try {
         $resultLine = [string[]]@($vmOutput | Where-Object { $_ -like 'LOCAL_RESULT_DIR=*' } | Select-Object -Last 1)
         if ($resultLine.Count -eq 0) { throw "VM UX validation cycle $cycle did not report LOCAL_RESULT_DIR." }
         $resultDir = $resultLine[0].Substring('LOCAL_RESULT_DIR='.Length)
+        if ([string]::IsNullOrWhiteSpace($resultDir) -or -not (Test-Path -LiteralPath $resultDir -PathType Container)) { throw "VM UX validation cycle $cycle reported an invalid LOCAL_RESULT_DIR: $resultDir" }
         $analysisPath = Join-Path $artifactRoot ('visual-validation-cycle-{0:D2}-{1}.json' -f $cycle, (Get-Date -Format 'yyyyMMdd-HHmmss'))
         $analysisOutput = & .\build\validation\Analyze-VisualValidationArtifacts.ps1 -ResultRoot $resultDir -OutputPath $analysisPath -CreateChangeRequests:$CreateChangeRequests
         if ($LASTEXITCODE -ne 0) { throw "Artifact analysis failed for VM UX validation cycle $cycle." }

@@ -23,6 +23,8 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'VmSshCommon.ps1')
 
+# Machine-readable contract: when UX results are pulled successfully, this script
+# emits exactly one LOCAL_RESULT_DIR=<path> line on stdout for parent automation.
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $hostArtifactsRoot = Join-Path $repoRoot 'build\vm\artifacts\ssh-runs'
 $bundle = $null
@@ -323,11 +325,12 @@ Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensa
         }
 
         $pullOutput = & (Join-Path $PSScriptRoot 'Pull-VmResults.ps1') -VmHost $VmHost -VmPort $VmPort -RootPath $RootPath -RemotePath (Join-Path $RootPath ("results\$uxResultName"))
-        $pullOutput | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { Write-Host $_ }
         $localResultDirLine = [string[]]@($pullOutput | Where-Object { $_ -like 'LOCAL_RESULT_DIR=*' } | Select-Object -Last 1)
+        $pullOutput | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and $_ -notlike 'LOCAL_RESULT_DIR=*' } | ForEach-Object { Write-Host $_ }
         if ($localResultDirLine.Length -gt 0) {
             $localResultDir = ([string]$localResultDirLine[0]).Substring('LOCAL_RESULT_DIR='.Length)
             if (-not [string]::IsNullOrWhiteSpace($localResultDir) -and (Test-Path $localResultDir)) {
+                Write-Output $localResultDirLine[0]
                 & (Join-Path $PSScriptRoot 'PostProcess-ReferenceSpotChecks.ps1') -ResultRoot $localResultDir
             }
         }
