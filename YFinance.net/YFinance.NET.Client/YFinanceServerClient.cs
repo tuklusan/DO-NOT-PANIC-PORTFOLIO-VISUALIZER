@@ -232,7 +232,7 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
                             new("operation", response.Operation),
                             new("reason", integrityFailure?.Message ?? "Unknown integrity failure.")
                         ]);
-                        corruptPending.TrySetException(integrityFailure);
+                        corruptPending.TrySetException(integrityFailure ?? new IOException("Protocol integrity failure."));
                     }
                     else
                     {
