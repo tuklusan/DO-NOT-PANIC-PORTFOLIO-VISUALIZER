@@ -20,9 +20,11 @@ public static class YFinanceRuntimeClientFactory
     private static bool _serverReadyEnsured;
     private static readonly AsyncLocal<int> ServerStartupSuppressedForTests = new();
 
+    internal static bool IsServerStartupSuppressedForTests => ServerStartupSuppressedForTests.Value > 0;
+
     public static async Task EnsureServerReadyAsync(string clientType, string clientVersion, CancellationToken cancellationToken = default)
     {
-        if (ServerStartupSuppressedForTests.Value > 0)
+        if (IsServerStartupSuppressedForTests)
             return;
 
         if (!_serverReadyEnsured)

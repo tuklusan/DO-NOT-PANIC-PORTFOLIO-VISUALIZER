@@ -194,6 +194,34 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
+    public async Task YFinanceRuntimeClientFactory_TestSuppressionIsIsolatedPerAsyncFlow()
+    {
+        Assert.False(YFinanceRuntimeClientFactory.IsServerStartupSuppressedForTests);
+        TaskCompletionSource suppressedFlowReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource releaseSuppressedFlow = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task suppressedFlow = Task.Run(async () =>
+        {
+            using IDisposable serverBypass = YFinanceRuntimeClientFactory.SuppressServerStartupForTests();
+            Assert.True(YFinanceRuntimeClientFactory.IsServerStartupSuppressedForTests);
+            suppressedFlowReady.SetResult();
+            await releaseSuppressedFlow.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.True(YFinanceRuntimeClientFactory.IsServerStartupSuppressedForTests);
+        });
+
+        await suppressedFlowReady.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(YFinanceRuntimeClientFactory.IsServerStartupSuppressedForTests);
+
+        Task<bool> siblingFlow = Task.Run(() => YFinanceRuntimeClientFactory.IsServerStartupSuppressedForTests);
+        bool siblingSuppressed = await siblingFlow.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(siblingSuppressed);
+
+        releaseSuppressedFlow.SetResult();
+        await suppressedFlow.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(YFinanceRuntimeClientFactory.IsServerStartupSuppressedForTests);
+    }
+
+    [Fact]
     public void RuntimeQuoteSeedStore_PublishesAndConsumesQuotesOnce()
     {
         RuntimeQuoteSeedStore.ConsumeAll();
