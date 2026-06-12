@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
@@ -27,7 +28,7 @@ public partial class GlobalMarketsTapeControl : UserControl
     private const double SequenceTailSpacing = 10d;
     private const double FlagBadgeWidth = 20d;
     private const double FlagBadgeHeight = 14d;
-    private static readonly Dictionary<string, ImageSource> FlagImageCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, Lazy<ImageSource?>> FlagImageCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly TapeAnimationController _animationController = new();
     private FloatingClockViewModel? _clock;
     private bool _metricsQueued;
@@ -522,9 +523,19 @@ public partial class GlobalMarketsTapeControl : UserControl
         if (string.IsNullOrWhiteSpace(flagCode))
             return null;
 
-        if (FlagImageCache.TryGetValue(flagCode, out ImageSource? cached))
-            return cached;
+        string normalizedFlagCode = flagCode.Trim();
+        Lazy<ImageSource?> lazySource = FlagImageCache.GetOrAdd(
+            normalizedFlagCode,
+            static code => new Lazy<ImageSource?>(() => LoadFlagImageSource(code), LazyThreadSafetyMode.ExecutionAndPublication));
+        ImageSource? source = lazySource.Value;
+        if (source is null)
+            FlagImageCache.TryRemove(normalizedFlagCode, out _);
 
+        return source;
+    }
+
+    private static ImageSource? LoadFlagImageSource(string flagCode)
+    {
         try
         {
             BitmapImage bitmap = new();
@@ -535,7 +546,6 @@ public partial class GlobalMarketsTapeControl : UserControl
                 UriKind.Absolute);
             bitmap.EndInit();
             bitmap.Freeze();
-            FlagImageCache[flagCode] = bitmap;
             return bitmap;
         }
         catch (Exception ex)

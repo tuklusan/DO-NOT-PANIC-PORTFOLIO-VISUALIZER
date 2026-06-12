@@ -1523,6 +1523,10 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("private const double FlagBadgeWidth = 20d;", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("private const double FlagBadgeHeight = 14d;", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("FlagImageCache", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("ConcurrentDictionary<string, Lazy<ImageSource?>> FlagImageCache", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("FlagImageCache.GetOrAdd", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("LazyThreadSafetyMode.ExecutionAndPublication", globalTapeCode, StringComparison.Ordinal);
+        Assert.Contains("FlagImageCache.TryRemove", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("GetFlagImageSource(city.FlagCode)", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("pack://application:,,,/PortfolioSaver.Render;component/Assets/Flags/", globalTapeCode, StringComparison.Ordinal);
         Assert.Contains("TraceLog.WarnState", globalTapeCode, StringComparison.Ordinal);
