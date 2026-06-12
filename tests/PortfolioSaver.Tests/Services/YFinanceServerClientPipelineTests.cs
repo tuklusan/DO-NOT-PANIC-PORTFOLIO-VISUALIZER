@@ -56,12 +56,14 @@ public sealed class YFinanceServerClientPipelineTests
         listener.Start();
         int port = ((IPEndPoint)listener.LocalEndpoint).Port;
         using CancellationTokenSource cts = new(TimeSpan.FromSeconds(10));
+        TaskCompletionSource firstRequestRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         Task serverTask = Task.Run(async () =>
         {
             await using NetworkStream stream = (await listener.AcceptTcpClientAsync(cts.Token).ConfigureAwait(false)).GetStream();
 
             ProtocolRequest<JsonElement> requestA = await ReadRequestAsync(stream, cts.Token).ConfigureAwait(false);
+            firstRequestRead.SetResult();
             ProtocolRequest<JsonElement> requestB = await ReadRequestAsync(stream, cts.Token).ConfigureAwait(false);
 
             await WriteCorruptQuoteResponseAsync(stream, requestA, cts.Token).ConfigureAwait(false);
@@ -75,6 +77,7 @@ public sealed class YFinanceServerClientPipelineTests
             NullYFinanceServerClientTraceSink.Instance));
 
         Task<QuoteDto> corrupt = client.GetQuoteAsync("BAD", cts.Token);
+        await firstRequestRead.Task.WaitAsync(cts.Token).ConfigureAwait(false);
         Task<QuoteDto> valid = client.GetQuoteAsync("GOOD", cts.Token);
 
         IOException ex = await Assert.ThrowsAsync<IOException>(async () => await corrupt.ConfigureAwait(false)).ConfigureAwait(false);
