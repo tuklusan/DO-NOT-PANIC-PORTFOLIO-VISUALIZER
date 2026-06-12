@@ -16,6 +16,8 @@ public static class TraceLog
     private const int MaxTraceBytes = 4 * 1024 * 1024;
     private const int MaxLineLength = 1900;
     private const int MaxFieldValueLength = 280;
+    // TraceLogTests intentionally synchronize on this object when validating
+    // circular cursor behavior against the background trace worker.
     private static readonly object FileSync = new();
     private static readonly ConcurrentQueue<string> Queue = new();
     private static readonly string ProgramName = Process.GetCurrentProcess().ProcessName;

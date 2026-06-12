@@ -139,24 +139,36 @@ public sealed class TraceLogTests
 
             FieldInfo positionField = typeof(TraceLog).GetField("_circularWritePosition", BindingFlags.NonPublic | BindingFlags.Static)
                 ?? throw new InvalidOperationException("Could not find TraceLog._circularWritePosition.");
+            FieldInfo fileSyncField = typeof(TraceLog).GetField("FileSync", BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("Could not find TraceLog.FileSync.");
+            if (fileSyncField.FieldType.IsValueType)
+                throw new InvalidOperationException("TraceLog.FileSync must be a reference type for this synchronization test.");
+
             MethodInfo writeCircularMethod = typeof(TraceLog).GetMethod("WriteCircular", BindingFlags.NonPublic | BindingFlags.Static)
                 ?? throw new InvalidOperationException("Could not find TraceLog.WriteCircular.");
+            object fileSync = fileSyncField.GetValue(null)
+                ?? throw new InvalidOperationException("TraceLog.FileSync was null.");
 
             string firstLine = $"{DateTimeOffset.UtcNow:O} | INFO | first-cache-line";
             string secondLine = $"{DateTimeOffset.UtcNow:O} | INFO | second-cache-line";
             int firstLength = Encoding.UTF8.GetByteCount(firstLine + Environment.NewLine);
             int secondLength = Encoding.UTF8.GetByteCount(secondLine + Environment.NewLine);
 
-            positionField.SetValue(null, -1);
-            writeCircularMethod.Invoke(null, [firstLine]);
-            int firstPosition = int.Parse(File.ReadAllText(traceIndexPath));
-            Assert.Equal(firstLength, firstPosition);
+            // C# Monitor locks are re-entrant; holding the production FileSync lock
+            // keeps the background trace worker from advancing the cursor mid-test.
+            lock (fileSync)
+            {
+                positionField.SetValue(null, -1);
+                writeCircularMethod.Invoke(null, [firstLine]);
+                int firstPosition = int.Parse(File.ReadAllText(traceIndexPath));
+                Assert.Equal(firstLength, firstPosition);
 
-            File.WriteAllText(traceIndexPath, "0");
-            writeCircularMethod.Invoke(null, [secondLine]);
+                File.WriteAllText(traceIndexPath, "0");
+                writeCircularMethod.Invoke(null, [secondLine]);
 
-            int secondPosition = int.Parse(File.ReadAllText(traceIndexPath));
-            Assert.Equal(firstLength + secondLength, secondPosition);
+                int secondPosition = int.Parse(File.ReadAllText(traceIndexPath));
+                Assert.Equal(firstLength + secondLength, secondPosition);
+            }
         }
         finally
         {
