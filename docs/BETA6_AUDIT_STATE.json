@@ -2796,7 +2796,7 @@
       "priority": 4,
       "area": "Build",
       "title": "Remote Polling Loop Blocks Host Pipeline",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2815,7 +2815,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by replacing remote PowerShell JSON polling in Invoke-VmBuildTest.ps1 with bounded SFTP reads over the existing VM session bundle. The helper validates SFTP prerequisites, retries shared/mid-write reads, returns only parseable JSON, and surfaces persistent SFTP or malformed JSON failures clearly.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-144425.md reported no blocking or high-severity findings. Local PowerShell parser validation passed for build/vm/Invoke-VmBuildTest.ps1."
     },
     {
       "id": "CR-055",
