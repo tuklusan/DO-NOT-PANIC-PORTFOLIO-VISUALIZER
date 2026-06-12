@@ -1223,6 +1223,49 @@ function Test-AutomationElementAlive {
     }
 }
 
+function Wait-UIAutomationCondition {
+    param(
+        [Parameter(Mandatory = $true)][scriptblock]$Condition,
+        [ValidateRange(1, 2147483647)]
+        [int]$TimeoutSeconds = 10,
+        [ValidateRange(1, 3600000)]
+        [int]$PollMilliseconds = 100,
+        [string]$TraceEvent = ''
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $pollCount = 0
+    do {
+        $pollCount++
+        try {
+            $result = & $Condition
+            if ($result -is [bool]) {
+                if ($result) {
+                    return $true
+                }
+            }
+            elseif ($null -ne $result) {
+                return $result
+            }
+        }
+        catch {
+            if (-not [string]::IsNullOrWhiteSpace($TraceEvent) -and
+                ($pollCount -eq 1 -or ($pollCount % 10) -eq 0)) {
+                Write-ConfigWindowTrace -Event ($TraceEvent + 'Error') -Details $_.Exception.Message
+            }
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($TraceEvent) -and
+            ($pollCount -eq 1 -or ($pollCount % 10) -eq 0)) {
+            Write-ConfigWindowTrace -Event $TraceEvent -Details ("poll={0}; timeout_seconds={1}" -f $pollCount, $TimeoutSeconds)
+        }
+
+        Start-Sleep -Milliseconds $PollMilliseconds
+    } while ((Get-Date) -lt $deadline)
+
+    return $null
+}
+
 function Try-ApplyDisplayResolutionViaSettings {
     param(
         [int]$Width,
@@ -2391,13 +2434,17 @@ function Validate-AndCloseConfigWindow {
                 $keys = if ($CompletionMode -eq 'Cancel') { @('{ESC}') } else { @('{ENTER}') }
                 Send-KeySequence -Keys $keys -DelayMilliseconds 80
                 Write-ConfigWindowTrace -Event 'ValidatedKeyboardCloseAttempt' -Details ("mode={0}; key={1}" -f $CompletionMode, $keys[0])
-                Start-Sleep -Milliseconds 220
-                $Process.Refresh()
-                $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
-                if ($null -eq $Window -or $Process.HasExited) {
+                $keyboardClosed = Wait-UIAutomationCondition -TimeoutSeconds 3 -PollMilliseconds 100 -TraceEvent 'ValidatedKeyboardCloseWait' -Condition {
+                    $Process.Refresh()
+                    if ($Process.HasExited) { return $true }
+                    $remaining = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
+                    return ($null -eq $remaining)
+                }
+                if ($keyboardClosed -eq $true -or $Process.HasExited) {
                     Write-ConfigWindowTrace -Event 'ValidatedKeyboardCloseSucceeded' -Details ("mode={0}" -f $CompletionMode)
                     return $true
                 }
+                $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
             }
 
             if (-not $invoked -and $CompletionMode -eq 'Cancel') {
@@ -2416,12 +2463,17 @@ function Validate-AndCloseConfigWindow {
             return $false
         }
 
-        $closeDeadline = (Get-Date).AddSeconds(15)
-        do {
-            Start-Sleep -Milliseconds 200
+        $closeObserved = Wait-UIAutomationCondition -TimeoutSeconds 15 -PollMilliseconds 200 -TraceEvent 'ValidateCloseWait' -Condition {
             $Process.Refresh()
+            $remaining = Find-ConfigWindowOwned -Process $Process
+            return ($null -eq $remaining)
+        }
+        if ($closeObserved -eq $true) {
+            $Window = $null
+        }
+        else {
             $Window = Find-ConfigWindowOwned -Process $Process
-        } while ($null -ne $Window -and (Get-Date) -lt $closeDeadline)
+        }
 
         if ($null -eq $Window) {
             Write-ConfigWindowTrace -Event 'ValidateCloseSucceeded'
@@ -2572,7 +2624,10 @@ try {
         $configPhaseStartedAt = [datetime]::UtcNow
         $configInteractionStartedAt = $null
         $desktop = Start-Process -FilePath $desktopExe -PassThru
-        Start-Sleep -Milliseconds 400
+        [void](Wait-UIAutomationCondition -TimeoutSeconds 5 -PollMilliseconds 100 -TraceEvent 'DesktopMainWindowWait' -Condition {
+            $desktop.Refresh()
+            return ($desktop.MainWindowHandle -ne [IntPtr]::Zero)
+        })
         $desktopWindow = Get-ProcessWindowElement -Process $desktop -TimeoutSeconds 15
         if ($null -eq $desktopWindow) {
             throw 'Could not locate desktop shell window via UI Automation.'
@@ -2585,10 +2640,13 @@ try {
         if ($null -ne $optionsMenuItem) {
             [void](Expand-AutomationElement -Element $optionsMenuItem)
             Write-ConfigWindowTrace -Event 'OptionsMenuExpanded' -Details 'path=automation'
-            Start-Sleep -Milliseconds 40
+            $settingsMenuItem = Wait-UIAutomationCondition -TimeoutSeconds 3 -PollMilliseconds 40 -TraceEvent 'SettingsMenuItemWait' -Condition {
+                return (Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsSettingsMenuItem')
+            }
         }
-
-        $settingsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsSettingsMenuItem'
+        else {
+            $settingsMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsSettingsMenuItem'
+        }
         if ($null -ne $settingsMenuItem) {
             $configOpened = Invoke-AutomationElement -Element $settingsMenuItem
             Write-ConfigWindowTrace -Event 'SettingsMenuInvoked' -Details ("path=automation; result={0}" -f $configOpened)
@@ -2603,15 +2661,19 @@ try {
                 [void](Focus-ProcessWindow -Process $desktop)
                 [System.Windows.Forms.SendKeys]::SendWait('%o')
                 Write-ConfigWindowTrace -Event 'OptionsMenuExpanded' -Details 'path=keyboard-fallback'
-                Start-Sleep -Milliseconds 20
+                [void](Wait-UIAutomationCondition -TimeoutSeconds 2 -PollMilliseconds 20 -TraceEvent 'KeyboardSettingsMenuWait' -Condition {
+                    return (Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'OptionsSettingsMenuItem')
+                })
                 [System.Windows.Forms.SendKeys]::SendWait('s')
                 Write-ConfigWindowTrace -Event 'SettingsMenuInvoked' -Details 'path=keyboard-fallback'
-                Start-Sleep -Milliseconds 45
+                [void](Wait-UIAutomationCondition -TimeoutSeconds 4 -PollMilliseconds 50 -TraceEvent 'SettingsAcceleratorConfigWindowWait' -Condition {
+                    $matches = @(Find-Win32TopLevelWindowLike -ProcessId $desktop.Id -TitleFragment 'PORTFOLIO VISUALIZER Config')
+                    return ($matches.Count -gt 0)
+                })
             }
             catch {}
         }
 
-        Start-Sleep -Milliseconds 500
         Test-ConfigPhaseBudget -StartedAt $configPhaseStartedAt -Stage 'post-open-reacquire'
         $window = Find-ConfigWindow -Process $desktop -TimeoutSeconds 20
         if ($null -eq $window) { throw 'Could not locate config window via UI Automation.' }
@@ -2648,9 +2710,17 @@ try {
 
             if ($shotIndex -gt 1) {
                 [void](Select-TabItem -Tab $tab)
+                [void](Wait-UIAutomationCondition -TimeoutSeconds 3 -PollMilliseconds 50 -TraceEvent 'TabSelectionWait' -Condition {
+                    try {
+                        $selectedPattern = $tab.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern)
+                        return $selectedPattern.Current.IsSelected
+                    }
+                    catch {
+                        return $false
+                    }
+                })
             }
             Write-ConfigWindowTrace -Event 'TabSelected' -Details ("tab={0}" -f $rawTabName)
-            Start-Sleep -Milliseconds 50
             $tabName = ($rawTabName -replace '[^A-Za-z0-9_-]','_')
             Capture-Screen -Path (Join-Path $results ("config-tab-{0:D3}-{1}.png" -f $shotIndex, $tabName))
             $summary.ConfigShots++
@@ -2669,8 +2739,16 @@ try {
         Test-ConfigPhaseBudget -StartedAt $configInteractionStartedAt -Stage 'validate-close'
         $configClosedNaturally = Validate-AndCloseConfigWindow -Process $desktop -Window $window -CompletionMode $ValidationCompletionMode
         if ($configClosedNaturally) {
-            Start-Sleep -Milliseconds 200
-            $window = Find-ConfigWindowOwned -Process $desktop
+            $closeVerified = Wait-UIAutomationCondition -TimeoutSeconds 3 -PollMilliseconds 100 -TraceEvent 'ConfigClosedVerificationWait' -Condition {
+                $remaining = Find-ConfigWindowOwned -Process $desktop
+                return ($null -eq $remaining)
+            }
+            if ($closeVerified -eq $true) {
+                $window = $null
+            }
+            else {
+                $window = Find-ConfigWindowOwned -Process $desktop
+            }
             if ($null -ne $window) {
                 $configClosedNaturally = $false
             }
@@ -2691,7 +2769,10 @@ try {
             try {
                 if ($null -ne $desktop -and -not $desktop.HasExited) {
                     $desktop.CloseMainWindow() | Out-Null
-                    Start-Sleep -Milliseconds 400
+                    [void](Wait-UIAutomationCondition -TimeoutSeconds 5 -PollMilliseconds 100 -TraceEvent 'DesktopCloseBeforeSoakWait' -Condition {
+                        $desktop.Refresh()
+                        return $desktop.HasExited
+                    })
                     if (-not $desktop.HasExited) {
                         Stop-Process -Id $desktop.Id -Force -ErrorAction SilentlyContinue
                     }
@@ -2699,10 +2780,13 @@ try {
             }
             catch {}
 
-            Start-Sleep -Seconds 1
             $previousDisableInputExit = $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT
             $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = '1'
             $desktop = Start-Process -FilePath $screensaverExe -ArgumentList '/s' -PassThru
+            [void](Wait-UIAutomationCondition -TimeoutSeconds 10 -PollMilliseconds 100 -TraceEvent 'ScreensaverWindowWait' -Condition {
+                $desktop.Refresh()
+                return ($desktop.MainWindowHandle -ne [IntPtr]::Zero)
+            })
             $summary.ScreensaverPhaseStatus = "Running"
             $summary.Notes += "Fullscreen soak host launched from PortfolioSaver.Screensaver with input-exit disabled."
         }
@@ -2721,7 +2805,10 @@ try {
     finally {
         if (-not $configClosedNaturally) {
             Close-ConfigWindowIfPresent -Process $desktop -Window $window
-            Start-Sleep -Milliseconds 90
+            [void](Wait-UIAutomationCondition -TimeoutSeconds 2 -PollMilliseconds 90 -TraceEvent 'ForcedConfigCloseWait' -Condition {
+                if ($null -eq $desktop) { return $true }
+                return ($null -eq (Find-ConfigWindowOwned -Process $desktop))
+            })
         }
     }
 
@@ -2730,7 +2817,10 @@ try {
             throw 'Desktop process was not running after config phase.'
         }
 
-        Start-Sleep -Milliseconds 150
+        [void](Wait-UIAutomationCondition -TimeoutSeconds 5 -PollMilliseconds 100 -TraceEvent 'PostConfigDesktopWindowWait' -Condition {
+            $desktop.Refresh()
+            return ($desktop.MainWindowHandle -ne [IntPtr]::Zero)
+        })
         $desktopWindow = Get-ProcessWindowElement -Process $desktop -TimeoutSeconds 15
         if ($null -eq $desktopWindow) {
             throw 'Could not locate desktop shell window via UI Automation.'
