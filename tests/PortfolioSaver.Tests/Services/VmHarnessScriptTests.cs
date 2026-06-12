@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Threading;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
@@ -7,11 +9,9 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void RunVmUxValidation_UsesCurrentConfigTitle_AndReturnsToGeneralTab()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+        string script = ReadRepoText("build",
             "vm",
-            "Run-VmUxValidation.ps1"));
+            "Run-VmUxValidation.ps1");
 
         Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-6", script, StringComparison.Ordinal);
         Assert.Contains("Select-Tab -Window $window -Name 'Advanced'", script, StringComparison.Ordinal);
@@ -24,16 +24,12 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void RunVmUxValidation_RecordsActualCaptureDimensions_AndFlagsFramebufferMismatch()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+        string script = ReadRepoText("build",
             "vm",
-            "Run-VmUxValidation.ps1"));
-        string runbook = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+            "Run-VmUxValidation.ps1");
+        string runbook = ReadRepoText("build",
             "vm",
-            "VM_OPERATIONS_RUNBOOK.md"));
+            "VM_OPERATIONS_RUNBOOK.md");
 
         Assert.Contains("ActualWidth = $mainSize.Width", script, StringComparison.Ordinal);
         Assert.Contains("ActualHeight = $mainSize.Height", script, StringComparison.Ordinal);
@@ -47,11 +43,9 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void RunVmUxValidation_AllowsCustomWorkspaceRootAndResultName()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+        string script = ReadRepoText("build",
             "vm",
-            "Run-VmUxValidation.ps1"));
+            "Run-VmUxValidation.ps1");
 
         Assert.Contains("[string]$RootPath", script, StringComparison.Ordinal);
         Assert.Contains("[string]$ResultName", script, StringComparison.Ordinal);
@@ -62,10 +56,8 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void BuildSafeTemp_DrainsProcessOutputBeforeWaitForExit()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
-            "build-safe-temp.ps1"));
+        string script = ReadRepoText("build",
+            "build-safe-temp.ps1");
 
         int startIndex = script.IndexOf("$null = $proc.Start()", StringComparison.Ordinal);
         int beginOutputIndex = script.IndexOf("$proc.BeginOutputReadLine()", StringComparison.Ordinal);
@@ -91,10 +83,8 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void BuildSafeTemp_KillsChildProcessOnCancellationOrAbort()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
-            "build-safe-temp.ps1"));
+        string script = ReadRepoText("build",
+            "build-safe-temp.ps1");
 
         Assert.Contains("finally {", script, StringComparison.Ordinal);
         Assert.Contains("$started = $false", script, StringComparison.Ordinal);
@@ -109,10 +99,8 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void PublishSafeTemp_SeedsImportedYFinanceServerTargets()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
-            "publish-safe-temp.ps1"));
+        string script = ReadRepoText("build",
+            "publish-safe-temp.ps1");
 
         Assert.Contains("$tempBuildRoot = Join-Path $tempRoot \"build\"", script, StringComparison.Ordinal);
         Assert.Contains("New-Item -ItemType Directory -Force -Path $tempBuildRoot", script, StringComparison.Ordinal);
@@ -125,11 +113,9 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void InvokeVmBuildTest_UsesDesktopSessionAgentAndPollsForFinishedSummary()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+        string script = ReadRepoText("build",
             "vm",
-            "Invoke-VmBuildTest.ps1"));
+            "Invoke-VmBuildTest.ps1");
 
         Assert.Contains("Guest-ConfigureDesktopAutomation.ps1", script, StringComparison.Ordinal);
         Assert.Contains("Guest-ClearDesktopAutomationCredentials.ps1", script, StringComparison.Ordinal);
@@ -184,16 +170,12 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void InvokeVmBuildTest_CleansRemoteProcessesWhenAborted()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+        string script = ReadRepoText("build",
             "vm",
-            "Invoke-VmBuildTest.ps1"));
-        string helper = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+            "Invoke-VmBuildTest.ps1");
+        string helper = ReadRepoText("build",
             "vm",
-            "VmSshCommon.ps1"));
+            "VmSshCommon.ps1");
 
         Assert.Contains("$runCompleted = $false", script, StringComparison.Ordinal);
         Assert.Contains("$runCompleted = $true", script, StringComparison.Ordinal);
@@ -218,11 +200,9 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void GuestConfigureDesktopAutomation_SetsStartupLauncherAndDisablesScreenSaver()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+        string script = ReadRepoText("build",
             "vm",
-            "Guest-ConfigureDesktopAutomation.ps1"));
+            "Guest-ConfigureDesktopAutomation.ps1");
 
         Assert.Contains("PortfolioSaver VmAgent.lnk", script, StringComparison.Ordinal);
         Assert.Contains("Start-PortfolioSaverVmAgent.cmd", script, StringComparison.Ordinal);
@@ -237,11 +217,9 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void GuestClearDesktopAutomationCredentials_RemovesAutologonPassword()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+        string script = ReadRepoText("build",
             "vm",
-            "Guest-ClearDesktopAutomationCredentials.ps1"));
+            "Guest-ClearDesktopAutomationCredentials.ps1");
 
         Assert.Contains("Remove-ItemProperty -Path $winlogonPath -Name DefaultPassword", script, StringComparison.Ordinal);
         Assert.Contains("Set-ItemProperty -Path $winlogonPath -Name AutoAdminLogon -Value '0'", script, StringComparison.Ordinal);
@@ -251,11 +229,9 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void GuestUxDeepExercise_LogsAndValidatesPhaseAndVersionChecks()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+        string script = ReadRepoText("build",
             "vm",
-            "Guest-UxDeepExercise.ps1"));
+            "Guest-UxDeepExercise.ps1");
 
         Assert.Contains("Start-Transcript -Path $logPath -Force", script, StringComparison.Ordinal);
         Assert.Contains("ConfigPhaseStatus", script, StringComparison.Ordinal);
@@ -356,16 +332,12 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void GuestUxDeepExercise_ConfigInteractionWaitsStayAtOrBelowHalfSecond()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+        string script = ReadRepoText("build",
             "vm",
-            "Guest-UxDeepExercise.ps1"));
-        string sharedParser = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+            "Guest-UxDeepExercise.ps1");
+        string sharedParser = ReadRepoText("build",
             "vm",
-            "VmTraceQuoteEvidence.ps1"));
+            "VmTraceQuoteEvidence.ps1");
 
         int start = script.IndexOf("function Perform-VisibleConfigActivity", StringComparison.Ordinal);
         int end = script.IndexOf("function Find-ElementMetadataByProcessId", StringComparison.Ordinal);
@@ -387,11 +359,9 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void GuestUxDeepExercise_SummaryWritesUseBoundedRetryWithoutChangingHelperDefaults()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+        string script = ReadRepoText("build",
             "vm",
-            "Guest-UxDeepExercise.ps1"));
+            "Guest-UxDeepExercise.ps1");
 
         Assert.Contains("$summaryWriteAttempts = 3", script, StringComparison.Ordinal);
         Assert.Contains("$summaryWriteRetryDelayMilliseconds = 50", script, StringComparison.Ordinal);
@@ -410,11 +380,9 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void GuestUxDeepExercise_SupportsSshWorkspaceRoots_AndWritesLocalTraceBundles()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+        string script = ReadRepoText("build",
             "vm",
-            "Guest-UxDeepExercise.ps1"));
+            "Guest-UxDeepExercise.ps1");
 
         Assert.Contains("[string]$RootPath", script, StringComparison.Ordinal);
         Assert.Contains("[string]$ResultRootPath", script, StringComparison.Ordinal);
@@ -486,16 +454,12 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void GuestUxDeepExercise_CapturesReferenceSpotChecksForLongRuns()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+        string script = ReadRepoText("build",
             "vm",
-            "Guest-UxDeepExercise.ps1"));
-        string sharedParser = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+            "Guest-UxDeepExercise.ps1");
+        string sharedParser = ReadRepoText("build",
             "vm",
-            "VmTraceQuoteEvidence.ps1"));
+            "VmTraceQuoteEvidence.ps1");
 
         Assert.Contains("reference-spot-checks.jsonl", script, StringComparison.Ordinal);
         Assert.Contains("reference-spot-check-comparisons.jsonl", script, StringComparison.Ordinal);
@@ -540,16 +504,12 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void PostProcessReferenceSpotChecks_BuildsComparisonsFromPulledCircularTrace()
     {
-        string script = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+        string script = ReadRepoText("build",
             "vm",
-            "PostProcess-ReferenceSpotChecks.ps1"));
-        string sharedParser = File.ReadAllText(Path.Combine(
-            GetRepoRoot(),
-            "build",
+            "PostProcess-ReferenceSpotChecks.ps1");
+        string sharedParser = ReadRepoText("build",
             "vm",
-            "VmTraceQuoteEvidence.ps1"));
+            "VmTraceQuoteEvidence.ps1");
 
         Assert.Contains("function Read-CircularTraceText", script, StringComparison.Ordinal);
         Assert.Contains("function Parse-DisplayedTapeSamples", script, StringComparison.Ordinal);
@@ -584,7 +544,7 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void VmTraceQuoteEvidenceParser_DefinesSelfTestForObservedQuoteLines()
     {
-        string parser = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "VmTraceQuoteEvidence.ps1"));
+        string parser = ReadRepoText("build", "vm", "VmTraceQuoteEvidence.ps1");
 
         Assert.Contains("function Test-YFinanceQuoteEvidenceParser", parser, StringComparison.Ordinal);
         Assert.Contains("event=QuoteResponseObserved / operation=get_quotes / symbol=SPY / price=600.12", parser, StringComparison.Ordinal);
@@ -595,12 +555,12 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void SshHarnessScripts_UseVmharnessWorkspaceAndDoNotDependOnVBox()
     {
-        string push = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "Push-VmWorkspace.ps1"));
-        string invoke = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "Invoke-VmBuildTest.ps1"));
-        string pull = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "Pull-VmResults.ps1"));
-        string bootstrap = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "Guest-BootstrapVmRemoteTools.ps1"));
-        string applySecrets = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "Guest-ApplyTestSecrets.ps1"));
-        string helper = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "VmSshCommon.ps1"));
+        string push = ReadRepoText("build", "vm", "Push-VmWorkspace.ps1");
+        string invoke = ReadRepoText("build", "vm", "Invoke-VmBuildTest.ps1");
+        string pull = ReadRepoText("build", "vm", "Pull-VmResults.ps1");
+        string bootstrap = ReadRepoText("build", "vm", "Guest-BootstrapVmRemoteTools.ps1");
+        string applySecrets = ReadRepoText("build", "vm", "Guest-ApplyTestSecrets.ps1");
+        string helper = ReadRepoText("build", "vm", "VmSshCommon.ps1");
 
         Assert.Contains(@"C:\vmharness\portfolio-saver", push, StringComparison.Ordinal);
         Assert.Contains(@"C:\vmharness\portfolio-saver", invoke, StringComparison.Ordinal);
@@ -631,11 +591,22 @@ public sealed class VmHarnessScriptTests
     [Fact]
     public void VmSshCommon_IgnoresKnownPwshStartupNoiseWithoutMaskingRealFailures()
     {
-        string helper = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "VmSshCommon.ps1"));
+        string helper = ReadRepoText("build", "vm", "VmSshCommon.ps1");
 
         Assert.Contains("function Test-IsIgnorableVmPwshFailure", helper, StringComparison.Ordinal);
         Assert.Contains("InitializeDefaultDrives operation", helper, StringComparison.Ordinal);
         Assert.Contains("if (Test-IsIgnorableVmPwshFailure -Result $result)", helper, StringComparison.Ordinal);
+    }
+
+    private static readonly ConcurrentDictionary<string, Lazy<string>> SourceTextCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Lazy<string> RepoRoot = new(GetRepoRoot, LazyThreadSafetyMode.ExecutionAndPublication);
+
+    private static string ReadRepoText(params string[] relativeParts)
+    {
+        string path = Path.Combine(new[] { RepoRoot.Value }.Concat(relativeParts).ToArray());
+        return SourceTextCache.GetOrAdd(
+            path,
+            static key => new Lazy<string>(() => File.ReadAllText(key), LazyThreadSafetyMode.ExecutionAndPublication)).Value;
     }
 
     private static string GetRepoRoot()
@@ -654,5 +625,8 @@ public sealed class VmHarnessScriptTests
     }
 
 }
+
+
+
 
 
