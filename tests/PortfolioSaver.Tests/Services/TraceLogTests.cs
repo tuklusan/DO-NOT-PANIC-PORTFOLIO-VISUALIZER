@@ -13,6 +13,9 @@ public sealed class TraceLogTests
     public async Task TraceLog_WritesToFourMegCircularFileUnderAppData()
     {
         string appDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTraceTest", Guid.NewGuid().ToString("N"));
+        string? previousProductRoot = Environment.GetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT");
+        string? previousLegacyRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", appDataRoot);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", appDataRoot);
         try
         {
@@ -48,7 +51,8 @@ public sealed class TraceLogTests
         }
         finally
         {
-            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", null);
+            Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", previousProductRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousLegacyRoot);
             DeleteDirectoryWithRetry(appDataRoot);
         }
     }
@@ -130,6 +134,9 @@ public sealed class TraceLogTests
     public void TraceLog_CircularIndexPosition_UsesInMemoryPositionAfterFirstWrite()
     {
         string appDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTraceCacheTest", Guid.NewGuid().ToString("N"));
+        string? previousProductRoot = Environment.GetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT");
+        string? previousLegacyRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", appDataRoot);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", appDataRoot);
         try
         {
@@ -172,7 +179,8 @@ public sealed class TraceLogTests
         }
         finally
         {
-            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", null);
+            Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", previousProductRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousLegacyRoot);
             DeleteDirectoryWithRetry(appDataRoot);
         }
     }
