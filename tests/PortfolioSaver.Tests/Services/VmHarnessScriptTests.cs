@@ -384,6 +384,29 @@ public sealed class VmHarnessScriptTests
     }
 
     [Fact]
+    public void GuestUxDeepExercise_SummaryWritesUseBoundedRetryWithoutChangingHelperDefaults()
+    {
+        string script = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "build",
+            "vm",
+            "Guest-UxDeepExercise.ps1"));
+
+        Assert.Contains("$summaryWriteAttempts = 3", script, StringComparison.Ordinal);
+        Assert.Contains("$summaryWriteRetryDelayMilliseconds = 50", script, StringComparison.Ordinal);
+        Assert.Contains("Write-TextFileWithRetry -Path $summaryPath -Content $json -MaxAttempts $summaryWriteAttempts -RetryDelayMilliseconds $summaryWriteRetryDelayMilliseconds", script, StringComparison.Ordinal);
+        Assert.Contains("Write-TextFileWithRetry -Path $legacySummaryPath -Content $json -MaxAttempts $summaryWriteAttempts -RetryDelayMilliseconds $summaryWriteRetryDelayMilliseconds", script, StringComparison.Ordinal);
+        Assert.Contains("[int]$MaxAttempts = 20", script, StringComparison.Ordinal);
+        Assert.Contains("[int]$RetryDelayMilliseconds = 80", script, StringComparison.Ordinal);
+        Assert.Contains("if ($null -ne $primarySummaryWriteException -and -not $legacySummaryWritten)", script, StringComparison.Ordinal);
+        Assert.Contains("Both UX summary writes failed after bounded retries.", script, StringComparison.Ordinal);
+        Assert.Contains("[System.Exception[]]@($primarySummaryWriteException, $legacySummaryWriteException)", script, StringComparison.Ordinal);
+        Assert.Contains("Primary UX summary write failed after bounded retries", script, StringComparison.Ordinal);
+        Assert.Contains("Legacy UX summary write failed after bounded retries", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("if ($null -ne $summaryWriteFailure)", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void GuestUxDeepExercise_SupportsSshWorkspaceRoots_AndWritesLocalTraceBundles()
     {
         string script = File.ReadAllText(Path.Combine(

@@ -980,14 +980,54 @@ $referenceComparisonPath = Join-Path $results 'reference-spot-check-comparisons.
 
 function Write-SummaryFiles {
     $json = $summary | ConvertTo-Json -Depth 6
-    Write-TextFileWithRetry -Path $summaryPath -Content $json
-    Write-TextFileWithRetry -Path $legacySummaryPath -Content $json
+    $legacySummaryWritten = $false
+    $primarySummaryWriteException = $null
+    $legacySummaryWriteException = $null
+
+    # Summary writes happen frequently during UX runs. Keep this call-site
+    # budget intentionally small so transient contention fails fast instead of
+    # blocking for seconds; at least one summary file must still update.
+    $summaryWriteAttempts = 3
+    $summaryWriteRetryDelayMilliseconds = 50
+
+    try {
+        Write-TextFileWithRetry -Path $summaryPath -Content $json -MaxAttempts $summaryWriteAttempts -RetryDelayMilliseconds $summaryWriteRetryDelayMilliseconds
+    }
+    catch {
+        $primarySummaryWriteException = $_.Exception
+        $summary.Notes += "Primary UX summary write failed after bounded retries: $($primarySummaryWriteException.Message)"
+        Write-Warning ("Unable to update summary file '{0}' after bounded retries: {1}" -f $summaryPath, $_.Exception.Message)
+    }
+
+    try {
+        Write-TextFileWithRetry -Path $legacySummaryPath -Content $json -MaxAttempts $summaryWriteAttempts -RetryDelayMilliseconds $summaryWriteRetryDelayMilliseconds
+        $legacySummaryWritten = $true
+    }
+    catch {
+        $legacySummaryWriteException = $_.Exception
+        $summary.Notes += "Legacy UX summary write failed after bounded retries: $($legacySummaryWriteException.Message)"
+        Write-Warning ("Unable to update legacy summary file '{0}' after bounded retries: {1}" -f $legacySummaryPath, $_.Exception.Message)
+    }
+
+    if ($null -ne $primarySummaryWriteException -and -not $legacySummaryWritten) {
+        if ($null -ne $legacySummaryWriteException) {
+            throw [System.AggregateException]::new(
+                "Both UX summary writes failed after bounded retries.",
+                [System.Exception[]]@($primarySummaryWriteException, $legacySummaryWriteException))
+        }
+
+        throw $primarySummaryWriteException
+    }
 }
 
 function Write-TextFileWithRetry {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
-        [Parameter(Mandatory = $true)][string]$Content
+        [Parameter(Mandatory = $true)][string]$Content,
+        [ValidateRange(1, 20)]
+        [int]$MaxAttempts = 20,
+        [ValidateRange(1, 1000)]
+        [int]$RetryDelayMilliseconds = 80
     )
 
     $attempts = 0
@@ -1011,11 +1051,12 @@ function Write-TextFileWithRetry {
             }
 
             $attempts++
-            if ($attempts -ge 20) {
+            if ($attempts -ge $MaxAttempts) {
                 throw
             }
 
-            Start-Sleep -Milliseconds 80
+            Write-Verbose ("Retrying text file replacement for {0}; attempt {1} of {2} failed: {3}" -f $Path, $attempts, $MaxAttempts, $_.Exception.Message)
+            Start-Sleep -Milliseconds $RetryDelayMilliseconds
         }
     }
 }
