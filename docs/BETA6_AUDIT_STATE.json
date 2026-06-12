@@ -2593,7 +2593,7 @@
       "priority": 4,
       "area": "Concurrency / I/O",
       "title": "`SaveLedger` writes occur inside a lock, potentially blocking other threads",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2612,7 +2612,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by narrowing ProviderBudgetLedgerService state locking to in-memory mutation/snapshot capture, moving JSON/file persistence outside the state lock, serializing disk writers with a separate save lock, and adding version checks so stale snapshots cannot overwrite newer persisted state.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-105429.md reported no high/critical issues and cleared the change for commit. Focused local Release Nb040BehaviorTests passed 27/27. Full local Release tests passed 405/405 after commit/push."
     },
     {
       "id": "CR-048",
