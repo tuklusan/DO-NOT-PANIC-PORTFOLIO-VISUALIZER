@@ -15,8 +15,11 @@ using PortfolioSaver.Shared.Helpers;
 using Xunit;
 using YFinance.NET.Client;
 using YFinance.NET.Config;
+using YFinance.NET.Features.Quotes;
 using YFinance.NET.Protocol.Dtos;
 using YFinance.NET.Transport;
+using YQuoteSnapshot = YFinance.NET.Models.QuoteSnapshot;
+using YTickerInfo = YFinance.NET.Models.TickerInfo;
 
 namespace PortfolioSaver.Tests.Services;
 
@@ -244,6 +247,58 @@ public sealed class Nb040BehaviorTests
         Assert.Same(exchangeHandler, ExchangePhotoCacheService.DefaultHttpHandlerForTests);
         Assert.Equal(TimeSpan.FromMinutes(5), exchangeHandler.PooledConnectionLifetime);
         Assert.Equal(TimeSpan.FromSeconds(30), exchangeHandler.PooledConnectionIdleTimeout);
+    }
+
+    [Fact]
+    public async Task TickerInfoService_ResolvesUncachedSummariesWithBoundedParallelism()
+    {
+        string cacheRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        int concurrent = 0;
+        int maxConcurrent = 0;
+        int enteredSummaries = 0;
+        object concurrencySync = new();
+        TaskCompletionSource fourSummariesEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource releaseSummaries = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        try
+        {
+            YFinanceOptions options = new() { PersistentCacheRootPath = cacheRoot };
+            TickerInfoService service = new(
+                (symbol, _) => Task.FromResult<YQuoteSnapshot?>(CreateYFinanceQuote(symbol)),
+                (symbols, _) => Task.FromResult<IReadOnlyDictionary<string, YQuoteSnapshot>>(
+                    symbols.ToDictionary(static symbol => symbol, CreateYFinanceQuote, StringComparer.Ordinal)),
+                async (_, _, token) =>
+                {
+                    int now = Interlocked.Increment(ref concurrent);
+                    lock (concurrencySync)
+                    {
+                        maxConcurrent = Math.Max(maxConcurrent, now);
+                    }
+
+                    if (Interlocked.Increment(ref enteredSummaries) == 4)
+                        fourSummariesEntered.SetResult();
+
+                    await releaseSummaries.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+                    Interlocked.Decrement(ref concurrent);
+                    return null;
+                },
+                options);
+
+            Task<IReadOnlyDictionary<string, YTickerInfo?>> infosTask = service.GetInfosAsync(["AAA", "BBB", "CCC", "DDD", "EEE", "FFF"]);
+
+            await fourSummariesEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(4, maxConcurrent);
+            releaseSummaries.SetResult();
+            IReadOnlyDictionary<string, YTickerInfo?> infos = await infosTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.Equal(6, infos.Count);
+            Assert.All(infos.Values, Assert.NotNull);
+        }
+        finally
+        {
+            if (Directory.Exists(cacheRoot))
+                Directory.Delete(cacheRoot, recursive: true);
+        }
     }
 
     [Fact]
@@ -642,6 +697,38 @@ public sealed class Nb040BehaviorTests
             [new HistoryBarDto(DateTimeOffset.UtcNow.AddDays(-1), 1m, 2m, 1m, 2m, 100)],
             new HistoryMetadataDto(null, null, "USD", "America/New_York", "EST", null, null, null),
             new CacheMetadataDto("test", 0, false));
+
+    private static YQuoteSnapshot CreateYFinanceQuote(string symbol)
+        => new(
+            symbol,
+            ShortName: symbol,
+            LongName: symbol,
+            DisplayName: symbol,
+            Currency: "USD",
+            Exchange: "TEST",
+            ExchangeTimezoneName: "America/New_York",
+            ExchangeTimezoneShortName: "EST",
+            QuoteType: "EQUITY",
+            MarketState: "REGULAR",
+            RegularMarketPrice: 100m,
+            RegularMarketPreviousClose: 99m,
+            RegularMarketOpen: 99m,
+            RegularMarketDayHigh: 101m,
+            RegularMarketDayLow: 98m,
+            RegularMarketChange: 1m,
+            RegularMarketChangePercent: 1m,
+            FiftyTwoWeekLow: 80m,
+            FiftyTwoWeekHigh: 120m,
+            FiftyDayAverage: 100m,
+            TwoHundredDayAverage: 95m,
+            RegularMarketVolume: 1000,
+            AverageVolume: 1000,
+            AverageVolume10Day: 1000,
+            SharesOutstanding: 1000000,
+            MarketCap: 100000000,
+            TrailingPe: 20m,
+            ForwardPe: 18m,
+            Raw: JsonDocument.Parse("{}").RootElement.Clone());
 
     private sealed class ControlledQuoteProvider : IQuoteProvider
     {

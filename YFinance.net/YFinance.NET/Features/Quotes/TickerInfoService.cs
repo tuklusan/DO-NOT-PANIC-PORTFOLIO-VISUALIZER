@@ -8,20 +8,45 @@ namespace YFinance.NET.Features.Quotes;
 
 public sealed class TickerInfoService
 {
+    private const int MaxConcurrentInfoSummaries = 4;
     private static readonly string[] DefaultInfoModules = ["financialData", "quoteType", "defaultKeyStatistics", "assetProfile", "summaryDetail"];
 
     // Preserve a clear "quote + quoteSummary => normalized info" seam so upstream
     // quote.py changes can be re-ported without rediscovering the whole design.
-    private readonly QuoteService _quoteService;
-    private readonly QuoteSummaryService _quoteSummaryService;
+    private readonly QuoteFetchAsync _quoteFetchAsync;
+    private readonly QuoteBatchFetchAsync _quoteBatchFetchAsync;
+    private readonly SummaryFetchAsync _summaryFetchAsync;
     private readonly PersistentTtlCache<TickerInfo> _persistentCache;
     private readonly YFinanceOptions _options;
     private readonly YFinanceTrace _trace;
 
     public TickerInfoService(QuoteService quoteService, QuoteSummaryService quoteSummaryService, YFinanceOptions options, YFinanceTrace? trace = null)
     {
-        _quoteService = quoteService;
-        _quoteSummaryService = quoteSummaryService;
+        ArgumentNullException.ThrowIfNull(quoteService);
+        ArgumentNullException.ThrowIfNull(quoteSummaryService);
+        ArgumentNullException.ThrowIfNull(options);
+        _quoteFetchAsync = quoteService.GetQuoteAsync;
+        _quoteBatchFetchAsync = quoteService.GetQuotesAsync;
+        _summaryFetchAsync = quoteSummaryService.GetSummaryAsync;
+        _options = options;
+        _persistentCache = new PersistentTtlCache<TickerInfo>(options.MetadataCacheDirectoryPath);
+        _trace = trace ?? new YFinanceTrace(options.TraceSink);
+    }
+
+    internal TickerInfoService(
+        QuoteFetchAsync quoteFetchAsync,
+        QuoteBatchFetchAsync quoteBatchFetchAsync,
+        SummaryFetchAsync summaryFetchAsync,
+        YFinanceOptions options,
+        YFinanceTrace? trace = null)
+    {
+        ArgumentNullException.ThrowIfNull(quoteFetchAsync);
+        ArgumentNullException.ThrowIfNull(quoteBatchFetchAsync);
+        ArgumentNullException.ThrowIfNull(summaryFetchAsync);
+        ArgumentNullException.ThrowIfNull(options);
+        _quoteFetchAsync = quoteFetchAsync;
+        _quoteBatchFetchAsync = quoteBatchFetchAsync;
+        _summaryFetchAsync = summaryFetchAsync;
         _options = options;
         _persistentCache = new PersistentTtlCache<TickerInfo>(options.MetadataCacheDirectoryPath);
         _trace = trace ?? new YFinanceTrace(options.TraceSink);
@@ -39,8 +64,8 @@ public sealed class TickerInfoService
         }
         _trace.InfoState("YFinance.Info", "PersistentInfoCacheMiss", ("symbol", normalized), ("cache_key", cacheKey));
 
-        QuoteSnapshot? quote = await _quoteService.GetQuoteAsync(normalized, cancellationToken).ConfigureAwait(false);
-        QuoteSummaryResult? summary = await _quoteSummaryService.GetSummaryAsync(normalized, DefaultInfoModules, cancellationToken).ConfigureAwait(false);
+        QuoteSnapshot? quote = await _quoteFetchAsync(normalized, cancellationToken).ConfigureAwait(false);
+        QuoteSummaryResult? summary = await _summaryFetchAsync(normalized, DefaultInfoModules, cancellationToken).ConfigureAwait(false);
         TickerInfo? info = Normalize(normalized, quote, summary);
         if (info is not null)
         {
@@ -86,13 +111,30 @@ public sealed class TickerInfoService
             return results;
         }
 
-        IReadOnlyDictionary<string, QuoteSnapshot> quotes = await _quoteService.GetQuotesAsync(unresolved, cancellationToken).ConfigureAwait(false);
-        foreach (string symbol in unresolved)
+        IReadOnlyDictionary<string, QuoteSnapshot> quotes = await _quoteBatchFetchAsync(unresolved, cancellationToken).ConfigureAwait(false);
+        using SemaphoreSlim summaryGate = new(MaxConcurrentInfoSummaries, MaxConcurrentInfoSummaries);
+        Task<(string Symbol, TickerInfo? Info)>[] summaryTasks = unresolved
+            .Select(symbol => ResolveUncachedInfoAsync(symbol, quotes, summaryGate, cancellationToken))
+            .ToArray();
+
+        foreach ((string symbol, TickerInfo? info) in await Task.WhenAll(summaryTasks).ConfigureAwait(false))
+            results[symbol] = info;
+
+        return results;
+    }
+
+    private async Task<(string Symbol, TickerInfo? Info)> ResolveUncachedInfoAsync(
+        string symbol,
+        IReadOnlyDictionary<string, QuoteSnapshot> quotes,
+        SemaphoreSlim summaryGate,
+        CancellationToken cancellationToken)
+    {
+        await summaryGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            QuoteSummaryResult? summary = await _quoteSummaryService.GetSummaryAsync(symbol, DefaultInfoModules, cancellationToken).ConfigureAwait(false);
+            QuoteSummaryResult? summary = await _summaryFetchAsync(symbol, DefaultInfoModules, cancellationToken).ConfigureAwait(false);
             quotes.TryGetValue(symbol, out QuoteSnapshot? quote);
             TickerInfo? info = Normalize(symbol, quote, summary);
-            results[symbol] = info;
             if (info is not null)
             {
                 string cacheKey = PersistentTtlCache<TickerInfo>.BuildKey(CacheBuckets.Metadata, symbol, "info");
@@ -100,10 +142,19 @@ public sealed class TickerInfoService
                 _trace.InfoState("YFinance.Info", "PersistentInfoCacheStore", ("symbol", symbol), ("cache_key", cacheKey), ("ttl_hours", _options.PersistentMetadataCacheTtl.TotalHours));
             }
             _trace.InfoState("YFinance.Info", "InfoNormalizeComplete", ("symbol", symbol), ("has_quote", quote is not null), ("has_summary", summary is not null), ("resolved", info is not null));
+            return (symbol, info);
         }
-
-        return results;
+        finally
+        {
+            summaryGate.Release();
+        }
     }
+
+    internal delegate Task<QuoteSnapshot?> QuoteFetchAsync(string symbol, CancellationToken cancellationToken);
+
+    internal delegate Task<IReadOnlyDictionary<string, QuoteSnapshot>> QuoteBatchFetchAsync(IEnumerable<string> symbols, CancellationToken cancellationToken);
+
+    internal delegate Task<QuoteSummaryResult?> SummaryFetchAsync(string symbol, IEnumerable<string> modules, CancellationToken cancellationToken);
 
     private static TickerInfo? Normalize(string symbol, QuoteSnapshot? quote, QuoteSummaryResult? summary)
     {
