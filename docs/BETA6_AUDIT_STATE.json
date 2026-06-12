@@ -2680,7 +2680,7 @@
       "priority": 4,
       "area": "Thread safety",
       "title": "Static flag image cache not guarded against concurrent access",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2699,7 +2699,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by replacing GlobalMarketsTapeControl static flag Dictionary with ConcurrentDictionary<string, Lazy<ImageSource?>> using ExecutionAndPublication, removing failed null loads from cache for retry, and extending render behavior guard tests for the concurrent lazy pattern.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-112352.md confirmed the thread-safety improvement is correct and reported no blocking findings. Focused local Release ScreensaverRenderBehaviorTests passed 67/67. Full local Release tests passed 413/413 after commit/push."
     },
     {
       "id": "CR-051",
