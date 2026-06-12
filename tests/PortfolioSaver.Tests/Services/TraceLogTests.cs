@@ -142,12 +142,12 @@ public sealed class TraceLogTests
             MethodInfo writeCircularMethod = typeof(TraceLog).GetMethod("WriteCircular", BindingFlags.NonPublic | BindingFlags.Static)
                 ?? throw new InvalidOperationException("Could not find TraceLog.WriteCircular.");
 
-            positionField.SetValue(null, -1);
             string firstLine = $"{DateTimeOffset.UtcNow:O} | INFO | first-cache-line";
             string secondLine = $"{DateTimeOffset.UtcNow:O} | INFO | second-cache-line";
             int firstLength = Encoding.UTF8.GetByteCount(firstLine + Environment.NewLine);
             int secondLength = Encoding.UTF8.GetByteCount(secondLine + Environment.NewLine);
 
+            positionField.SetValue(null, -1);
             writeCircularMethod.Invoke(null, [firstLine]);
             int firstPosition = int.Parse(File.ReadAllText(traceIndexPath));
             Assert.Equal(firstLength, firstPosition);
