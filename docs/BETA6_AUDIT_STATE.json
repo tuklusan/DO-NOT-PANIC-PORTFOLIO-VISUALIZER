@@ -2941,7 +2941,7 @@
       "priority": 4,
       "area": "Test quality",
       "title": "Race condition in concurrent `ProviderBudgetLedger` reservation test may mask thread‑safety issues",
-      "status": "open",
+      "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2960,7 +2960,9 @@
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
         "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by adding a 9-participant Barrier to ProviderBudgetLedgerService_SerializesConcurrentReservationsAndPersistsValidLedger so all eight worker tasks reach the same start gate before TryReserve, forcing true concurrent reservation contention while preserving the single shared timestamp for reuse-interval neutrality.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260612-153046.md reported no real blocking findings; its only concrete disposal recommendation was already satisfied by using Barrier. Focused local Release ProviderBudgetLedgerService_SerializesConcurrentReservationsAndPersistsValidLedger passed 1/1 on 2026-06-12."
     },
     {
       "id": "CR-060",
