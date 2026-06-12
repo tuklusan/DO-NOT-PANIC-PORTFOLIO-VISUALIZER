@@ -20,6 +20,7 @@ public static class TraceLog
     private static readonly ConcurrentQueue<string> Queue = new();
     private static readonly string ProgramName = Process.GetCurrentProcess().ProcessName;
     private static NetworkMetadata _networkMetadata = new(Environment.MachineName, "127.0.0.1");
+    private static int _circularWritePosition = -1;
     private static int _workerStarted;
     private static int _metadataResolutionStarted;
 
@@ -255,7 +256,11 @@ public static class TraceLog
             if (stream.Length != MaxTraceBytes)
                 stream.SetLength(MaxTraceBytes);
 
-            int writePosition = ReadPosition();
+            // The trace file is process-owned; cache the cursor after first read
+            // so each log line does not re-open the index file.
+            int writePosition = _circularWritePosition;
+            if (writePosition < 0)
+                writePosition = ReadPosition();
             if (writePosition < 0 || writePosition >= MaxTraceBytes)
                 writePosition = 0;
 
@@ -271,6 +276,7 @@ public static class TraceLog
             }
 
             int nextPosition = (writePosition + payload.Length) % MaxTraceBytes;
+            _circularWritePosition = nextPosition;
             WritePosition(nextPosition);
             stream.Flush(true);
         }

@@ -49,6 +49,8 @@ public sealed class TraceLogTests
         finally
         {
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", null);
+            if (Directory.Exists(appDataRoot))
+                Directory.Delete(appDataRoot, recursive: true);
         }
     }
 
@@ -123,6 +125,46 @@ public sealed class TraceLogTests
         Assert.Contains("private sealed record NetworkMetadata(string HostName, string LocalIp);", source, StringComparison.Ordinal);
         Assert.DoesNotContain("static readonly string HostName = GetHostNameSafe()", source, StringComparison.Ordinal);
         Assert.DoesNotContain("static readonly string LocalIp = GetPrimaryIpSafe()", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TraceLog_CircularIndexPosition_UsesInMemoryPositionAfterFirstWrite()
+    {
+        string appDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTraceCacheTest", Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", appDataRoot);
+        try
+        {
+            string traceDirectory = Path.Combine(PathHelper.GetAppDataDirectory(), "Trace");
+            string traceIndexPath = Path.Combine(traceDirectory, "trace.circular.idx");
+            Directory.CreateDirectory(traceDirectory);
+
+            FieldInfo positionField = typeof(TraceLog).GetField("_circularWritePosition", BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("Could not find TraceLog._circularWritePosition.");
+            MethodInfo writeCircularMethod = typeof(TraceLog).GetMethod("WriteCircular", BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("Could not find TraceLog.WriteCircular.");
+
+            positionField.SetValue(null, -1);
+            string firstLine = $"{DateTimeOffset.UtcNow:O} | INFO | first-cache-line";
+            string secondLine = $"{DateTimeOffset.UtcNow:O} | INFO | second-cache-line";
+            int firstLength = Encoding.UTF8.GetByteCount(firstLine + Environment.NewLine);
+            int secondLength = Encoding.UTF8.GetByteCount(secondLine + Environment.NewLine);
+
+            writeCircularMethod.Invoke(null, [firstLine]);
+            int firstPosition = int.Parse(File.ReadAllText(traceIndexPath));
+            Assert.Equal(firstLength, firstPosition);
+
+            File.WriteAllText(traceIndexPath, "0");
+            writeCircularMethod.Invoke(null, [secondLine]);
+
+            int secondPosition = int.Parse(File.ReadAllText(traceIndexPath));
+            Assert.Equal(firstLength + secondLength, secondPosition);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", null);
+            if (Directory.Exists(appDataRoot))
+                Directory.Delete(appDataRoot, recursive: true);
+        }
     }
 
     private static async Task<bool> WaitForTraceAsync(
