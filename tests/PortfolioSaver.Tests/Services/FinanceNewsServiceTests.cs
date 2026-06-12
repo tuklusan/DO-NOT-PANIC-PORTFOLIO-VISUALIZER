@@ -52,7 +52,7 @@ public sealed class FinanceNewsServiceTests
         string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
         int requestCount = 0;
         string? capturedBody = null;
-        FakeHttpMessageHandler handler = new(request =>
+        FakeHttpMessageHandler handler = new(async (request, cancellationToken) =>
         {
             string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
             if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html")
@@ -94,7 +94,9 @@ public sealed class FinanceNewsServiceTests
             }
 
             requestCount++;
-            capturedBody = request.Content is null ? string.Empty : request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            capturedBody = request.Content is null
+                ? string.Empty
+                : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             Assert.Equal("https://api.deepseek.com/chat/completions", requestUrl);
             Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
             Assert.Equal("test-deepseek-key", request.Headers.Authorization?.Parameter);
@@ -171,7 +173,7 @@ public sealed class FinanceNewsServiceTests
         string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
         string? capturedBody = null;
         string? capturedRequestUrl = null;
-        FakeHttpMessageHandler handler = new(request =>
+        FakeHttpMessageHandler handler = new(async (request, cancellationToken) =>
         {
             string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
             if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
@@ -187,7 +189,9 @@ public sealed class FinanceNewsServiceTests
             }
 
             capturedRequestUrl = requestUrl;
-            capturedBody = request.Content is null ? string.Empty : request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            capturedBody = request.Content is null
+                ? string.Empty
+                : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent("""
@@ -285,7 +289,7 @@ public sealed class FinanceNewsServiceTests
     {
         string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
         string? capturedBody = null;
-        FakeHttpMessageHandler handler = new(request =>
+        FakeHttpMessageHandler handler = new(async (request, cancellationToken) =>
         {
             string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
             if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
@@ -300,7 +304,9 @@ public sealed class FinanceNewsServiceTests
                 };
             }
 
-            capturedBody = request.Content is null ? string.Empty : request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            capturedBody = request.Content is null
+                ? string.Empty
+                : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent("""
@@ -888,10 +894,18 @@ public sealed class FinanceNewsServiceTests
         Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", headlines[^1]);
     }
 
-    private sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
+    private sealed class FakeHttpMessageHandler : HttpMessageHandler
     {
+        private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _responder;
+
+        public FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder)
+            => _responder = (request, _) => Task.FromResult(responder(request));
+
+        public FakeHttpMessageHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> responder)
+            => _responder = responder;
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => Task.FromResult(responder(request));
+            => _responder(request, cancellationToken);
     }
 
     private static string BuildPromptForTest(IReadOnlyList<string> headlines)
