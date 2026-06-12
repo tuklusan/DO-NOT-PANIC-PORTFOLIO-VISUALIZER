@@ -3026,7 +3026,7 @@
       "priority": 2,
       "area": "YFinance.NET upstream sync",
       "title": "Analyze recent upstream yfinance changes and synchronize YFinance.NET if required",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_12",
       "severity": "High",
       "evidence": [
@@ -3047,7 +3047,9 @@
         "Local build/test validation passes.",
         "Live YFinance.NET validation is run when the change affects Yahoo transport/quote/history behavior and network conditions allow it.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-06-12 by comparing synchronized ranaroussi/yfinance and tuklusan/yfinance commit 125b12e058fe37971390e32333d2cf9edb2a8a50 (Version 1.4.1, 2026-05-28) against YFinance.NET responsibilities, documenting the mapping in docs/YFINANCE_NET_UPSTREAM_SYNC_2026-06-12.md, and implementing the applicable active-surface changes: configurable lang/region locale scoping for quote, quoteSummary, chart/history, and market-timing requests; upstream-compatible chart:null fail-soft handling for history and market timing; explicit exceptions for absent or malformed chart nodes; and obsolete no-locale legacy constructor bridges for direct service callers.",
+      "validation": "DeepSeek pre-commit review artifacts build/deepseek-review/deepseek-review-20260612-193609.md and build/deepseek-review/deepseek-review-20260612-194146.md reported no blocking issues after final fixes. Focused locale/chart parser tests passed 15/15. Full local Release test suite passed 436/436 with only pre-existing xUnit1030 warnings in YFinanceServerClientPipelineTests. Live YFinance.NET exerciser validation passed for AAPL, MSFT, and VOO: 3/3 history lanes returned 5 bars and 3/3 quotes resolved with locale-scoped Yahoo requests."
     }
   ],
   "remaining_validation_gaps": [],
