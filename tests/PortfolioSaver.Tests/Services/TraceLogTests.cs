@@ -49,8 +49,7 @@ public sealed class TraceLogTests
         finally
         {
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", null);
-            if (Directory.Exists(appDataRoot))
-                Directory.Delete(appDataRoot, recursive: true);
+            DeleteDirectoryWithRetry(appDataRoot);
         }
     }
 
@@ -162,9 +161,32 @@ public sealed class TraceLogTests
         finally
         {
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", null);
-            if (Directory.Exists(appDataRoot))
-                Directory.Delete(appDataRoot, recursive: true);
+            DeleteDirectoryWithRetry(appDataRoot);
         }
+    }
+
+    private static void DeleteDirectoryWithRetry(string path)
+    {
+        if (!Directory.Exists(path))
+            return;
+
+        IOException? lastIoException = null;
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            try
+            {
+                Directory.Delete(path, recursive: true);
+                return;
+            }
+            catch (IOException ex)
+            {
+                lastIoException = ex;
+                Thread.Sleep(50);
+            }
+        }
+
+        if (lastIoException is not null)
+            throw lastIoException;
     }
 
     private static async Task<bool> WaitForTraceAsync(
