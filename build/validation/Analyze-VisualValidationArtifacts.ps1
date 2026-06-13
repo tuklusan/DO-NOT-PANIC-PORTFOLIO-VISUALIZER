@@ -3,7 +3,8 @@ param(
     [string]$OutputPath,
     [switch]$CreateChangeRequests,
     [int]$MinimumScreenshots = 3,
-    [double]$BlankBrightnessThreshold = 7.0
+    [double]$BlankBrightnessThreshold = 7.0,
+    [switch]$SkipDeepSeekArtifactReview
 )
 
 Set-StrictMode -Version Latest
@@ -127,6 +128,23 @@ $runSummaryArray = @($runSummaries.ToArray())
 $report = [ordered]@{ generatedAt=(Get-Date).ToString('o'); resultRoot=(Resolve-Path -LiteralPath $ResultRoot).Path; runCount=$runs.Count; clean=($findingArray.Count -eq 0); findings=$findingArray; runs=$runSummaryArray }
 $report | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $OutputPath -Encoding UTF8
 
+$deepSeekReviewLine = $null
+if (-not $SkipDeepSeekArtifactReview) {
+    $deepSeekReviewPath = Join-Path (Split-Path -Path $OutputPath -Parent) ('deepseek-artifact-review-{0}.md' -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+    try {
+        # This is intentionally terminal for normal workflows: the project requires
+        # a DeepSeek advisory second opinion before final artifact interpretation.
+        $deepSeekOutput = & (Join-Path $PSScriptRoot 'Invoke-DeepSeekArtifactReview.ps1') -ResultRoot $ResultRoot -AnalysisReportPath $OutputPath -OutputPath $deepSeekReviewPath
+        $reviewLine = @($deepSeekOutput | Where-Object { $_ -like 'DEEPSEEK_ARTIFACT_REVIEW=*' } | Select-Object -Last 1)
+        if ($reviewLine.Count -eq 0) { throw 'DeepSeek artifact second-opinion review did not report DEEPSEEK_ARTIFACT_REVIEW.' }
+        $deepSeekReviewLine = $reviewLine[0]
+    }
+    catch {
+        Write-Output ("DEEPSEEK_ARTIFACT_REVIEW_FAILED=" + $_.Exception.Message)
+        throw
+    }
+}
+
 if ($CreateChangeRequests -and $findings.Count -gt 0) {
     foreach ($finding in $findings) {
         & (Join-Path $PSScriptRoot 'Add-AuditChangeRequest.ps1') -Title $finding.title -Area $finding.area -Severity $finding.severity -Priority 1 -Source 'autonomous_visual_validation' -Evidence @($finding.evidence) -Notes @($finding.notes) | Out-Host
@@ -135,6 +153,7 @@ if ($CreateChangeRequests -and $findings.Count -gt 0) {
 Write-Output ("ANALYSIS_REPORT=" + $OutputPath)
 Write-Output ("ANALYSIS_CLEAN=" + [string]($findings.Count -eq 0))
 Write-Output ("ANALYSIS_FINDINGS=" + $findings.Count)
+if (-not [string]::IsNullOrWhiteSpace($deepSeekReviewLine)) { Write-Output $deepSeekReviewLine }
 
 
 

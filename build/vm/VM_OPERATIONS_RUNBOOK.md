@@ -43,6 +43,8 @@ Resolve actionable findings and rerun the review before continuing. DeepSeek API
 
 The old missing-key waiver and skip-review paths are intentionally unsupported. The live gate performs one minimal DeepSeek API probe before the normal review packet is sent.
 
+When pulled VM result bundles, traces, screenshots, or logs are analyzed, run the project artifact analyzer with its default DeepSeek advisory second-opinion gate enabled. The second opinion is advisory only; final pass/fail and CR creation remain owned by the deterministic analyzer and developer.
+
 Do **not** treat the harness glue itself as an optimization target during normal feature work.
 Only revisit the harness when:
 

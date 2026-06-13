@@ -149,8 +149,11 @@ The current remote Windows UX harness is the supported baseline and should be tr
 5. Publish gate: publish with `build\publish-safe-temp.ps1`
 6. VM push gate: push with `build\vm\Push-VmWorkspace.ps1`
 7. Remote UX gate: run remote interactive UX validation through `PortfolioSaver.VmAgent`
+8. Test-artifact interpretation gate: when traces, screenshots, logs, summaries, or VM result bundles are analyzed, capture an advisory DeepSeek second opinion before finalizing pass/fail or CR-generation decisions
 
 The DeepSeek live workflow gate and review gate apply to application code, XAML, scripts, harnesses, tests, project files, build tooling, and packaging changes. They are intentionally before commit/push and before local/VM validation so missing DeepSeek access or reviewer findings are resolved before spending long test cycles. Documentation-only ticket updates are exempt unless they change developer workflow or validation policy. There is no DeepSeek missing-key waiver for this project workflow.
+
+`build\validation\Analyze-VisualValidationArtifacts.ps1` enforces the test-artifact second-opinion gate by default through `build\validation\Invoke-DeepSeekArtifactReview.ps1`. Obtaining DeepSeek's artifact report is mandatory, but the report content is advisory; the deterministic analyzer and developer still make the final release/CR calls. Failure to obtain the advisory report is a hard workflow stop for normal validation. Artifact traces/logs must be credential-free before this gate runs; the script performs best-effort secret scanning only.
 
 The removed `-AllowMissingKeyWaiver` and `-SkipDeepSeekReview` paths must not be reintroduced. The live workflow gate performs one minimal DeepSeek API probe before the normal review packet is sent.
 

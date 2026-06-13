@@ -65,6 +65,11 @@ Treat Codex as the chief architect and the configured DeepSeek review/generation
 ## Autonomous visual validation workflow
 Use `build\validation\Invoke-AutonomousVisualValidation.ps1` for unattended visual and logic release-candidate checks. The script runs the DeepSeek gate, local restore/build/tests, commits and pushes pending changes before VM validation, runs the SSH-first VM UX harness, analyzes pulled screenshots/traces, and can create audit CRs from anomalies without chat prompting.
 
+## Mandatory DeepSeek test-artifact second-opinion gate
+Whenever a workflow analyzes test result artifacts such as traces, screenshots, logs, summaries, or pulled VM result bundles, get an advisory second opinion from DeepSeek before finalizing the interpretation. The deterministic analyzer and Codex remain the final authority for pass/fail and CR generation, but DeepSeek must be used as an assistant to identify possible missed anomalies, weak proof, false positives, and follow-up checks.
+
+The canonical artifact analyzer `build\validation\Analyze-VisualValidationArtifacts.ps1` invokes `build\validation\Invoke-DeepSeekArtifactReview.ps1` by default and writes an ignored advisory report next to the deterministic analysis JSON. Do not use `-SkipDeepSeekArtifactReview` unless debugging the analyzer itself; normal validation and CR-closure work must keep the advisory gate enabled. The process of obtaining the second opinion is mandatory and failure to obtain it blocks validation; the content of that opinion is advisory and does not override deterministic analyzer/developer judgment. Artifact producers and operators must ensure traces/logs/screenshots do not contain credentials before advisory review; the script sends screenshot metadata, not pixel data, and performs best-effort text secret scanning, but secret hygiene remains mandatory at source.
+
 Default unattended command:
 
 ```powershell

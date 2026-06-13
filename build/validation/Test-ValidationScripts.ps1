@@ -6,6 +6,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $scriptPaths = @(
     'build\validation\Add-AuditChangeRequest.ps1',
     'build\validation\Analyze-VisualValidationArtifacts.ps1',
+    'build\validation\Invoke-DeepSeekArtifactReview.ps1',
     'build\validation\Invoke-AutonomousVisualValidation.ps1',
     'build\vm\Invoke-VmBuildTest.ps1'
 )
@@ -50,7 +51,7 @@ try {
         Set-Content -LiteralPath (Join-Path $singleRun 'ux-deep-summary.json') -Encoding UTF8
     $analysisPath = Join-Path $tempRoot 'analysis.json'
     try {
-        $analysisOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $singleRun -OutputPath $analysisPath -MinimumScreenshots 0
+        $analysisOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $singleRun -OutputPath $analysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
     }
     catch {
         throw "Analyze-VisualValidationArtifacts failed for a single run directory: $($_.Exception.Message)"

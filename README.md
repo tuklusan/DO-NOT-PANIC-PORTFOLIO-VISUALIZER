@@ -183,6 +183,8 @@ For unattended visual and logic validation, use:
 
 This wrapper runs the mandatory DeepSeek review gate, local Release restore/build/tests, optionally commits and pushes declared pending changes before VM validation, executes the SSH-first UX harness, scans pulled screenshots and trace files, and appends project-native CRs for detected anomalies. The default VM path uses 30-minute runs and the guest harness' 120-second background interval so background rotation can be observed without a multi-hour soak.
 
+Test-artifact analysis also has a mandatory DeepSeek second-opinion step. Obtaining the report is mandatory, while the report content is advisory: the analyzer remains responsible for final pass/fail and CR creation. DeepSeek reviews bounded trace/log/screenshot metadata and writes an ignored advisory report beside each analysis JSON. Traces/logs must remain credential-free before this step runs.
+
 ## License
 This project is licensed under the **MIT LICENSE**.
 
