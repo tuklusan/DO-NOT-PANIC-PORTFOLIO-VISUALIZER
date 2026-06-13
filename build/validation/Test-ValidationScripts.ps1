@@ -59,6 +59,86 @@ try {
     if (-not ($analysisOutput -match 'ANALYSIS_REPORT=')) { throw 'Analyze-VisualValidationArtifacts did not emit ANALYSIS_REPORT.' }
     $report = Get-Content -Raw -LiteralPath $analysisPath | ConvertFrom-Json
     if (-not $report.clean) { throw 'Analyze-VisualValidationArtifacts reported findings for the clean single-run smoke fixture.' }
+
+    $auditFixture = Join-Path $tempRoot 'audit-state.json'
+    @{
+        pending_next_build_issues = @(
+            @{ id = 'CR-091'; tracking_number = 'CR-091'; status = 'open'; title = 'Existing CR' }
+        )
+        current_priority_backlog = @(
+            @{ id = 'CR-999'; tracking_number = 'CR-999'; status = 'open'; title = 'Unrelated umbrella must not affect allocation' }
+        )
+    } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $auditFixture -Encoding UTF8
+    $crOutput = & (Join-Path $repoRoot 'build\validation\Add-AuditChangeRequest.ps1') `
+        -AuditPath $auditFixture `
+        -Title 'Smoke-created CR' `
+        -Area 'validation_smoke' `
+        -Severity 'Medium' `
+        -Priority 1 `
+        -Evidence @('Synthetic evidence')
+    $expectedCurrentSchemaId = 'CR-092'
+    if (-not ($crOutput -match "CHANGE_REQUEST_ID=$expectedCurrentSchemaId")) { throw "Add-AuditChangeRequest did not allocate $expectedCurrentSchemaId from current audit schema. Output: $crOutput" }
+    $auditAfter = Get-Content -Raw -LiteralPath $auditFixture | ConvertFrom-Json
+    $created = @($auditAfter.pending_next_build_issues | Where-Object { $_.id -eq $expectedCurrentSchemaId })
+    if ($created.Count -ne 1) { throw 'Add-AuditChangeRequest did not append exactly one pending_next_build_issues entry.' }
+
+    $legacyAuditFixture = Join-Path $tempRoot 'legacy-audit-state.json'
+    @{
+        change_requests = @(
+            @{ id = 'CR-010'; tracking_number = 'CR-010'; status = 'open'; title = 'Legacy CR' }
+        )
+    } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $legacyAuditFixture -Encoding UTF8
+    $legacyCrOutput = & (Join-Path $repoRoot 'build\validation\Add-AuditChangeRequest.ps1') `
+        -AuditPath $legacyAuditFixture `
+        -Title 'Smoke-created legacy CR' `
+        -Area 'validation_smoke' `
+        -Severity 'Medium' `
+        -Priority 1 `
+        -Evidence @('Synthetic evidence')
+    if (-not ($legacyCrOutput -match 'CHANGE_REQUEST_ID=CR-011')) { throw "Add-AuditChangeRequest did not preserve legacy change_requests schema. Output: $legacyCrOutput" }
+    $legacyAuditAfter = Get-Content -Raw -LiteralPath $legacyAuditFixture | ConvertFrom-Json
+    $legacyCreated = @($legacyAuditAfter.change_requests | Where-Object { $_.id -eq 'CR-011' })
+    if ($legacyCreated.Count -ne 1) { throw 'Add-AuditChangeRequest did not append exactly one legacy change_requests entry.' }
+
+    $dualAuditFixture = Join-Path $tempRoot 'dual-audit-state.json'
+    @{
+        pending_next_build_issues = $null
+        change_requests = @(
+            @{ id = 'CR-020'; tracking_number = 'CR-020'; status = 'open'; title = 'Legacy CR' }
+        )
+    } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $dualAuditFixture -Encoding UTF8
+    $dualCrOutput = & (Join-Path $repoRoot 'build\validation\Add-AuditChangeRequest.ps1') `
+        -AuditPath $dualAuditFixture `
+        -Title 'Smoke-created current-preferred CR' `
+        -Area 'validation_smoke' `
+        -Severity 'Medium' `
+        -Priority 1 `
+        -Evidence @('Synthetic evidence')
+    if (-not ($dualCrOutput -match 'CHANGE_REQUEST_ID=CR-021')) { throw "Add-AuditChangeRequest did not allocate CR-021 from dual schema. Output: $dualCrOutput" }
+    $dualAuditAfter = Get-Content -Raw -LiteralPath $dualAuditFixture | ConvertFrom-Json
+    $dualCreated = @($dualAuditAfter.pending_next_build_issues | Where-Object { $_.id -eq 'CR-021' })
+    if ($dualCreated.Count -ne 1) { throw 'Add-AuditChangeRequest did not prefer pending_next_build_issues in a dual-schema audit file.' }
+    $legacyCount = @($dualAuditAfter.change_requests | Where-Object { $null -ne $_ }).Count
+    if ($legacyCount -ne 1) { throw 'Add-AuditChangeRequest unexpectedly modified legacy change_requests in a dual-schema audit file.' }
+
+    $invalidAuditFixture = Join-Path $tempRoot 'invalid-audit-state.json'
+    @{ unrelated = @() } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $invalidAuditFixture -Encoding UTF8
+    $invalidSucceeded = $false
+    try {
+        & (Join-Path $repoRoot 'build\validation\Add-AuditChangeRequest.ps1') `
+            -AuditPath $invalidAuditFixture `
+            -Title 'Should fail' `
+            -Area 'validation_smoke' `
+            -Severity 'Medium' `
+            -Evidence @('Synthetic evidence') | Out-Null
+        $invalidSucceeded = $true
+    }
+    catch {
+        if ($_.Exception.Message -notmatch 'pending_next_build_issues or change_requests') {
+            throw
+        }
+    }
+    if ($invalidSucceeded) { throw 'Add-AuditChangeRequest accepted an invalid audit schema.' }
 }
 finally {
     if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force }

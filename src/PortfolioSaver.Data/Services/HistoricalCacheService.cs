@@ -37,8 +37,30 @@ public sealed class HistoricalCacheService : IHistoricalCacheService
             return null;
         }
 
-        await using FileStream stream = File.OpenRead(path);
-        return await JsonSerializer.DeserializeAsync<TickerHistorySnapshot>(stream, cancellationToken: cancellationToken);
+        if (info.Length == 0)
+        {
+            TryDelete(path);
+            return null;
+        }
+
+        try
+        {
+            await using FileStream stream = File.OpenRead(path);
+            return await JsonSerializer.DeserializeAsync<TickerHistorySnapshot>(stream, cancellationToken: cancellationToken);
+        }
+        catch (JsonException)
+        {
+            TryDelete(path);
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     public async Task SaveAsync(TickerHistorySnapshot snapshot, CancellationToken cancellationToken = default)

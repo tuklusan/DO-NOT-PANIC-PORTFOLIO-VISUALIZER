@@ -15,14 +15,76 @@ $ErrorActionPreference = 'Stop'
 function Get-NextChangeRequestId {
     param([Parameter(Mandatory = $true)]$AuditState)
     $max = 0
-    foreach ($request in @($AuditState.change_requests)) {
-        $id = [string]$request.id
-        if ($id -match '^CR-(\d+)$') {
-            $number = [int]$Matches[1]
-            if ($number -gt $max) { $max = $number }
+
+    foreach ($propertyName in @('pending_next_build_issues', 'change_requests')) {
+        $property = $AuditState.PSObject.Properties[$propertyName]
+        if ($null -eq $property) { continue }
+
+        foreach ($request in @($property.Value)) {
+            if ($null -eq $request) { continue }
+            foreach ($idPropertyName in @('id', 'tracking_number')) {
+                $idProperty = $request.PSObject.Properties[$idPropertyName]
+                if ($null -eq $idProperty) { continue }
+
+                $id = [string]$idProperty.Value
+                if ($id -match '^CR-(\d+)$') {
+                    $number = [int]$Matches[1]
+                    if ($number -gt $max) { $max = $number }
+                }
+            }
         }
     }
+
     return 'CR-{0:D3}' -f ($max + 1)
+}
+
+function Ensure-ArrayProperty {
+    param(
+        [Parameter(Mandatory = $true)]$Object,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    if ($null -eq $Object.PSObject.Properties[$Name]) {
+        $Object | Add-Member -MemberType NoteProperty -Name $Name -Value @()
+        return
+    }
+
+    if ($null -eq $Object.$Name) {
+        $Object.$Name = @()
+    }
+}
+
+function Add-ObjectToArrayProperty {
+    param(
+        [Parameter(Mandatory = $true)]$Object,
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)]$Value
+    )
+
+    Ensure-ArrayProperty -Object $Object -Name $Name
+    $items = New-Object System.Collections.Generic.List[object]
+    foreach ($item in @($Object.$Name)) {
+        if ($null -ne $item) {
+            [void]$items.Add($item)
+        }
+    }
+
+    [void]$items.Add($Value)
+    $Object.$Name = @($items)
+}
+
+function Get-AuditChangeRequestTargetProperty {
+    param([Parameter(Mandatory = $true)]$AuditState)
+
+    if ($null -ne $AuditState.PSObject.Properties['pending_next_build_issues']) {
+        return 'pending_next_build_issues'
+    }
+
+    if ($null -ne $AuditState.PSObject.Properties['change_requests']) {
+        return 'change_requests'
+    }
+
+    throw 'Audit state file does not contain pending_next_build_issues or change_requests.'
 }
 
 if (-not (Test-Path -LiteralPath $AuditPath)) { throw "Audit state file not found: $AuditPath" }
@@ -33,7 +95,6 @@ try {
     if (-not $lockTaken) { throw 'Timed out waiting for audit-state write lock.' }
 
     $audit = Get-Content -Raw -LiteralPath $AuditPath | ConvertFrom-Json
-    if ($null -eq $audit.PSObject.Properties['change_requests']) { throw "Audit state file does not contain change_requests: $AuditPath" }
 
     $nextId = Get-NextChangeRequestId -AuditState $audit
     $entry = [pscustomobject][ordered]@{
@@ -57,10 +118,8 @@ try {
         )
     }
 
-    $requests = New-Object System.Collections.Generic.List[object]
-    foreach ($request in @($audit.change_requests)) { [void]$requests.Add($request) }
-    [void]$requests.Add($entry)
-    $audit.change_requests = @($requests)
+    $targetProperty = Get-AuditChangeRequestTargetProperty -AuditState $audit
+    Add-ObjectToArrayProperty -Object $audit -Name $targetProperty -Value $entry
 
     $tempPath = $AuditPath + ('.{0}.tmp' -f [guid]::NewGuid().ToString('N'))
     try {

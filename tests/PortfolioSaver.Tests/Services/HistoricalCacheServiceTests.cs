@@ -1,14 +1,131 @@
 using PortfolioSaver.Data.Services;
+using PortfolioSaver.Core.Models;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
 
 public sealed class HistoricalCacheServiceTests
 {
+    private static string CreateTempRoot()
+    {
+        return Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+    }
+
+    [Fact]
+    public async Task LoadAsync_EmptyCacheFileReturnsNullAndDeletesFile()
+    {
+        string root = CreateTempRoot();
+        try
+        {
+            Directory.CreateDirectory(root);
+            string path = Path.Combine(root, "VOO.json");
+            await File.WriteAllTextAsync(path, string.Empty);
+
+            HistoricalCacheService service = new(root);
+            TickerHistorySnapshot? snapshot = await service.LoadAsync("VOO");
+
+            Assert.Null(snapshot);
+            Assert.False(File.Exists(path));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_CorruptCacheFileReturnsNullAndDeletesFile()
+    {
+        string root = CreateTempRoot();
+        try
+        {
+            Directory.CreateDirectory(root);
+            string path = Path.Combine(root, "VOO.json");
+            await File.WriteAllTextAsync(path, "{not-json");
+
+            HistoricalCacheService service = new(root);
+            TickerHistorySnapshot? snapshot = await service.LoadAsync("VOO");
+
+            Assert.Null(snapshot);
+            Assert.False(File.Exists(path));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_LockedCacheFileReturnsNullAndLeavesFile()
+    {
+        string root = CreateTempRoot();
+        try
+        {
+            Directory.CreateDirectory(root);
+            string path = Path.Combine(root, "VOO.json");
+            await File.WriteAllTextAsync(path, "{\"symbol\":\"VOO\"}");
+
+            await using FileStream _ = new(
+                path,
+                FileMode.Open,
+                FileAccess.ReadWrite,
+                FileShare.None);
+
+            HistoricalCacheService service = new(root);
+            TickerHistorySnapshot? snapshot = await service.LoadAsync("VOO");
+
+            Assert.Null(snapshot);
+            Assert.True(File.Exists(path));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task SaveThenLoadAsync_RoundTripsFreshSnapshot()
+    {
+        string root = CreateTempRoot();
+        try
+        {
+            HistoricalCacheService service = new(root);
+            TickerHistorySnapshot expected = new()
+            {
+                Symbol = "VOO",
+                LookbackDays = 7,
+                FetchTimestampUtc = DateTimeOffset.UtcNow,
+                Points =
+                [
+                    new HistoricalPricePoint { TimestampUtc = DateTimeOffset.UtcNow.AddMinutes(-1), Close = 123.45m }
+                ]
+            };
+
+            await service.SaveAsync(expected);
+            Assert.True(File.Exists(Path.Combine(root, "VOO.json")));
+
+            TickerHistorySnapshot? actual = await service.LoadAsync("VOO");
+
+            Assert.NotNull(actual);
+            Assert.Equal("VOO", actual.Symbol);
+            Assert.Equal(7, actual.LookbackDays);
+            HistoricalPricePoint point = Assert.Single(actual.Points);
+            Assert.Equal(123.45m, point.Close);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
     [Fact]
     public async Task PurgeExpiredAsync_DeletesExpiredJsonFilesOffCallingThread()
     {
-        string root = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        string root = CreateTempRoot();
         try
         {
             Directory.CreateDirectory(root);
@@ -50,7 +167,7 @@ public sealed class HistoricalCacheServiceTests
     [Fact]
     public async Task PurgeExpiredAsync_CancellationAfterWorkerStartsStopsPromptly()
     {
-        string root = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        string root = CreateTempRoot();
         try
         {
             Directory.CreateDirectory(root);
@@ -79,7 +196,7 @@ public sealed class HistoricalCacheServiceTests
     [Fact]
     public async Task PurgeExpiredAsync_PreCanceledTokenStopsPromptly()
     {
-        string root = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        string root = CreateTempRoot();
         try
         {
             Directory.CreateDirectory(root);
