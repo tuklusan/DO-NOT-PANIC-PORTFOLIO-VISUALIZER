@@ -377,6 +377,10 @@ internal static class YFinanceServerProgram
     {
         try
         {
+            ProtocolResponse<EmptyPayload>? injectedFault = await YFinanceServerFaultInjection.TryApplyAsync(request, cancellationToken).ConfigureAwait(false);
+            if (injectedFault is not null)
+                return injectedFault;
+
             return request.Operation switch
             {
                 ProtocolOperations.Hello => CreateOk(request, HandleHello(request.Payload.Deserialize<HelloRequestDto>(ProtocolJson.SerializerOptions), options, getActiveConnections())),

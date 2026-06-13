@@ -155,6 +155,21 @@ It then stages runnable artifacts under:
 ./build/vm/Invoke-VmBuildTest.ps1 -PushWorkspace -RunUxDeep -GuestScreensaverDurationMinutes 20 -CaptureIntervalSeconds 5
 ```
 
+Deterministic degraded-mode profiles can be applied without cutting the VM control channel:
+
+```powershell
+./build/vm/Invoke-VmBuildTest.ps1 -PushWorkspace -RunUxDeep -GuestScreensaverDurationMinutes 30 -FaultProfile offline-during-runtime
+```
+
+The profile is written into the pulled UX artifact bundle as `yfinance-fault-profile.json` and `fault-injection-events.log`; server-side application is traced in `trace\yfinance.circular.log`. See `docs\DEGRADED_MODE_VALIDATION_HARNESS.md`.
+
+If a VM-side PowerShell host is hard-killed during a degraded-mode run, clear any process-local leftovers before manually relaunching the same shell:
+
+```powershell
+Remove-Item Env:DNPPV_YFINANCE_FAULT_PROFILE_PATH -ErrorAction SilentlyContinue
+Remove-Item Env:DNPPV_YFINANCE_FAULT_PROFILE -ErrorAction SilentlyContinue
+```
+
 Before the UX cycle starts, the harness now:
 
 - runs `Guest-ConfigureDesktopAutomation.ps1`

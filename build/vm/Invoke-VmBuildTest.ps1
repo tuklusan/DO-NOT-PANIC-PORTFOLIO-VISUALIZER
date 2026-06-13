@@ -14,6 +14,8 @@ param(
     [int]$DisplayWidth,
     [int]$DisplayHeight,
     [string]$DisplayProfile,
+    [ValidateSet('none', 'offline-at-start', 'offline-during-config-validation', 'offline-during-runtime', 'high-latency-yfinance', 'upstream-throttled', 'timeout')]
+    [string]$FaultProfile = 'none',
     [int]$BuildTimeoutSeconds = 3600,
     [int]$UxTimeoutSeconds = 2400
 )
@@ -277,6 +279,7 @@ schtasks /Delete /TN "PortfolioSaverVmAgent" /F >`$null 2>&1
                 DisplayWidth = if ($DisplayWidth -gt 0) { $DisplayWidth } else { $null }
                 DisplayHeight = if ($DisplayHeight -gt 0) { $DisplayHeight } else { $null }
                 DisplayProfile = if (-not [string]::IsNullOrWhiteSpace($DisplayProfile)) { $DisplayProfile } else { $null }
+                FaultProfile = $FaultProfile
             }
         } | ConvertTo-Json -Depth 5
         Write-VmSshStep "Queuing UX run through desktop-session agent"

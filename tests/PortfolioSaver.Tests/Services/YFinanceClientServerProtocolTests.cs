@@ -16,6 +16,8 @@ namespace PortfolioSaver.Tests.Services;
 [Collection("EnvironmentSerial")]
 public sealed class YFinanceClientServerProtocolTests
 {
+    private static readonly SemaphoreSlim FaultInjectionTestGate = new(1, 1);
+
     [Fact]
     public void ProtocolIntegrity_StampsChecksumAndLocalOffsetTimestamp()
     {
@@ -156,6 +158,128 @@ public sealed class YFinanceClientServerProtocolTests
         ServerOptions options = ServerOptions.Parse(["--no-upstream-sync"]);
 
         Assert.False(options.EnableUpstreamSyncCheck);
+    }
+
+    [Fact]
+    public async Task ServerFaultInjection_ProfileFileCanForceMarketDataOfflineResponse()
+    {
+        await FaultInjectionTestGate.WaitAsync();
+        using TempDirectory temp = TempDirectory.Create();
+        string profilePath = Path.Combine(temp.Path, "fault-profile.json");
+        await File.WriteAllTextAsync(profilePath, """
+            {
+              "profile": "offline",
+              "operations": [ "market-data" ]
+            }
+            """);
+
+        string? previousPath = Environment.GetEnvironmentVariable(YFinanceServerFaultInjection.ProfilePathEnvironmentVariable);
+        string? previousProfile = Environment.GetEnvironmentVariable(YFinanceServerFaultInjection.ProfileEnvironmentVariable);
+        try
+        {
+            YFinanceServerFaultInjection.ResetCacheForTests();
+            Environment.SetEnvironmentVariable(YFinanceServerFaultInjection.ProfilePathEnvironmentVariable, profilePath);
+            Environment.SetEnvironmentVariable(YFinanceServerFaultInjection.ProfileEnvironmentVariable, null);
+
+            ProtocolRequest<JsonElement> request = new()
+            {
+                RequestId = "req-fault-0001",
+                Operation = YFinance.NET.Protocol.Constants.ProtocolOperations.GetQuote,
+                Payload = JsonSerializer.SerializeToElement(new GetQuoteRequestDto("VOO"))
+            };
+
+            ProtocolResponse<EmptyPayload>? response = await YFinanceServerFaultInjection.TryApplyAsync(request, CancellationToken.None);
+
+            Assert.NotNull(response);
+            Assert.Equal(YFinance.NET.Protocol.Constants.ProtocolResponseStatuses.Error, response!.Status);
+            Assert.Equal(YFinance.NET.Protocol.Constants.ProtocolErrorCodes.NetworkLost, response.Error?.Code);
+            Assert.True(response.Error?.Retryable);
+            Assert.True(ProtocolIntegrity.Verify(response, response.Payload));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(YFinanceServerFaultInjection.ProfilePathEnvironmentVariable, previousPath);
+            Environment.SetEnvironmentVariable(YFinanceServerFaultInjection.ProfileEnvironmentVariable, previousProfile);
+            YFinanceServerFaultInjection.ResetCacheForTests();
+            FaultInjectionTestGate.Release();
+        }
+    }
+
+    [Fact]
+    public async Task ServerFaultInjection_DoesNotFaultHealthRequests()
+    {
+        await FaultInjectionTestGate.WaitAsync();
+        string? previousPath = Environment.GetEnvironmentVariable(YFinanceServerFaultInjection.ProfilePathEnvironmentVariable);
+        string? previousProfile = Environment.GetEnvironmentVariable(YFinanceServerFaultInjection.ProfileEnvironmentVariable);
+        try
+        {
+            YFinanceServerFaultInjection.ResetCacheForTests();
+            Environment.SetEnvironmentVariable(YFinanceServerFaultInjection.ProfilePathEnvironmentVariable, null);
+            Environment.SetEnvironmentVariable(YFinanceServerFaultInjection.ProfileEnvironmentVariable, "offline");
+
+            ProtocolRequest<JsonElement> request = new()
+            {
+                RequestId = "req-fault-0002",
+                Operation = YFinance.NET.Protocol.Constants.ProtocolOperations.Health,
+                Payload = JsonSerializer.SerializeToElement(new EmptyPayload())
+            };
+
+            ProtocolResponse<EmptyPayload>? response = await YFinanceServerFaultInjection.TryApplyAsync(request, CancellationToken.None);
+
+            Assert.Null(response);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(YFinanceServerFaultInjection.ProfilePathEnvironmentVariable, previousPath);
+            Environment.SetEnvironmentVariable(YFinanceServerFaultInjection.ProfileEnvironmentVariable, previousProfile);
+            YFinanceServerFaultInjection.ResetCacheForTests();
+            FaultInjectionTestGate.Release();
+        }
+    }
+
+    [Fact]
+    public async Task ServerFaultInjection_DelayOnlyProfileReturnsNoSyntheticError()
+    {
+        await FaultInjectionTestGate.WaitAsync();
+        using TempDirectory temp = TempDirectory.Create();
+        string profilePath = Path.Combine(temp.Path, "fault-profile.json");
+        await File.WriteAllTextAsync(profilePath, """
+            {
+              "profile": "high-latency-yfinance",
+              "delayMilliseconds": 25,
+              "operations": [ "market-data" ]
+            }
+            """);
+
+        string? previousPath = Environment.GetEnvironmentVariable(YFinanceServerFaultInjection.ProfilePathEnvironmentVariable);
+        string? previousProfile = Environment.GetEnvironmentVariable(YFinanceServerFaultInjection.ProfileEnvironmentVariable);
+        try
+        {
+            YFinanceServerFaultInjection.ResetCacheForTests();
+            Environment.SetEnvironmentVariable(YFinanceServerFaultInjection.ProfilePathEnvironmentVariable, profilePath);
+            Environment.SetEnvironmentVariable(YFinanceServerFaultInjection.ProfileEnvironmentVariable, null);
+
+            ProtocolRequest<JsonElement> request = new()
+            {
+                RequestId = "req-fault-0003",
+                Operation = YFinance.NET.Protocol.Constants.ProtocolOperations.GetQuote,
+                Payload = JsonSerializer.SerializeToElement(new GetQuoteRequestDto("VOO"))
+            };
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            ProtocolResponse<EmptyPayload>? response = await YFinanceServerFaultInjection.TryApplyAsync(request, CancellationToken.None);
+
+            stopwatch.Stop();
+            Assert.Null(response);
+            Assert.True(stopwatch.ElapsedMilliseconds >= 20);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(YFinanceServerFaultInjection.ProfilePathEnvironmentVariable, previousPath);
+            Environment.SetEnvironmentVariable(YFinanceServerFaultInjection.ProfileEnvironmentVariable, previousProfile);
+            YFinanceServerFaultInjection.ResetCacheForTests();
+            FaultInjectionTestGate.Release();
+        }
     }
 
     [Fact]

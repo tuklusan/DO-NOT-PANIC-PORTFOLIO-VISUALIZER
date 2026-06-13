@@ -392,6 +392,12 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[string]$DisplayProfile = 'default'", script, StringComparison.Ordinal);
         Assert.Contains("[ValidateSet('Apply', 'Cancel')]", script, StringComparison.Ordinal);
         Assert.Contains("[string]$ValidationCompletionMode = 'Apply'", script, StringComparison.Ordinal);
+        Assert.Contains("[string]$FaultProfile = 'none'", script, StringComparison.Ordinal);
+        Assert.Contains("DNPPV_YFINANCE_FAULT_PROFILE_PATH", script, StringComparison.Ordinal);
+        Assert.Contains("yfinance-fault-profile.json", script, StringComparison.Ordinal);
+        Assert.Contains("fault-injection-events.log", script, StringComparison.Ordinal);
+        Assert.Contains("function Set-YFinanceFaultProfile", script, StringComparison.Ordinal);
+        Assert.Contains("$summary.FaultProfile = $FaultProfile", script, StringComparison.Ordinal);
         Assert.Contains("$root = $RootPath", script, StringComparison.Ordinal);
         Assert.Contains("$summary.ExportMode = 'LocalWorkspace'", script, StringComparison.Ordinal);
         Assert.Contains("$localTraceTarget = Join-Path $results 'trace'", script, StringComparison.Ordinal);
@@ -443,6 +449,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = '1'", script, StringComparison.Ordinal);
         Assert.Contains("$summary.Notes += \"Fullscreen soak host launched from PortfolioSaver.Screensaver with input-exit disabled.\"", script, StringComparison.Ordinal);
         Assert.Contains("Remove-Item Env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT", script, StringComparison.Ordinal);
+        Assert.Contains("Remove-Item Env:DNPPV_YFINANCE_FAULT_PROFILE_PATH", script, StringComparison.Ordinal);
         Assert.Contains("Visual host did not enter true fullscreen after long-run soak relaunch.", script, StringComparison.Ordinal);
         Assert.Contains("$summary.ScreensaverVersionCheck = \"SoftFailed\"", script, StringComparison.Ordinal);
         Assert.Contains("Screensaver version element containing the expected beta marker was not detected during long-run soak; continuing.", script, StringComparison.Ordinal);
@@ -578,6 +585,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("build\\vm\\artifacts", helper, StringComparison.Ordinal);
         Assert.Contains("Remove-Item -LiteralPath $target -Recurse -Force", helper, StringComparison.Ordinal);
         Assert.Contains("build\\vm\\test-secrets.json", push, StringComparison.Ordinal);
+        Assert.Contains("[string]$FaultProfile = 'none'", invoke, StringComparison.Ordinal);
+        Assert.Contains("FaultProfile = $FaultProfile", invoke, StringComparison.Ordinal);
         Assert.Contains("DEEPSEEK_API_KEY", applySecrets, StringComparison.Ordinal);
         Assert.DoesNotContain("PORTFOLIOSAVER_FINNHUB_API_KEY", applySecrets, StringComparison.Ordinal);
         Assert.DoesNotContain("PORTFOLIOSAVER_TWELVEDATA_API_KEY", applySecrets, StringComparison.Ordinal);

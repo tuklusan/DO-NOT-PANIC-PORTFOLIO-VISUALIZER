@@ -45,6 +45,17 @@ internal static class Program
     private sealed class VmDesktopAgent
     {
         private const long MaxAgentLogBytes = 10 * 1024 * 1024;
+        private static readonly HashSet<string> KnownFaultProfiles = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "none",
+            "offline-at-start",
+            "offline-during-config-validation",
+            "offline-during-runtime",
+            "high-latency-yfinance",
+            "upstream-throttled",
+            "timeout"
+        };
+
         private readonly string _rootPath;
         private readonly string _commandsPath;
         private readonly string _processingPath;
@@ -249,6 +260,15 @@ internal static class Program
             string validationCompletionMode = string.Equals(command.Payload?.ValidationCompletionMode, "Cancel", StringComparison.OrdinalIgnoreCase)
                 ? "Cancel"
                 : "Apply";
+            string? rawFaultProfile = command.Payload?.FaultProfile;
+            string faultProfile = string.IsNullOrWhiteSpace(rawFaultProfile)
+                ? "none"
+                : rawFaultProfile;
+            if (!KnownFaultProfiles.Contains(faultProfile))
+            {
+                throw new InvalidOperationException("Unsupported UX fault profile requested: " + faultProfile);
+            }
+
             int? displayWidth = command.Payload?.DisplayWidth;
             int? displayHeight = command.Payload?.DisplayHeight;
             string? displayProfile = command.Payload?.DisplayProfile;
@@ -267,7 +287,7 @@ internal static class Program
             {
                 "@echo off",
                 $"cd /d \"{_rootPath}\"",
-                $"\"{_pwshPath}\" -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"{_uxScript}\" -RootPath \"{_rootPath}\" -ResultName \"{resultName}\" -ResultRootPath \"{resultRoot}\" -ValidationCompletionMode \"{validationCompletionMode}\" -ScreensaverDurationMinutes {duration} -CaptureIntervalSeconds {captureInterval}{displayArguments} 1>\"{stdoutPath}\" 2>\"{stderrPath}\""
+                $"\"{_pwshPath}\" -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"{_uxScript}\" -RootPath \"{_rootPath}\" -ResultName \"{resultName}\" -ResultRootPath \"{resultRoot}\" -ValidationCompletionMode \"{validationCompletionMode}\" -ScreensaverDurationMinutes {duration} -CaptureIntervalSeconds {captureInterval} -FaultProfile {Quote(faultProfile)}{displayArguments} 1>\"{stdoutPath}\" 2>\"{stderrPath}\""
             });
             File.WriteAllText(launcherPath, launcherContents);
 
@@ -447,6 +467,7 @@ internal static class Program
         public int? ScreensaverDurationMinutes { get; set; }
         public int? CaptureIntervalSeconds { get; set; }
         public string? ValidationCompletionMode { get; set; }
+        public string? FaultProfile { get; set; }
         public int? DisplayWidth { get; set; }
         public int? DisplayHeight { get; set; }
         public string? DisplayProfile { get; set; }

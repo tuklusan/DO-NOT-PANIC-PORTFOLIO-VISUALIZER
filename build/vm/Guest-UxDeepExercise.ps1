@@ -8,6 +8,8 @@ param(
     [string]$DisplayProfile = 'default',
     [ValidateSet('Apply', 'Cancel')]
     [string]$ValidationCompletionMode = 'Apply',
+    [ValidateSet('none', 'offline-at-start', 'offline-during-config-validation', 'offline-during-runtime', 'high-latency-yfinance', 'upstream-throttled', 'timeout')]
+    [string]$FaultProfile = 'none',
     [string]$RootPath = (Join-Path $env:USERPROFILE 'Desktop\PortfolioVmUx'),
     [string]$ResultName = ('ux-deep-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
     [string]$ResultRootPath
@@ -188,11 +190,54 @@ $script:vmBackgroundChangeSeconds = 120
 $effectiveCaptureIntervalSeconds = if ($ScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }
 $targetFrames = [Math]::Max(1, [int][Math]::Ceiling(($ScreensaverDurationMinutes * 60.0) / $effectiveCaptureIntervalSeconds))
 $previousDisableInputExit = $null
+$previousFaultProfilePath = $null
+$previousFaultProfile = $null
+Remove-Item Env:DNPPV_YFINANCE_FAULT_PROFILE_PATH -ErrorAction SilentlyContinue
+Remove-Item Env:DNPPV_YFINANCE_FAULT_PROFILE -ErrorAction SilentlyContinue
+$faultProfilePath = Join-Path $results 'yfinance-fault-profile.json'
+$faultTimelinePath = Join-Path $results 'fault-injection-events.log'
 
 $script:configWindowTracePath = Join-Path $results 'config-window-events.log'
 $script:cachedDisplayModes = $null
 $script:cachedDisplayModesTimestamp = $null
 Set-Content -LiteralPath $script:configWindowTracePath -Value '' -Encoding UTF8
+Set-Content -LiteralPath $faultTimelinePath -Value '' -Encoding UTF8
+
+function Write-FaultInjectionTrace {
+    param(
+        [Parameter(Mandatory = $true)][string]$Event,
+        [string]$Details = ''
+    )
+
+    $timestamp = (Get-Date).ToString('o')
+    Add-Content -LiteralPath $faultTimelinePath -Value ("{0} event={1} details={2}" -f $timestamp, $Event, $Details) -Encoding UTF8
+}
+
+function Set-YFinanceFaultProfile {
+    param([Parameter(Mandatory = $true)][string]$Profile)
+
+    $profilePayload = [ordered]@{
+        profile = $Profile
+        operations = @('market-data')
+    }
+    $faultProfileTempPath = $faultProfilePath + ('.{0}.tmp' -f [guid]::NewGuid().ToString('N'))
+    try {
+        $profilePayload | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $faultProfileTempPath -Encoding UTF8
+        Move-Item -LiteralPath $faultProfileTempPath -Destination $faultProfilePath -Force
+    }
+    finally {
+        if (Test-Path -LiteralPath $faultProfileTempPath) {
+            Remove-Item -LiteralPath $faultProfileTempPath -Force -ErrorAction SilentlyContinue
+        }
+    }
+    $env:DNPPV_YFINANCE_FAULT_PROFILE_PATH = $faultProfilePath
+    Remove-Item Env:DNPPV_YFINANCE_FAULT_PROFILE -ErrorAction SilentlyContinue
+    Write-FaultInjectionTrace -Event 'FaultProfileSet' -Details ("profile={0}; path={1}" -f $Profile, $faultProfilePath)
+}
+
+function Clear-YFinanceFaultProfile {
+    Set-YFinanceFaultProfile -Profile 'none'
+}
 
 function Write-ConfigWindowTrace {
     param(
@@ -2672,10 +2717,21 @@ function Get-ReferenceSpotCheckResults {
 $summary.ExportMode = 'LocalWorkspace'
 $summary.ResultName = $resultName
 $summary.ResultPath = $results
+$summary.FaultProfile = $FaultProfile
+$summary.FaultProfilePath = $faultProfilePath
+$summary.FaultTimelinePath = $faultTimelinePath
 Write-SummaryFiles
 Start-Transcript -Path $logPath -Force | Out-Null
 
 try {
+    $initialFaultProfile = if ($FaultProfile -in @('offline-during-config-validation', 'offline-during-runtime')) { 'none' } else { $FaultProfile }
+    if ($initialFaultProfile -ne 'none') {
+        Set-YFinanceFaultProfile -Profile $initialFaultProfile
+    }
+    else {
+        Clear-YFinanceFaultProfile
+    }
+
     Reset-PortfolioTraceRoot
     Apply-HarnessSettingsOverrides
     $displayApply = Try-ApplyDisplayResolution -Width $DisplayWidth -Height $DisplayHeight
@@ -2813,6 +2869,9 @@ try {
         }
 
         Test-ConfigPhaseBudget -StartedAt $configInteractionStartedAt -Stage 'validate-close'
+        if ($FaultProfile -eq 'offline-during-config-validation') {
+            Set-YFinanceFaultProfile -Profile 'offline'
+        }
         $configClosedNaturally = Validate-AndCloseConfigWindow -Process $desktop -Window $window -CompletionMode $ValidationCompletionMode
         if ($configClosedNaturally) {
             $closeVerified = Wait-UIAutomationCondition -TimeoutSeconds 3 -PollMilliseconds 100 -TraceEvent 'ConfigClosedVerificationWait' -Condition {
@@ -2837,6 +2896,9 @@ try {
         else {
             $window = $null
         }
+        if ($FaultProfile -eq 'offline-during-config-validation') {
+            Clear-YFinanceFaultProfile
+        }
 
         $summary.ConfigPhaseStatus = "Completed"
         Write-SummaryFiles
@@ -2858,6 +2920,9 @@ try {
 
             $previousDisableInputExit = $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT
             $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = '1'
+            if ($FaultProfile -eq 'offline-during-runtime') {
+                Set-YFinanceFaultProfile -Profile 'offline'
+            }
             $desktop = Start-Process -FilePath $screensaverExe -ArgumentList '/s' -PassThru
             [void](Wait-UIAutomationCondition -TimeoutSeconds 10 -PollMilliseconds 100 -TraceEvent 'ScreensaverWindowWait' -Condition {
                 $desktop.Refresh()
@@ -2964,6 +3029,9 @@ try {
         else {
             Start-Sleep -Seconds 1
             [void](Focus-ProcessWindow -Process $desktop)
+            if ($FaultProfile -eq 'offline-during-runtime') {
+                Set-YFinanceFaultProfile -Profile 'offline'
+            }
             $fullScreenMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'ViewFullScreenMenuItem'
             $fullScreenInvoked = $false
             if ($null -ne $fullScreenMenuItem) {
@@ -3070,6 +3138,18 @@ finally {
     $summary.FinishedAt = (Get-Date).ToString('o')
     Write-SummaryFiles
     Stop-Transcript | Out-Null
+    if ($null -eq $previousFaultProfilePath) {
+        Remove-Item Env:DNPPV_YFINANCE_FAULT_PROFILE_PATH -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:DNPPV_YFINANCE_FAULT_PROFILE_PATH = $previousFaultProfilePath
+    }
+    if ($null -eq $previousFaultProfile) {
+        Remove-Item Env:DNPPV_YFINANCE_FAULT_PROFILE -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:DNPPV_YFINANCE_FAULT_PROFILE = $previousFaultProfile
+    }
     try {
         $traceRoot = Join-Path $env:LOCALAPPDATA "PortfolioSaver\Trace"
         $localTraceTarget = Join-Path $results 'trace'
