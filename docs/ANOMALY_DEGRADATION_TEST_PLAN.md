@@ -408,3 +408,85 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
   - Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.
   - The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.
 
+
+## DeepSeek UX Review Additions
+
+DeepSeek reviewed CR-064 through CR-085 on 2026-06-13 with a specific prompt to identify missing user-experience checks for anomalous/degraded situations. The review found six additional UX-focused validation tickets.
+
+### CR-086 - Define user-facing status indicators and error messaging for degraded modes
+
+- Priority: 1
+- Severity: High
+- Area: ux_degradation_feedback
+- UX rationale:
+  - DeepSeek UX anomaly review identified that CR-064 through CR-085 cover functional degradation but do not fully define what the human user sees for each degraded state.
+  - Users do not have trace logs; they infer system health from visual status indicators, placeholders, color states, and concise messages.
+- Acceptance highlights:
+  - A reference table documents the expected display for every major visible component in healthy/degraded/offline states.
+  - Injected degradation updates the visible state within 2 seconds where practical.
+  - Stale data is never styled identically to fresh/live data.
+
+### CR-087 - Validate accessibility of anomaly states for screen readers, high contrast, and keyboard users
+
+- Priority: 2
+- Severity: Medium
+- Area: ux_accessibility_degradation
+- UX rationale:
+  - DeepSeek UX anomaly review identified that visual degraded-state indicators must be mirrored through accessibility APIs.
+  - Users relying on screen readers, high contrast themes, or keyboard navigation must not receive stale or misleading announcements.
+- Acceptance highlights:
+  - Expected screen-reader output is documented for key degraded states.
+  - High-contrast mode keeps offline/stale/unavailable indicators distinguishable.
+  - Keyboard focus order remains stable and Escape/Cancel paths work during degradation.
+
+### CR-088 - Validate clear data freshness indicators and live/stale/recovery transitions
+
+- Priority: 1
+- Severity: High
+- Area: ux_freshness_communication
+- UX rationale:
+  - DeepSeek UX anomaly review identified that CR-074 says stale cache must not be labeled fresh, but does not fully define how users learn data is stale.
+  - Financial dashboards can mislead users if cached or delayed data looks identical to live data.
+- Acceptance highlights:
+  - Screenshots/video show live -> stale -> recovery -> fresh transitions.
+  - The words stale, cached, delayed, offline, or an equivalent explicit indicator are visible when data is not live.
+  - Recovery notification is noticeable but does not last longer than 3 seconds or cause batch redraw.
+
+### CR-089 - Validate degraded symbol placeholder UX and consistency across components
+
+- Priority: 2
+- Severity: Medium
+- Area: ux_placeholder_consistency
+- UX rationale:
+  - DeepSeek UX anomaly review identified that CR-071 isolates per-symbol failures but does not fully define the placeholder the user sees.
+  - Inconsistent missing-data treatment across tape, graph, macro, and world-market surfaces makes intentional degradation look like broken UI.
+- Acceptance highlights:
+  - Injected symbol failures show consistent placeholder treatment across all applicable components.
+  - Placeholder cards/rows do not resize or shift layout when healthy symbols update.
+  - Tooltip or equivalent detail shows last successful fetch time when available.
+
+### CR-090 - Validate user-friendly config validation error messages and progress feedback
+
+- Priority: 2
+- Severity: High
+- Area: ux_config_error_clarity
+- UX rationale:
+  - DeepSeek UX anomaly review identified that CR-066 and CR-067 cover config behavior but not enough plain-language user guidance.
+  - A user should know whether to retry, check network, fix a symbol, wait out a rate limit, or cancel safely.
+- Acceptance highlights:
+  - Config dialog screenshots show clear, non-technical messages for each injected failure.
+  - Validate/Retry is re-enabled after failure and Cancel closes promptly during slow validation.
+  - Validation progress text fits within current layout without clipping.
+
+### CR-091 - Validate interactive element responsiveness during network degradation and latency
+
+- Priority: 2
+- Severity: Medium
+- Area: ux_interactivity_degradation
+- UX rationale:
+  - DeepSeek UX anomaly review identified that no-freeze assertions do not prove individual controls acknowledge user input promptly.
+  - During high latency, users need immediate click/keyboard feedback even if network work continues asynchronously.
+- Acceptance highlights:
+  - A high-latency harness profile proves controls provide feedback within 500ms of user input.
+  - Cancel/Escape closes dialogs promptly while requests are pending.
+  - No user input is lost or replayed unexpectedly after network recovery.

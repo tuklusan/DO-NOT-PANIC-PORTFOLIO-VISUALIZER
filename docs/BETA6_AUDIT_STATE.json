@@ -3719,6 +3719,198 @@
         "A single command can run the degraded-mode matrix and produce a summary of pass/fail per injected scenario.",
         "Unexpected findings generate project-native CRs with artifact paths, traces, screenshots, and injection timeline."
       ]
+    },
+    {
+      "id": "CR-086",
+      "tracking_number": "CR-086",
+      "priority": 1,
+      "area": "ux_degradation_feedback",
+      "title": "Define user-facing status indicators and error messaging for degraded modes",
+      "status": "open",
+      "source": "deepseek_ux_anomaly_review_2026_06_13",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek UX anomaly review identified that CR-064 through CR-085 cover functional degradation but do not fully define what the human user sees for each degraded state.",
+        "Users do not have trace logs; they infer system health from visual status indicators, placeholders, color states, and concise messages."
+      ],
+      "notes": [
+        "Define healthy, degraded/fallback, stale, offline, unavailable, and recovery states for top-left market status, ticker tapes, graph cards, macro cards, world markets, news scroller, background, and config window.",
+        "Messages must be actionable and must not expose implementation details such as HTTP codes, checksum failures, JSON errors, server ports, or crumb/cookie internals.",
+        "All status text must fit without clipping or layout churn."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the anomalous/degraded condition.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Screenshots, video, UI automation output, or screen-reader evidence prove the user experience under the injected condition.",
+        "Trace output confirms the user-facing state matches the injected condition and internal degradation state.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "A reference table documents the expected display for every major visible component in healthy/degraded/offline states.",
+        "Injected degradation updates the visible state within 2 seconds where practical.",
+        "Stale data is never styled identically to fresh/live data."
+      ]
+    },
+    {
+      "id": "CR-087",
+      "tracking_number": "CR-087",
+      "priority": 2,
+      "area": "ux_accessibility_degradation",
+      "title": "Validate accessibility of anomaly states for screen readers, high contrast, and keyboard users",
+      "status": "open",
+      "source": "deepseek_ux_anomaly_review_2026_06_13",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek UX anomaly review identified that visual degraded-state indicators must be mirrored through accessibility APIs.",
+        "Users relying on screen readers, high contrast themes, or keyboard navigation must not receive stale or misleading announcements."
+      ],
+      "notes": [
+        "Cover ticker tape, graph cards, news scroller, config validation, background fallback, and world market cards.",
+        "Test with Windows Narrator at minimum; NVDA if practical.",
+        "Avoid infinite live-region announcements during repeated quote failures or retries."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the anomalous/degraded condition.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Screenshots, video, UI automation output, or screen-reader evidence prove the user experience under the injected condition.",
+        "Trace output confirms the user-facing state matches the injected condition and internal degradation state.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Expected screen-reader output is documented for key degraded states.",
+        "High-contrast mode keeps offline/stale/unavailable indicators distinguishable.",
+        "Keyboard focus order remains stable and Escape/Cancel paths work during degradation."
+      ]
+    },
+    {
+      "id": "CR-088",
+      "tracking_number": "CR-088",
+      "priority": 1,
+      "area": "ux_freshness_communication",
+      "title": "Validate clear data freshness indicators and live/stale/recovery transitions",
+      "status": "open",
+      "source": "deepseek_ux_anomaly_review_2026_06_13",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek UX anomaly review identified that CR-074 says stale cache must not be labeled fresh, but does not fully define how users learn data is stale.",
+        "Financial dashboards can mislead users if cached or delayed data looks identical to live data."
+      ],
+      "notes": [
+        "Cover live to stale, stale to unavailable, unavailable to recovered, slow-updating, and cached-at-start transitions.",
+        "User-facing timestamps should be accurate and update only when fresh data arrives.",
+        "Graph cards must not flash when cached data is re-rendered with unchanged raw price."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the anomalous/degraded condition.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Screenshots, video, UI automation output, or screen-reader evidence prove the user experience under the injected condition.",
+        "Trace output confirms the user-facing state matches the injected condition and internal degradation state.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Screenshots/video show live -> stale -> recovery -> fresh transitions.",
+        "The words stale, cached, delayed, offline, or an equivalent explicit indicator are visible when data is not live.",
+        "Recovery notification is noticeable but does not last longer than 3 seconds or cause batch redraw."
+      ]
+    },
+    {
+      "id": "CR-089",
+      "tracking_number": "CR-089",
+      "priority": 2,
+      "area": "ux_placeholder_consistency",
+      "title": "Validate degraded symbol placeholder UX and consistency across components",
+      "status": "open",
+      "source": "deepseek_ux_anomaly_review_2026_06_13",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek UX anomaly review identified that CR-071 isolates per-symbol failures but does not fully define the placeholder the user sees.",
+        "Inconsistent missing-data treatment across tape, graph, macro, and world-market surfaces makes intentional degradation look like broken UI."
+      ],
+      "notes": [
+        "Define a unified no-data placeholder style distinct from loading and stale states.",
+        "The same failed symbol should look consistently degraded everywhere it appears.",
+        "Placeholders should preserve layout dimensions and avoid showing raw error strings."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the anomalous/degraded condition.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Screenshots, video, UI automation output, or screen-reader evidence prove the user experience under the injected condition.",
+        "Trace output confirms the user-facing state matches the injected condition and internal degradation state.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Injected symbol failures show consistent placeholder treatment across all applicable components.",
+        "Placeholder cards/rows do not resize or shift layout when healthy symbols update.",
+        "Tooltip or equivalent detail shows last successful fetch time when available."
+      ]
+    },
+    {
+      "id": "CR-090",
+      "tracking_number": "CR-090",
+      "priority": 2,
+      "area": "ux_config_error_clarity",
+      "title": "Validate user-friendly config validation error messages and progress feedback",
+      "status": "open",
+      "source": "deepseek_ux_anomaly_review_2026_06_13",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek UX anomaly review identified that CR-066 and CR-067 cover config behavior but not enough plain-language user guidance.",
+        "A user should know whether to retry, check network, fix a symbol, wait out a rate limit, or cancel safely."
+      ],
+      "notes": [
+        "Cover offline, DNS failure, YFinance server not starting, invalid symbol, rate limit, slow validation, and partial validation failure.",
+        "Avoid terms like port conflict, crumb, checksum, cache expiry, stack trace, HTTP 429, or JSON parse error in the user-facing dialog.",
+        "Validation progress should show which symbol or count is being checked when validation is slow."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the anomalous/degraded condition.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Screenshots, video, UI automation output, or screen-reader evidence prove the user experience under the injected condition.",
+        "Trace output confirms the user-facing state matches the injected condition and internal degradation state.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Config dialog screenshots show clear, non-technical messages for each injected failure.",
+        "Validate/Retry is re-enabled after failure and Cancel closes promptly during slow validation.",
+        "Validation progress text fits within current layout without clipping."
+      ]
+    },
+    {
+      "id": "CR-091",
+      "tracking_number": "CR-091",
+      "priority": 2,
+      "area": "ux_interactivity_degradation",
+      "title": "Validate interactive element responsiveness during network degradation and latency",
+      "status": "open",
+      "source": "deepseek_ux_anomaly_review_2026_06_13",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek UX anomaly review identified that no-freeze assertions do not prove individual controls acknowledge user input promptly.",
+        "During high latency, users need immediate click/keyboard feedback even if network work continues asynchronously."
+      ],
+      "notes": [
+        "Cover Validate, OK, Cancel, Apply, sliders, checkboxes, folder Choose button, menu commands, fullscreen toggle, and keyboard shortcuts.",
+        "Controls that are unavailable offline should look disabled and explain why via tooltip/status text.",
+        "Cancel/Escape should not wait on outstanding network operations."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the anomalous/degraded condition.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Screenshots, video, UI automation output, or screen-reader evidence prove the user experience under the injected condition.",
+        "Trace output confirms the user-facing state matches the injected condition and internal degradation state.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "A high-latency harness profile proves controls provide feedback within 500ms of user input.",
+        "Cancel/Escape closes dialogs promptly while requests are pending.",
+        "No user input is lost or replayed unexpectedly after network recovery."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
@@ -4597,6 +4789,19 @@
       "notes": [
         "Umbrella backlog entry for CR-064 through CR-085.",
         "Goal: prove startup, configuration, runtime, shutdown, YFinance.NET, DeepSeek/RSS, backgrounds, Local AppData, tracing, timing, and rendering behavior under degraded/exceptional conditions."
+      ]
+    },
+    {
+      "id": "CR-086-CR-091",
+      "tracking_number": "CR-086-CR-091",
+      "priority": 1,
+      "area": "degraded_mode_user_experience",
+      "title": "DeepSeek-identified user-experience anomaly validation extensions",
+      "status": "open",
+      "source": "deepseek_ux_anomaly_review_2026_06_13",
+      "notes": [
+        "Umbrella backlog entry for CR-086 through CR-091.",
+        "Focus: user-visible status, accessibility, freshness communication, placeholder consistency, config error clarity, and interaction responsiveness under degraded conditions."
       ]
     }
   ],
