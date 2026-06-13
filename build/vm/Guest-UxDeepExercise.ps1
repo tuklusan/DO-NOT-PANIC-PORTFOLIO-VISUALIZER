@@ -1109,12 +1109,23 @@ function Write-TextFileWithRetry {
 }
 
 function Reset-PortfolioTraceRoot {
-    $traceRoot = Join-Path $env:LOCALAPPDATA "PortfolioSaver\Trace"
-    if (Test-Path $traceRoot) {
-        Remove-Item -LiteralPath $traceRoot -Recurse -Force -ErrorAction SilentlyContinue
+    $harnessAppDataRoot = Get-HarnessAppDataRoot
+    if ([string]::IsNullOrWhiteSpace($harnessAppDataRoot)) {
+        throw 'Harness app data root is empty; cannot reset trace root.'
     }
 
-    New-Item -ItemType Directory -Force -Path $traceRoot | Out-Null
+    $traceRoots = @(
+        (Join-Path $harnessAppDataRoot 'Trace'),
+        (Join-Path $env:LOCALAPPDATA 'PortfolioSaver\Trace')
+    ) | Select-Object -Unique
+
+    foreach ($traceRoot in $traceRoots) {
+        if (Test-Path $traceRoot) {
+            Remove-Item -LiteralPath $traceRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    New-Item -ItemType Directory -Force -Path (Join-Path $harnessAppDataRoot 'Trace') | Out-Null
 }
 
 function Get-CurrentVirtualScreenSize {
@@ -3151,15 +3162,12 @@ finally {
         $env:DNPPV_YFINANCE_FAULT_PROFILE = $previousFaultProfile
     }
     try {
-        $traceRoot = Join-Path $env:LOCALAPPDATA "PortfolioSaver\Trace"
         $localTraceTarget = Join-Path $results 'trace'
-        if (Test-Path $traceRoot) {
-            New-Item -ItemType Directory -Force -Path $localTraceTarget | Out-Null
-            foreach ($traceName in @("trace.circular.log", "trace.circular.idx", "yfinance.circular.log", "yfinance.circular.idx")) {
-                $tracePath = Join-Path $traceRoot $traceName
-                if (Test-Path $tracePath) {
-                    Copy-Item -LiteralPath $tracePath -Destination (Join-Path $localTraceTarget $traceName) -Force
-                }
+        New-Item -ItemType Directory -Force -Path $localTraceTarget | Out-Null
+        foreach ($traceName in @("trace.circular.log", "trace.circular.idx", "yfinance.circular.log", "yfinance.circular.idx")) {
+            $tracePath = Get-HarnessTracePath -RelativePath ("Trace\{0}" -f $traceName)
+            if (Test-Path $tracePath) {
+                Copy-Item -LiteralPath $tracePath -Destination (Join-Path $localTraceTarget $traceName) -Force
             }
         }
     }
