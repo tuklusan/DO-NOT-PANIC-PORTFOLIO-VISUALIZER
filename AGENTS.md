@@ -28,13 +28,21 @@ This is a Codex operational constraint only and is not a product/runtime throttl
 ## Mandatory DeepSeek code-review gate
 For any code modification, including application code, XAML, scripts, harnesses, tests, project files, or build tooling, run a DeepSeek code-review pass before committing, pushing, or starting local/VM validation cycles.
 
-Use:
+First verify live DeepSeek access:
+
+```powershell
+.\build\Test-DeepSeekWorkflowGate.ps1
+```
+
+Then run the review:
 
 ```powershell
 .\build\Run-DeepSeekCodeReview.ps1 -IncludeUntracked -SendForReview -AcknowledgeSecretScan
 ```
 
-Resolve actionable findings and rerun the review when fixes are made. In the non-critical CR lane, a commit/push is not required before DeepSeek review. Commit and push remain mandatory before any local validation, VM validation, harness run, or other test cycle. If no DeepSeek API key is available through `DEEPSEEK_API_KEY`, `PORTFOLIOSAVER_DEEPSEEK_API_KEY`, or `build\vm\test-secrets.json`, treat code commit/test/VM validation as blocked until the key is available or the user explicitly waives the gate for that specific change.
+Resolve actionable findings and rerun the review when fixes are made. In the non-critical CR lane, a commit/push is not required before DeepSeek review. Commit and push remain mandatory before any local validation, VM validation, harness run, or other test cycle. DeepSeek API access and a valid key are mandatory for this project workflow. If `DEEPSEEK_API_KEY`, `PORTFOLIOSAVER_DEEPSEEK_API_KEY`, or `build\vm\test-secrets.json` cannot provide working DeepSeek access, hard stop: do not commit, push, run local validation, run VM validation, or proceed with workflow steps until access is restored. There is no missing-key waiver for this project.
+
+Removed workflow switches are intentional: `-AllowMissingKeyWaiver` and `-SkipDeepSeekReview` are not supported. The live workflow gate performs one minimal DeepSeek API probe before the normal review packet is sent, so a reviewed change normally makes at least two small DeepSeek calls.
 
 This repository is explicitly authorized by the project owner to use DeepSeek as an external code reviewer for pending code changes, but secrets and local-only credentials must never be included in review packets. The script performs best-effort secret scanning only; manually inspect/redact sensitive changes before using `-SendForReview -AcknowledgeSecretScan`. When editing the review gate itself, first run `.\build\Run-DeepSeekCodeReview.ps1 -SelfTest`, then run the normal DeepSeek review gate.
 
@@ -67,4 +75,5 @@ The VM guest harness currently forces a 120-second background rotation interval 
 
 ## Visual note
 Green for upward segments, red for downward segments. The line should be split by movement direction, not just colored by final result.
+
 

@@ -39,7 +39,9 @@ Run the review from the repository root with:
 .\build\Run-DeepSeekCodeReview.ps1 -IncludeUntracked -SendForReview -AcknowledgeSecretScan
 ```
 
-Resolve actionable findings and rerun the review before continuing. If the review cannot run because a DeepSeek key is unavailable, do not start local or VM code-validation cycles unless the user explicitly waives the gate for that specific change.
+Resolve actionable findings and rerun the review before continuing. DeepSeek API access and a valid key are mandatory; if the live gate or review cannot run, hard stop and do not start local or VM code-validation cycles. There is no missing-key waiver for this project.
+
+The old missing-key waiver and skip-review paths are intentionally unsupported. The live gate performs one minimal DeepSeek API probe before the normal review packet is sent.
 
 Do **not** treat the harness glue itself as an optimization target during normal feature work.
 Only revisit the harness when:
@@ -358,6 +360,7 @@ This is a debugging convenience only. The canonical harness path is still the ho
    - verify actual capture dimensions before claiming multi-resolution pass behavior
 6. Keep all long-running host commands bounded by explicit timeouts.
 7. The current harness allows up to `10080` minutes per desktop phase, so multi-day soak runs remain within the supported validation range.
+
 
 
 

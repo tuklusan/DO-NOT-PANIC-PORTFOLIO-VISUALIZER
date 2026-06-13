@@ -5,6 +5,7 @@ This is the single developer-facing build, run, publish, and first-pass validati
 ## Target workflow
 
 This repository is meant to be built primarily in **Visual Studio 2022** on **Windows x64**.
+Install **PowerShell 7 (`pwsh`)** on the local developer machine; the mandatory DeepSeek workflow gate and autonomous validation scripts use it directly.
 
 ## Visual Studio prerequisites
 
@@ -141,14 +142,17 @@ Acceptance for the current YFinance.NET lane:
 
 The current remote Windows UX harness is the supported baseline and should be treated as frozen working infrastructure:
 
-1. DeepSeek review gate: for any code modification, run mandatory DeepSeek code review with `build\Run-DeepSeekCodeReview.ps1 -IncludeUntracked -SendForReview -AcknowledgeSecretScan`, resolve actionable findings, and rerun the review if fixes were made
-2. Commit/push gate: commit and push only the code that passed the DeepSeek review gate before starting local or VM validation
-3. Local validation gate: run local tests
-4. Publish gate: publish with `build\publish-safe-temp.ps1`
-5. VM push gate: push with `build\vm\Push-VmWorkspace.ps1`
-6. Remote UX gate: run remote interactive UX validation through `PortfolioSaver.VmAgent`
+1. DeepSeek live workflow gate: run `build\Test-DeepSeekWorkflowGate.ps1` before workflow activity that can lead to commit, push, local validation, or VM validation. DeepSeek API access and a valid key are mandatory; if this gate fails, hard stop until access is restored.
+2. DeepSeek review gate: for any code modification, run mandatory DeepSeek code review with `build\Run-DeepSeekCodeReview.ps1 -IncludeUntracked -SendForReview -AcknowledgeSecretScan`, resolve actionable findings, and rerun the review if fixes were made
+3. Commit/push gate: commit and push only the code that passed the DeepSeek review gate before starting local or VM validation
+4. Local validation gate: run local tests
+5. Publish gate: publish with `build\publish-safe-temp.ps1`
+6. VM push gate: push with `build\vm\Push-VmWorkspace.ps1`
+7. Remote UX gate: run remote interactive UX validation through `PortfolioSaver.VmAgent`
 
-The DeepSeek review gate applies to application code, XAML, scripts, harnesses, tests, project files, build tooling, and packaging changes. It is intentionally before commit/push and before local/VM validation so reviewer findings are resolved before spending long test cycles. Documentation-only ticket updates are exempt unless they change developer workflow or validation policy.
+The DeepSeek live workflow gate and review gate apply to application code, XAML, scripts, harnesses, tests, project files, build tooling, and packaging changes. They are intentionally before commit/push and before local/VM validation so missing DeepSeek access or reviewer findings are resolved before spending long test cycles. Documentation-only ticket updates are exempt unless they change developer workflow or validation policy. There is no DeepSeek missing-key waiver for this project workflow.
+
+The removed `-AllowMissingKeyWaiver` and `-SkipDeepSeekReview` paths must not be reintroduced. The live workflow gate performs one minimal DeepSeek API probe before the normal review packet is sent.
 
 Two current canonical harness behaviors are easy to miss but are now intentional:
 

@@ -15,7 +15,6 @@ param(
     [switch]$PacketOnly,
     [switch]$AcknowledgeSecretScan,
     [switch]$AcknowledgeEndpointOverride,
-    [switch]$AllowMissingKeyWaiver,
     [switch]$IncludeUntracked
 )
 
@@ -38,19 +37,6 @@ trap {
 # best-effort only; inspect the packet first when a change may contain confidential
 # implementation details or sensitive local-only material.
 
-function Get-RepoRoot {
-    $root = & git rev-parse --show-toplevel 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        throw "git rev-parse --show-toplevel failed."
-    }
-
-    if ([string]::IsNullOrWhiteSpace($root)) {
-        throw "Run this script from inside the git repository."
-    }
-
-    return $root.Trim()
-}
-
 function Invoke-GitLines([string[]]$Arguments) {
     $output = & git @Arguments
     if ($LASTEXITCODE -ne 0) {
@@ -69,40 +55,11 @@ function Complete-ReviewGate([int]$ExitCode) {
     exit $ExitCode
 }
 
-function Get-DeepSeekApiKey([string]$RepositoryRoot) {
-    $key = [Environment]::GetEnvironmentVariable('DEEPSEEK_API_KEY')
-    if (-not [string]::IsNullOrWhiteSpace($key)) {
-        return $key
-    }
-
-    $key = [Environment]::GetEnvironmentVariable('PORTFOLIOSAVER_DEEPSEEK_API_KEY')
-    if (-not [string]::IsNullOrWhiteSpace($key)) {
-        return $key
-    }
-
-    # Local-only ignored test secret overlay. This file must never be committed.
-    $secretsPath = Join-Path $RepositoryRoot 'build\vm\test-secrets.json'
-    if (Test-Path -LiteralPath $secretsPath) {
-        try {
-            $secrets = Get-Content -Raw -LiteralPath $secretsPath | ConvertFrom-Json
-            if ($secrets.PSObject.Properties.Name -contains 'DeepSeekApiKey' -and
-                -not [string]::IsNullOrWhiteSpace([string]$secrets.DeepSeekApiKey)) {
-                return [string]$secrets.DeepSeekApiKey
-            }
-        }
-        catch {
-            Write-Warning "Invalid JSON in build\vm\test-secrets.json; fix or delete the file if DeepSeek key resolution needs it. $($_.Exception.Message)"
-        }
-    }
-
-    if ($AllowMissingKeyWaiver) {
-        Write-Warning "DeepSeek key was not found; review gate was explicitly waived for this run."
-        Write-WaiverAudit "missing-key waiver"
-        return $null
-    }
-
-    throw "DeepSeek code review is mandatory for code modifications, but no DeepSeek key was found in DEEPSEEK_API_KEY, PORTFOLIOSAVER_DEEPSEEK_API_KEY, or build\vm\test-secrets.json. Use -AllowMissingKeyWaiver only when the user explicitly waives the gate for this specific change."
+$deepSeekCommonPath = Join-Path $PSScriptRoot 'DeepSeekWorkflowCommon.ps1'
+if (-not (Test-Path -LiteralPath $deepSeekCommonPath)) {
+    throw "DeepSeek workflow common module is missing: $deepSeekCommonPath"
 }
+. $deepSeekCommonPath
 
 function Test-ProbablyTextFile([string]$Path) {
     $extension = [IO.Path]::GetExtension($Path).ToLowerInvariant()
@@ -131,20 +88,6 @@ function Test-SecretLikePath([string]$Path) {
     $normalized = $Path.Replace('\', '/')
     return $normalized -match '(?i)(secret|credential|api[-_]?key|token|password|private)' -or
            $normalized.EndsWith('test-secrets.json', [StringComparison]::OrdinalIgnoreCase)
-}
-
-function Write-WaiverAudit([string]$Reason) {
-    if ([string]::IsNullOrWhiteSpace($script:OutputRootForAudit)) {
-        throw "Cannot write DeepSeek waiver audit before the ignored output directory is initialized."
-    }
-
-    try {
-        $line = "{0}`tuser={1}`treason={2}`tbranch={3}" -f (Get-Date -Format o), $env:USERNAME, $Reason, (& git branch --show-current)
-        Add-Content -LiteralPath (Join-Path $script:OutputRootForAudit 'waiver-audit.log') -Value $line -Encoding UTF8
-    }
-    catch {
-        Write-Warning "Could not write DeepSeek waiver audit log: $($_.Exception.Message)"
-    }
 }
 
 function Write-SendAudit([string]$PacketPath, [string]$EndpointValue, [string]$ModelValue) {
@@ -286,10 +229,31 @@ if ($SelfTest) {
     $null = Invoke-GitLines @('version')
     $scriptText = Get-Content -Raw -LiteralPath $PSCommandPath
     $null = [ScriptBlock]::Create($scriptText)
-    foreach ($requiredToken in @('$SendForReview', '$AcknowledgeSecretScan', '$AcknowledgeEndpointOverride', 'Get-DeepSeekApiKey', 'Assert-NoLikelySecrets', 'Write-WaiverAudit', 'Write-SendAudit', 'Wait-DeepSeekSendSpacing')) {
+    foreach ($requiredToken in @('$SendForReview', '$AcknowledgeSecretScan', '$AcknowledgeEndpointOverride', 'Get-DeepSeekApiKey', 'Assert-NoLikelySecrets', 'Write-SendAudit', 'Wait-DeepSeekSendSpacing')) {
         if ($scriptText.IndexOf($requiredToken, [StringComparison]::Ordinal) -lt 0) {
             throw "DeepSeek review gate self-test failed; missing required token $requiredToken."
         }
+    }
+    $forbiddenTokens = @(
+        ('AllowMissingKey' + 'Waiver'),
+        ('Write-Waiver' + 'Audit'))
+    foreach ($forbiddenToken in $forbiddenTokens) {
+        if ($scriptText.IndexOf($forbiddenToken, [StringComparison]::Ordinal) -ge 0) {
+            throw "DeepSeek review gate self-test failed; forbidden legacy token $forbiddenToken was found."
+        }
+    }
+
+    $commonScriptText = Get-Content -Raw -LiteralPath $deepSeekCommonPath
+    foreach ($forbiddenToken in $forbiddenTokens) {
+        if ($commonScriptText.IndexOf($forbiddenToken, [StringComparison]::Ordinal) -ge 0) {
+            throw "DeepSeek review gate self-test failed; forbidden legacy token $forbiddenToken was found in the common workflow module."
+        }
+    }
+    if ($commonScriptText.IndexOf('function Get-DeepSeekApiKey', [StringComparison]::Ordinal) -lt 0) {
+        throw "DeepSeek review gate self-test failed; common workflow module does not define Get-DeepSeekApiKey."
+    }
+    if ($commonScriptText.IndexOf('function Get-RepoRoot', [StringComparison]::Ordinal) -lt 0) {
+        throw "DeepSeek review gate self-test failed; common workflow module does not define Get-RepoRoot."
     }
 
     $originalOutputRootForAudit = $script:OutputRootForAudit
@@ -463,11 +427,6 @@ if (-not $AcknowledgeSecretScan) {
 }
 
 $apiKey = Get-DeepSeekApiKey $repoRoot
-if ([string]::IsNullOrWhiteSpace($apiKey)) {
-    Write-Output "DEEPSEEK_REVIEW_PACKET=$packetPath"
-    Write-Output "DeepSeek review skipped by explicit missing-key waiver."
-    Complete-ReviewGate 0
-}
 
 $body = @{
     model = $Model

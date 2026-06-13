@@ -1,3 +1,4 @@
+# -SkipDeepSeekReview was intentionally removed; see AGENTS.md for the mandatory DeepSeek gate policy.
 param(
     [ValidateRange(1, 100)][int]$VmCycles = 2,
     [ValidateRange(1, 100)][int]$RequiredConsecutiveCleanRuns = 2,
@@ -6,7 +7,6 @@ param(
     [string]$VmHost = $env:PORTFOLIOSAVER_VM_HOST,
     [int]$VmPort = $(if ($env:PORTFOLIOSAVER_VM_PORT) { [int]$env:PORTFOLIOSAVER_VM_PORT } else { 22 }),
     [string]$RootPath = 'C:\vmharness\portfolio-saver',
-    [switch]$SkipDeepSeekReview,
     [switch]$SkipLocalTests,
     [switch]$SkipVm,
     [switch]$CreateChangeRequests,
@@ -28,6 +28,13 @@ function Invoke-CheckedCommand {
     Write-Host "[$(Get-Date -Format o)] $Label"
     & $FilePath @Arguments
     if ($LASTEXITCODE -ne 0) { throw "$Label failed with exit code $LASTEXITCODE." }
+}
+
+function Assert-CommandAvailable {
+    param([string]$CommandName,[string]$InstallHint)
+    if ($null -eq (Get-Command $CommandName -ErrorAction SilentlyContinue)) {
+        throw "Required command '$CommandName' is not available. $InstallHint"
+    }
 }
 
 function Get-PendingChangePaths {
@@ -79,8 +86,12 @@ function Assert-NoSecretRiskInPendingChanges {
 
 function Invoke-DeepSeekGate {
     if (-not $AcknowledgeExternalReviewSecretScan) { throw 'External DeepSeek review requires -AcknowledgeExternalReviewSecretScan after local secret-risk checks.' }
+    Assert-CommandAvailable -CommandName 'pwsh' -InstallHint 'Install PowerShell 7 before running autonomous validation.'
     $reviewScriptPath = Join-Path $repoRoot 'build\Run-DeepSeekCodeReview.ps1'
     if (-not (Test-Path -LiteralPath $reviewScriptPath)) { throw "DeepSeek review script is missing: $reviewScriptPath" }
+    $workflowGatePath = Join-Path $repoRoot 'build\Test-DeepSeekWorkflowGate.ps1'
+    if (-not (Test-Path -LiteralPath $workflowGatePath)) { throw "DeepSeek workflow gate script is missing: $workflowGatePath" }
+    Invoke-CheckedCommand -FilePath 'pwsh' -Arguments @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File','.\build\Test-DeepSeekWorkflowGate.ps1') -Label 'DeepSeek live workflow gate'
     Assert-NoSecretRiskInPendingChanges
     Invoke-CheckedCommand -FilePath 'pwsh' -Arguments @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File','.\build\Run-DeepSeekCodeReview.ps1','-SendForReview','-AcknowledgeSecretScan','-IncludeUntracked','-MaxTokens','8192') -Label 'DeepSeek review gate'
 }
@@ -119,7 +130,7 @@ Push-Location $repoRoot
 try {
     if ($RequiredConsecutiveCleanRuns -gt $VmCycles) { throw 'RequiredConsecutiveCleanRuns cannot exceed VmCycles.' }
     Assert-VmTargetConfigured
-    if (-not $SkipDeepSeekReview) { Invoke-DeepSeekGate }
+    Invoke-DeepSeekGate
     Invoke-ValidationCheckpoint
     Invoke-CheckedCommand -FilePath 'dotnet' -Arguments @('restore','.\PortfolioScreensaver.sln','--disable-parallel','--nologo') -Label 'Local restore'
     Invoke-CheckedCommand -FilePath 'dotnet' -Arguments @('build','.\PortfolioScreensaver.sln','-c','Release','--nologo','--no-restore') -Label 'Local Release build'

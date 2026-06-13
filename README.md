@@ -93,6 +93,7 @@ Official MIT reference:
 - Visual Studio 2022
 - Desktop development with .NET workload
 - .NET 10 SDK
+- PowerShell 7 (`pwsh`) for mandatory DeepSeek workflow gates and autonomous validation scripts
 
 ## Recommended workflow
 
@@ -103,6 +104,15 @@ Official MIT reference:
    - `PortfolioSaver.Desktop` for runtime/visual behavior
    - `PortfolioSaver.Config` for settings work
 5. For legacy screensaver argument testing only, set command args to `/s`, `/c`, or `/p 12345`.
+
+Project workflow hard stop: DeepSeek API access is mandatory before commit, push, local validation, VM validation, or automated workflow execution. Verify access with:
+
+```powershell
+.\build\Test-DeepSeekWorkflowGate.ps1
+```
+
+If the gate cannot find a key or cannot reach DeepSeek, stop until access is restored. The key may come from `DEEPSEEK_API_KEY`, `PORTFOLIOSAVER_DEEPSEEK_API_KEY`, or ignored local `build\vm\test-secrets.json`.
+Missing-key waivers and skip-review switches are intentionally unsupported; the live gate makes one minimal DeepSeek API probe before the normal review step.
 
 ## Installer Build Path
 
