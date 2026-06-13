@@ -58,7 +58,7 @@ function Add-ObjectToArrayProperty {
     param(
         [Parameter(Mandatory = $true)]$Object,
         [Parameter(Mandatory = $true)][string]$Name,
-        [Parameter(Mandatory = $true)]$Value
+        [Parameter(Mandatory = $true)]$ItemToAppend
     )
 
     Ensure-ArrayProperty -Object $Object -Name $Name
@@ -69,7 +69,7 @@ function Add-ObjectToArrayProperty {
         }
     }
 
-    [void]$items.Add($Value)
+    [void]$items.Add($ItemToAppend)
     $Object.PSObject.Properties[$Name].Value = @($items)
 }
 
@@ -119,7 +119,7 @@ try {
     }
 
     $targetProperty = Get-AuditChangeRequestTargetProperty -AuditState $audit
-    Add-ObjectToArrayProperty -Object $audit -Name $targetProperty -Value $entry
+    Add-ObjectToArrayProperty -Object $audit -Name $targetProperty -ItemToAppend $entry
 
     $tempPath = $AuditPath + ('.{0}.tmp' -f [guid]::NewGuid().ToString('N'))
     try {
