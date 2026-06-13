@@ -7,19 +7,19 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class ConfigTextConsistencyTests
 {
     [Fact]
-    public void PortfolioVersion_UsesBeta6Labeling()
+    public void PortfolioVersion_UsesBeta7Labeling()
     {
-        Assert.Equal("BETA-6", PortfolioVersion.BaselineLabel);
-        Assert.Contains("beta6", PortfolioVersion.SemanticVersion, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("BETA-6", PortfolioVersion.DisplayName, StringComparison.Ordinal);
+        Assert.Equal("BETA-7", PortfolioVersion.BaselineLabel);
+        Assert.Contains("beta7", PortfolioVersion.SemanticVersion, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("BETA-7", PortfolioVersion.DisplayName, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void AboutDocument_ContainsBeta6PublisherAuthorAndLicense()
+    public void AboutDocument_ContainsBeta7PublisherAuthorAndLicense()
     {
         string aboutText = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Content", "about.txt"));
 
-        Assert.Contains("BETA-6 baseline", aboutText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("BETA-7 baseline", aboutText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Publisher: SANYALnet Labs", aboutText, StringComparison.Ordinal);
         Assert.Contains("Author: Supratim Sanyal", aboutText, StringComparison.Ordinal);
         Assert.Contains("License: MIT License", aboutText, StringComparison.Ordinal);
@@ -28,13 +28,13 @@ public sealed class ConfigTextConsistencyTests
     }
 
     [Fact]
-    public void MainWindowXaml_HasBeta6Title_AndNoBenchmarkEditorText()
+    public void MainWindowXaml_HasBeta7Title_AndNoBenchmarkEditorText()
     {
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
         string configProject = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "PortfolioSaver.Config.csproj"));
         string progressXaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "ValidationProgressWindow.xaml"));
 
-        Assert.Contains("Title=\"DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-6\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Title=\"DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-7\"", xaml, StringComparison.Ordinal);
         Assert.Contains("<ApplicationIcon>..\\PortfolioSaver.Shared\\Assets\\Branding\\dnppv-icon-rev-3.ico</ApplicationIcon>", configProject, StringComparison.Ordinal);
         Assert.DoesNotContain("Icon=\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Icon=\"", progressXaml, StringComparison.Ordinal);
@@ -254,6 +254,7 @@ public sealed class ConfigTextConsistencyTests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 }
+
 
 
 

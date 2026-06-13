@@ -115,7 +115,7 @@ Use the scripts under `build/` for publish and packaging workflows, especially:
 ## Current Baseline
 
 - Remote Git history has been intentionally rebased to start at the `BETA-5.4` baseline
-- Current development/version lane is `BETA-6`
+- Current development/version lane is `BETA-7`
 - Product identity:
   - Application: **DO NOT PANIC PORTFOLIO VISUALIZER**
   - Publisher: **SANYALnet Labs**
@@ -178,4 +178,5 @@ This project is licensed under the **MIT LICENSE**.
 
 - Bundled full text: [LICENSE](LICENSE)
 - Official text: [https://opensource.org/license/mit/](https://opensource.org/license/mit/)
+
 

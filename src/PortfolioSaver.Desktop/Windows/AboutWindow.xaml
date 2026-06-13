@@ -57,7 +57,7 @@
                                Foreground="#E5EDF4"
                                FontSize="15"
                                Margin="0,0,0,16" />
-                    <TextBlock Text="BETA-6 desktop baseline. This build combines the top-level market ribbon, world markets, progressive ticker tapes, teleprinter-style finance news, and exchange-photo backgrounds under the DO NOT PANIC identity."
+                    <TextBlock Text="BETA-7 desktop baseline. This build combines the top-level market ribbon, world markets, progressive ticker tapes, teleprinter-style finance news, and exchange-photo backgrounds under the DO NOT PANIC identity."
                                Foreground="#C9D8E4"
                                TextWrapping="Wrap"
                                FontSize="14"
@@ -98,3 +98,4 @@
                 Click="OnOkClick" />
     </Grid>
 </Window>
+

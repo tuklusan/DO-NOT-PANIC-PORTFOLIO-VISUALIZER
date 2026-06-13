@@ -3,7 +3,7 @@
 Document status: Initial revision 0.1  
 Primary ticket: `NB-031`  
 Companion ICD: [YFINANCE_NET_ICD.md](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\docs\YFINANCE_NET_ICD.md)  
-Baseline: `BETA-6`
+Baseline: `BETA-7`
 
 ## 1. Objective
 Implement the `NB-031` architecture transition from in-process `YFinance.NET` usage to a standalone client-server runtime while preserving current product behavior and keeping the codebase sync-friendly with the upstream Python yfinance concepts.
@@ -352,3 +352,4 @@ The first code step should be:
 4. add serialization round-trip tests including local-time-plus-offset envelope timestamps and payload checksums
 
 That gives the rest of `NB-031` a stable foundation.
+
