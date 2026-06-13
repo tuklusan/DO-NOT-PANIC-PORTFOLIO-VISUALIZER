@@ -70,7 +70,7 @@ function Add-ObjectToArrayProperty {
     }
 
     [void]$items.Add($ItemToAppend)
-    $Object.PSObject.Properties[$Name].Value = @($items)
+    $Object.PSObject.Properties[$Name].Value = $items.ToArray()
 }
 
 function Get-AuditChangeRequestTargetProperty {
