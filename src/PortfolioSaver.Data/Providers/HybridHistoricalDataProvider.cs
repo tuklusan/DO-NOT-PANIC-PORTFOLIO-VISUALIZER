@@ -177,6 +177,14 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
                 "HistoryRequestComplete",
                 [new("operation_id", operationId), new("symbol", symbol), new("point_count", snapshot.Points.Count), new("metadata_timezone", response.Metadata?.ExchangeTimezoneName)]);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            TraceLog.InfoState(
+                "YFinanceUiBridge",
+                "HistoryFetchCanceled",
+                [new("operation_id", operationId), new("symbol", symbol), new("lookback_days", lookbackDays)]);
+            throw;
+        }
         catch (Exception ex)
         {
             TraceLog.WarnState(

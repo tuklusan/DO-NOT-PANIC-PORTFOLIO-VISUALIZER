@@ -78,9 +78,10 @@ public static class YFinanceRuntimeClientFactory
 
     public static async Task<T> RunAsync<T>(string lane, string operationId, Func<YFinanceServerClient, CancellationToken, Task<T>> action, CancellationToken cancellationToken = default)
     {
-        await EnsureServerReadyAsync("PortfolioSaver.Runtime", PortfolioVersion.SemanticVersion, cancellationToken).ConfigureAwait(false);
+        string outcome = "success";
         try
         {
+            await EnsureServerReadyAsync("PortfolioSaver.Runtime", PortfolioVersion.SemanticVersion, cancellationToken).ConfigureAwait(false);
             TraceLog.InfoState("YFinanceRuntimeClientFactory", "ClientOperationStart", [new("lane", lane), new("operation_id", operationId)]);
             YFinanceServerClient client = RentSharedClient();
             try
@@ -97,14 +98,21 @@ public static class YFinanceRuntimeClientFactory
                 ReleaseSharedClientOperation();
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            outcome = "canceled";
+            TraceLog.InfoState("YFinanceRuntimeClientFactory", "ClientOperationCanceled", [new("lane", lane), new("operation_id", operationId)]);
+            throw;
+        }
         catch (Exception ex)
         {
+            outcome = "faulted";
             TraceLog.WarnState("YFinanceRuntimeClientFactory", "ClientOperationError", [new("lane", lane), new("operation_id", operationId), new("message", ex.Message)]);
             throw;
         }
         finally
         {
-            TraceLog.InfoState("YFinanceRuntimeClientFactory", "ClientOperationComplete", [new("lane", lane), new("operation_id", operationId)]);
+            TraceLog.InfoState("YFinanceRuntimeClientFactory", "ClientOperationComplete", [new("lane", lane), new("operation_id", operationId), new("outcome", outcome)]);
         }
     }
 

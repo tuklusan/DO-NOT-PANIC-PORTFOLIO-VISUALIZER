@@ -11,11 +11,32 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class StartupCoordinatorTapeItemTests
 {
     [Fact]
-    public void BuildTapeItem_NullQuote_UsesMissingIndicatorAndBlankValues()
+    public void BuildTapeItem_NullQuote_UsesLoadingIndicatorAndBlankValues()
     {
         DateTimeOffset now = new(2026, 4, 10, 12, 0, 0, TimeSpan.Zero);
 
         TapeItemViewModel item = InvokeBuildTapeItem("AAPL", null, "Apple", now);
+
+        Assert.Equal(Brushes.Goldenrod, item.SymbolForeground);
+        Assert.True(item.IsWaitingOnData);
+        Assert.False(item.HasMissingData);
+        Assert.Equal("🕒", item.WaitingGlyphText);
+        Assert.Equal(string.Empty, item.LastText);
+        Assert.Equal(string.Empty, item.ChangeText);
+    }
+
+    [Fact]
+    public void BuildTapeItem_ValueLessQuote_UsesMissingIndicatorAndBlankValues()
+    {
+        DateTimeOffset now = new(2026, 4, 10, 12, 0, 0, TimeSpan.Zero);
+        QuoteSnapshot valuelessQuote = new()
+        {
+            Symbol = "AAPL",
+            FetchTimestampUtc = now.AddSeconds(-1),
+            IsStale = false
+        };
+
+        TapeItemViewModel item = InvokeBuildTapeItem("AAPL", valuelessQuote, "Apple", now);
 
         Assert.Equal(Brushes.DarkOrange, item.SymbolForeground);
         Assert.True(item.IsWaitingOnData);
@@ -43,7 +64,7 @@ public sealed class StartupCoordinatorTapeItemTests
         Assert.Equal(Brushes.LimeGreen, item.SymbolForeground);
         Assert.False(item.IsWaitingOnData);
         Assert.False(item.HasMissingData);
-        Assert.Equal("🕒", item.WaitingGlyphText);
+        Assert.Equal(string.Empty, item.WaitingGlyphText);
         Assert.Equal("100.00", item.LastText);
         Assert.Equal("+1.00%", item.ChangeText);
     }
@@ -68,6 +89,7 @@ public sealed class StartupCoordinatorTapeItemTests
         Assert.False(item.HasMissingData);
         Assert.Equal("250.12", item.LastText);
         Assert.Equal("+2.50%", item.ChangeText);
+        Assert.Equal(string.Empty, item.WaitingGlyphText);
     }
 
     [Fact]
@@ -89,6 +111,28 @@ public sealed class StartupCoordinatorTapeItemTests
         Assert.Equal(Brushes.OrangeRed, item.SymbolForeground);
         Assert.Equal("500.00", item.LastText);
         Assert.Equal("-0.10%", item.ChangeText);
+    }
+
+    [Fact]
+    public void BuildTapeItem_PreviousCloseOnlyQuote_ShowsValueWithoutWaitingOrMissingState()
+    {
+        DateTimeOffset now = new(2026, 4, 10, 12, 0, 0, TimeSpan.Zero);
+        QuoteSnapshot quote = new()
+        {
+            Symbol = "BND",
+            PreviousClose = 72.34m,
+            FetchTimestampUtc = now.AddSeconds(-3),
+            IsStale = false
+        };
+
+        TapeItemViewModel item = InvokeBuildTapeItem("BND", quote, "BND", now);
+
+        Assert.Equal(Brushes.Gainsboro, item.SymbolForeground);
+        Assert.False(item.IsWaitingOnData);
+        Assert.False(item.HasMissingData);
+        Assert.Equal("72.34", item.LastText);
+        Assert.Equal(string.Empty, item.ChangeText);
+        Assert.Equal(string.Empty, item.WaitingGlyphText);
     }
 
     private static TapeItemViewModel InvokeBuildTapeItem(string symbol, QuoteSnapshot? quote, string displayName, DateTimeOffset nowUtc)

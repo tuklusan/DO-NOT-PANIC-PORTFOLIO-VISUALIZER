@@ -3671,7 +3671,7 @@ public partial class ScreensaverSceneControl : UserControl
                 string state = item.HasMissingData
                     ? "missing"
                     : item.IsWaitingOnData
-                        ? "stale"
+                        ? "loading"
                         : "live";
 
                 return $"{item.SymbolText}~{NormalizeTapeSnapshotValue(item.LastText)}~{NormalizeTapeSnapshotValue(item.ChangeText)}~{state}";
@@ -3697,7 +3697,7 @@ public partial class ScreensaverSceneControl : UserControl
                         string state = item.HasMissingData
                             ? "missing"
                             : item.IsWaitingOnData
-                                ? "stale"
+                                ? "loading"
                                 : "live";
                         return $"{item.SymbolText}:{NormalizeTapeSnapshotValue(item.LastText)}:{state}";
                     })

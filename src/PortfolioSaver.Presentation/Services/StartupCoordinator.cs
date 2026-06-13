@@ -583,7 +583,8 @@ public sealed class StartupCoordinator
         decimal? last = quote?.Last ?? quote?.PreviousClose;
         decimal? percent = quote?.ChangePercent;
         bool hasUsableValue = last is not null;
-        bool isMissing = !hasUsableValue;
+        bool isLoading = quote is null;
+        bool isMissing = quote is not null && !hasUsableValue;
         string lastText = last is decimal lastValue
             ? lastValue.ToString("0.00", CultureInfo.InvariantCulture)
             : string.Empty;
@@ -602,11 +603,11 @@ public sealed class StartupCoordinator
             SymbolText = symbol,
             LastText = lastText,
             ChangeText = percentText,
-            IsWaitingOnData = isMissing,
+            IsWaitingOnData = !hasUsableValue,
             HasMissingData = isMissing,
-            WaitingGlyphText = isMissing ? "◌" : "🕒",
+            WaitingGlyphText = isLoading ? "🕒" : isMissing ? "◌" : string.Empty,
             WaitingGlyphForeground = isMissing ? Brushes.DarkOrange : Brushes.Goldenrod,
-            SymbolForeground = isMissing ? Brushes.DarkOrange : changeBrush,
+            SymbolForeground = isMissing ? Brushes.DarkOrange : isLoading ? Brushes.Goldenrod : changeBrush,
             LastForeground = Brushes.WhiteSmoke,
             ChangeForeground = changeBrush,
             QuoteUpdateToken = quote?.FetchTimestampUtc.UtcTicks ?? 0
