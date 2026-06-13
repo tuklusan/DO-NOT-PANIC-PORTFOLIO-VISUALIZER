@@ -3937,6 +3937,31 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-093",
+      "tracking_number": "CR-093",
+      "priority": 1,
+      "area": "runtime_tracing",
+      "title": "Trace scan found anomaly lines during VM validation",
+      "status": "open",
+      "source": "autonomous_visual_validation",
+      "severity": "High",
+      "evidence": [
+        "Run ux-deep-ssh-20260613-102820 trace anomaly sample:",
+        "combined-trace-tail.txt:13: 2026-06-13T06:34:25.2003885+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=3384 | tid=2 | event=DisplayedTapeSample / sample_count=8 / sample=[VOO~-~-~missing, IJH~-~-~missing, IJR~-~-~missing, VEA~-~-~missing, VWO~-~-~missing, VSS~-~-~missing, EFV~-~-~missing, EFG~-~-~missing] combined-trace-tail.txt:14: 2026-06-13T06:34:25.2013224+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=3384 | tid=2 | event=DisplayedTapeLanes / lane_count=4 / lanes=[lane1=GBLCORE+SAT[VOO:-:missing, IJH:-:missin..., lane2=MLTFCT+SMRTBETA[QUAL:-:missing, MTUM:-:..., lane3=DIVGRTH+YLD[SCHD:-:missing, VIG:-:missi..., lane4=STRTGC-ROTN[XLK:-:missing, XLV:-:missin...] combined-trace-tail.txt:40: 2026-06-13T06:34:25.3980231+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=3384 | tid=2 | event=DisplayedTapeSample / sample_count=8 / sample=[VOO~-~-~missing, IJH~-~-~missing, IJR~-~-~missing, VEA~-~-~missing, VWO~-~-~missing, VSS~-~-~missing, EFV~-~-~missing, EFG~-~-~missing] combined-trace-tail.txt:41: 2026-06-13T06:34:25.3981403+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=3384 | tid=2 | event=DisplayedTapeLanes / lane_count=4 / lanes=[lane1=GBLCORE+SAT[VOO:-:missing, IJH:-:missin..., lane2=MLTFCT+SMRTBETA[QUAL:-:missing, MTUM:-:..., lane3=DIVGRTH+YLD[SCHD:-:missing, VIG:-:missi..., lane4=STRTGC-ROTN[XLK:-:missing, XLV:-:missin...] combined-trace-tail.txt:150: 2026-06-13T06:34:32.7436934+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=3384 | tid=2 | event=DisplayedTapeSample / sample_count=8 / sample=[VOO~-~-~missing, IJH~-~-~missing, IJR~-~-~missing, VEA~-~-~missing, VWO~-~-~missing, VSS~-~-~missing, EFV~-~-~missing, EFG~-~-~missing] combined-trace-tail.txt:151: 2026-06-13T06:34:32.7439705+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=3384 | tid=2 | event=DisplayedTapeLanes / lane_count=4 / lanes=[lane1=GBLCORE+SAT[VOO:-:missing, IJH:-:missin..., lane2=MLTFCT+SMRTBETA[QUAL:-:missing, MTUM:-:..., lane3=DIVGRTH+YLD[SCHD:-:missing, VIG:-:missi..., lane4=STRTGC-ROTN[XLK:-:missing, XLV:-:missin...] combined-trace-tail.txt:174: 2026-06-13T06:34:33.3461538+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=FetchAndCacheHistoryAsync | host=windows10 | ip=192.168.56.102 | pid=3384 | tid=9 | event=HistoryRequestFailed / operation_id=history-00000023 / symbol=SYLD / lookback_days=1 / message=The operation was canceled. combined-trace-tail.txt:175: 2026-06-13T06:34:33.3462024+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceNetHistoricalProvider | function=FetchAndCacheHistoryAsync | host=windows10 | ip=192.168.56.102 | pid=3384 | tid=9 | event=HistoryFetchFailed / symbol=SYLD / lookback_days=1 / message=The operation was canceled. combined-trace-tail.txt:176: 2026-06-13T06:34:33.3464677+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=FetchAndCacheHistoryAsync | host=windows10 | ip=192.168.56.102 | pid=3384 | tid=9 | event=HistoryRequestFailed / operation_id=history-00000022 / symbol=EMGF / lookback_days=1 / message=The operation was canceled. combined-trace-tail.txt:177: 2026-06-13T06:34:33.3464878+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceNetHistoricalProvider | function=FetchAndCacheHistoryAsync | host=windows10 | ip=192.168.56.102 | pid=3384 | tid=9 | event=HistoryFetchFailed / symbol=EMGF / lookback_days=1 / message=The operation was canceled. combined-trace-tail.txt:178: 2026-06-13T06:34:33.3465355+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=FetchAndCacheHistoryAsync | host=windows10 | ip=192.168.56.102 | pid=3384 | tid=9 | event=HistoryRequestFailed / operation_id=history-00000021 / symbol=INTF / lookback_days=1 / message=The operation was canceled. combined-trace-tail.txt:179: 2026-06-13T06:34:33.3465817+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceNetHistoricalProvider | function=FetchAndCacheHistoryAsync | host=windows10 | ip=192.168.56.102 | pid=3384 | tid=9 | event=HistoryFetchFailed / symbol=INTF / lookback_days=1 / message=The operation was canceled."
+      ],
+      "notes": [
+        "Unexpected trace anomalies are escalated so they are not lost after long autonomous runs."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
