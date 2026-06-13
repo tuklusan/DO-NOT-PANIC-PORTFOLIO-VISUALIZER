@@ -50,7 +50,7 @@ function Ensure-ArrayProperty {
     }
 
     if ($null -eq $Object.$Name) {
-        $Object.$Name = @()
+        $Object.PSObject.Properties[$Name].Value = @()
     }
 }
 
@@ -70,7 +70,7 @@ function Add-ObjectToArrayProperty {
     }
 
     [void]$items.Add($Value)
-    $Object.$Name = @($items)
+    $Object.PSObject.Properties[$Name].Value = @($items)
 }
 
 function Get-AuditChangeRequestTargetProperty {
