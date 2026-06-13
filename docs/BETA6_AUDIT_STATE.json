@@ -3082,6 +3082,643 @@
       ],
       "resolution": "Resolved on 2026-06-12 by adding project-owned upstream sync metadata, YFinanceUpstreamSyncMetadata constants, and a non-blocking YFinanceUpstreamSyncMonitor. The standalone YFinance.NET server now enables the trace-only GitHub freshness check by default, logs reviewed and latest upstream commit metadata, warns with both commit identifiers when upstream differs, and supports --no-upstream-sync for restricted environments. The reusable YFinanceOptions default remains opt-in for library consumers.",
       "validation": "DeepSeek review artifact build/deepseek-review/deepseek-review-20260612-200819.md reported no blocking findings before commit; final review artifact build/deepseek-review/deepseek-review-20260612-200601.md identified only non-blocking follow-ups, addressed by metadata sync tests and server option coverage. Focused YFinanceUpstreamSyncMonitor and ServerOptions tests passed 15/15. Full local Release test suite passed 447/447 with only pre-existing xUnit1030 warnings. Real local YFinance.NET server startup on temporary port 14999 emitted ServerStartup, UpstreamSyncCheckStart, and UpstreamSyncCurrent trace lines showing reviewed_commit and upstream_commit both equal 125b12e058fe37971390e32333d2cf9edb2a8a50; the server process was explicitly terminated and temporary trace data removed."
+    },
+    {
+      "id": "CR-064",
+      "tracking_number": "CR-064",
+      "priority": 1,
+      "area": "anomaly_test_harness",
+      "title": "Add deterministic network fault-injection support for degraded-mode VM validation",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "High",
+      "evidence": [
+        "The new autonomous VM loop proves healthy long-run behavior, but degraded conditions still require deterministic injection.",
+        "Scenarios include no internet at startup, DNS failure, connection refusal, TLS failure, HTTP throttling, latency, packet loss, and recovery after outage."
+      ],
+      "notes": [
+        "Prefer a host/VM controllable mechanism that can toggle failures at exact phases: before app launch, while config is open, while validation is running, while runtime quotes/news/backgrounds are active, and during shutdown.",
+        "The harness should record timestamps for each injected condition so trace analysis can line up symptoms and expected behavior."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Harness can run at least: offline-at-start, offline-during-config-validation, offline-during-runtime, high-latency-yfinance, and recovery-after-outage profiles."
+      ]
+    },
+    {
+      "id": "CR-065",
+      "tracking_number": "CR-065",
+      "priority": 1,
+      "area": "startup_network_degradation",
+      "title": "Validate cold startup when internet is unavailable before app launch",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "High",
+      "evidence": [
+        "Startup is the most fragile time because quotes, news, background downloads, DeepSeek/RSS, upstream diagnostics, and YFinance server startup may all begin near each other.",
+        "The app must not hang, show misleading fresh values, or fail to render when launched fully offline."
+      ],
+      "notes": [
+        "Expected behavior should distinguish no-data-yet from stale cached data.",
+        "The top-left status, ticker tapes, graph cards, macro cards, world markets ribbon, and news scroller should each have intentional offline behavior."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Cold offline startup reaches a stable visible scene without unhandled exceptions or dispatcher stalls.",
+        "No stale value is represented as fresh."
+      ]
+    },
+    {
+      "id": "CR-066",
+      "tracking_number": "CR-066",
+      "priority": 1,
+      "area": "config_network_degradation",
+      "title": "Validate manual configuration workflow when internet is unavailable before opening settings",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "High",
+      "evidence": [
+        "The config window may be opened while the machine is offline, before any validation starts.",
+        "Controls and validation affordances must remain understandable and the window must not get stuck."
+      ],
+      "notes": [
+        "Cover both General and Advanced tabs, including any controls that imply network-backed validation or generated runtime behavior.",
+        "The config UI should not expose implementation notes as error text."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Config window opens promptly offline and remains closeable/cancelable.",
+        "Validation failure state is clear and leaves Validate re-enabled when appropriate."
+      ]
+    },
+    {
+      "id": "CR-067",
+      "tracking_number": "CR-067",
+      "priority": 1,
+      "area": "config_validation_degradation",
+      "title": "Validate network loss or severe latency after Validate is clicked",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "High",
+      "evidence": [
+        "The Validate button is intentionally disabled immediately after click and later transitions to OK/Cancel only on success.",
+        "Network loss, DNS stalls, or YFinance latency during validation could otherwise leave the dialog stuck."
+      ],
+      "notes": [
+        "Exercise outage before first symbol, outage mid-symbol-list, slow responses, partial failures, and recovery before timeout.",
+        "This specifically protects the recently repaired OK/Cancel and immediate-close validation flow."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Validation either succeeds and shows OK/Cancel, or fails and re-enables Validate with actionable status text.",
+        "No successful validation path leaves the config window lingering unexpectedly."
+      ]
+    },
+    {
+      "id": "CR-068",
+      "tracking_number": "CR-068",
+      "priority": 1,
+      "area": "yfinance_server_lifecycle",
+      "title": "Validate YFinance.NET server launch failures, duplicate process, port conflicts, and owned shutdown",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "High",
+      "evidence": [
+        "The UI now relies on owned YFinance.NET server/client communication for market data.",
+        "Port conflicts, duplicate stale server processes, failed server startup, or server crash can break every quote lane."
+      ],
+      "notes": [
+        "Include duplicate process check behavior requested during NB-031 work.",
+        "Cover desktop and config startup independently, plus shutdown when the UI closes."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Server lifecycle failures produce clear traces and user-visible degradation without crashing the UI.",
+        "Owned server exits when the owning UI exits, unless documented otherwise."
+      ]
+    },
+    {
+      "id": "CR-069",
+      "tracking_number": "CR-069",
+      "priority": 1,
+      "area": "yfinance_transport_degradation",
+      "title": "Validate asynchronous client/server disconnect, reconnect, malformed response, and late response handling",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "High",
+      "evidence": [
+        "The protocol is asynchronous/pipelined; requests should continue on cadence and responses are processed when they arrive.",
+        "Disconnects, late responses, malformed frames, checksum failures, timestamp skew, and server exceptions need proof."
+      ],
+      "notes": [
+        "Include request/response/async-message timestamp and checksum expectations from the NB-031 ICD.",
+        "Ensure late responses cannot update the wrong symbol or cause batch UI redraws."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Client recovers or degrades predictably after transport break without blocking UI cadence.",
+        "Invalid frames/checksums are rejected and traced."
+      ]
+    },
+    {
+      "id": "CR-070",
+      "tracking_number": "CR-070",
+      "priority": 1,
+      "area": "quote_latency",
+      "title": "Validate quote latency greater than the one-second request cadence",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "High",
+      "evidence": [
+        "Runtime quote fetching is intended to be simple: send one symbol request, render that symbol when its response arrives, wait one second, then send the next request.",
+        "If YFinance or the server responds slower than one second, responses may overlap or arrive out of order."
+      ],
+      "notes": [
+        "Exercise 2s, 5s, 15s, and timeout-level quote latency profiles.",
+        "Verify no dispatcher batching, scene-wide lock-up, graph-card over-flashing, or stale overwrite."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "UI updates remain surgical: at most the affected ticker and corresponding graph-card update per response.",
+        "Late responses are handled according to documented ordering/freshness policy."
+      ]
+    },
+    {
+      "id": "CR-071",
+      "tracking_number": "CR-071",
+      "priority": 1,
+      "area": "quote_failures",
+      "title": "Validate per-symbol YFinance failures and invalid/missing symbols across tapes, macros, and world markets",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "High",
+      "evidence": [
+        "Individual symbols can fail due to delisting, bad ticker syntax, exchange suffix changes, no quote, Yahoo empty response, or unsupported market data.",
+        "One bad symbol must not poison an entire tape, macro set, or world market ribbon."
+      ],
+      "notes": [
+        "Cover user portfolio symbols, macro symbols, global exchange symbols, and graph-card top movers.",
+        "Include validation-time and runtime-time failures separately."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Failures remain isolated to the affected symbol/card with trace evidence.",
+        "Healthy symbols continue one-by-one updates."
+      ]
+    },
+    {
+      "id": "CR-072",
+      "tracking_number": "CR-072",
+      "priority": 1,
+      "area": "yfinance_http_degradation",
+      "title": "Validate YFinance/Yahoo HTTP failures including 401, 403, 404, 408, 429, 5xx, crumb/cookie failure, and empty JSON",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "High",
+      "evidence": [
+        "Yahoo-backed APIs can fail with authentication/crumb issues, throttling, transient server errors, and empty/malformed responses.",
+        "YFinance.NET owns all Yahoo communication, so these failures must be simulated and proven at that layer."
+      ],
+      "notes": [
+        "Do not reintroduce direct Yahoo calls outside YFinance.NET while adding tests.",
+        "Check cache behavior and backoff behavior separately for each class of response."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Each HTTP failure class is mapped to an intentional retry/backoff/cache/degrade behavior.",
+        "Trace records enough detail for support without leaking secrets."
+      ]
+    },
+    {
+      "id": "CR-073",
+      "tracking_number": "CR-073",
+      "priority": 1,
+      "area": "market_data_integrity",
+      "title": "Validate malformed numeric market data: null, NaN, Infinity, zero, negative, huge values, missing change percent",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "High",
+      "evidence": [
+        "Financial UI rendering depends on prices, changes, percentages, and chart series being sane.",
+        "Bad numeric data can cause clipped text, incorrect red/green coloring, graph-card flashing, layout overflow, or exceptions."
+      ],
+      "notes": [
+        "Include raw price unchanged with percent churn because graph-cards should flash only on actual raw price changes.",
+        "Include chart series with too few points, duplicate timestamps, descending timestamps, and gaps."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Malformed numeric fields are rejected or displayed with intentional placeholders.",
+        "No malformed value causes layout runaway, graph rendering exception, or false flashing."
+      ]
+    },
+    {
+      "id": "CR-074",
+      "tracking_number": "CR-074",
+      "priority": 1,
+      "area": "cache_staleness",
+      "title": "Validate YFinance.NET cache expiry, stale fallback, and no-fresh-data behavior",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "High",
+      "evidence": [
+        "YFinance.NET has a 10-minute cache ceiling and the app intentionally removed its separate QuoteCacheService.",
+        "When network is unavailable after cache expiry, the app needs a truthful stale/unavailable policy."
+      ],
+      "notes": [
+        "Exercise cache hit, cache nearing expiry, cache expired with network down, cache expired with slow network, and recovery to fresh data.",
+        "Confirm there is still only one market-data cache owner."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Stale cache is never labeled fresh.",
+        "Expired-cache behavior is documented and consistent across tapes, macros, graph cards, and world markets."
+      ]
+    },
+    {
+      "id": "CR-075",
+      "tracking_number": "CR-075",
+      "priority": 1,
+      "area": "runtime_network_recovery",
+      "title": "Validate internet loss and recovery during normal runtime after healthy startup",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "High",
+      "evidence": [
+        "The most common real-world degradation is Wi-Fi/VPN/internet loss after the app is already running.",
+        "The UI should keep rendering, stop claiming freshness, and recover without restart."
+      ],
+      "notes": [
+        "Inject loss while updating macro values, while updating world markets, while walking tape symbols, and while graph-card top movers are active.",
+        "Recovery should not cause a burst/batch redraw."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Runtime outage does not freeze the scene or block news/background animations.",
+        "Recovery resumes one-by-one cadence without duplicate/batched symbol updates."
+      ]
+    },
+    {
+      "id": "CR-076",
+      "tracking_number": "CR-076",
+      "priority": 2,
+      "area": "news_degradation",
+      "title": "Validate Finance News degradation: no DeepSeek key, bad key, endpoint down, rate limit, slow response, malformed AI output, RSS-only fallback",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "Medium",
+      "evidence": [
+        "News scroller uses DeepSeek when configured and RSS-only fallback when unavailable.",
+        "We previously proved RSS-only fallback once, but not as a repeatable degraded-mode matrix."
+      ],
+      "notes": [
+        "Cover Adams/Vogon mode and classical Shakespeare mode prompts.",
+        "Ensure failures do not block UI and do not reset the scroller into strange repeated-line states."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "News content fetches off the UI thread and degraded paths keep the scroller alive.",
+        "AI failures are traced and fall back to RSS-only or cached text according to documented policy."
+      ]
+    },
+    {
+      "id": "CR-077",
+      "tracking_number": "CR-077",
+      "priority": 2,
+      "area": "world_markets_degradation",
+      "title": "Validate World Markets ribbon degradation for quote, timing, weather, timezone, and partial exchange failures",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "Medium",
+      "evidence": [
+        "The World Markets ribbon is now independent of the rest of the scene and may have multiple data dependencies.",
+        "Partial exchange failures must not collapse the whole ribbon or break pinned New York status reuse."
+      ],
+      "notes": [
+        "Cover unavailable market timing, quote failure, weather failure, timezone conversion failure, and mixed open/closed/unknown states.",
+        "If market status change time is unavailable, top-left text should remain blank rather than show Timing unavailable."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Each failed exchange/card degrades independently.",
+        "Pinned NYC reuse remains consistent with the top-left status display."
+      ]
+    },
+    {
+      "id": "CR-078",
+      "tracking_number": "CR-078",
+      "priority": 2,
+      "area": "background_degradation",
+      "title": "Validate background rotation/download degradation: offline warm-up, slow downloads, partial TMP files, corrupt images, decode failures",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "Medium",
+      "evidence": [
+        "Background logic can download images, clean TMP files, rotate local/managed images, and apply transitions/zoom.",
+        "Blank background periods were observed historically, so degraded asset paths need explicit proof."
+      ],
+      "notes": [
+        "Cover default three shipped images, downloaded manifest images, custom folder enabled/disabled, missing folder, corrupt file, and GPU-heavy transition fallback.",
+        "Attribution display must use short attribution strings only."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "No image download/decode failure causes a blank scene when a prior good image exists.",
+        "TMP cleanup and rescan behavior is traced."
+      ]
+    },
+    {
+      "id": "CR-079",
+      "tracking_number": "CR-079",
+      "priority": 2,
+      "area": "local_appdata_degradation",
+      "title": "Validate Local AppData failures: missing, access denied, corrupt config, corrupt cache, disk full, read-only files",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "High",
+      "evidence": [
+        "All local application data should live under Local AppData for installer/uninstaller ownership.",
+        "Config, backgrounds, traces, caches, and runtime state may fail due to permissions, corruption, or disk exhaustion."
+      ],
+      "notes": [
+        "Include first-run missing directories and upgrade from obsolete PortfolioSaver paths.",
+        "Do not delete user-selected custom image folders during cleanup tests."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "The app recreates expected Local AppData directories when possible.",
+        "Corrupt config/cache files are quarantined or ignored safely with clear trace evidence."
+      ]
+    },
+    {
+      "id": "CR-080",
+      "tracking_number": "CR-080",
+      "priority": 2,
+      "area": "trace_degradation",
+      "title": "Validate trace/logging degradation: circular log full, file lock, access denied, corrupt index, excessive anomaly volume",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "Medium",
+      "evidence": [
+        "End-user support depends on circular trace files, including client/server communication logs.",
+        "Trace failures must not crash the app or hide critical degradation events."
+      ],
+      "notes": [
+        "Cover both client and YFinance.NET server traces.",
+        "Ensure high-volume failures are summarized or throttled without losing first-cause evidence."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Trace subsystem fails soft and surfaces enough diagnostics when file output is unavailable.",
+        "Circular trace recovery after corrupt index/position is proven."
+      ]
+    },
+    {
+      "id": "CR-081",
+      "tracking_number": "CR-081",
+      "priority": 2,
+      "area": "configuration_change_runtime",
+      "title": "Validate applying configuration changes while runtime workers and YFinance server are active",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "Medium",
+      "evidence": [
+        "Successful config OK/Apply can regenerate ticker tapes, news scroller, and runtime symbol sets while background workers are active.",
+        "Configuration changes should not mutate server internals beyond documented control surfaces."
+      ],
+      "notes": [
+        "Exercise Apply/OK and Cancel after successful validation, plus failed validation with no apply.",
+        "Cover symbol list changes, background folder changes, news mode changes, DeepSeek settings changes, and timing slider changes."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Cancel closes without applying pending config.",
+        "Apply performs minimal necessary runtime regeneration without duplicate workers or stale subscriptions."
+      ]
+    },
+    {
+      "id": "CR-082",
+      "tracking_number": "CR-082",
+      "priority": 2,
+      "area": "shutdown_degradation",
+      "title": "Validate shutdown while network/file/background operations are pending",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "Medium",
+      "evidence": [
+        "The app must close cleanly while quote requests, news fetches, background downloads, trace writes, or YFinance server requests are in flight.",
+        "Owned server lifecycle requires special proof during shutdown."
+      ],
+      "notes": [
+        "Cover desktop close, config close, screensaver exit, VM harness abort, and Windows session logoff if practical.",
+        "Shutdown must not leave orphaned YFinance server, VM agent, or downloader processes."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "All owned child/background processes terminate or are intentionally detached with documentation.",
+        "Partial downloads remain TMP and are cleaned on next warm-up."
+      ]
+    },
+    {
+      "id": "CR-083",
+      "tracking_number": "CR-083",
+      "priority": 3,
+      "area": "display_rendering_stress",
+      "title": "Validate visual rendering under degraded graphics/performance conditions",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "Medium",
+      "evidence": [
+        "Background transitions, graph cards, news scroller, world markets ribbon, and ticker tapes all animate in one scene.",
+        "Low GPU capability, high CPU load, RDP/VM rendering, fullscreen toggles, and resolution changes can expose jitter or blank scenes."
+      ],
+      "notes": [
+        "Include reduced GPU acceleration availability investigation if WPF rendering falls back to software.",
+        "Use screenshot cadence plus trace frame/update timing to identify batch redraws."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "UI remains readable and does not enter a blank or frozen state under stress.",
+        "Trace identifies whether rendering is hardware or software accelerated when possible."
+      ]
+    },
+    {
+      "id": "CR-084",
+      "tracking_number": "CR-084",
+      "priority": 3,
+      "area": "time_calendar_degradation",
+      "title": "Validate time, timezone, DST, holiday, and market-calendar anomalies",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "Medium",
+      "evidence": [
+        "Market status and countdown labels depend on local time, exchange time, holidays, DST transitions, and YFinance timing data.",
+        "Users have seen timing unavailable states, and the UI now should leave certain unavailable fields blank."
+      ],
+      "notes": [
+        "Cover weekend, pre-market, regular market, after-hours, holiday closure, early close, DST boundary, local clock skew, and timezone lookup failure.",
+        "Do not issue separate Yahoo calls outside YFinance.NET for status."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Market status remains truthful or intentionally blank when timing data is unavailable.",
+        "Countdown never shows impossible negative/overflow values."
+      ]
+    },
+    {
+      "id": "CR-085",
+      "tracking_number": "CR-085",
+      "priority": 3,
+      "area": "long_soak_fault_matrix",
+      "title": "Create an autonomous degraded-mode soak matrix with CR creation on anomaly detection",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "severity": "Medium",
+      "evidence": [
+        "The healthy-path autonomous validation loop now works, but degraded scenarios need a repeatable matrix rather than one-off manual tests.",
+        "Future long test passes should create CRs automatically when injected degraded-mode expectations are violated."
+      ],
+      "notes": [
+        "Matrix should sequence startup, config, runtime, recovery, and shutdown injections across multiple 30-minute VM cycles without chat prompting.",
+        "Analyzer should distinguish expected injected errors from unexpected regressions."
+      ],
+      "acceptance": [
+        "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
+        "Expected user-visible behavior is documented before implementation changes are made.",
+        "Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.",
+        "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
+        "Local build/test validation passes when code or harness changes are made.",
+        "VM validation passes for the scenario when it is UI/runtime-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "A single command can run the degraded-mode matrix and produce a summary of pass/fail per injected scenario.",
+        "Unexpected findings generate project-native CRs with artifact paths, traces, screenshots, and injection timeline."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
@@ -3947,6 +4584,19 @@
         "Cached market-timing state may be retained only if it was originally sourced from YFinance; no independent API or hardcoded exchange-hour source should remain in the active timing path.",
         "Resolved on 2026-05-20 by extending YFinance.NET HistoryMetadata to parse currentTradingPeriod and regularMarketTime, replacing ExchangeMarketCalendarService fallback hour logic with YFinance-derived session windows and cached YFinance timing data, and updating the UI countdown text so after-hours uses Yahoo session-end timing instead of local next-open math.",
         "Validation: dotnet build PortfolioScreensaver.sln -c Release succeeded and dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --no-build passed 160/160, including focused ExchangeMarketCalendarServiceTests covering Yahoo-driven regular, pre-market, after-hours, and next-window countdown behavior."
+      ]
+    },
+    {
+      "id": "CR-064-CR-085",
+      "tracking_number": "CR-064-CR-085",
+      "priority": 1,
+      "area": "degraded_mode_validation",
+      "title": "Autonomous degraded and exceptional condition validation matrix",
+      "status": "open",
+      "source": "user_request_2026_06_13_anomaly_degradation_validation",
+      "notes": [
+        "Umbrella backlog entry for CR-064 through CR-085.",
+        "Goal: prove startup, configuration, runtime, shutdown, YFinance.NET, DeepSeek/RSS, backgrounds, Local AppData, tracing, timing, and rendering behavior under degraded/exceptional conditions."
       ]
     }
   ],
