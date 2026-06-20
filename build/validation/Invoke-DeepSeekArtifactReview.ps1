@@ -68,11 +68,12 @@ function Get-InterestingTextSample {
     $interestingPattern = '(?i)\b(error|fatal|exception|failed|timeout|warning|warn|missing|blank|jitter|burst|unhandled|closed|close|validation)\b|' + $highSignalPattern
     $allHits = @(Select-String -LiteralPath $Path -Pattern $interestingPattern -ErrorAction SilentlyContinue)
     # Keep the review packet bounded while preserving startup context, targeted degradation evidence, and final state.
-    $hits = @(
+    $selectedHits = @(
         $allHits | Select-Object -First 80
         $allHits | Where-Object { $_.Line -match $highSignalPattern } | Select-Object -First 80
         $allHits | Select-Object -Last 80
-    ) | Sort-Object Path, LineNumber -Unique
+    )
+    $hits = @($selectedHits | Sort-Object Path, LineNumber -Unique)
     if ($hits.Count -eq 0) { return Get-TextSample -Path $Path -MaxCharacters 6000 }
     $sample = (($hits | ForEach-Object { "{0}:{1}: {2}" -f (Split-Path -Leaf $Path), $_.LineNumber, $_.Line.Trim() }) -join "`n")
     if ($sample.Length -le 24000) { return $sample }
