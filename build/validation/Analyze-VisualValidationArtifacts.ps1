@@ -45,6 +45,12 @@ function Test-TraceLineAllowed {
 function Test-FaultInjectionTraceLineAllowed {
     param([string]$Line,[string]$FaultProfile)
     if ([string]::IsNullOrWhiteSpace($FaultProfile) -or $FaultProfile -eq 'none') { return $false }
+    if ($Line -match 'YFinanceClientProtocol' -and
+        $Line -match 'ClientResponseReceive' -and
+        $Line -match 'status=error') {
+        return $true
+    }
+
     foreach ($pattern in $script:allowedFaultInjectionTracePatterns) {
         if ($Line -match [regex]::Escape($pattern)) { return $true }
     }

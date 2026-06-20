@@ -140,6 +140,10 @@ internal static class YFinanceServerProgram
                     catch (OperationCanceledException) when (linkedCts.IsCancellationRequested)
                     {
                     }
+                    catch (Exception ex) when (IsClientDisconnectException(ex))
+                    {
+                        YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ClientDisconnectedAbruptly", [new("message", ex.Message)]);
+                    }
                     catch (Exception ex)
                     {
                         YFinanceCircularTraceSink.Instance.WarnState("YFinanceServer", "ClientHandlerFailed", [new("message", ex.ToString())]);
@@ -248,6 +252,18 @@ internal static class YFinanceServerProgram
             // Handler tasks are already completed when WhenAll faults; disposal is safe.
             return true;
         }
+    }
+
+    private static bool IsClientDisconnectException(Exception ex)
+    {
+        SocketException? socketException = ex as SocketException ?? ex.InnerException as SocketException;
+        return ex is IOException && socketException is
+        {
+            SocketErrorCode: SocketError.ConnectionAborted or
+                SocketError.ConnectionReset or
+                SocketError.NetworkReset or
+                SocketError.Shutdown
+        };
     }
 
     private static YFinanceOptions CreateDomainOptions(ServerOptions serverOptions)

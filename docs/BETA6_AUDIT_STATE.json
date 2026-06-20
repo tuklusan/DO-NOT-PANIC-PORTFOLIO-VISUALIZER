@@ -4192,6 +4192,31 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-103",
+      "tracking_number": "CR-103",
+      "priority": 1,
+      "area": "runtime_tracing",
+      "title": "Trace scan found anomaly lines during VM validation",
+      "status": "open",
+      "source": "autonomous_visual_validation",
+      "severity": "High",
+      "evidence": [
+        "Run ux-deep-ssh-20260620-070858 trace anomaly sample:",
+        "combined-trace-tail.txt:2755: 2026-06-20T11:18:10.3503975+00:00 | INFO | program=PortfolioSaver.Desktop | source=YFinanceClientProtocol | function=Info | host=windows10 | ip=192.168.56.102 | pid=1112 | tid=22 | event=ClientResponseReceive / request_id=req-00000167 / operation=get_quotes / status=error / timestamp=2026-06-20T11:18:09.7094366+00:00 / payload_checksum=44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A combined-trace-tail.txt:2757: 2026-06-20T11:18:10.3519969+00:00 | INFO | program=PortfolioSaver.Desktop | source=YFinanceClientProtocol | function=Info | host=windows10 | ip=192.168.56.102 | pid=1112 | tid=22 | event=ClientResponseReceive / request_id=req-00000166 / operation=get_history / status=error / timestamp=2026-06-20T11:18:09.7139851+00:00 / payload_checksum=44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A combined-trace-tail.txt:2759: 2026-06-20T11:18:10.3523652+00:00 | INFO | program=PortfolioSaver.Desktop | source=YFinanceClientProtocol | function=Info | host=windows10 | ip=192.168.56.102 | pid=1112 | tid=22 | event=ClientResponseReceive / request_id=req-00000168 / operation=get_quotes / status=error / timestamp=2026-06-20T11:18:09.7141756+00:00 / payload_checksum=44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A combined-trace-tail.txt:2761: 2026-06-20T11:18:10.3525132+00:00 | INFO | program=PortfolioSaver.Desktop | source=YFinanceClientProtocol | function=Info | host=windows10 | ip=192.168.56.102 | pid=1112 | tid=22 | event=ClientResponseReceive / request_id=req-00000169 / operation=get_quotes / status=error / timestamp=2026-06-20T11:18:09.7143801+00:00 / payload_checksum=44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A combined-trace-tail.txt:2792: 2026-06-20T11:18:11.4020061+00:00 | INFO | program=PortfolioSaver.Desktop | source=YFinanceClientProtocol | function=Info | host=windows10 | ip=192.168.56.102 | pid=1112 | tid=13 | event=ClientResponseReceive / request_id=req-00000170 / operation=get_quotes / status=error / timestamp=2026-06-20T11:18:10.9481170+00:00 / payload_checksum=44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A combined-trace-tail.txt:2810: 2026-06-20T11:18:12.6210931+00:00 | INFO | program=PortfolioSaver.Desktop | source=YFinanceClientProtocol | function=Info | host=windows10 | ip=192.168.56.102 | pid=1112 | tid=13 | event=ClientResponseReceive / request_id=req-00000004 / operation=get_quotes / status=error / timestamp=2026-06-20T11:18:12.3727445+00:00 / payload_checksum=44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A combined-trace-tail.txt:2812: 2026-06-20T11:18:13.0640458+00:00 | INFO | program=PortfolioSaver.Desktop | source=YFinanceClientProtocol | function=Info | host=windows10 | ip=192.168.56.102 | pid=1112 | tid=13 | event=ClientResponseReceive / request_id=req-00000003 / operation=get_quotes / status=error / timestamp=2026-06-20T11:18:12.3730493+00:00 / payload_checksum=44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A combined-trace-tail.txt:2814: 2026-06-20T11:18:13.0771667+00:00 | INFO | program=PortfolioSaver.Desktop | source=YFinanceClientProtocol | function=Info | host=windows10 | ip=192.168.56.102 | pid=1112 | tid=13 | event=ClientResponseReceive / request_id=req-00000002 / operation=get_history / status=error / timestamp=2026-06-20T11:18:12.3731995+00:00 / payload_checksum=44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A combined-trace-tail.txt:2894: 2026-06-20T11:18:16.1140340+00:00 | INFO | program=PortfolioSaver.Desktop | source=YFinanceClientProtocol | function=Info | host=windows10 | ip=192.168.56.102 | pid=1112 | tid=22 | event=ClientResponseReceive / request_id=req-00000003 / operation=get_quotes / status=error / timestamp=2026-06-20T11:18:15.5291041+00:00 / payload_checksum=44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A combined-trace-tail.txt:2896: 2026-06-20T11:18:16.1148572+00:00 | INFO | program=PortfolioSaver.Desktop | source=YFinanceClientProtocol | function=Info | host=windows10 | ip=192.168.56.102 | pid=1112 | tid=22 | event=ClientResponseReceive / request_id=req-00000002 / operation=get_quotes / status=error / timestamp=2026-06-20T11:18:15.5307688+00:00 / payload_checksum=44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A trace.circular.log:2754: 2026-06-20T11:18:10.3503975+00:00 | INFO | program=PortfolioSaver.Desktop | source=YFinanceClientProtocol | function=Info | host=windows10 | ip=192.168.56.102 | pid=1112 | tid=22 | event=ClientResponseReceive / request_id=req-00000167 / operation=get_quotes / status=error / timestamp=2026-06-20T11:18:09.7094366+00:00 / payload_checksum=44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A trace.circular.log:2756: 2026-06-20T11:18:10.3519969+00:00 | INFO | program=PortfolioSaver.Desktop | source=YFinanceClientProtocol | function=Info | host=windows10 | ip=192.168.56.102 | pid=1112 | tid=22 | event=ClientResponseReceive / request_id=req-00000166 / operation=get_history / status=error / timestamp=2026-06-20T11:18:09.7139851+00:00 / payload_checksum=44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A"
+      ],
+      "notes": [
+        "Unexpected trace anomalies are escalated so they are not lost after long autonomous runs."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
@@ -5116,4 +5141,3 @@
     }
   ]
 }
-
