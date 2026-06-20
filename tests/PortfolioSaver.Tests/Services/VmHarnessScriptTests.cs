@@ -503,6 +503,11 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("PORTFOLIOSAVER_LOCALDATA_ROOT", script, StringComparison.Ordinal);
         Assert.Contains("function Get-HarnessAppDataRoot", script, StringComparison.Ordinal);
         Assert.Contains("function Get-HarnessTracePath", script, StringComparison.Ordinal);
+        Assert.Contains("function Write-RuntimeFreshnessSnapshot", script, StringComparison.Ordinal);
+        Assert.Contains("runtime-freshness-events.log", script, StringComparison.Ordinal);
+        Assert.Contains("latest_freshness=", script, StringComparison.Ordinal);
+        Assert.Contains("Runtime freshness snapshot failed", script, StringComparison.Ordinal);
+        Assert.Contains("[System.IO.FileShare]::ReadWrite", script, StringComparison.Ordinal);
         Assert.Contains("Get-HarnessTracePath -RelativePath 'Trace\\trace.circular.log'", script, StringComparison.Ordinal);
         Assert.Contains("Get-HarnessTracePath -RelativePath 'Trace\\yfinance.circular.log'", script, StringComparison.Ordinal);
         Assert.Contains("Join-Path (Join-Path $env:LOCALAPPDATA 'PortfolioSaver') $RelativePath", script, StringComparison.Ordinal);

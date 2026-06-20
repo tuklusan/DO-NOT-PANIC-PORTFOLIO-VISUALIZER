@@ -4327,6 +4327,34 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-104",
+      "tracking_number": "CR-104",
+      "priority": 1,
+      "area": "degraded_mode_ux",
+      "title": "Recovery fault run did not prove return to live data-freshness state",
+      "status": "open",
+      "source": "autonomous_visual_validation",
+      "severity": "High",
+      "evidence": [
+        "Run ux-deep-ssh-20260620-101733 used FaultProfile=offline-then-recover-runtime.",
+        "Fault activation observed: True.",
+        "Fault clear after offline observed: True.",
+        "Recovered LIVE freshness trace hits: 0.",
+        "Expected profile=none after the last profile=offline line in fault-injection-events.log and data_freshness_text=LIVE quote feed after the last OFFLINE freshness line."
+      ],
+      "notes": [
+        "Recovery validation must prove that user-visible stale/offline state returns to live after the injected fault clears."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

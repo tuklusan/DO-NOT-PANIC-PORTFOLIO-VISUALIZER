@@ -1826,6 +1826,99 @@ function Get-LatestDisplayedTapeSample {
     return @($items)
 }
 
+function Get-CurrentYFinanceFaultProfile {
+    param([Parameter(Mandatory = $true)][string]$ProfilePath)
+
+    if ([string]::IsNullOrWhiteSpace($ProfilePath) -or -not (Test-Path -LiteralPath $ProfilePath)) {
+        return 'none'
+    }
+
+    try {
+        $stream = [System.IO.File]::Open($ProfilePath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        try {
+            $reader = [System.IO.StreamReader]::new($stream)
+            try {
+                $faultProfileJson = $reader.ReadToEnd() | ConvertFrom-Json
+            }
+            finally {
+                $reader.Dispose()
+            }
+        }
+        finally {
+            $stream.Dispose()
+        }
+        $profile = [string]$faultProfileJson.profile
+        if ([string]::IsNullOrWhiteSpace($profile)) {
+            return 'none'
+        }
+
+        return $profile
+    }
+    catch {
+        Write-Warning ("Runtime freshness snapshot could not read fault profile '{0}': {1}" -f $ProfilePath, $_.Exception.Message)
+        return 'unknown'
+    }
+}
+
+function Write-RuntimeFreshnessSnapshot {
+    param(
+        [Parameter(Mandatory = $true)][int]$CaptureIndex,
+        [Parameter(Mandatory = $true)][string]$Phase,
+        [Parameter(Mandatory = $true)][string]$ResultsDir,
+        [Parameter(Mandatory = $true)][string]$RequestedFaultProfile,
+        [Parameter(Mandatory = $true)][string]$FaultProfilePath
+    )
+
+    try {
+        $tracePath = Get-HarnessTracePath -RelativePath 'Trace\trace.circular.log'
+        $latestFreshnessLine = ''
+        if (Test-Path -LiteralPath $tracePath) {
+            $tailText = Read-TextFileTailShared -Path $tracePath -MaxBytes 131072
+            if (-not [string]::IsNullOrWhiteSpace($tailText)) {
+                $latestFreshnessLine = @(($tailText -split "`r?`n") |
+                    Where-Object { $_ -like '*data_freshness_text=*' } |
+                    Select-Object -Last 1)[0]
+            }
+        }
+
+        $latestFreshnessText = ''
+        if (-not [string]::IsNullOrWhiteSpace($latestFreshnessLine)) {
+            $knownFreshnessValues = @(
+                'LIVE quote feed',
+                'OFFLINE - showing last values',
+                'OFFLINE - waiting for data',
+                'STALE - cached values present',
+                'LOADING - waiting for data'
+            )
+            foreach ($knownFreshnessValue in $knownFreshnessValues) {
+                if ($latestFreshnessLine -like "*data_freshness_text=$knownFreshnessValue*") {
+                    $latestFreshnessText = $knownFreshnessValue
+                    break
+                }
+            }
+            if ([string]::IsNullOrWhiteSpace($latestFreshnessText)) {
+                $match = [regex]::Match($latestFreshnessLine, 'data_freshness_text=(.*?)(?: / |$)')
+                if ($match.Success) {
+                    $latestFreshnessText = $match.Groups[1].Value.Trim()
+                }
+            }
+        }
+
+        $freshnessTracePath = Join-Path $ResultsDir 'runtime-freshness-events.log'
+        $line = "timestamp={0} frame={1} phase={2} requested_fault_profile={3} effective_fault_profile={4} latest_freshness={5}" -f `
+            (Get-Date).ToString('o'),
+            $CaptureIndex,
+            $Phase,
+            $RequestedFaultProfile,
+            (Get-CurrentYFinanceFaultProfile -ProfilePath $FaultProfilePath),
+            $(if ([string]::IsNullOrWhiteSpace($latestFreshnessText)) { 'unavailable' } else { $latestFreshnessText })
+        Add-Content -LiteralPath $freshnessTracePath -Value $line -Encoding UTF8
+    }
+    catch {
+        Write-Warning ("Runtime freshness snapshot failed for frame {0}, phase {1}: {2}" -f $CaptureIndex, $Phase, $_.Exception.Message)
+    }
+}
+
 function Test-IsDisplayedSampleFullyLive {
     param([Parameter(Mandatory = $true)][object[]]$DisplayedSample)
 
@@ -3099,6 +3192,7 @@ try {
             Capture-Screen -Path $desktopFull
             $summary.DesktopShots++
             $summary.ScreensaverShots++
+            Write-RuntimeFreshnessSnapshot -CaptureIndex 0 -Phase 'fullscreen-entry' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath
             if (-not $enteredFullScreen) {
                 throw "Visual host did not enter true fullscreen after long-run soak relaunch."
             }
@@ -3127,6 +3221,7 @@ try {
             $desktopFull = Join-Path $results 'desktop-fullscreen-entry.png'
             Capture-Screen -Path $desktopFull
             $summary.DesktopShots++
+            Write-RuntimeFreshnessSnapshot -CaptureIndex 0 -Phase 'fullscreen-entry' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath
             if (-not $enteredFullScreen) {
                 throw "Desktop shell did not enter true fullscreen; taskbar/work-area chrome appears to remain visible."
             }
@@ -3183,10 +3278,12 @@ try {
             if ($FaultProfile -eq 'offline-then-recover-runtime' -and $i -eq $recoveryFrame) {
                 Clear-YFinanceFaultProfile
                 Start-Sleep -Seconds 6
+                Write-RuntimeFreshnessSnapshot -CaptureIndex $i -Phase 'after-recovery-clear' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath
             }
 
             $path = Join-Path $results ("desktop-{0:D3}.png" -f $i)
             Capture-Screen -Path $path
+            Write-RuntimeFreshnessSnapshot -CaptureIndex $i -Phase 'capture' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath
             if ($isLongRunSoak) {
                 $summary.ScreensaverShots++
             }

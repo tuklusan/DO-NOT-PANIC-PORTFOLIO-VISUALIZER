@@ -144,6 +144,7 @@ foreach ($run in $runs) {
     if ($faultProfile -match '(?i)offline') {
         $faultTrace = Join-Path $run.FullName 'fault-injection-events.log'
         $combinedTrace = Join-Path $run.FullName 'combined-trace-tail.txt'
+        $freshnessTrace = Join-Path $run.FullName 'runtime-freshness-events.log'
         # These trace strings are a validation contract. If runtime trace field
         # names or freshness text changes, update these patterns and fixtures.
         $faultActivationMatches = @(if (Test-Path -LiteralPath $faultTrace) {
@@ -151,11 +152,19 @@ foreach ($run in $runs) {
                 Where-Object { $null -ne $_ }
         })
         $faultActivated = $faultActivationMatches.Count -gt 0
-        $offlineFreshnessHits = @(if (Test-Path -LiteralPath $combinedTrace) {
-            Select-String -LiteralPath $combinedTrace -Pattern 'data_freshness_text=OFFLINE' -ErrorAction SilentlyContinue |
-                Where-Object { $null -ne $_ } |
-                Select-Object -First 8
-        })
+        $offlineFreshnessHits = @()
+        # The product trace and harness snapshot can report the same state; for
+        # degraded-mode proof, corroborating hits are benign because validation
+        # only requires presence and uses source-scoped line ordering below.
+        if (Test-Path -LiteralPath $combinedTrace) {
+            $offlineFreshnessHits += @(Select-String -LiteralPath $combinedTrace -Pattern 'data_freshness_text=OFFLINE' -ErrorAction SilentlyContinue |
+                Where-Object { $null -ne $_ })
+        }
+        if (Test-Path -LiteralPath $freshnessTrace) {
+            $offlineFreshnessHits += @(Select-String -LiteralPath $freshnessTrace -Pattern 'latest_freshness=OFFLINE' -ErrorAction SilentlyContinue |
+                Where-Object { $null -ne $_ })
+        }
+        $offlineFreshnessSample = @($offlineFreshnessHits | Select-Object -First 8)
 
         if (-not $faultActivated -or $offlineFreshnessHits.Count -eq 0) {
             $offlineEvidence = @(
@@ -184,26 +193,37 @@ foreach ($run in $runs) {
                 Select-String -LiteralPath $faultTrace -Pattern 'profile=none' -ErrorAction SilentlyContinue |
                     Where-Object { $null -ne $_ -and $_.LineNumber -gt $lastOfflineProfileLine }
             })
-            $lastOfflineFreshnessLine = if ($offlineFreshnessHits.Count -gt 0) {
-                @($offlineFreshnessHits | Sort-Object LineNumber | Select-Object -Last 1)[0].LineNumber
-            } else {
-                0
+            $freshnessScopedOfflineHits = @($offlineFreshnessHits | Where-Object { $_.Path -eq $freshnessTrace })
+            $combinedScopedOfflineHits = @($offlineFreshnessHits | Where-Object { $_.Path -eq $combinedTrace })
+            $recoveredFreshnessHits = @()
+            # Recovery proof is intentionally source-local: an OFFLINE marker and
+            # later LIVE marker must be ordered within the same evidence file.
+            if ($freshnessScopedOfflineHits.Count -gt 0 -and (Test-Path -LiteralPath $freshnessTrace)) {
+                $lastFreshnessOfflineLine = @($freshnessScopedOfflineHits | Sort-Object LineNumber | Select-Object -Last 1)[0].LineNumber
+                $recoveredFreshnessHits += @(Select-String -LiteralPath $freshnessTrace -Pattern 'latest_freshness=LIVE quote feed' -ErrorAction SilentlyContinue |
+                    Where-Object { $null -ne $_ -and $_.LineNumber -gt $lastFreshnessOfflineLine })
             }
-            $recoveredFreshnessHits = @(if (Test-Path -LiteralPath $combinedTrace) {
-                Select-String -LiteralPath $combinedTrace -Pattern 'data_freshness_text=LIVE quote feed' -ErrorAction SilentlyContinue |
-                    Where-Object { $null -ne $_ -and $_.LineNumber -gt $lastOfflineFreshnessLine } |
-                    Select-Object -First 8
-            })
+            if ($combinedScopedOfflineHits.Count -gt 0 -and (Test-Path -LiteralPath $combinedTrace)) {
+                $lastCombinedOfflineLine = @($combinedScopedOfflineHits | Sort-Object LineNumber | Select-Object -Last 1)[0].LineNumber
+                $recoveredFreshnessHits += @(Select-String -LiteralPath $combinedTrace -Pattern 'data_freshness_text=LIVE quote feed' -ErrorAction SilentlyContinue |
+                    Where-Object { $null -ne $_ -and $_.LineNumber -gt $lastCombinedOfflineLine })
+            }
+            $recoveredFreshnessEvidenceHits = @($recoveredFreshnessHits | Select-Object -First 8)
 
             if (-not $faultActivated -or $faultClearMatches.Count -eq 0 -or $recoveredFreshnessHits.Count -eq 0) {
-                $recoveryEvidence = @(
-                    "Run ${runId} used FaultProfile=$faultProfile.",
-                    "Fault activation observed: $faultActivated.",
-                    "Fault clear after offline observed: $($faultClearMatches.Count -gt 0).",
-                    "Recovered LIVE freshness trace hits: $($recoveredFreshnessHits.Count).",
-                    "Expected profile=none after the last profile=offline line in fault-injection-events.log and data_freshness_text=LIVE quote feed after the last OFFLINE freshness line."
-                )
-                [void]$findings.Add((New-Finding -Code 'offline-recovery-ux-state-unverified' -Title 'Recovery fault run did not prove return to live data-freshness state' -Area 'degraded_mode_ux' -Severity 'High' -Evidence $recoveryEvidence -Notes @('Recovery validation must prove that user-visible stale/offline state returns to live after the injected fault clears.')))
+                $recoveryEvidence = New-Object System.Collections.Generic.List[string]
+                $recoveryEvidence.Add("Run ${runId} used FaultProfile=$faultProfile.")
+                $recoveryEvidence.Add("Fault activation observed: $faultActivated.")
+                $recoveryEvidence.Add("Fault clear after offline observed: $($faultClearMatches.Count -gt 0).")
+                $recoveryEvidence.Add("Recovered LIVE freshness trace hits: $($recoveredFreshnessHits.Count).")
+                $recoveryEvidence.Add("Expected profile=none after the last profile=offline line in fault-injection-events.log and source-local data_freshness_text=LIVE quote feed or latest_freshness=LIVE quote feed after the last OFFLINE freshness line.")
+                foreach ($hit in $offlineFreshnessSample) {
+                    $recoveryEvidence.Add(("{0}:{1}: {2}" -f (Split-Path -Leaf $hit.Path), $hit.LineNumber, $hit.Line.Trim()))
+                }
+                foreach ($hit in $recoveredFreshnessEvidenceHits) {
+                    $recoveryEvidence.Add(("{0}:{1}: {2}" -f (Split-Path -Leaf $hit.Path), $hit.LineNumber, $hit.Line.Trim()))
+                }
+                [void]$findings.Add((New-Finding -Code 'offline-recovery-ux-state-unverified' -Title 'Recovery fault run did not prove return to live data-freshness state' -Area 'degraded_mode_ux' -Severity 'High' -Evidence @($recoveryEvidence.ToArray()) -Notes @('Recovery validation must prove that user-visible stale/offline state returns to live after the injected fault clears.')))
             }
         }
     }
