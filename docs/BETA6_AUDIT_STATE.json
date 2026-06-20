@@ -4636,6 +4636,61 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-114",
+      "tracking_number": "CR-114",
+      "priority": 1,
+      "area": "runtime_tracing",
+      "title": "Trace scan found anomaly lines during VM validation",
+      "status": "open",
+      "source": "autonomous_visual_validation",
+      "severity": "High",
+      "evidence": [
+        "Run ux-deep-ssh-20260620-173057 trace anomaly sample:",
+        "combined-trace-tail.txt:176: 2026-06-20T21:37:41.5495440+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=3504 | tid=4 | event=QuoteRequestFailed / operation_id=quotes-00000026 / requested_count=1 / symbols=[^IXIC] / message=A task was canceled. combined-trace-tail.txt:1149: 2026-06-20T21:38:30.8445894+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=3504 | tid=13 | event=QuoteRequestFailed / operation_id=quotes-00000101 / requested_count=1 / symbols=[^GSPTSE] / message=A task was canceled. combined-trace-tail.txt:1182: 2026-06-20T21:38:32.5966040+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=3504 | tid=13 | event=QuoteRequestFailed / operation_id=quotes-00000102 / requested_count=1 / symbols=[^KS11] / message=A task was canceled. combined-trace-tail.txt:1185: 2026-06-20T21:38:32.5983380+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=3504 | tid=13 | event=QuoteRequestFailed / operation_id=quotes-00000103 / requested_count=1 / symbols=[^TWII] / message=A task was canceled. combined-trace-tail.txt:1208: 2026-06-20T21:38:33.7931721+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=3504 | tid=13 | event=QuoteRequestFailed / operation_id=quotes-00000104 / requested_count=1 / symbols=[^FTSE] / message=A task was canceled. combined-trace-tail.txt:1226: 2026-06-20T21:38:34.7294516+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=3504 | tid=4 | event=QuoteRequestFailed / operation_id=quotes-00000105 / requested_count=1 / symbols=[^GDAXI] / message=A task was canceled. combined-trace-tail.txt:1254: 2026-06-20T21:38:37.0446289+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=3504 | tid=4 | event=QuoteRequestFailed / operation_id=quotes-00000106 / requested_count=1 / symbols=[^SSMI] / message=A task was canceled. combined-trace-tail.txt:1266: 2026-06-20T21:38:37.1483222+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=3504 | tid=4 | event=QuoteRequestFailed / operation_id=quotes-00000107 / requested_count=1 / symbols=[^AXJO] / message=A task was canceled. combined-trace-tail.txt:1281: 2026-06-20T21:38:38.1627187+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=3504 | tid=6 | event=QuoteRequestFailed / operation_id=quotes-00000108 / requested_count=1 / symbols=[^TASI.SR] / message=A task was canceled. combined-trace-tail.txt:1304: 2026-06-20T21:38:40.1429084+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=3504 | tid=6 | event=QuoteRequestFailed / operation_id=quotes-00000109 / requested_count=1 / symbols=[^BVSP] / message=A task was canceled. combined-trace-tail.txt:1316: 2026-06-20T21:38:41.0080671+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=3504 | tid=6 | event=QuoteRequestFailed / operation_id=quotes-00000110 / requested_count=1 / symbols=[^J200.JO] / message=A task was canceled. combined-trace-tail.txt:1331: 2026-06-20T21:38:42.4285614+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=3504 | tid=6 | event=QuoteRequestFailed / operation_id=quotes-00000111 / requested_count=1 / symbols=[^OMXN40] / message=A task was canceled."
+      ],
+      "notes": [
+        "Unexpected trace anomalies are escalated so they are not lost after long autonomous runs."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-115",
+      "tracking_number": "CR-115",
+      "priority": 1,
+      "area": "graph_cards",
+      "title": "Sustained graph-card travel flash can linger after the single raw-price-change event",
+      "status": "open",
+      "source": "user_vm_observation_2026_06_20_1802",
+      "severity": "High",
+      "regression_of": "NB-064",
+      "evidence": [
+        "User observed QUAL and VOO graph cards continuing to flash around 6:02 PM local time during VM run ux-deep-ssh-20260620-173057.",
+        "Trace review shows VOO and QUAL each emitted only one GraphCardFlash event, at 2026-06-20T21:37:59Z, with reason=raw-price-change; no repeated VOO/QUAL GraphCardFlash events appear near 22:02Z.",
+        "Code review shows FloatingGraphControl starts a RepeatBehavior.Forever sustained flash when IsRefreshTravelFlashActive becomes true, and it stops only when ResetGraphRefreshImpulseIfNeeded observes the graph reaching its top/bottom travel boundary.",
+        "Therefore this is not evidence that percent-only churn retriggered the raw-price flash gate, but it is a regression/coverage gap in the user-visible NB-064 requirement: graph cards must not appear to keep flashing after a single price change."
+      ],
+      "notes": [
+        "Constrain sustained graph-card travel flash to a finite duration or otherwise guarantee it stops promptly even if the graph does not reach its travel boundary.",
+        "Preserve the raw-price-only GraphCardFlash trigger and add trace-visible proof for sustained flash start/stop.",
+        "Add focused tests that a raw-price flash can start the motion cue but cannot leave IsRefreshTravelFlashActive true indefinitely."
+      ],
+      "acceptance": [
+        "Graph-card visual flashing is triggered only by actual raw price changes or explicit stale-to-live recovery cases that are intentionally documented.",
+        "Sustained travel flashing stops after a bounded duration or a verified boundary hit, whichever occurs first.",
+        "VOO and QUAL do not visibly continue flashing minutes after unchanged-price quote refreshes in VM validation.",
+        "Focused local tests cover percent-only churn, unchanged raw prices, and sustained-flash timeout/stop behavior.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "VM validation includes trace or screenshot evidence showing no lingering QUAL/VOO flash after the recovery window."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
