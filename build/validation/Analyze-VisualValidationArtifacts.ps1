@@ -150,12 +150,11 @@ foreach ($run in $runs) {
             $null
         }
         $faultActivated = $null -ne $faultActivationMatch
-        $offlineFreshnessHits = if (Test-Path -LiteralPath $combinedTrace) {
-            $freshnessMatches = @(Select-String -LiteralPath $combinedTrace -Pattern 'data_freshness_text=OFFLINE' -ErrorAction SilentlyContinue | Where-Object { $null -ne $_ } | Select-Object -First 8)
-            $freshnessMatches
-        } else {
-            @()
-        }
+        $offlineFreshnessHits = @(if (Test-Path -LiteralPath $combinedTrace) {
+            Select-String -LiteralPath $combinedTrace -Pattern 'data_freshness_text=OFFLINE' -ErrorAction SilentlyContinue |
+                Where-Object { $null -ne $_ } |
+                Select-Object -First 8
+        })
 
         if (-not $faultActivated -or $offlineFreshnessHits.Count -eq 0) {
             $offlineEvidence = @(
