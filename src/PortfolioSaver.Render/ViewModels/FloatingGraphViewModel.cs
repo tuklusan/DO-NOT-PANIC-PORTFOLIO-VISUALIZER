@@ -30,6 +30,7 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
     private double _nominalVelocityY;
     private double? _refreshTravelTargetY;
     private bool _isRefreshTravelFlashActive;
+    private DateTimeOffset _refreshTravelFlashStartedUtc = DateTimeOffset.MinValue;
     private PointCollection _greenPoints = [];
     private PointCollection _redPoints = [];
     private PointCollection _latestSegmentPoints = [];
@@ -183,6 +184,12 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
     {
         get => _isRefreshTravelFlashActive;
         set => SetProperty(ref _isRefreshTravelFlashActive, value);
+    }
+
+    public DateTimeOffset RefreshTravelFlashStartedUtc
+    {
+        get => _refreshTravelFlashStartedUtc;
+        set => SetProperty(ref _refreshTravelFlashStartedUtc, value);
     }
 
     public List<GraphPointViewModel> Points { get; set; } = [];

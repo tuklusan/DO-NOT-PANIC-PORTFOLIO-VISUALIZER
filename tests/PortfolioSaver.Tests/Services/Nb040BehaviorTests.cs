@@ -832,6 +832,10 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
+            "Runtime quotes intentionally use a fixed one-at-a-time transport cadence",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
             "_refreshTimer.Interval = RuntimeQuoteDispatchInterval;",
             source,
             StringComparison.Ordinal);
@@ -893,6 +897,14 @@ public sealed class Nb040BehaviorTests
             StringComparison.Ordinal);
         Assert.Contains(
             "RuntimeQuoteDispatchSkipped",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "if (_inFlightQuoteRequests.Count > 0)",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "TraceRuntimeQuoteDispatchSkippedIfDue(\"waiting_for_in_flight_request\")",
             source,
             StringComparison.Ordinal);
         Assert.DoesNotContain(

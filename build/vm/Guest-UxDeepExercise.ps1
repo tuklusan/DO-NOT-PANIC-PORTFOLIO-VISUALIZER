@@ -1940,12 +1940,13 @@ function Write-RuntimeFreshnessSnapshot {
         [Parameter(Mandatory = $true)][string]$ResultsDir,
         [Parameter(Mandatory = $true)][string]$RequestedFaultProfile,
         [Parameter(Mandatory = $true)][string]$FaultProfilePath,
-        [System.Diagnostics.Process]$DesktopProcess = $null
+        [System.Diagnostics.Process]$DesktopProcess = $null,
+        [switch]$IncludeVisibleFreshness
     )
 
     try {
         $uiFreshnessText = ''
-        if ($null -ne $DesktopProcess -and -not $DesktopProcess.HasExited) {
+        if ($IncludeVisibleFreshness -and $null -ne $DesktopProcess -and -not $DesktopProcess.HasExited) {
             $uiFreshnessText = Get-VisibleRuntimeFreshnessText -DesktopProcess $DesktopProcess
         }
 
@@ -3297,7 +3298,7 @@ try {
             Capture-Screen -Path $desktopFull
             $summary.DesktopShots++
             $summary.ScreensaverShots++
-            Write-RuntimeFreshnessSnapshot -CaptureIndex 0 -Phase 'fullscreen-entry' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop
+            Write-RuntimeFreshnessSnapshot -CaptureIndex 0 -Phase 'fullscreen-entry' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop -IncludeVisibleFreshness
             if (-not $enteredFullScreen) {
                 throw "Visual host did not enter true fullscreen after long-run soak relaunch."
             }
@@ -3326,7 +3327,7 @@ try {
             $desktopFull = Join-Path $results 'desktop-fullscreen-entry.png'
             Capture-Screen -Path $desktopFull
             $summary.DesktopShots++
-            Write-RuntimeFreshnessSnapshot -CaptureIndex 0 -Phase 'fullscreen-entry' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop
+            Write-RuntimeFreshnessSnapshot -CaptureIndex 0 -Phase 'fullscreen-entry' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop -IncludeVisibleFreshness
             if (-not $enteredFullScreen) {
                 throw "Desktop shell did not enter true fullscreen; taskbar/work-area chrome appears to remain visible."
             }
@@ -3391,7 +3392,19 @@ try {
                 Clear-YFinanceFaultProfile
                 $recoveryApplied = $true
                 Start-Sleep -Seconds 6
-                Write-RuntimeFreshnessSnapshot -CaptureIndex $i -Phase 'after-recovery-clear' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop
+                $postRecoveryPath = Join-Path $results ("desktop-after-recovery-clear-{0:D3}.png" -f $i)
+                Capture-Screen -Path $postRecoveryPath
+                if ($isLongRunSoak) {
+                    $summary.ScreensaverShots++
+                }
+                $summary.DesktopShots++
+                Write-RuntimeFreshnessSnapshot -CaptureIndex $i -Phase 'after-recovery-clear' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop -IncludeVisibleFreshness
+                if ([string]::IsNullOrWhiteSpace($referenceSpotCheckPath)) {
+                    Write-Warning "Post-recovery reference spot-check skipped because referenceSpotCheckPath was empty."
+                }
+                else {
+                    Write-ReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $i
+                }
             }
 
             $path = Join-Path $results ("desktop-{0:D3}.png" -f $i)
@@ -3417,7 +3430,19 @@ try {
         if ($FaultProfile -eq 'offline-then-recover-runtime' -and -not $recoveryApplied) {
             Clear-YFinanceFaultProfile
             Start-Sleep -Seconds 6
-            Write-RuntimeFreshnessSnapshot -CaptureIndex $lastCaptureIndex -Phase 'after-recovery-clear' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop
+            $postRecoveryPath = Join-Path $results ("desktop-after-recovery-clear-{0:D3}.png" -f $lastCaptureIndex)
+            Capture-Screen -Path $postRecoveryPath
+            if ($isLongRunSoak) {
+                $summary.ScreensaverShots++
+            }
+            $summary.DesktopShots++
+            Write-RuntimeFreshnessSnapshot -CaptureIndex $lastCaptureIndex -Phase 'after-recovery-clear' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop -IncludeVisibleFreshness
+            if ([string]::IsNullOrWhiteSpace($referenceSpotCheckPath)) {
+                Write-Warning "Post-recovery reference spot-check skipped because referenceSpotCheckPath was empty."
+            }
+            else {
+                Write-ReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $lastCaptureIndex
+            }
         }
         if ($lastCaptureIndex -lt [Math]::Floor($targetFrames * 0.8)) {
             $summary.Notes += "Desktop capture count $lastCaptureIndex was below 80 percent of estimated target $targetFrames; capture loop remained wall-clock bounded."

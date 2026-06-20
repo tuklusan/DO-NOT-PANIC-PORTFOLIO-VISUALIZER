@@ -463,7 +463,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$nextCaptureAt = $frameStartedAt.AddSeconds($effectiveCaptureIntervalSeconds)", script, StringComparison.Ordinal);
         Assert.Contains("Start-Sleep -Seconds $sleepSeconds", script, StringComparison.Ordinal);
         Assert.Contains("if ($isLongRunSoak) {\n                $summary.ScreensaverShots++\n            }", script.ReplaceLineEndings("\n"), StringComparison.Ordinal);
-        Assert.Equal(2, script.Split("$summary.ScreensaverShots++", StringSplitOptions.None).Length - 1);
+        Assert.True(script.Split("$summary.ScreensaverShots++", StringSplitOptions.None).Length - 1 >= 2);
+        Assert.Contains("desktop-after-recovery-clear-{0:D3}.png", script, StringComparison.Ordinal);
         Assert.Contains("Write-SummaryFiles", script, StringComparison.Ordinal);
         Assert.DoesNotContain("VBOXSVR", script, StringComparison.Ordinal);
     }
@@ -511,6 +512,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Get-VisibleRuntimeFreshnessText", script, StringComparison.Ordinal);
         Assert.Contains("$knownFreshnessValues = Get-KnownRuntimeFreshnessValues", script, StringComparison.Ordinal);
         Assert.Contains("function Write-RuntimeFreshnessSnapshot", script, StringComparison.Ordinal);
+        Assert.Contains("[switch]$IncludeVisibleFreshness", script, StringComparison.Ordinal);
+        Assert.Contains("if ($IncludeVisibleFreshness -and $null -ne $DesktopProcess", script, StringComparison.Ordinal);
         Assert.Contains("Get-VisibleRuntimeFreshnessText -DesktopProcess $DesktopProcess", script, StringComparison.Ordinal);
         Assert.Contains("latest_freshness_source=", script, StringComparison.Ordinal);
         Assert.Contains("trace_age_seconds=", script, StringComparison.Ordinal);
@@ -518,6 +521,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$traceFreshnessAgeSeconds -gt 90", script, StringComparison.Ordinal);
         Assert.Contains("$freshnessSource = 'ui-trace-stale'", script, StringComparison.Ordinal);
         Assert.Contains("-DesktopProcess $desktop", script, StringComparison.Ordinal);
+        Assert.Contains("-IncludeVisibleFreshness", script, StringComparison.Ordinal);
+        Assert.Contains("desktop-after-recovery-clear-{0:D3}.png", script, StringComparison.Ordinal);
+        Assert.Contains("Write-ReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $i", script, StringComparison.Ordinal);
         Assert.Contains("runtime-freshness-events.log", script, StringComparison.Ordinal);
         Assert.Contains("latest_freshness=", script, StringComparison.Ordinal);
         Assert.Contains("Runtime freshness snapshot failed", script, StringComparison.Ordinal);

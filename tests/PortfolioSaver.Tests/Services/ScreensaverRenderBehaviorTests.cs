@@ -668,6 +668,35 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void ResetGraphRefreshImpulseIfNeeded_ClearsSustainedFlashAfterTimeout()
+    {
+        RunOnSta(() =>
+        {
+            FloatingGraphViewModel graph = new()
+            {
+                Height = 84,
+                Y = 240,
+                VelocityY = -14,
+                NominalVelocityY = -7,
+                RefreshTravelTargetY = 0,
+                IsRefreshTravelFlashActive = true,
+                RefreshTravelFlashStartedUtc = DateTimeOffset.UtcNow.AddSeconds(-30)
+            };
+
+            MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+                "ResetGraphRefreshImpulseIfNeeded",
+                BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("ResetGraphRefreshImpulseIfNeeded method not found.");
+
+            method.Invoke(null, [graph, new Rect(0, 0, 800, 500)]);
+
+            Assert.Null(graph.RefreshTravelTargetY);
+            Assert.False(graph.IsRefreshTravelFlashActive);
+            Assert.Equal(-7d, graph.VelocityY);
+        });
+    }
+
+    [Fact]
     public void UpdateTapeItem_SameValueWithNewerFetchToken_DoesNotTriggerFlash()
     {
         MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(

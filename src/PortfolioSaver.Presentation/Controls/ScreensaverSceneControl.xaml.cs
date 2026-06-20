@@ -37,13 +37,13 @@ public partial class ScreensaverSceneControl : UserControl
     private static readonly TimeSpan GraphSelectionRefreshInterval = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan MacroLaneMinimumRefreshInterval = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan WorldMarketsLaneMinimumRefreshInterval = TimeSpan.FromSeconds(15);
-    // Runtime quotes intentionally use a fixed 1 Hz transport cadence: each tick
-    // dispatches at most one symbol, responses are applied asynchronously, and
-    // YFinance.NET owns upstream pacing/caching. Do not reconnect this timer to
-    // the legacy portfolio/off-hours refresh sliders.
+    // Runtime quotes intentionally use a fixed one-at-a-time transport cadence:
+    // dispatch a single symbol, apply that response surgically, then wait for the
+    // next timer tick before dispatching another symbol. This avoids UI bursts.
     private static readonly TimeSpan RuntimeQuoteDispatchInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan RuntimeQuoteRequestTimeout = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan RuntimeTapeStructuralSyncInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan GraphRefreshTravelFlashMaximumDuration = TimeSpan.FromSeconds(8);
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly Dictionary<string, FloatingGraphControl> _graphControlsByKey = new(StringComparer.OrdinalIgnoreCase);
     private readonly ObservableCollection<MarketSpriteViewModel> _marketSprites = [];
@@ -1034,19 +1034,17 @@ public partial class ScreensaverSceneControl : UserControl
         PruneStaleRuntimeQuoteRequests();
         RefreshGraphSelectionIfDue();
 
+        // Keep the scene cadence strictly surgical: one lookup may be outstanding,
+        // so slow transport cannot accumulate a burst of responses for the UI.
+        if (_inFlightQuoteRequests.Count > 0)
+        {
+            TraceRuntimeQuoteDispatchSkippedIfDue("waiting_for_in_flight_request");
+            return;
+        }
+
         string? symbol = TakeNextRuntimeQuoteSymbol();
         if (string.IsNullOrWhiteSpace(symbol) && _inFlightQuoteRequests.Count > 0)
-        {
-            DateTimeOffset now = DateTimeOffset.UtcNow;
-            if (now - _lastAllRuntimeQuotesInFlightTraceUtc >= RuntimeQuoteRequestTimeout)
-            {
-                _lastAllRuntimeQuotesInFlightTraceUtc = now;
-                TraceSceneState(
-                    "RuntimeQuoteDispatchSkipped",
-                    new KeyValuePair<string, object?>("reason", "all_symbols_in_flight"),
-                    new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
-            }
-        }
+            TraceRuntimeQuoteDispatchSkippedIfDue("all_symbols_in_flight");
 
         if (string.IsNullOrWhiteSpace(symbol))
             return;
@@ -1065,6 +1063,19 @@ public partial class ScreensaverSceneControl : UserControl
             CancellationToken.None,
             TaskContinuationOptions.None,
             TaskScheduler.Default);
+    }
+
+    private void TraceRuntimeQuoteDispatchSkippedIfDue(string reason)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        if (now - _lastAllRuntimeQuotesInFlightTraceUtc < RuntimeQuoteRequestTimeout)
+            return;
+
+        _lastAllRuntimeQuotesInFlightTraceUtc = now;
+        TraceSceneState(
+            "RuntimeQuoteDispatchSkipped",
+            new KeyValuePair<string, object?>("reason", reason),
+            new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
     }
 
     private void PruneStaleRuntimeQuoteRequests()
@@ -3016,6 +3027,7 @@ public partial class ScreensaverSceneControl : UserControl
             return;
 
         graph.FlashBrush = percent > 0m ? Brushes.LimeGreen : Brushes.OrangeRed;
+        graph.RefreshTravelFlashStartedUtc = DateTimeOffset.UtcNow;
         graph.IsRefreshTravelFlashActive = true;
         graph.RefreshTravelTargetY = percent > 0m
             ? bounds.Top
@@ -3469,6 +3481,17 @@ public partial class ScreensaverSceneControl : UserControl
     {
         if (graph.RefreshTravelTargetY is not double targetY)
             return;
+
+        if (graph.IsRefreshTravelFlashActive &&
+            graph.RefreshTravelFlashStartedUtc > DateTimeOffset.MinValue &&
+            DateTimeOffset.UtcNow - graph.RefreshTravelFlashStartedUtc >= GraphRefreshTravelFlashMaximumDuration)
+        {
+            graph.IsRefreshTravelFlashActive = false;
+            graph.RefreshTravelTargetY = null;
+            graph.VelocityX = graph.NominalVelocityX == 0d ? graph.VelocityX : graph.NominalVelocityX;
+            graph.VelocityY = graph.NominalVelocityY == 0d ? graph.VelocityY : graph.NominalVelocityY;
+            return;
+        }
 
         bool hitBoundary = targetY <= bounds.Top + 1d
             ? graph.Y <= bounds.Top + 1d
