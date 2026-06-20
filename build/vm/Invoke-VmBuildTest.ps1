@@ -14,7 +14,7 @@ param(
     [int]$DisplayWidth,
     [int]$DisplayHeight,
     [string]$DisplayProfile,
-    [ValidateSet('none', 'offline-at-start', 'offline-during-config-validation', 'offline-during-runtime', 'high-latency-yfinance', 'upstream-throttled', 'timeout')]
+    [ValidateSet('none', 'offline-at-start', 'offline-during-config-validation', 'offline-during-runtime', 'offline-then-recover-runtime', 'high-latency-yfinance', 'upstream-throttled', 'timeout')]
     [string]$FaultProfile = 'none',
     [int]$BuildTimeoutSeconds = 3600,
     [int]$UxTimeoutSeconds = 2400

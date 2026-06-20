@@ -8,7 +8,7 @@ param(
     [string]$DisplayProfile = 'default',
     [ValidateSet('Apply', 'Cancel')]
     [string]$ValidationCompletionMode = 'Apply',
-    [ValidateSet('none', 'offline-at-start', 'offline-during-config-validation', 'offline-during-runtime', 'high-latency-yfinance', 'upstream-throttled', 'timeout')]
+    [ValidateSet('none', 'offline-at-start', 'offline-during-config-validation', 'offline-during-runtime', 'offline-then-recover-runtime', 'high-latency-yfinance', 'upstream-throttled', 'timeout')]
     [string]$FaultProfile = 'none',
     [string]$RootPath = (Join-Path $env:USERPROFILE 'Desktop\PortfolioVmUx'),
     [string]$ResultName = ('ux-deep-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
@@ -2803,7 +2803,7 @@ Write-SummaryFiles
 Start-Transcript -Path $logPath -Force | Out-Null
 
 try {
-    $initialFaultProfile = if ($FaultProfile -in @('offline-during-config-validation', 'offline-during-runtime')) { 'none' } else { $FaultProfile }
+    $initialFaultProfile = if ($FaultProfile -in @('offline-during-config-validation', 'offline-during-runtime', 'offline-then-recover-runtime')) { 'none' } else { $FaultProfile }
     if ($initialFaultProfile -ne 'none') {
         Set-YFinanceFaultProfile -Profile $initialFaultProfile
     }
@@ -2999,7 +2999,7 @@ try {
 
             $previousDisableInputExit = $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT
             $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = '1'
-            if ($FaultProfile -eq 'offline-during-runtime') {
+            if ($FaultProfile -in @('offline-during-runtime', 'offline-then-recover-runtime')) {
                 Set-YFinanceFaultProfile -Profile 'offline'
             }
             $desktop = Start-Process -FilePath $screensaverExe -ArgumentList '/s' -PassThru
@@ -3108,7 +3108,7 @@ try {
         else {
             Start-Sleep -Seconds 1
             [void](Focus-ProcessWindow -Process $desktop)
-            if ($FaultProfile -eq 'offline-during-runtime') {
+            if ($FaultProfile -in @('offline-during-runtime', 'offline-then-recover-runtime')) {
                 Set-YFinanceFaultProfile -Profile 'offline'
             }
             $fullScreenMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'ViewFullScreenMenuItem'
@@ -3170,9 +3170,19 @@ try {
             Write-SummaryFiles
         }
 
+        if ($FaultProfile -eq 'offline-then-recover-runtime' -and $targetFrames -lt 2) {
+            throw "Recovery fault profile requires at least two capture frames."
+        }
+        # Recover near the middle of the shared desktop/screensaver capture loop, clamped for short developer runs.
+        $recoveryFrame = [Math]::Max(1, [Math]::Min($targetFrames, [Math]::Max(2, [int][Math]::Ceiling($targetFrames / 2.0))))
         for ($i = 1; $i -le $targetFrames; $i++) {
             if ($desktop.HasExited) {
                 throw "Desktop process exited early at frame $i (exit code: $($desktop.ExitCode))."
+            }
+
+            if ($FaultProfile -eq 'offline-then-recover-runtime' -and $i -eq $recoveryFrame) {
+                Clear-YFinanceFaultProfile
+                Start-Sleep -Seconds 6
             }
 
             $path = Join-Path $results ("desktop-{0:D3}.png" -f $i)
@@ -3217,6 +3227,11 @@ finally {
     $summary.FinishedAt = (Get-Date).ToString('o')
     Write-SummaryFiles
     Stop-Transcript | Out-Null
+    try {
+        if ($FaultProfile -ne 'none') {
+            Clear-YFinanceFaultProfile
+        }
+    } catch {}
     if ($null -eq $previousFaultProfilePath) {
         Remove-Item Env:DNPPV_YFINANCE_FAULT_PROFILE_PATH -ErrorAction SilentlyContinue
     }

@@ -51,6 +51,7 @@ internal static class Program
             "offline-at-start",
             "offline-during-config-validation",
             "offline-during-runtime",
+            "offline-then-recover-runtime",
             "high-latency-yfinance",
             "upstream-throttled",
             "timeout"

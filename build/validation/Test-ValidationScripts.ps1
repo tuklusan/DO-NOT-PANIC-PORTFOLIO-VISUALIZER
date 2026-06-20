@@ -91,6 +91,83 @@ try {
     $offlineFinding = @($offlineFailReport.findings | Where-Object { $_.code -eq 'offline-ux-state-unverified' })
     if ($offlineFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag missing offline UX proof.' }
 
+    $recoveryPassRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000003'
+    New-Item -ItemType Directory -Force -Path $recoveryPassRun | Out-Null
+    @{ ResultName = 'ux-deep-ssh-20990101-000003'; ConfigPhaseStatus = 'Completed'; DesktopPhaseStatus = 'Completed'; FullScreenToggleStatus = 'Completed'; FaultProfile = 'offline-then-recover-runtime'; TargetCaptureFrames = 2 } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $recoveryPassRun 'ux-deep-summary.json') -Encoding UTF8
+    @(
+        '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=none',
+        '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=offline',
+        '2026-01-01T00:05:00Z event=FaultProfileSet details=profile=none'
+    ) | Set-Content -LiteralPath (Join-Path $recoveryPassRun 'fault-injection-events.log') -Encoding UTF8
+    @(
+        'event=ApplySceneStateComplete / data_freshness_text=LIVE quote feed',
+        'event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values',
+        'event=RuntimeQuoteApplied / data_freshness_text=LIVE quote feed'
+    ) | Set-Content -LiteralPath (Join-Path $recoveryPassRun 'combined-trace-tail.txt') -Encoding UTF8
+    $recoveryPassAnalysisPath = Join-Path $tempRoot 'recovery-pass-analysis.json'
+    $recoveryPassOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $recoveryPassRun -OutputPath $recoveryPassAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($recoveryPassOutput -match 'ANALYSIS_REPORT=')) { throw 'Recovery-pass analysis did not emit ANALYSIS_REPORT.' }
+    $recoveryPassReport = Get-Content -Raw -LiteralPath $recoveryPassAnalysisPath | ConvertFrom-Json
+    if (-not $recoveryPassReport.clean) { throw 'Analyze-VisualValidationArtifacts reported findings for the offline recovery proof fixture.' }
+
+    $recoveryFailRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000004'
+    New-Item -ItemType Directory -Force -Path $recoveryFailRun | Out-Null
+    @{ ResultName = 'ux-deep-ssh-20990101-000004'; ConfigPhaseStatus = 'Completed'; DesktopPhaseStatus = 'Completed'; FullScreenToggleStatus = 'Completed'; FaultProfile = 'offline-then-recover-runtime'; TargetCaptureFrames = 2 } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $recoveryFailRun 'ux-deep-summary.json') -Encoding UTF8
+    @(
+        '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=none',
+        '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=offline'
+    ) |
+        Set-Content -LiteralPath (Join-Path $recoveryFailRun 'fault-injection-events.log') -Encoding UTF8
+    @(
+        'event=ApplySceneStateComplete / data_freshness_text=LIVE quote feed',
+        'event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values'
+    ) | Set-Content -LiteralPath (Join-Path $recoveryFailRun 'combined-trace-tail.txt') -Encoding UTF8
+    $recoveryFailAnalysisPath = Join-Path $tempRoot 'recovery-fail-analysis.json'
+    $recoveryFailOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $recoveryFailRun -OutputPath $recoveryFailAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    $recoveryFailReport = Get-Content -Raw -LiteralPath $recoveryFailAnalysisPath | ConvertFrom-Json
+    $recoveryFinding = @($recoveryFailReport.findings | Where-Object { $_.code -eq 'offline-recovery-ux-state-unverified' })
+    if ($recoveryFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag missing offline recovery proof.' }
+
+    $recoveryNoActivationRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000005'
+    New-Item -ItemType Directory -Force -Path $recoveryNoActivationRun | Out-Null
+    @{ ResultName = 'ux-deep-ssh-20990101-000005'; ConfigPhaseStatus = 'Completed'; DesktopPhaseStatus = 'Completed'; FullScreenToggleStatus = 'Completed'; FaultProfile = 'offline-then-recover-runtime'; TargetCaptureFrames = 2 } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $recoveryNoActivationRun 'ux-deep-summary.json') -Encoding UTF8
+    '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=none' |
+        Set-Content -LiteralPath (Join-Path $recoveryNoActivationRun 'fault-injection-events.log') -Encoding UTF8
+    'event=ApplySceneStateComplete / data_freshness_text=LIVE quote feed' |
+        Set-Content -LiteralPath (Join-Path $recoveryNoActivationRun 'combined-trace-tail.txt') -Encoding UTF8
+    $recoveryNoActivationAnalysisPath = Join-Path $tempRoot 'recovery-no-activation-analysis.json'
+    $recoveryNoActivationOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $recoveryNoActivationRun -OutputPath $recoveryNoActivationAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($recoveryNoActivationOutput -match 'ANALYSIS_REPORT=')) { throw 'Recovery-no-activation analysis did not emit ANALYSIS_REPORT.' }
+    $recoveryNoActivationReport = Get-Content -Raw -LiteralPath $recoveryNoActivationAnalysisPath | ConvertFrom-Json
+    $missingActivationFindings = @($recoveryNoActivationReport.findings | Where-Object { $_.code -in @('offline-ux-state-unverified', 'offline-recovery-ux-state-unverified') })
+    if ($missingActivationFindings.Count -ne 2) { throw 'Analyze-VisualValidationArtifacts did not flag missing offline activation for recovery profile.' }
+
+    $recoveryInsufficientRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000006'
+    New-Item -ItemType Directory -Force -Path $recoveryInsufficientRun | Out-Null
+    @{ ResultName = 'ux-deep-ssh-20990101-000006'; ConfigPhaseStatus = 'Completed'; DesktopPhaseStatus = 'Completed'; FullScreenToggleStatus = 'Completed'; FaultProfile = 'offline-then-recover-runtime'; TargetCaptureFrames = 1 } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $recoveryInsufficientRun 'ux-deep-summary.json') -Encoding UTF8
+    @(
+        '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=offline',
+        '2026-01-01T00:05:00Z event=FaultProfileSet details=profile=none'
+    ) | Set-Content -LiteralPath (Join-Path $recoveryInsufficientRun 'fault-injection-events.log') -Encoding UTF8
+    @(
+        'event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values',
+        'event=RuntimeQuoteApplied / data_freshness_text=LIVE quote feed'
+    ) | Set-Content -LiteralPath (Join-Path $recoveryInsufficientRun 'combined-trace-tail.txt') -Encoding UTF8
+    $recoveryInsufficientAnalysisPath = Join-Path $tempRoot 'recovery-insufficient-analysis.json'
+    $recoveryInsufficientOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $recoveryInsufficientRun -OutputPath $recoveryInsufficientAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($recoveryInsufficientOutput -match 'ANALYSIS_REPORT=')) { throw 'Recovery-insufficient analysis did not emit ANALYSIS_REPORT.' }
+    $recoveryInsufficientReport = Get-Content -Raw -LiteralPath $recoveryInsufficientAnalysisPath | ConvertFrom-Json
+    $insufficientFinding = @($recoveryInsufficientReport.findings | Where-Object { $_.code -eq 'offline-recovery-insufficient-captures' })
+    if ($insufficientFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag insufficient recovery capture frames.' }
+
     $auditFixture = Join-Path $tempRoot 'audit-state.json'
     @{
         pending_next_build_issues = @(

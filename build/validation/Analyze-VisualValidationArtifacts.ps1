@@ -144,12 +144,13 @@ foreach ($run in $runs) {
     if ($faultProfile -match '(?i)offline') {
         $faultTrace = Join-Path $run.FullName 'fault-injection-events.log'
         $combinedTrace = Join-Path $run.FullName 'combined-trace-tail.txt'
-        $faultActivationMatch = if (Test-Path -LiteralPath $faultTrace) {
-            Select-String -LiteralPath $faultTrace -Pattern 'profile=offline' -ErrorAction SilentlyContinue | Select-Object -First 1
-        } else {
-            $null
-        }
-        $faultActivated = $null -ne $faultActivationMatch
+        # These trace strings are a validation contract. If runtime trace field
+        # names or freshness text changes, update these patterns and fixtures.
+        $faultActivationMatches = @(if (Test-Path -LiteralPath $faultTrace) {
+            Select-String -LiteralPath $faultTrace -Pattern 'profile=offline' -ErrorAction SilentlyContinue |
+                Where-Object { $null -ne $_ }
+        })
+        $faultActivated = $faultActivationMatches.Count -gt 0
         $offlineFreshnessHits = @(if (Test-Path -LiteralPath $combinedTrace) {
             Select-String -LiteralPath $combinedTrace -Pattern 'data_freshness_text=OFFLINE' -ErrorAction SilentlyContinue |
                 Where-Object { $null -ne $_ } |
@@ -164,6 +165,46 @@ foreach ($run in $runs) {
                 "Expected a trace line containing data_freshness_text=OFFLINE after offline fault injection."
             )
             [void]$findings.Add((New-Finding -Code 'offline-ux-state-unverified' -Title 'Offline fault run did not prove a user-visible offline data-freshness state' -Area 'degraded_mode_ux' -Severity 'High' -Evidence $offlineEvidence -Notes @('Offline/degraded validation must prove that stale/cached data is clearly surfaced to the user.')))
+        }
+
+        if ($faultProfile -eq 'offline-then-recover-runtime') {
+            $targetCaptureFrames = [int](Get-JsonPropertyValue -Object $summary -Name 'TargetCaptureFrames' -Default 0)
+            if ($targetCaptureFrames -lt 2) {
+                [void]$findings.Add((New-Finding -Code 'offline-recovery-insufficient-captures' -Title 'Recovery fault run did not capture enough frames to prove offline before recovery' -Area 'degraded_mode_ux' -Severity 'High' -Evidence @("Run ${runId} used FaultProfile=$faultProfile with TargetCaptureFrames=$targetCaptureFrames.", 'Recovery validation requires at least two frames: one to prove the offline state and one after clearing the fault.') -Notes @('Increase run duration or decrease capture interval for recovery validation.')))
+            }
+
+            # Startup writes an initial profile=none line. For recovery proof, only
+            # clears and LIVE status lines after the injected offline phase count.
+            $lastOfflineProfileLine = if ($faultActivationMatches.Count -gt 0) {
+                @($faultActivationMatches | Sort-Object LineNumber | Select-Object -Last 1)[0].LineNumber
+            } else {
+                0
+            }
+            $faultClearMatches = @(if (Test-Path -LiteralPath $faultTrace) {
+                Select-String -LiteralPath $faultTrace -Pattern 'profile=none' -ErrorAction SilentlyContinue |
+                    Where-Object { $null -ne $_ -and $_.LineNumber -gt $lastOfflineProfileLine }
+            })
+            $lastOfflineFreshnessLine = if ($offlineFreshnessHits.Count -gt 0) {
+                @($offlineFreshnessHits | Sort-Object LineNumber | Select-Object -Last 1)[0].LineNumber
+            } else {
+                0
+            }
+            $recoveredFreshnessHits = @(if (Test-Path -LiteralPath $combinedTrace) {
+                Select-String -LiteralPath $combinedTrace -Pattern 'data_freshness_text=LIVE quote feed' -ErrorAction SilentlyContinue |
+                    Where-Object { $null -ne $_ -and $_.LineNumber -gt $lastOfflineFreshnessLine } |
+                    Select-Object -First 8
+            })
+
+            if (-not $faultActivated -or $faultClearMatches.Count -eq 0 -or $recoveredFreshnessHits.Count -eq 0) {
+                $recoveryEvidence = @(
+                    "Run ${runId} used FaultProfile=$faultProfile.",
+                    "Fault activation observed: $faultActivated.",
+                    "Fault clear after offline observed: $($faultClearMatches.Count -gt 0).",
+                    "Recovered LIVE freshness trace hits: $($recoveredFreshnessHits.Count).",
+                    "Expected profile=none after the last profile=offline line in fault-injection-events.log and data_freshness_text=LIVE quote feed after the last OFFLINE freshness line."
+                )
+                [void]$findings.Add((New-Finding -Code 'offline-recovery-ux-state-unverified' -Title 'Recovery fault run did not prove return to live data-freshness state' -Area 'degraded_mode_ux' -Severity 'High' -Evidence $recoveryEvidence -Notes @('Recovery validation must prove that user-visible stale/offline state returns to live after the injected fault clears.')))
+            }
         }
     }
 }

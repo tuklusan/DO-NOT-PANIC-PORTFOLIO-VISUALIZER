@@ -393,6 +393,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[ValidateSet('Apply', 'Cancel')]", script, StringComparison.Ordinal);
         Assert.Contains("[string]$ValidationCompletionMode = 'Apply'", script, StringComparison.Ordinal);
         Assert.Contains("[string]$FaultProfile = 'none'", script, StringComparison.Ordinal);
+        Assert.Contains("offline-then-recover-runtime", script, StringComparison.Ordinal);
+        Assert.Contains("Clear-YFinanceFaultProfile", script, StringComparison.Ordinal);
         Assert.Contains("DNPPV_YFINANCE_FAULT_PROFILE_PATH", script, StringComparison.Ordinal);
         Assert.Contains("yfinance-fault-profile.json", script, StringComparison.Ordinal);
         Assert.Contains("fault-injection-events.log", script, StringComparison.Ordinal);
@@ -434,6 +436,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$summary.SupportedDisplayModes = @(Format-DisplayModeNames -Modes $displayApply.AvailableModes)", script, StringComparison.Ordinal);
         Assert.Contains("RequestedDisplayProfile", script, StringComparison.Ordinal);
         Assert.Contains("RuntimeDesktopResolution = Get-CurrentVirtualScreenSize", script, StringComparison.Ordinal);
+        Assert.Contains("$recoveryFrame = [Math]::Max(1, [Math]::Min($targetFrames, [Math]::Max(2, [int][Math]::Ceiling($targetFrames / 2.0))))", script, StringComparison.Ordinal);
+        Assert.Contains("Start-Sleep -Seconds 6", script, StringComparison.Ordinal);
         Assert.Contains("Reset-PortfolioTraceRoot", script, StringComparison.Ordinal);
         Assert.Contains("$summary.DesktopPhaseStatus = \"Running\"", script, StringComparison.Ordinal);
         Assert.Contains("$effectiveCaptureIntervalSeconds = if ($ScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }", script, StringComparison.Ordinal);
@@ -458,6 +462,20 @@ public sealed class VmHarnessScriptTests
         Assert.Equal(2, script.Split("$summary.ScreensaverShots++", StringSplitOptions.None).Length - 1);
         Assert.Contains("Write-SummaryFiles", script, StringComparison.Ordinal);
         Assert.DoesNotContain("VBOXSVR", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ValidationSmokeCoversOfflineRecoveryArtifactAnalysis()
+    {
+        string script = ReadRepoText("build",
+            "validation",
+            "Test-ValidationScripts.ps1");
+
+        Assert.Contains("offline-then-recover-runtime", script, StringComparison.Ordinal);
+        Assert.Contains("offline-recovery-ux-state-unverified", script, StringComparison.Ordinal);
+        Assert.Contains("offline-recovery-insufficient-captures", script, StringComparison.Ordinal);
+        Assert.Contains("recovery-no-activation-analysis.json", script, StringComparison.Ordinal);
+        Assert.Contains("data_freshness_text=LIVE quote feed", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -588,7 +606,11 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Remove-Item -LiteralPath $target -Recurse -Force", helper, StringComparison.Ordinal);
         Assert.Contains("build\\vm\\test-secrets.json", push, StringComparison.Ordinal);
         Assert.Contains("[string]$FaultProfile = 'none'", invoke, StringComparison.Ordinal);
+        Assert.Contains("[ValidateSet('none', 'offline-at-start', 'offline-during-config-validation', 'offline-during-runtime', 'offline-then-recover-runtime'", invoke, StringComparison.Ordinal);
+        Assert.Contains("offline-then-recover-runtime", invoke, StringComparison.Ordinal);
         Assert.Contains("FaultProfile = $FaultProfile", invoke, StringComparison.Ordinal);
+        string agent = ReadRepoText("src", "PortfolioSaver.VmAgent", "Program.cs");
+        Assert.Contains("\"offline-then-recover-runtime\"", agent, StringComparison.Ordinal);
         Assert.Contains("DEEPSEEK_API_KEY", applySecrets, StringComparison.Ordinal);
         Assert.DoesNotContain("PORTFOLIOSAVER_FINNHUB_API_KEY", applySecrets, StringComparison.Ordinal);
         Assert.DoesNotContain("PORTFOLIOSAVER_TWELVEDATA_API_KEY", applySecrets, StringComparison.Ordinal);
