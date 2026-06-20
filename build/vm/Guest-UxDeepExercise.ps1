@@ -3127,7 +3127,6 @@ try {
             $desktopFull = Join-Path $results 'desktop-fullscreen-entry.png'
             Capture-Screen -Path $desktopFull
             $summary.DesktopShots++
-            $summary.ScreensaverShots++
             if (-not $enteredFullScreen) {
                 throw "Desktop shell did not enter true fullscreen; taskbar/work-area chrome appears to remain visible."
             }
@@ -3164,7 +3163,6 @@ try {
             $desktopWindowed = Join-Path $results 'desktop-windowed-after-esc.png'
             Capture-Screen -Path $desktopWindowed
             $summary.DesktopShots++
-            $summary.ScreensaverShots++
             if ($stillFullScreen) {
                 throw "Desktop shell remained in fullscreen after ESC."
             }
@@ -3179,7 +3177,9 @@ try {
 
             $path = Join-Path $results ("desktop-{0:D3}.png" -f $i)
             Capture-Screen -Path $path
-            $summary.ScreensaverShots++
+            if ($isLongRunSoak) {
+                $summary.ScreensaverShots++
+            }
             $summary.DesktopShots++
             Write-SummaryFiles
             Start-Sleep -Seconds $effectiveCaptureIntervalSeconds

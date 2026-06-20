@@ -454,6 +454,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$summary.ScreensaverVersionCheck = \"SoftFailed\"", script, StringComparison.Ordinal);
         Assert.Contains("Screensaver version element containing the expected beta marker was not detected during long-run soak; continuing.", script, StringComparison.Ordinal);
         Assert.Contains("Start-Sleep -Seconds $effectiveCaptureIntervalSeconds", script, StringComparison.Ordinal);
+        Assert.Contains("if ($isLongRunSoak) {\n                $summary.ScreensaverShots++\n            }", script.ReplaceLineEndings("\n"), StringComparison.Ordinal);
+        Assert.Equal(2, script.Split("$summary.ScreensaverShots++", StringSplitOptions.None).Length - 1);
         Assert.Contains("Write-SummaryFiles", script, StringComparison.Ordinal);
         Assert.DoesNotContain("VBOXSVR", script, StringComparison.Ordinal);
     }
