@@ -37,6 +37,11 @@ public partial class ScreensaverSceneControl : UserControl
     private static readonly TimeSpan GraphSelectionRefreshInterval = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan MacroLaneMinimumRefreshInterval = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan WorldMarketsLaneMinimumRefreshInterval = TimeSpan.FromSeconds(15);
+    // Runtime quotes intentionally use a fixed 1 Hz transport cadence: each tick
+    // dispatches at most one symbol, responses are applied asynchronously, and
+    // YFinance.NET owns upstream pacing/caching. Do not reconnect this timer to
+    // the legacy portfolio/off-hours refresh sliders.
+    private static readonly TimeSpan RuntimeQuoteDispatchInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan RuntimeQuoteRequestTimeout = TimeSpan.FromSeconds(15);
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly Dictionary<string, FloatingGraphControl> _graphControlsByKey = new(StringComparer.OrdinalIgnoreCase);
@@ -666,7 +671,7 @@ public partial class ScreensaverSceneControl : UserControl
         }
 
         _clockTimer.Interval = TimeSpan.FromSeconds(Math.Max(1, _settings.ClockRefreshSeconds));
-        _refreshTimer.Interval = TimeSpan.FromSeconds(GetRefreshSeconds());
+        _refreshTimer.Interval = RuntimeQuoteDispatchInterval;
         _backgroundTimer.Interval = TimeSpan.FromSeconds(Math.Max(5, _settings.BackgroundChangeSeconds));
         _worldDataTimer.Interval = TimeSpan.FromMinutes(10);
         _clockTimer.Start();
@@ -1145,11 +1150,6 @@ public partial class ScreensaverSceneControl : UserControl
         {
             TraceScene($"RefreshSceneAfterValidationPauseAsync failed: {ex}");
         }
-    }
-
-    private double GetRefreshSeconds()
-    {   
-        return QuoteRefreshPolicy.GetRefreshPollingInterval(_settings, GetReferenceUtcNow()).TotalSeconds;
     }
 
     private void RefreshGraphSelectionIfDue()

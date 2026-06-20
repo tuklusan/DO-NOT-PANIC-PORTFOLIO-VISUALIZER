@@ -796,6 +796,14 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
+            "RuntimeQuoteDispatchInterval = TimeSpan.FromSeconds(1)",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "_refreshTimer.Interval = RuntimeQuoteDispatchInterval;",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
             "await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);",
             source,
             StringComparison.Ordinal);
@@ -837,6 +845,10 @@ public sealed class Nb040BehaviorTests
             StringComparison.Ordinal);
         Assert.DoesNotContain(
             "_refreshTimer.Tick += async (_, _) => await RefreshSceneAsync(preserveLayout: true, fullAncillaryRefresh: false);",
+            source,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "_refreshTimer.Interval = TimeSpan.FromSeconds(GetRefreshSeconds())",
             source,
             StringComparison.Ordinal);
     }

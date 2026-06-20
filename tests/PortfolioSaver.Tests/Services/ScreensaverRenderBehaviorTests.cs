@@ -771,119 +771,56 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void GetRefreshSeconds_WhenActiveSymbolsAreStillMissing_UsesOneSecondRecoveryInterval()
+    public void RuntimeQuoteScheduler_IgnoresLegacyRefreshSlidersAndDispatchesEverySecond()
     {
         RunOnSta(() =>
         {
             ScreensaverSceneControl control = new();
-
+            MethodInfo configureTimers = typeof(ScreensaverSceneControl).GetMethod(
+                "ConfigureTimers",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("ConfigureTimers method not found.");
+            MethodInfo stopLiveTimers = typeof(ScreensaverSceneControl).GetMethod(
+                "StopLiveTimers",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("StopLiveTimers method not found.");
             FieldInfo settingsField = typeof(ScreensaverSceneControl).GetField(
                 "_settings",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_settings field not found.");
+            FieldInfo refreshTimerField = typeof(ScreensaverSceneControl).GetField(
+                "_refreshTimer",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_refreshTimer field not found.");
+
             settingsField.SetValue(control, new AppSettings
             {
                 RefreshSecondsPortfolio = 1200,
                 RefreshSecondsOffHours = 1200,
-                Groups =
-                [
-                    new TickerGroup
-                    {
-                        Name = "Tape 1",
-                        Enabled = true,
-                        Tickers =
-                        [
-                            new TickerItem { Symbol = "AAPL", DisplayName = "AAPL", Enabled = true }
-                        ]
-                    }
-                ]
+                ClockRefreshSeconds = 1
             });
 
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
-                "_latestQuotes",
-                BindingFlags.NonPublic | BindingFlags.Instance)
-                ?? throw new InvalidOperationException("_latestQuotes field not found.");
-            latestQuotesField.SetValue(
-                control,
-                new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase)
-                {
-                    ["AAPL"] = new QuoteSnapshot
-                    {
-                        Symbol = "AAPL",
-                        Last = 190m,
-                        PreviousClose = 189m,
-                        FetchTimestampUtc = DateTimeOffset.UtcNow
-                    }
-                });
-
-            MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
-                "GetRefreshSeconds",
-                BindingFlags.NonPublic | BindingFlags.Instance)
-                ?? throw new InvalidOperationException("GetRefreshSeconds method not found.");
-
-            double refreshSeconds = Assert.IsType<double>(method.Invoke(control, []));
-            Assert.Equal(1.0d, refreshSeconds);
-        });
-    }
-
-    [Fact]
-    public void GetRefreshSeconds_WhenAllTrackedSymbolsAreFresh_PollsOncePerSecond()
-    {
-        RunOnSta(() =>
-        {
-            ScreensaverSceneControl control = new();
-
-            FieldInfo settingsField = typeof(ScreensaverSceneControl).GetField(
-                "_settings",
-                BindingFlags.NonPublic | BindingFlags.Instance)
-                ?? throw new InvalidOperationException("_settings field not found.");
-            settingsField.SetValue(control, new AppSettings
+            try
             {
-                RefreshSecondsPortfolio = 5,
-                RefreshSecondsOffHours = 5,
-                Groups =
-                [
-                    new TickerGroup
-                    {
-                        Name = "Tape 1",
-                        Enabled = true,
-                        Tickers =
-                        [
-                            new TickerItem { Symbol = "AAPL", DisplayName = "AAPL", Enabled = true }
-                        ]
-                    }
-                ]
-            });
-
-            Dictionary<string, QuoteSnapshot> quotes = new(StringComparer.OrdinalIgnoreCase);
-            foreach (string symbol in FloatingClockBuilder.GetWorldIndexSymbols()
-                         .Concat(StartupCoordinator.GetMacroIndicatorSymbols())
-                         .Append("AAPL")
-                         .Distinct(StringComparer.OrdinalIgnoreCase))
-            {
-                quotes[symbol] = new QuoteSnapshot
-                {
-                    Symbol = symbol,
-                    Last = 100m,
-                    PreviousClose = 99m,
-                    FetchTimestampUtc = DateTimeOffset.UtcNow
-                };
+                configureTimers.Invoke(control, []);
+                DispatcherTimer refreshTimer = Assert.IsType<DispatcherTimer>(refreshTimerField.GetValue(control));
+                Assert.Equal(TimeSpan.FromSeconds(1), refreshTimer.Interval);
             }
-
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
-                "_latestQuotes",
-                BindingFlags.NonPublic | BindingFlags.Instance)
-                ?? throw new InvalidOperationException("_latestQuotes field not found.");
-            latestQuotesField.SetValue(control, quotes);
-
-            MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
-                "GetRefreshSeconds",
-                BindingFlags.NonPublic | BindingFlags.Instance)
-                ?? throw new InvalidOperationException("GetRefreshSeconds method not found.");
-
-            double refreshSeconds = Assert.IsType<double>(method.Invoke(control, []));
-            Assert.Equal(1.0d, refreshSeconds);
+            finally
+            {
+                stopLiveTimers.Invoke(control, []);
+            }
         });
+
+        string sceneCodeBehind = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "ScreensaverSceneControl.xaml.cs"));
+
+        Assert.DoesNotContain("private double GetRefreshSeconds()", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("_refreshTimer.Interval = TimeSpan.FromSeconds(GetRefreshSeconds())", sceneCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]
