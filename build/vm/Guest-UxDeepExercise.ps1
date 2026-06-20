@@ -1866,16 +1866,89 @@ function Get-CurrentYFinanceFaultProfile {
     }
 }
 
+function Get-KnownRuntimeFreshnessValues {
+    return @(
+        'LIVE quote feed',
+        'OFFLINE - showing last values',
+        'OFFLINE - waiting for data',
+        'STALE - cached values present',
+        'LOADING - waiting for data'
+    )
+}
+
+function Get-VisibleRuntimeFreshnessText {
+    param([Parameter(Mandatory = $true)][System.Diagnostics.Process]$DesktopProcess)
+
+    # UI Automation is available only from the interactive desktop session. If it
+    # cannot inspect the visual host, callers fall back to trace-derived state.
+    $knownFreshnessValues = Get-KnownRuntimeFreshnessValues
+    try {
+        if ($DesktopProcess.HasExited) {
+            return ''
+        }
+
+        $window = Get-ProcessWindowElement -Process $DesktopProcess -TimeoutSeconds 1
+        if ($null -eq $window) {
+            return ''
+        }
+
+        $textCondition = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+            [System.Windows.Automation.ControlType]::Text)
+        $textNodes = $window.FindAll([System.Windows.Automation.TreeScope]::Descendants, $textCondition)
+        if ($null -eq $textNodes) {
+            return ''
+        }
+
+        $visibleMatches = @()
+        for ($index = 0; $index -lt $textNodes.Count; $index++) {
+            $node = $textNodes.Item($index)
+            $text = ([string]$node.Current.Name).Trim()
+            if ($knownFreshnessValues -notcontains $text) {
+                continue
+            }
+
+            $isOffscreen = $true
+            $hasBounds = $false
+            try { $isOffscreen = [bool]$node.Current.IsOffscreen } catch {}
+            try {
+                $rect = $node.Current.BoundingRectangle
+                $hasBounds = $rect.Width -gt 1 -and $rect.Height -gt 1
+            }
+            catch {}
+
+            if (-not $isOffscreen -and $hasBounds) {
+                $visibleMatches += $text
+            }
+        }
+
+        if ($visibleMatches.Count -gt 0) {
+            return [string]$visibleMatches[-1]
+        }
+    }
+    catch {
+        Write-Warning ("Visible runtime freshness lookup failed: {0}" -f $_.Exception.Message)
+    }
+
+    return ''
+}
+
 function Write-RuntimeFreshnessSnapshot {
     param(
         [Parameter(Mandatory = $true)][int]$CaptureIndex,
         [Parameter(Mandatory = $true)][string]$Phase,
         [Parameter(Mandatory = $true)][string]$ResultsDir,
         [Parameter(Mandatory = $true)][string]$RequestedFaultProfile,
-        [Parameter(Mandatory = $true)][string]$FaultProfilePath
+        [Parameter(Mandatory = $true)][string]$FaultProfilePath,
+        [System.Diagnostics.Process]$DesktopProcess = $null
     )
 
     try {
+        $uiFreshnessText = ''
+        if ($null -ne $DesktopProcess -and -not $DesktopProcess.HasExited) {
+            $uiFreshnessText = Get-VisibleRuntimeFreshnessText -DesktopProcess $DesktopProcess
+        }
+
         $tracePath = Get-HarnessTracePath -RelativePath 'Trace\trace.circular.log'
         $latestFreshnessLine = ''
         if (Test-Path -LiteralPath $tracePath) {
@@ -1890,37 +1963,60 @@ function Write-RuntimeFreshnessSnapshot {
             }
         }
 
-        $latestFreshnessText = ''
+        $traceFreshnessText = ''
+        $traceFreshnessAgeSeconds = $null
         if (-not [string]::IsNullOrWhiteSpace($latestFreshnessLine)) {
-            $knownFreshnessValues = @(
-                'LIVE quote feed',
-                'OFFLINE - showing last values',
-                'OFFLINE - waiting for data',
-                'STALE - cached values present',
-                'LOADING - waiting for data'
-            )
+            $knownFreshnessValues = Get-KnownRuntimeFreshnessValues
             foreach ($knownFreshnessValue in $knownFreshnessValues) {
                 if ($latestFreshnessLine -like "*data_freshness_text=$knownFreshnessValue*") {
-                    $latestFreshnessText = $knownFreshnessValue
+                    $traceFreshnessText = $knownFreshnessValue
                     break
                 }
             }
-            if ([string]::IsNullOrWhiteSpace($latestFreshnessText)) {
+            if ([string]::IsNullOrWhiteSpace($traceFreshnessText)) {
                 $match = [regex]::Match($latestFreshnessLine, 'data_freshness_text=(.*?)(?: / |$)')
                 if ($match.Success) {
-                    $latestFreshnessText = $match.Groups[1].Value.Trim()
+                    $traceFreshnessText = $match.Groups[1].Value.Trim()
                 }
+            }
+
+            $timestampMatch = [regex]::Match($latestFreshnessLine, '^(?<timestamp>\d{4}-\d{2}-\d{2}T\S+?)\s+\|')
+            if ($timestampMatch.Success) {
+                try {
+                    $traceTimestamp = [DateTimeOffset]::Parse($timestampMatch.Groups['timestamp'].Value)
+                    $traceFreshnessAgeSeconds = [Math]::Round(((Get-Date) - $traceTimestamp.LocalDateTime).TotalSeconds, 1)
+                }
+                catch {}
             }
         }
 
+        $latestFreshnessText = $traceFreshnessText
+        $freshnessSource = 'trace'
+        if ([string]::IsNullOrWhiteSpace($latestFreshnessText)) {
+            $latestFreshnessText = $uiFreshnessText
+            $freshnessSource = 'ui'
+        }
+        # Trace is authoritative while it is moving. If the trace freshness line is
+        # older than three expected capture intervals, prefer the currently visible
+        # UI so a stalled trace writer does not falsely fail recovery validation.
+        elseif ($null -ne $traceFreshnessAgeSeconds -and
+            $traceFreshnessAgeSeconds -gt 90 -and
+            -not [string]::IsNullOrWhiteSpace($uiFreshnessText)) {
+            $latestFreshnessText = $uiFreshnessText
+            $freshnessSource = 'ui-trace-stale'
+        }
+
         $freshnessTracePath = Join-Path $ResultsDir 'runtime-freshness-events.log'
-        $line = "timestamp={0} frame={1} phase={2} requested_fault_profile={3} effective_fault_profile={4} latest_freshness={5}" -f `
+        $line = "timestamp={0} frame={1} phase={2} requested_fault_profile={3} effective_fault_profile={4} latest_freshness={5} latest_freshness_source={6} trace_age_seconds={7} ui_freshness={8}" -f `
             (Get-Date).ToString('o'),
             $CaptureIndex,
             $Phase,
             $RequestedFaultProfile,
             (Get-CurrentYFinanceFaultProfile -ProfilePath $FaultProfilePath),
-            $(if ([string]::IsNullOrWhiteSpace($latestFreshnessText)) { 'unavailable' } else { $latestFreshnessText })
+            $(if ([string]::IsNullOrWhiteSpace($latestFreshnessText)) { 'unavailable' } else { $latestFreshnessText }),
+            $freshnessSource,
+            $(if ($null -eq $traceFreshnessAgeSeconds) { 'unknown' } else { $traceFreshnessAgeSeconds }),
+            $(if ([string]::IsNullOrWhiteSpace($uiFreshnessText)) { 'unavailable' } else { $uiFreshnessText })
         Add-Content -LiteralPath $freshnessTracePath -Value $line -Encoding UTF8
     }
     catch {
@@ -3201,7 +3297,7 @@ try {
             Capture-Screen -Path $desktopFull
             $summary.DesktopShots++
             $summary.ScreensaverShots++
-            Write-RuntimeFreshnessSnapshot -CaptureIndex 0 -Phase 'fullscreen-entry' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath
+            Write-RuntimeFreshnessSnapshot -CaptureIndex 0 -Phase 'fullscreen-entry' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop
             if (-not $enteredFullScreen) {
                 throw "Visual host did not enter true fullscreen after long-run soak relaunch."
             }
@@ -3230,7 +3326,7 @@ try {
             $desktopFull = Join-Path $results 'desktop-fullscreen-entry.png'
             Capture-Screen -Path $desktopFull
             $summary.DesktopShots++
-            Write-RuntimeFreshnessSnapshot -CaptureIndex 0 -Phase 'fullscreen-entry' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath
+            Write-RuntimeFreshnessSnapshot -CaptureIndex 0 -Phase 'fullscreen-entry' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop
             if (-not $enteredFullScreen) {
                 throw "Desktop shell did not enter true fullscreen; taskbar/work-area chrome appears to remain visible."
             }
@@ -3295,12 +3391,12 @@ try {
                 Clear-YFinanceFaultProfile
                 $recoveryApplied = $true
                 Start-Sleep -Seconds 6
-                Write-RuntimeFreshnessSnapshot -CaptureIndex $i -Phase 'after-recovery-clear' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath
+                Write-RuntimeFreshnessSnapshot -CaptureIndex $i -Phase 'after-recovery-clear' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop
             }
 
             $path = Join-Path $results ("desktop-{0:D3}.png" -f $i)
             Capture-Screen -Path $path
-            Write-RuntimeFreshnessSnapshot -CaptureIndex $i -Phase 'capture' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath
+            Write-RuntimeFreshnessSnapshot -CaptureIndex $i -Phase 'capture' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop
             if ($isLongRunSoak) {
                 $summary.ScreensaverShots++
             }
@@ -3321,7 +3417,7 @@ try {
         if ($FaultProfile -eq 'offline-then-recover-runtime' -and -not $recoveryApplied) {
             Clear-YFinanceFaultProfile
             Start-Sleep -Seconds 6
-            Write-RuntimeFreshnessSnapshot -CaptureIndex $lastCaptureIndex -Phase 'after-recovery-clear' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath
+            Write-RuntimeFreshnessSnapshot -CaptureIndex $lastCaptureIndex -Phase 'after-recovery-clear' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop
         }
         if ($lastCaptureIndex -lt [Math]::Floor($targetFrames * 0.8)) {
             $summary.Notes += "Desktop capture count $lastCaptureIndex was below 80 percent of estimated target $targetFrames; capture loop remained wall-clock bounded."

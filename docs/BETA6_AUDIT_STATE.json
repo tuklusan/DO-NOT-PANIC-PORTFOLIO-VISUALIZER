@@ -4575,6 +4575,67 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-112",
+      "tracking_number": "CR-112",
+      "priority": 1,
+      "area": "runtime_tracing",
+      "title": "Trace scan found anomaly lines during VM validation",
+      "status": "open",
+      "source": "autonomous_visual_validation",
+      "severity": "High",
+      "evidence": [
+        "Run ux-deep-ssh-20260620-163317 trace anomaly sample:",
+        "combined-trace-tail.txt:1064: 2026-06-20T20:41:06.1454257+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=17 | event=QuoteRequestFailed / operation_id=quotes-00000082 / requested_count=1 / symbols=[399001.SZ] / message=A task was canceled. combined-trace-tail.txt:1081: 2026-06-20T20:41:07.1048646+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=4 | event=QuoteRequestFailed / operation_id=quotes-00000083 / requested_count=1 / symbols=[^HSI] / message=A task was canceled. combined-trace-tail.txt:1103: 2026-06-20T20:41:08.2309624+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=5 | event=QuoteRequestFailed / operation_id=quotes-00000084 / requested_count=1 / symbols=[^NSEI] / message=A task was canceled. combined-trace-tail.txt:1119: 2026-06-20T20:41:09.5621519+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=17 | event=QuoteRequestFailed / operation_id=quotes-00000085 / requested_count=1 / symbols=[^GSPTSE] / message=A task was canceled. combined-trace-tail.txt:1152: 2026-06-20T20:41:11.5159439+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=17 | event=QuoteRequestFailed / operation_id=quotes-00000086 / requested_count=1 / symbols=[^KS11] / message=A task was canceled. combined-trace-tail.txt:1170: 2026-06-20T20:41:12.1149845+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=17 | event=QuoteRequestFailed / operation_id=quotes-00000087 / requested_count=1 / symbols=[^TWII] / message=A task was canceled. combined-trace-tail.txt:1187: 2026-06-20T20:41:13.0556649+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=17 | event=QuoteRequestFailed / operation_id=quotes-00000088 / requested_count=1 / symbols=[^FTSE] / message=A task was canceled. combined-trace-tail.txt:1210: 2026-06-20T20:41:14.3842836+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=4 | event=QuoteRequestFailed / operation_id=quotes-00000089 / requested_count=1 / symbols=[^GDAXI] / message=A task was canceled. combined-trace-tail.txt:1231: 2026-06-20T20:41:15.4392727+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=4 | event=QuoteRequestFailed / operation_id=quotes-00000090 / requested_count=1 / symbols=[^SSMI] / message=A task was canceled. combined-trace-tail.txt:1235: 2026-06-20T20:41:16.1231741+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=5 | event=QuoteRequestFailed / operation_id=quotes-00000091 / requested_count=1 / symbols=[^AXJO] / message=A task was canceled. combined-trace-tail.txt:1249: 2026-06-20T20:41:17.0522808+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=17 | event=QuoteRequestFailed / operation_id=quotes-00000092 / requested_count=1 / symbols=[^TASI.SR] / message=A task was canceled. combined-trace-tail.txt:1259: 2026-06-20T20:41:18.0393016+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=17 | event=QuoteRequestFailed / operation_id=quotes-00000093 / requested_count=1 / symbols=[^BVSP] / message=A task was canceled."
+      ],
+      "notes": [
+        "Unexpected trace anomalies are escalated so they are not lost after long autonomous runs."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-113",
+      "tracking_number": "CR-113",
+      "priority": 1,
+      "area": "degraded_mode_ux",
+      "title": "Recovery fault run did not prove return to live data-freshness state",
+      "status": "open",
+      "source": "autonomous_visual_validation",
+      "severity": "High",
+      "evidence": [
+        "Run ux-deep-ssh-20260620-163317 used FaultProfile=offline-then-recover-runtime.",
+        "Fault activation observed: True.",
+        "Fault clear after offline observed: True.",
+        "Recovered LIVE freshness trace hits: 0.",
+        "Expected profile=none after the last profile=offline line in fault-injection-events.log and source-local data_freshness_text=LIVE quote feed or latest_freshness=LIVE quote feed after the last OFFLINE freshness line.",
+        "combined-trace-tail.txt:2653: 2026-06-20T20:42:55.0466787+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=2 | event=RuntimeQuoteRequestFailed / symbol=^N225 / message=Simulated network outage. / failure_counted=true / failure_streak=10 / data_freshness_text=OFFLINE - showing last values / in_flight_count=0",
+        "combined-trace-tail.txt:2654: 2026-06-20T20:42:55.6286217+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=2 | event=RuntimeQuoteLoopHeartbeat / failure_streak=10 / in_flight_count=0 / symbol_count=57 / data_freshness_text=OFFLINE - showing last values",
+        "combined-trace-tail.txt:2683: 2026-06-20T20:42:57.5982570+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=2 | event=RuntimeQuoteRequestFailed / symbol=399001.SZ / message=Simulated network outage. / failure_counted=true / failure_streak=11 / data_freshness_text=OFFLINE - showing last values / in_flight_count=1",
+        "combined-trace-tail.txt:2684: 2026-06-20T20:42:57.5984014+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=2 | event=RuntimeQuoteRequestFailed / symbol=^STOXX50E / message=Simulated network outage. / failure_counted=true / failure_streak=12 / data_freshness_text=OFFLINE - showing last values / in_flight_count=0",
+        "combined-trace-tail.txt:2703: 2026-06-20T20:42:58.6612869+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=2 | event=RuntimeQuoteRequestFailed / symbol=^HSI / message=Simulated network outage. / failure_counted=true / failure_streak=13 / data_freshness_text=OFFLINE - showing last values / in_flight_count=0",
+        "combined-trace-tail.txt:2721: 2026-06-20T20:43:00.0244470+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=2 | event=RuntimeQuoteRequestFailed / symbol=^NSEI / message=Simulated network outage. / failure_counted=true / failure_streak=14 / data_freshness_text=OFFLINE - showing last values / in_flight_count=0",
+        "combined-trace-tail.txt:2755: 2026-06-20T20:43:01.9703018+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=2 | event=RuntimeQuoteRequestFailed / symbol=^GSPTSE / message=Simulated network outage. / failure_counted=true / failure_streak=15 / data_freshness_text=OFFLINE - showing last values / in_flight_count=1",
+        "combined-trace-tail.txt:2756: 2026-06-20T20:43:01.9704611+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=4732 | tid=2 | event=RuntimeQuoteRequestFailed / symbol=^KS11 / message=Simulated network outage. / failure_counted=true / failure_streak=16 / data_freshness_text=OFFLINE - showing last values / in_flight_count=0"
+      ],
+      "notes": [
+        "Recovery validation must prove that user-visible stale/offline state returns to live after the injected fault clears."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

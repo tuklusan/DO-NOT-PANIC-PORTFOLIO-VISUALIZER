@@ -507,7 +507,17 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("PORTFOLIOSAVER_LOCALDATA_ROOT", script, StringComparison.Ordinal);
         Assert.Contains("function Get-HarnessAppDataRoot", script, StringComparison.Ordinal);
         Assert.Contains("function Get-HarnessTracePath", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-KnownRuntimeFreshnessValues", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-VisibleRuntimeFreshnessText", script, StringComparison.Ordinal);
+        Assert.Contains("$knownFreshnessValues = Get-KnownRuntimeFreshnessValues", script, StringComparison.Ordinal);
         Assert.Contains("function Write-RuntimeFreshnessSnapshot", script, StringComparison.Ordinal);
+        Assert.Contains("Get-VisibleRuntimeFreshnessText -DesktopProcess $DesktopProcess", script, StringComparison.Ordinal);
+        Assert.Contains("latest_freshness_source=", script, StringComparison.Ordinal);
+        Assert.Contains("trace_age_seconds=", script, StringComparison.Ordinal);
+        Assert.Contains("ui_freshness=", script, StringComparison.Ordinal);
+        Assert.Contains("$traceFreshnessAgeSeconds -gt 90", script, StringComparison.Ordinal);
+        Assert.Contains("$freshnessSource = 'ui-trace-stale'", script, StringComparison.Ordinal);
+        Assert.Contains("-DesktopProcess $desktop", script, StringComparison.Ordinal);
         Assert.Contains("runtime-freshness-events.log", script, StringComparison.Ordinal);
         Assert.Contains("latest_freshness=", script, StringComparison.Ordinal);
         Assert.Contains("Runtime freshness snapshot failed", script, StringComparison.Ordinal);
