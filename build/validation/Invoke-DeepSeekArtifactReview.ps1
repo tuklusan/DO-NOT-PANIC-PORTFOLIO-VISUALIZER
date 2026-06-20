@@ -64,9 +64,21 @@ function Get-InterestingTextSample {
         return "[skipped: file exceeds MaxArtifactFileBytes=$MaxArtifactFileBytes; bytes=$($item.Length)]"
     }
 
-    $hits = @(Select-String -LiteralPath $Path -Pattern '(?i)\b(error|fatal|exception|failed|timeout|warning|warn|missing|blank|jitter|burst|unhandled|closed|close|validation)\b' -ErrorAction SilentlyContinue | Select-Object -First 120)
+    $highSignalPattern = '(?i)\b(network_lost|faultprofileset|runtimequoterequestfailed|clientresponseerror|quoterequestfailed|clientoperationerror)\b|\bsimulated network outage\b'
+    $interestingPattern = '(?i)\b(error|fatal|exception|failed|timeout|warning|warn|missing|blank|jitter|burst|unhandled|closed|close|validation)\b|' + $highSignalPattern
+    $allHits = @(Select-String -LiteralPath $Path -Pattern $interestingPattern -ErrorAction SilentlyContinue)
+    # Keep the review packet bounded while preserving startup context, targeted degradation evidence, and final state.
+    $hits = @(
+        $allHits | Select-Object -First 80
+        $allHits | Where-Object { $_.Line -match $highSignalPattern } | Select-Object -First 80
+        $allHits | Select-Object -Last 80
+    ) | Sort-Object Path, LineNumber -Unique
     if ($hits.Count -eq 0) { return Get-TextSample -Path $Path -MaxCharacters 6000 }
-    return (($hits | ForEach-Object { "{0}:{1}: {2}" -f (Split-Path -Leaf $Path), $_.LineNumber, $_.Line.Trim() }) -join "`n")
+    $sample = (($hits | ForEach-Object { "{0}:{1}: {2}" -f (Split-Path -Leaf $Path), $_.LineNumber, $_.Line.Trim() }) -join "`n")
+    if ($sample.Length -le 24000) { return $sample }
+    $cut = $sample.LastIndexOf("`n", 23999)
+    if ($cut -lt 1) { $cut = 24000 }
+    return $sample.Substring(0, $cut) + "`n...[artifact interesting-line sample truncated at 24000 characters]..."
 }
 
 function Assert-NoLikelySecrets([string]$Text) {
