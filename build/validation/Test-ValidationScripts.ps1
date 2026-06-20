@@ -60,6 +60,37 @@ try {
     $report = Get-Content -Raw -LiteralPath $analysisPath | ConvertFrom-Json
     if (-not $report.clean) { throw 'Analyze-VisualValidationArtifacts reported findings for the clean single-run smoke fixture.' }
 
+    $offlinePassRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000001'
+    New-Item -ItemType Directory -Force -Path $offlinePassRun | Out-Null
+    @{ ResultName = 'ux-deep-ssh-20990101-000001'; ConfigPhaseStatus = 'Completed'; DesktopPhaseStatus = 'Completed'; FullScreenToggleStatus = 'Completed'; FaultProfile = 'offline-during-runtime' } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $offlinePassRun 'ux-deep-summary.json') -Encoding UTF8
+    '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=offline' |
+        Set-Content -LiteralPath (Join-Path $offlinePassRun 'fault-injection-events.log') -Encoding UTF8
+    'event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values' |
+        Set-Content -LiteralPath (Join-Path $offlinePassRun 'combined-trace-tail.txt') -Encoding UTF8
+    $offlinePassAnalysisPath = Join-Path $tempRoot 'offline-pass-analysis.json'
+    $offlinePassOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $offlinePassRun -OutputPath $offlinePassAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($offlinePassOutput -match 'ANALYSIS_REPORT=')) { throw 'Offline-pass analysis did not emit ANALYSIS_REPORT.' }
+    $offlinePassReport = Get-Content -Raw -LiteralPath $offlinePassAnalysisPath | ConvertFrom-Json
+    if (-not $offlinePassReport.clean) { throw 'Analyze-VisualValidationArtifacts reported findings for the offline UX proof fixture.' }
+
+    $offlineFailRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000002'
+    New-Item -ItemType Directory -Force -Path $offlineFailRun | Out-Null
+    @{ ResultName = 'ux-deep-ssh-20990101-000002'; ConfigPhaseStatus = 'Completed'; DesktopPhaseStatus = 'Completed'; FullScreenToggleStatus = 'Completed'; FaultProfile = 'offline-during-runtime' } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $offlineFailRun 'ux-deep-summary.json') -Encoding UTF8
+    '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=offline' |
+        Set-Content -LiteralPath (Join-Path $offlineFailRun 'fault-injection-events.log') -Encoding UTF8
+    'event=RuntimeQuoteRequestFailed / data_freshness_text=LIVE quote feed' |
+        Set-Content -LiteralPath (Join-Path $offlineFailRun 'combined-trace-tail.txt') -Encoding UTF8
+    $offlineFailAnalysisPath = Join-Path $tempRoot 'offline-fail-analysis.json'
+    $offlineFailOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $offlineFailRun -OutputPath $offlineFailAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($offlineFailOutput -match 'ANALYSIS_FINDINGS=1')) { throw "Offline-fail analysis did not report exactly one finding. Output: $offlineFailOutput" }
+    $offlineFailReport = Get-Content -Raw -LiteralPath $offlineFailAnalysisPath | ConvertFrom-Json
+    $offlineFinding = @($offlineFailReport.findings | Where-Object { $_.code -eq 'offline-ux-state-unverified' })
+    if ($offlineFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag missing offline UX proof.' }
+
     $auditFixture = Join-Path $tempRoot 'audit-state.json'
     @{
         pending_next_build_issues = @(

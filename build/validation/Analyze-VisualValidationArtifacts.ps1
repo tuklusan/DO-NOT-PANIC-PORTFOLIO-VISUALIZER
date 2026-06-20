@@ -140,6 +140,33 @@ foreach ($run in $runs) {
             [void]$findings.Add((New-Finding -Code 'config-close-regression' -Title 'Config validation close workflow showed close-regression evidence' -Area 'config_harness' -Severity 'High' -Evidence @("Run ${runId} config trace contains close-regression evidence.", $closeEvidence) -Notes @('Successful validation must reach OK/Cancel and close promptly when Apply/OK is selected.')))
         }
     }
+
+    if ($faultProfile -match '(?i)offline') {
+        $faultTrace = Join-Path $run.FullName 'fault-injection-events.log'
+        $combinedTrace = Join-Path $run.FullName 'combined-trace-tail.txt'
+        $faultActivationMatch = if (Test-Path -LiteralPath $faultTrace) {
+            Select-String -LiteralPath $faultTrace -Pattern 'profile=offline' -ErrorAction SilentlyContinue | Select-Object -First 1
+        } else {
+            $null
+        }
+        $faultActivated = $null -ne $faultActivationMatch
+        $offlineFreshnessHits = if (Test-Path -LiteralPath $combinedTrace) {
+            $freshnessMatches = @(Select-String -LiteralPath $combinedTrace -Pattern 'data_freshness_text=OFFLINE' -ErrorAction SilentlyContinue | Where-Object { $null -ne $_ } | Select-Object -First 8)
+            $freshnessMatches
+        } else {
+            @()
+        }
+
+        if (-not $faultActivated -or $offlineFreshnessHits.Count -eq 0) {
+            $offlineEvidence = @(
+                "Run ${runId} used FaultProfile=$faultProfile.",
+                "Fault activation observed: $faultActivated.",
+                "Offline freshness trace hits: $($offlineFreshnessHits.Count).",
+                "Expected a trace line containing data_freshness_text=OFFLINE after offline fault injection."
+            )
+            [void]$findings.Add((New-Finding -Code 'offline-ux-state-unverified' -Title 'Offline fault run did not prove a user-visible offline data-freshness state' -Area 'degraded_mode_ux' -Severity 'High' -Evidence $offlineEvidence -Notes @('Offline/degraded validation must prove that stale/cached data is clearly surfaced to the user.')))
+        }
+    }
 }
 
 if ([string]::IsNullOrWhiteSpace($OutputPath)) { $OutputPath = Join-Path $repoRoot ('build\validation\artifacts\visual-validation-analysis-{0}.json' -f (Get-Date -Format 'yyyyMMdd-HHmmss')) }
