@@ -463,6 +463,70 @@ function Get-ProcessWindowElement {
     return $null
 }
 
+function Wait-ProcessWindowElementWithFallback {
+    param(
+        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process,
+        [Parameter(Mandatory = $true)][string]$InitialTraceEvent,
+        [Parameter(Mandatory = $true)][string]$FallbackTraceEvent,
+        [Parameter(Mandatory = $true)][string]$CompleteTraceEvent,
+        [Parameter(Mandatory = $true)][string]$LookupErrorEvent,
+        [Parameter(Mandatory = $true)][string]$ExitMessage,
+        [Parameter(Mandatory = $true)][string]$NotFoundMessage
+    )
+
+    $startedAt = Get-Date
+    $handleObserved = Wait-UIAutomationCondition -TimeoutSeconds 5 -PollMilliseconds 100 -TraceEvent $InitialTraceEvent -Condition {
+        $Process.Refresh()
+        return ($Process.MainWindowHandle -ne [IntPtr]::Zero)
+    }
+
+    $window = Get-ProcessWindowElement -Process $Process -TimeoutSeconds 15
+    if ($null -eq $window -and -not $Process.HasExited) {
+        $fallbackState = [pscustomobject]@{
+            Element = $null
+            Exited = $false
+        }
+
+        [void](Wait-UIAutomationCondition -TimeoutSeconds 15 -PollMilliseconds 100 -TraceEvent $FallbackTraceEvent -Condition {
+            $Process.Refresh()
+            if ($Process.HasExited) {
+                $fallbackState.Exited = $true
+                return $true
+            }
+
+            try {
+                $candidate = Get-ProcessWindowElement -Process $Process -TimeoutSeconds 1
+                if ($null -ne $candidate) {
+                    $fallbackState.Element = $candidate
+                    return $true
+                }
+            }
+            catch {
+                Write-ConfigWindowTrace -Event $LookupErrorEvent -Details $_.Exception.Message
+            }
+
+            return $false
+        })
+
+        $window = $fallbackState.Element
+        if ($fallbackState.Exited) {
+            throw $ExitMessage
+        }
+    }
+
+    $elapsedMs = [long]((Get-Date) - $startedAt).TotalMilliseconds
+    Write-ConfigWindowTrace -Event $CompleteTraceEvent -Details ("elapsed_ms={0}; handle_observed={1}; found={2}" -f $elapsedMs, [bool]$handleObserved, ($null -ne $window))
+    if ($Process.HasExited) {
+        throw $ExitMessage
+    }
+
+    if ($null -eq $window) {
+        throw $NotFoundMessage
+    }
+
+    return $window
+}
+
 function Get-TabItems {
     param($Window)
 
@@ -2767,14 +2831,14 @@ try {
         $configPhaseStartedAt = [datetime]::UtcNow
         $configInteractionStartedAt = $null
         $desktop = Start-Process -FilePath $desktopExe -PassThru
-        [void](Wait-UIAutomationCondition -TimeoutSeconds 5 -PollMilliseconds 100 -TraceEvent 'DesktopMainWindowWait' -Condition {
-            $desktop.Refresh()
-            return ($desktop.MainWindowHandle -ne [IntPtr]::Zero)
-        })
-        $desktopWindow = Get-ProcessWindowElement -Process $desktop -TimeoutSeconds 15
-        if ($null -eq $desktopWindow) {
-            throw 'Could not locate desktop shell window via UI Automation.'
-        }
+        $desktopWindow = Wait-ProcessWindowElementWithFallback `
+            -Process $desktop `
+            -InitialTraceEvent 'DesktopMainWindowWait' `
+            -FallbackTraceEvent 'DesktopMainWindowFallbackWait' `
+            -CompleteTraceEvent 'DesktopWindowDiscoveryComplete' `
+            -LookupErrorEvent 'DesktopWindowElementLookupError' `
+            -ExitMessage 'Desktop process exited before its window was discoverable.' `
+            -NotFoundMessage 'Could not locate desktop shell window via UI Automation.'
 
         [void](Focus-ProcessWindow -Process $desktop)
         $configOpened = $false
@@ -2969,14 +3033,14 @@ try {
             throw 'Desktop process was not running after config phase.'
         }
 
-        [void](Wait-UIAutomationCondition -TimeoutSeconds 5 -PollMilliseconds 100 -TraceEvent 'PostConfigDesktopWindowWait' -Condition {
-            $desktop.Refresh()
-            return ($desktop.MainWindowHandle -ne [IntPtr]::Zero)
-        })
-        $desktopWindow = Get-ProcessWindowElement -Process $desktop -TimeoutSeconds 15
-        if ($null -eq $desktopWindow) {
-            throw 'Could not locate desktop shell window via UI Automation.'
-        }
+        $desktopWindow = Wait-ProcessWindowElementWithFallback `
+            -Process $desktop `
+            -InitialTraceEvent 'PostConfigDesktopWindowWait' `
+            -FallbackTraceEvent 'PostConfigDesktopWindowFallbackWait' `
+            -CompleteTraceEvent 'PostConfigDesktopWindowDiscoveryComplete' `
+            -LookupErrorEvent 'PostConfigDesktopWindowElementLookupError' `
+            -ExitMessage 'Desktop process exited before its post-config window was discoverable.' `
+            -NotFoundMessage 'Could not locate desktop shell window via UI Automation.'
         [void](Focus-ProcessWindow -Process $desktop)
         $versionMatch = Find-ElementMetadataByProcessId `
             -ProcessId $desktop.Id `
