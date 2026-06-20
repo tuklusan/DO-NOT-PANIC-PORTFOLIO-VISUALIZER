@@ -436,7 +436,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$summary.SupportedDisplayModes = @(Format-DisplayModeNames -Modes $displayApply.AvailableModes)", script, StringComparison.Ordinal);
         Assert.Contains("RequestedDisplayProfile", script, StringComparison.Ordinal);
         Assert.Contains("RuntimeDesktopResolution = Get-CurrentVirtualScreenSize", script, StringComparison.Ordinal);
-        Assert.Contains("$recoveryFrame = [Math]::Max(1, [Math]::Min($targetFrames, [Math]::Max(2, [int][Math]::Ceiling($targetFrames / 2.0))))", script, StringComparison.Ordinal);
+        Assert.Contains("ScreensaverDurationMinutes must be greater than zero.", script, StringComparison.Ordinal);
+        Assert.Contains("$recoveryAt = $captureLoopStartedAt.AddSeconds(($ScreensaverDurationMinutes * 60.0) / 2.0)", script, StringComparison.Ordinal);
+        Assert.Contains("$recoveryApplied = $false", script, StringComparison.Ordinal);
         Assert.Contains("Start-Sleep -Seconds 6", script, StringComparison.Ordinal);
         Assert.Contains("Reset-PortfolioTraceRoot", script, StringComparison.Ordinal);
         Assert.Contains("$summary.DesktopPhaseStatus = \"Running\"", script, StringComparison.Ordinal);
@@ -445,6 +447,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("RequestedCaptureIntervalSeconds = $CaptureIntervalSeconds", script, StringComparison.Ordinal);
         Assert.Contains("EffectiveCaptureIntervalSeconds = $effectiveCaptureIntervalSeconds", script, StringComparison.Ordinal);
         Assert.Contains("TargetCaptureFrames = $targetFrames", script, StringComparison.Ordinal);
+        Assert.Contains("capture loop remained wall-clock bounded", script, StringComparison.Ordinal);
         Assert.Contains("Capture interval raised from $CaptureIntervalSeconds to $effectiveCaptureIntervalSeconds seconds for long-run soak stability.", script, StringComparison.Ordinal);
         Assert.Contains("$screensaverExe = Join-Path $root 'publish\\screensaver\\PortfolioSaver.Screensaver.exe'", script, StringComparison.Ordinal);
         Assert.Contains("Long-run soak mode enabled; fullscreen soak will switch to the legacy screensaver host after config apply.", script, StringComparison.Ordinal);
@@ -457,7 +460,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Visual host did not enter true fullscreen after long-run soak relaunch.", script, StringComparison.Ordinal);
         Assert.Contains("$summary.ScreensaverVersionCheck = \"SoftFailed\"", script, StringComparison.Ordinal);
         Assert.Contains("Screensaver version element containing the expected beta marker was not detected during long-run soak; continuing.", script, StringComparison.Ordinal);
-        Assert.Contains("Start-Sleep -Seconds $effectiveCaptureIntervalSeconds", script, StringComparison.Ordinal);
+        Assert.Contains("$nextCaptureAt = $frameStartedAt.AddSeconds($effectiveCaptureIntervalSeconds)", script, StringComparison.Ordinal);
+        Assert.Contains("Start-Sleep -Seconds $sleepSeconds", script, StringComparison.Ordinal);
         Assert.Contains("if ($isLongRunSoak) {\n                $summary.ScreensaverShots++\n            }", script.ReplaceLineEndings("\n"), StringComparison.Ordinal);
         Assert.Equal(2, script.Split("$summary.ScreensaverShots++", StringSplitOptions.None).Length - 1);
         Assert.Contains("Write-SummaryFiles", script, StringComparison.Ordinal);
@@ -508,6 +512,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("latest_freshness=", script, StringComparison.Ordinal);
         Assert.Contains("Runtime freshness snapshot failed", script, StringComparison.Ordinal);
         Assert.Contains("[System.IO.FileShare]::ReadWrite", script, StringComparison.Ordinal);
+        Assert.Contains("$captureDeadline = $captureLoopStartedAt.AddMinutes($ScreensaverDurationMinutes)", script, StringComparison.Ordinal);
+        Assert.Contains("} while ((Get-Date) -lt $captureDeadline)", script, StringComparison.Ordinal);
         Assert.Contains("Get-HarnessTracePath -RelativePath 'Trace\\trace.circular.log'", script, StringComparison.Ordinal);
         Assert.Contains("Get-HarnessTracePath -RelativePath 'Trace\\yfinance.circular.log'", script, StringComparison.Ordinal);
         Assert.Contains("Join-Path (Join-Path $env:LOCALAPPDATA 'PortfolioSaver') $RelativePath", script, StringComparison.Ordinal);

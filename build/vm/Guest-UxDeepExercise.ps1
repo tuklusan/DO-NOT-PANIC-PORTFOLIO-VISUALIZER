@@ -188,7 +188,13 @@ foreach ($orphanedSummaryTempPath in [System.IO.Directory]::EnumerateFiles($resu
 $isLongRunSoak = $ScreensaverDurationMinutes -ge 120
 $script:vmBackgroundChangeSeconds = 120
 $effectiveCaptureIntervalSeconds = if ($ScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }
+# Informational estimate for summaries/analyzers; the actual capture loop is
+# wall-clock bounded so slow screenshots cannot extend the VM run indefinitely.
 $targetFrames = [Math]::Max(1, [int][Math]::Ceiling(($ScreensaverDurationMinutes * 60.0) / $effectiveCaptureIntervalSeconds))
+
+if ($ScreensaverDurationMinutes -le 0) {
+    throw "ScreensaverDurationMinutes must be greater than zero."
+}
 $previousDisableInputExit = $null
 $previousFaultProfilePath = $null
 $previousFaultProfile = $null
@@ -1875,9 +1881,12 @@ function Write-RuntimeFreshnessSnapshot {
         if (Test-Path -LiteralPath $tracePath) {
             $tailText = Read-TextFileTailShared -Path $tracePath -MaxBytes 131072
             if (-not [string]::IsNullOrWhiteSpace($tailText)) {
-                $latestFreshnessLine = @(($tailText -split "`r?`n") |
+                $freshnessLines = @(($tailText -split "`r?`n") |
                     Where-Object { $_ -like '*data_freshness_text=*' } |
-                    Select-Object -Last 1)[0]
+                    Select-Object -Last 1)
+                if ($freshnessLines.Count -gt 0) {
+                    $latestFreshnessLine = $freshnessLines[0]
+                }
             }
         }
 
@@ -3268,15 +3277,23 @@ try {
         if ($FaultProfile -eq 'offline-then-recover-runtime' -and $targetFrames -lt 2) {
             throw "Recovery fault profile requires at least two capture frames."
         }
-        # Recover near the middle of the shared desktop/screensaver capture loop, clamped for short developer runs.
-        $recoveryFrame = [Math]::Max(1, [Math]::Min($targetFrames, [Math]::Max(2, [int][Math]::Ceiling($targetFrames / 2.0))))
-        for ($i = 1; $i -le $targetFrames; $i++) {
+        # The VM can spend variable time in screenshot capture. Keep the soak
+        # duration wall-clock bounded and recover near the time midpoint.
+        $captureLoopStartedAt = Get-Date
+        $captureDeadline = $captureLoopStartedAt.AddMinutes($ScreensaverDurationMinutes)
+        $recoveryAt = $captureLoopStartedAt.AddSeconds(($ScreensaverDurationMinutes * 60.0) / 2.0)
+        $recoveryApplied = $false
+        $i = 1
+        $lastCaptureIndex = 0
+        do {
+            $frameStartedAt = Get-Date
             if ($desktop.HasExited) {
                 throw "Desktop process exited early at frame $i (exit code: $($desktop.ExitCode))."
             }
 
-            if ($FaultProfile -eq 'offline-then-recover-runtime' -and $i -eq $recoveryFrame) {
+            if ($FaultProfile -eq 'offline-then-recover-runtime' -and -not $recoveryApplied -and (Get-Date) -ge $recoveryAt) {
                 Clear-YFinanceFaultProfile
+                $recoveryApplied = $true
                 Start-Sleep -Seconds 6
                 Write-RuntimeFreshnessSnapshot -CaptureIndex $i -Phase 'after-recovery-clear' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath
             }
@@ -3288,8 +3305,26 @@ try {
                 $summary.ScreensaverShots++
             }
             $summary.DesktopShots++
+            $lastCaptureIndex = $i
             Write-SummaryFiles
-            Start-Sleep -Seconds $effectiveCaptureIntervalSeconds
+            $nextCaptureAt = $frameStartedAt.AddSeconds($effectiveCaptureIntervalSeconds)
+            $sleepSeconds = [int][Math]::Round(($nextCaptureAt - (Get-Date)).TotalSeconds)
+            if ($sleepSeconds -gt 0 -and (Get-Date).AddSeconds($sleepSeconds) -lt $captureDeadline) {
+                Start-Sleep -Seconds $sleepSeconds
+            }
+            elseif ((Get-Date) -lt $captureDeadline) {
+                Start-Sleep -Milliseconds 100
+            }
+            $i++
+        } while ((Get-Date) -lt $captureDeadline)
+
+        if ($FaultProfile -eq 'offline-then-recover-runtime' -and -not $recoveryApplied) {
+            Clear-YFinanceFaultProfile
+            Start-Sleep -Seconds 6
+            Write-RuntimeFreshnessSnapshot -CaptureIndex $lastCaptureIndex -Phase 'after-recovery-clear' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath
+        }
+        if ($lastCaptureIndex -lt [Math]::Floor($targetFrames * 0.8)) {
+            $summary.Notes += "Desktop capture count $lastCaptureIndex was below 80 percent of estimated target $targetFrames; capture loop remained wall-clock bounded."
         }
 
         $summary.DesktopPhaseStatus = "Completed"
