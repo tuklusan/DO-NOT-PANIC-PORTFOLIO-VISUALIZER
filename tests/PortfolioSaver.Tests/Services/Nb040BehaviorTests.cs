@@ -317,12 +317,9 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
-    public async Task YFinanceRuntimeClientFactory_ResetRetiresSharedClientAfterActiveOperationCompletes()
+    public async Task YFinanceRuntimeClientFactory_RecoveryResetRetiresSharedClientAfterActiveOperationCompletes()
     {
         using IDisposable serverBypass = YFinanceRuntimeClientFactory.SuppressServerStartupForTests();
-        MethodInfo resetMethod = typeof(YFinanceRuntimeClientFactory).GetMethod(
-            "ResetConnectionState",
-            BindingFlags.Static | BindingFlags.NonPublic)!;
         TaskCompletionSource<YFinanceServerClient> activeClientSeen = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource resetInvoked = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -337,10 +334,45 @@ public sealed class Nb040BehaviorTests
             });
 
         await activeClientSeen.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        resetMethod.Invoke(null, null);
+        YFinanceRuntimeClientFactory.ResetConnectionStateForRecovery("unit-test");
         resetInvoked.SetResult();
 
         Assert.Equal(1, await activeOperation);
+        int followUp = await YFinanceRuntimeClientFactory.RunSerializedAsync(
+            "test-reset-follow-up",
+            (_, _) => Task.FromResult(2));
+        Assert.Equal(2, followUp);
+    }
+
+    [Fact]
+    public void RuntimeQuoteRecoveryGate_RequiresThresholdAndHonorsCooldown()
+    {
+        RuntimeQuoteRecoveryGate gate = new(10, TimeSpan.FromSeconds(30));
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        Assert.False(gate.TryEnter(9, now));
+        Assert.True(gate.TryEnter(10, now));
+        gate.MarkResetSucceeded(now);
+        gate.Exit();
+
+        Assert.False(gate.TryEnter(10, now.AddSeconds(29)));
+        Assert.True(gate.TryEnter(10, now.AddSeconds(31)));
+        gate.Exit();
+    }
+
+    [Fact]
+    public void RuntimeQuoteRecoveryGate_AllowsOnlyOneConcurrentReset()
+    {
+        RuntimeQuoteRecoveryGate gate = new(10, TimeSpan.FromSeconds(30));
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        Assert.True(gate.TryEnter(10, now));
+        Assert.False(gate.TryEnter(10, now));
+
+        gate.Exit();
+
+        Assert.True(gate.TryEnter(10, now));
+        gate.Exit();
     }
 
     [Fact]
@@ -792,7 +824,7 @@ public sealed class Nb040BehaviorTests
         string source = File.ReadAllText(Path.GetFullPath(controlPath));
 
         Assert.Contains(
-            "_refreshTimer.Tick += (_, _) => DispatchNextRuntimeQuoteRequest();",
+            "_refreshTimer.Tick += (_, _) => DispatchNextRuntimeQuoteRequestSafe();",
             source,
             StringComparison.Ordinal);
         Assert.Contains(
@@ -841,6 +873,18 @@ public sealed class Nb040BehaviorTests
             StringComparison.Ordinal);
         Assert.Contains(
             "RuntimeQuoteRequestTimedOut",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "RuntimeQuoteLoopHeartbeat",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "RuntimeQuoteTransportReset",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "YFinanceRuntimeClientFactory.ResetConnectionStateForRecovery",
             source,
             StringComparison.Ordinal);
         Assert.Contains(

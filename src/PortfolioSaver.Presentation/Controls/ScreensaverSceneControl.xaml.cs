@@ -119,8 +119,10 @@ public partial class ScreensaverSceneControl : UserControl
     private int _runtimeSymbolCursor;
     private int _runtimeQuoteFailureStreak;
     private DateTimeOffset _lastAllRuntimeQuotesInFlightTraceUtc = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastRuntimeQuoteLoopHeartbeatUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastDisplayedTapeSampleTraceUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastFullTapeSyncUtc = DateTimeOffset.MinValue;
+    private readonly RuntimeQuoteRecoveryGate _runtimeQuoteRecoveryGate = new(RuntimeQuoteOfflineFailureThreshold, TimeSpan.FromSeconds(30));
     private CancellationTokenSource? _newsRefreshCancellation;
     private Task? _newsRefreshTask;
     private int _newsRefreshInFlight;
@@ -161,7 +163,7 @@ public partial class ScreensaverSceneControl : UserControl
         Unloaded += OnUnloaded;
         SizeChanged += OnSizeChanged;
         _clockTimer.Tick += (_, _) => UpdateClocks();
-        _refreshTimer.Tick += (_, _) => DispatchNextRuntimeQuoteRequest();
+        _refreshTimer.Tick += (_, _) => DispatchNextRuntimeQuoteRequestSafe();
         _backgroundTimer.Tick += async (_, _) => await RotateBackgroundAsync();
         _backgroundZoomTimer.Tick += (_, _) => StepBackgroundSlowZoom();
         _worldDataTimer.Tick += (_, _) => QueueWorldMarketsRefresh(refreshAncillary: true, reason: "timer");
@@ -203,7 +205,7 @@ public partial class ScreensaverSceneControl : UserControl
         {
             TraceScene("OnLoaded starting.");
             _initialized = true;
-            _runtimeQuoteFailureStreak = 0;
+            ResetRuntimeQuoteFailureStreak();
             _activeBackgroundImage = BackgroundImageA;
             _inactiveBackgroundImage = BackgroundImageB;
             ApplySceneState(_startupCoordinator.BuildBootstrapScene(), preserveLayout: false);
@@ -1028,6 +1030,7 @@ public partial class ScreensaverSceneControl : UserControl
         if (_isValidationPaused || _orderedRuntimeSymbols.Count == 0)
             return;
 
+        TraceRuntimeQuoteLoopHeartbeatIfDue();
         PruneStaleRuntimeQuoteRequests();
         RefreshGraphSelectionIfDue();
 
@@ -1072,17 +1075,91 @@ public partial class ScreensaverSceneControl : UserControl
         DateTimeOffset now = DateTimeOffset.UtcNow;
         foreach (RuntimeQuoteTimedOutRequest<IReadOnlyList<QuoteSnapshot>> timedOut in _inFlightQuoteRequests.PruneStale(now, RuntimeQuoteRequestTimeout))
         {
-            _runtimeQuoteFailureStreak++;
+            int failureStreak = IncrementRuntimeQuoteFailureStreak();
             UpdateStatusFreshnessText();
+            ResetRuntimeQuoteTransportIfNeeded("timeout");
             TraceSceneState(
                 "RuntimeQuoteRequestTimedOut",
                 new KeyValuePair<string, object?>("symbol", timedOut.Symbol),
                 new KeyValuePair<string, object?>("age_seconds", Math.Round(timedOut.Age.TotalSeconds, 1)),
-                new KeyValuePair<string, object?>("failure_streak", _runtimeQuoteFailureStreak),
+                new KeyValuePair<string, object?>("failure_streak", failureStreak),
                 new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel?.DataFreshnessText),
                 new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
         }
     }
+
+    private void DispatchNextRuntimeQuoteRequestSafe()
+    {
+        try
+        {
+            DispatchNextRuntimeQuoteRequest();
+        }
+        catch (Exception ex)
+        {
+            ResetRuntimeQuoteTransportIfNeeded("dispatch-exception");
+            TraceSceneState(
+                "RuntimeQuoteDispatchFailed",
+                new KeyValuePair<string, object?>("message", ex.Message),
+                new KeyValuePair<string, object?>("failure_streak", ReadRuntimeQuoteFailureStreak()),
+                new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+        }
+    }
+
+    private void TraceRuntimeQuoteLoopHeartbeatIfDue()
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        if (now - _lastRuntimeQuoteLoopHeartbeatUtc < TimeSpan.FromSeconds(30))
+            return;
+
+        _lastRuntimeQuoteLoopHeartbeatUtc = now;
+        TraceSceneState(
+            "RuntimeQuoteLoopHeartbeat",
+            new KeyValuePair<string, object?>("failure_streak", ReadRuntimeQuoteFailureStreak()),
+            new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count),
+            new KeyValuePair<string, object?>("symbol_count", _orderedRuntimeSymbols.Count),
+            new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel?.DataFreshnessText));
+    }
+
+    private void ResetRuntimeQuoteTransportIfNeeded(string reason)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        int failureStreak = ReadRuntimeQuoteFailureStreak();
+        if (!_runtimeQuoteRecoveryGate.TryEnter(failureStreak, now))
+            return;
+
+        try
+        {
+            YFinanceRuntimeClientFactory.ResetConnectionStateForRecovery($"runtime-quote-{reason}");
+            _runtimeQuoteRecoveryGate.MarkResetSucceeded(now);
+            TraceSceneState(
+                "RuntimeQuoteTransportReset",
+                new KeyValuePair<string, object?>("reason", reason),
+                new KeyValuePair<string, object?>("failure_streak", failureStreak),
+                new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+        }
+        catch (Exception ex)
+        {
+            TraceSceneState(
+                "RuntimeQuoteTransportResetFailed",
+                new KeyValuePair<string, object?>("reason", reason),
+                new KeyValuePair<string, object?>("message", ex.Message),
+                new KeyValuePair<string, object?>("failure_streak", failureStreak),
+                new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+        }
+        finally
+        {
+            _runtimeQuoteRecoveryGate.Exit();
+        }
+    }
+
+    private int ReadRuntimeQuoteFailureStreak()
+        => Volatile.Read(ref _runtimeQuoteFailureStreak);
+
+    private int IncrementRuntimeQuoteFailureStreak()
+        => Interlocked.Increment(ref _runtimeQuoteFailureStreak);
+
+    private void ResetRuntimeQuoteFailureStreak()
+        => Interlocked.Exchange(ref _runtimeQuoteFailureStreak, 0);
 
     private string? TakeNextRuntimeQuoteSymbol()
     {
@@ -3961,7 +4038,7 @@ public partial class ScreensaverSceneControl : UserControl
 
         bool networkAvailable = StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(
             _networkAvailabilityService.IsNetworkAvailable(),
-            _runtimeQuoteFailureStreak,
+            ReadRuntimeQuoteFailureStreak(),
             RuntimeQuoteOfflineFailureThreshold);
         _statusViewModel.DataFreshnessText = StartupCoordinator.ResolveDataFreshnessText(networkAvailable, _latestQuotes);
         _statusViewModel.DataFreshnessForeground = StartupCoordinator.ResolveDataFreshnessBrush(networkAvailable, _latestQuotes);
@@ -3992,23 +4069,19 @@ public partial class ScreensaverSceneControl : UserControl
             bool failureCounted = !_isValidationPaused && ex is not OperationCanceledException;
             if (failureCounted)
             {
-                _runtimeQuoteFailureStreak++;
+                int failureStreak = IncrementRuntimeQuoteFailureStreak();
                 UpdateStatusFreshnessText();
+                ResetRuntimeQuoteTransportIfNeeded("request-failure");
+                TraceRuntimeQuoteRequestFailed(symbol, ex, failureCounted, failureStreak);
+                return;
             }
-            TraceSceneState(
-                "RuntimeQuoteRequestFailed",
-                new KeyValuePair<string, object?>("symbol", symbol),
-                new KeyValuePair<string, object?>("message", ex.Message),
-                new KeyValuePair<string, object?>("failure_counted", failureCounted),
-                new KeyValuePair<string, object?>("failure_streak", _runtimeQuoteFailureStreak),
-                new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel?.DataFreshnessText),
-                new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+            TraceRuntimeQuoteRequestFailed(symbol, ex, failureCounted, ReadRuntimeQuoteFailureStreak());
             return;
         }
 
         if (quotes.Count == 0)
         {
-            _runtimeQuoteFailureStreak = 0;
+            ResetRuntimeQuoteFailureStreak();
             UpdateStatusFreshnessText();
             return;
         }
@@ -4020,7 +4093,7 @@ public partial class ScreensaverSceneControl : UserControl
         IReadOnlyDictionary<string, QuoteSnapshot> previousQuotes = _latestQuotes;
         _latestQuotes = MergeQuotes(_latestQuotes, deltaQuotes);
         _startupCoordinator.PrimeRuntimeQuotes(deltaQuotes);
-        _runtimeQuoteFailureStreak = 0;
+        ResetRuntimeQuoteFailureStreak();
 
         bool tapeStructureStillMatched = ApplyQuotesToDisplayedTapeItems(deltaQuotes.Values);
         // Config apply performs a full scene/tape sync immediately. During ordinary
@@ -4043,6 +4116,18 @@ public partial class ScreensaverSceneControl : UserControl
             "RuntimeQuoteApplied",
             new KeyValuePair<string, object?>("requested_symbol", symbol),
             new KeyValuePair<string, object?>("resolved_symbols", deltaQuotes.Keys.ToList()),
+            new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+    }
+
+    private void TraceRuntimeQuoteRequestFailed(string symbol, Exception ex, bool failureCounted, int failureStreak)
+    {
+        TraceSceneState(
+            "RuntimeQuoteRequestFailed",
+            new KeyValuePair<string, object?>("symbol", symbol),
+            new KeyValuePair<string, object?>("message", ex.Message),
+            new KeyValuePair<string, object?>("failure_counted", failureCounted),
+            new KeyValuePair<string, object?>("failure_streak", failureStreak),
+            new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel?.DataFreshnessText),
             new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
     }
 

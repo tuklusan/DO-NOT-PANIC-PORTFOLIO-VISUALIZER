@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Security.Cryptography;
 using System.Text;
 using PortfolioSaver.Shared;
@@ -124,6 +125,17 @@ public static class YFinanceRuntimeClientFactory
 
     public static string CreateOperationId(string lane)
         => $"{lane}-{Interlocked.Increment(ref _operationSequence):D8}";
+
+    /// <summary>
+    /// Forces a full shared-client reset after sustained runtime quote failures.
+    /// This is intentionally limited to product assemblies that own recovery policy.
+    /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    internal static void ResetConnectionStateForRecovery(string reason)
+    {
+        TraceLog.WarnState("YFinanceRuntimeClientFactory", "ClientConnectionResetForRecovery", [new("reason", reason)]);
+        ResetConnectionState();
+    }
 
     /// <summary>
     /// Suppresses owned-server startup for tests that exercise factory scheduling without using the client.

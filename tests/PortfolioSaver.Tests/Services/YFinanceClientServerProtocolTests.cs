@@ -350,6 +350,20 @@ public sealed class YFinanceClientServerProtocolTests
     }
 
     [Fact]
+    public void ServerProcessManager_AndServerProgram_DefendAgainstDuplicateOwnedServerLaunches()
+    {
+        string repoRoot = GetRepoRoot();
+        string launcherSource = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Shared", "Services", "YFinanceServerProcessManager.cs"));
+        string serverSource = File.ReadAllText(Path.Combine(repoRoot, "YFinance.net", "YFinance.NET.Server", "Hosting", "YFinanceServerProgram.cs"));
+
+        Assert.Contains("OwnedServerAlreadyRunning", launcherSource, StringComparison.Ordinal);
+        Assert.Contains("ServerAlreadyReachable", launcherSource, StringComparison.Ordinal);
+        Assert.Contains("CanConnectAsync(cancellationToken)", launcherSource, StringComparison.Ordinal);
+        Assert.Contains("ProtocolConstants.GetMutexName(options.Port)", serverSource, StringComparison.Ordinal);
+        Assert.Contains("DuplicateServerStartRejected", serverSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ServerProgram_AwaitsActiveClientHandlersOnShutdown()
     {
         object gate = new();
