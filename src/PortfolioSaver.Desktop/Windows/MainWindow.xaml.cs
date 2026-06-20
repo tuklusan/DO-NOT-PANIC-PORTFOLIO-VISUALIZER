@@ -150,7 +150,10 @@ public partial class MainWindow : Window
             Topmost = true
         };
         void OnValidationActivityChanged(bool isValidating)
-            => SceneHost?.SetValidationPause(isValidating);
+        {
+            if (isValidating)
+                SceneHost?.SetValidationPause(true);
+        }
 
         window.ValidationActivityChanged += OnValidationActivityChanged;
         TraceLog.InfoState("Desktop.Config", "ConfigDialogOpening", []);

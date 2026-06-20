@@ -78,7 +78,10 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("AutomationProperties.SetName(OptionsMenuItem, \"Options\")", code, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(SettingsMenuItem, \"Settings\")", code, StringComparison.Ordinal);
         Assert.Contains("window.ValidationActivityChanged += OnValidationActivityChanged;", code, StringComparison.Ordinal);
-        Assert.Contains("SceneHost?.SetValidationPause(isValidating);", code, StringComparison.Ordinal);
+        Assert.Contains("if (isValidating)", code, StringComparison.Ordinal);
+        Assert.Contains("SceneHost?.SetValidationPause(true);", code, StringComparison.Ordinal);
+        Assert.Contains("SceneHost?.SetValidationPause(false);", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("SceneHost?.SetValidationPause(isValidating);", code, StringComparison.Ordinal);
         Assert.Contains("AboutWindow window = new()", code, StringComparison.Ordinal);
         Assert.Contains("window.ShowDialog();", code, StringComparison.Ordinal);
     }
