@@ -4062,6 +4062,106 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-098",
+      "tracking_number": "CR-098",
+      "priority": 1,
+      "area": "VM validation harness",
+      "title": "VM validation phase did not complete: ConfigPhaseStatus",
+      "status": "open",
+      "source": "autonomous_visual_validation",
+      "severity": "High",
+      "evidence": [
+        "Run ux-deep-ssh-20260620-054408 reported ConfigPhaseStatus=Failed.",
+        "Summary: D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer\\build\\vm\\artifacts\\ssh-runs\\ux-deep-ssh-20260620-054408\\ux-deep-summary.json"
+      ],
+      "notes": [
+        "Incomplete harness phases are release-candidate blockers."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-099",
+      "tracking_number": "CR-099",
+      "priority": 1,
+      "area": "VM validation harness",
+      "title": "VM validation phase did not complete: DesktopPhaseStatus",
+      "status": "open",
+      "source": "autonomous_visual_validation",
+      "severity": "High",
+      "evidence": [
+        "Run ux-deep-ssh-20260620-054408 reported DesktopPhaseStatus=Failed.",
+        "Summary: D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer\\build\\vm\\artifacts\\ssh-runs\\ux-deep-ssh-20260620-054408\\ux-deep-summary.json"
+      ],
+      "notes": [
+        "Incomplete harness phases are release-candidate blockers."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-100",
+      "tracking_number": "CR-100",
+      "priority": 1,
+      "area": "VM validation harness",
+      "title": "VM validation phase did not complete: FullScreenToggleStatus",
+      "status": "open",
+      "source": "autonomous_visual_validation",
+      "severity": "High",
+      "evidence": [
+        "Run ux-deep-ssh-20260620-054408 reported FullScreenToggleStatus=Pending.",
+        "Summary: D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer\\build\\vm\\artifacts\\ssh-runs\\ux-deep-ssh-20260620-054408\\ux-deep-summary.json"
+      ],
+      "notes": [
+        "Incomplete harness phases are release-candidate blockers."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-101",
+      "tracking_number": "CR-101",
+      "priority": 1,
+      "area": "VM validation harness",
+      "title": "VM validation produced too few screenshots for visual proof",
+      "status": "open",
+      "source": "autonomous_visual_validation",
+      "severity": "Medium",
+      "evidence": [
+        "Run ux-deep-ssh-20260620-054408 produced 0 screenshot(s); minimum expected is 3.",
+        "Run directory: D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer\\build\\vm\\artifacts\\ssh-runs\\ux-deep-ssh-20260620-054408"
+      ],
+      "notes": [
+        "Visual validation needs enough captures to verify background, graph-card, news, and ribbon behavior."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

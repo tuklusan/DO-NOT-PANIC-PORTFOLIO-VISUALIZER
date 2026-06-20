@@ -480,14 +480,18 @@ function Wait-ProcessWindowElementWithFallback {
         return ($Process.MainWindowHandle -ne [IntPtr]::Zero)
     }
 
-    $window = Get-ProcessWindowElement -Process $Process -TimeoutSeconds 15
+    # Cold VM launches can return from Start-Process long before WPF reaches OnStartup.
+    # In ux-deep-ssh-20260620-054408, OnStartup arrived ~64s after process launch
+    # and the owned YFinance server became ready after ~75s, so keep the fast handle
+    # probe above but allow enough time for first-render UI Automation discovery.
+    $window = Get-ProcessWindowElement -Process $Process -TimeoutSeconds 120
     if ($null -eq $window -and -not $Process.HasExited) {
         $fallbackState = [pscustomobject]@{
             Element = $null
             Exited = $false
         }
 
-        [void](Wait-UIAutomationCondition -TimeoutSeconds 15 -PollMilliseconds 100 -TraceEvent $FallbackTraceEvent -Condition {
+        [void](Wait-UIAutomationCondition -TimeoutSeconds 30 -PollMilliseconds 100 -TraceEvent $FallbackTraceEvent -Condition {
             $Process.Refresh()
             if ($Process.HasExited) {
                 $fallbackState.Exited = $true
