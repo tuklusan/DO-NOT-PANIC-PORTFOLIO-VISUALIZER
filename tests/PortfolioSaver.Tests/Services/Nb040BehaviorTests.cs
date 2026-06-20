@@ -804,11 +804,31 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
-            "Task<IReadOnlyList<QuoteSnapshot>> requestTask = _runtimeQuoteProvider.GetQuotesAsync([symbol], CancellationToken.None);",
+            "Task<IReadOnlyList<QuoteSnapshot>> requestTask = _runtimeQuoteProvider.GetQuotesAsync([symbol], requestCancellation.Token);",
             source,
             StringComparison.Ordinal);
         Assert.Contains(
             "Dispatcher.InvokeAsync(() => ApplyCompletedRuntimeQuote(symbol, task))",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "RuntimeQuoteRequestTimeout = TimeSpan.FromSeconds(15)",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "PruneStaleRuntimeQuoteRequests();",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "RuntimeQuoteRequestTimedOut",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "RuntimeQuoteRequestCompletionIgnored",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "RuntimeQuoteDispatchSkipped",
             source,
             StringComparison.Ordinal);
         Assert.DoesNotContain(
@@ -819,6 +839,61 @@ public sealed class Nb040BehaviorTests
             "_refreshTimer.Tick += async (_, _) => await RefreshSceneAsync(preserveLayout: true, fullAncillaryRefresh: false);",
             source,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RuntimeQuoteInFlightTracker_PrunesTimedOutRequestsAndCancelsThem()
+    {
+        RuntimeQuoteInFlightTracker<IReadOnlyList<QuoteSnapshot>> tracker = new(StringComparer.OrdinalIgnoreCase);
+        TaskCompletionSource<IReadOnlyList<QuoteSnapshot>> request = new();
+        CancellationTokenSource cancellation = new();
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        tracker.Add("VOO", request.Task, now - TimeSpan.FromSeconds(16), cancellation);
+
+        IReadOnlyList<RuntimeQuoteTimedOutRequest<IReadOnlyList<QuoteSnapshot>>> timedOut =
+            tracker.PruneStale(now, TimeSpan.FromSeconds(15));
+
+        Assert.Single(timedOut);
+        Assert.Equal("VOO", timedOut[0].Symbol);
+        Assert.False(tracker.Contains("VOO"));
+        Assert.Equal(0, tracker.Count);
+        Assert.True(cancellation.IsCancellationRequested);
+    }
+
+    [Fact]
+    public void RuntimeQuoteInFlightTracker_IgnoresStaleCompletionAfterSymbolWasRequeued()
+    {
+        RuntimeQuoteInFlightTracker<IReadOnlyList<QuoteSnapshot>> tracker = new(StringComparer.OrdinalIgnoreCase);
+        TaskCompletionSource<IReadOnlyList<QuoteSnapshot>> oldRequest = new();
+        TaskCompletionSource<IReadOnlyList<QuoteSnapshot>> newRequest = new();
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        tracker.Add("QUAL", oldRequest.Task, now - TimeSpan.FromSeconds(16), new CancellationTokenSource());
+        tracker.PruneStale(now, TimeSpan.FromSeconds(15));
+        tracker.Add("QUAL", newRequest.Task, now, new CancellationTokenSource());
+
+        Assert.False(tracker.TryComplete("QUAL", oldRequest.Task, out _));
+        Assert.Equal(1, tracker.Count);
+        Assert.True(tracker.TryComplete("QUAL", newRequest.Task, out _));
+        Assert.Equal(0, tracker.Count);
+    }
+
+    [Fact]
+    public void RuntimeQuoteInFlightTracker_CancelAndClearCancelsAllPendingRequests()
+    {
+        RuntimeQuoteInFlightTracker<IReadOnlyList<QuoteSnapshot>> tracker = new(StringComparer.OrdinalIgnoreCase);
+        CancellationTokenSource firstCancellation = new();
+        CancellationTokenSource secondCancellation = new();
+
+        tracker.Add("VOO", Task.FromResult<IReadOnlyList<QuoteSnapshot>>([]), DateTimeOffset.UtcNow, firstCancellation);
+        tracker.Add("QUAL", Task.FromResult<IReadOnlyList<QuoteSnapshot>>([]), DateTimeOffset.UtcNow, secondCancellation);
+
+        tracker.CancelAndClear();
+
+        Assert.Equal(0, tracker.Count);
+        Assert.True(firstCancellation.IsCancellationRequested);
+        Assert.True(secondCancellation.IsCancellationRequested);
     }
 
     [Fact]

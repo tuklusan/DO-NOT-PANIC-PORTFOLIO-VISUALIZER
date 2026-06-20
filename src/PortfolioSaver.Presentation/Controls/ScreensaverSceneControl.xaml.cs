@@ -37,6 +37,7 @@ public partial class ScreensaverSceneControl : UserControl
     private static readonly TimeSpan GraphSelectionRefreshInterval = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan MacroLaneMinimumRefreshInterval = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan WorldMarketsLaneMinimumRefreshInterval = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan RuntimeQuoteRequestTimeout = TimeSpan.FromSeconds(15);
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly Dictionary<string, FloatingGraphControl> _graphControlsByKey = new(StringComparer.OrdinalIgnoreCase);
     private readonly ObservableCollection<MarketSpriteViewModel> _marketSprites = [];
@@ -107,10 +108,11 @@ public partial class ScreensaverSceneControl : UserControl
     private DateTimeOffset _lastSceneHeartbeatUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastGraphSelectionRefreshUtc = DateTimeOffset.MinValue;
     private bool _isValidationPaused;
-    private readonly Dictionary<string, Task<IReadOnlyList<QuoteSnapshot>>> _inFlightQuoteRequests = new(StringComparer.OrdinalIgnoreCase);
+    private readonly RuntimeQuoteInFlightTracker<IReadOnlyList<QuoteSnapshot>> _inFlightQuoteRequests = new(StringComparer.OrdinalIgnoreCase);
     private List<string> _orderedRuntimeSymbols = [];
     private int _runtimeSymbolCursor;
     private int _runtimeQuoteFailureStreak;
+    private DateTimeOffset _lastAllRuntimeQuotesInFlightTraceUtc = DateTimeOffset.MinValue;
     private CancellationTokenSource? _newsRefreshCancellation;
     private Task? _newsRefreshTask;
     private int _newsRefreshInFlight;
@@ -708,7 +710,7 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void StopRuntimeQuoteLoop()
     {
-        _inFlightQuoteRequests.Clear();
+        _inFlightQuoteRequests.CancelAndClear();
     }
 
     private void StartMacroLane()
@@ -1018,17 +1020,33 @@ public partial class ScreensaverSceneControl : UserControl
         if (_isValidationPaused || _orderedRuntimeSymbols.Count == 0)
             return;
 
+        PruneStaleRuntimeQuoteRequests();
         RefreshGraphSelectionIfDue();
 
         string? symbol = TakeNextRuntimeQuoteSymbol();
+        if (string.IsNullOrWhiteSpace(symbol) && _inFlightQuoteRequests.Count > 0)
+        {
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            if (now - _lastAllRuntimeQuotesInFlightTraceUtc >= RuntimeQuoteRequestTimeout)
+            {
+                _lastAllRuntimeQuotesInFlightTraceUtc = now;
+                TraceSceneState(
+                    "RuntimeQuoteDispatchSkipped",
+                    new KeyValuePair<string, object?>("reason", "all_symbols_in_flight"),
+                    new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+            }
+        }
+
         if (string.IsNullOrWhiteSpace(symbol))
             return;
 
-        Task<IReadOnlyList<QuoteSnapshot>> requestTask = _runtimeQuoteProvider.GetQuotesAsync([symbol], CancellationToken.None);
-        _inFlightQuoteRequests[symbol] = requestTask;
+        CancellationTokenSource requestCancellation = new(RuntimeQuoteRequestTimeout);
+        Task<IReadOnlyList<QuoteSnapshot>> requestTask = _runtimeQuoteProvider.GetQuotesAsync([symbol], requestCancellation.Token);
+        _inFlightQuoteRequests.Add(symbol, requestTask, DateTimeOffset.UtcNow, requestCancellation);
         TraceSceneState(
             "RuntimeQuoteRequestQueued",
             new KeyValuePair<string, object?>("symbol", symbol),
+            new KeyValuePair<string, object?>("timeout_seconds", RuntimeQuoteRequestTimeout.TotalSeconds),
             new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
 
         _ = requestTask.ContinueWith(
@@ -1036,6 +1054,26 @@ public partial class ScreensaverSceneControl : UserControl
             CancellationToken.None,
             TaskContinuationOptions.None,
             TaskScheduler.Default);
+    }
+
+    private void PruneStaleRuntimeQuoteRequests()
+    {
+        if (_inFlightQuoteRequests.Count == 0)
+            return;
+
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        foreach (RuntimeQuoteTimedOutRequest<IReadOnlyList<QuoteSnapshot>> timedOut in _inFlightQuoteRequests.PruneStale(now, RuntimeQuoteRequestTimeout))
+        {
+            _runtimeQuoteFailureStreak++;
+            UpdateStatusFreshnessText();
+            TraceSceneState(
+                "RuntimeQuoteRequestTimedOut",
+                new KeyValuePair<string, object?>("symbol", timedOut.Symbol),
+                new KeyValuePair<string, object?>("age_seconds", Math.Round(timedOut.Age.TotalSeconds, 1)),
+                new KeyValuePair<string, object?>("failure_streak", _runtimeQuoteFailureStreak),
+                new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel?.DataFreshnessText),
+                new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+        }
     }
 
     private string? TakeNextRuntimeQuoteSymbol()
@@ -1053,7 +1091,7 @@ public partial class ScreensaverSceneControl : UserControl
             _runtimeSymbolCursor = (_runtimeSymbolCursor + 1) % _orderedRuntimeSymbols.Count;
             scanned++;
 
-            if (_inFlightQuoteRequests.ContainsKey(symbol))
+            if (_inFlightQuoteRequests.Contains(symbol))
                 continue;
 
             return symbol;
@@ -3847,7 +3885,16 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void ApplyCompletedRuntimeQuote(string symbol, Task<IReadOnlyList<QuoteSnapshot>> task)
     {
-        _inFlightQuoteRequests.Remove(symbol);
+        if (!_inFlightQuoteRequests.TryComplete(symbol, task, out _))
+        {
+            TraceSceneState(
+                "RuntimeQuoteRequestCompletionIgnored",
+                new KeyValuePair<string, object?>("symbol", symbol),
+                new KeyValuePair<string, object?>("reason", "stale_or_pruned"),
+                new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+            return;
+        }
+
         if (_isValidationPaused)
             return;
 
@@ -4058,6 +4105,7 @@ public partial class ScreensaverSceneControl : UserControl
             }
         }
     }
+
 }
 
 
