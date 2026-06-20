@@ -1,0 +1,4 @@
+# Applied only when ux-deep-summary.json reports a non-none FaultProfile.
+Simulated network outage
+network_lost
+FaultProfileSet details=profile=offline

@@ -11,6 +11,10 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows -and $PSVersionTable.Platform -ne 'Win32NT') { throw 'Visual artifact image analysis requires Windows/System.Drawing support.' }
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$allowedTracePath = Join-Path $PSScriptRoot 'allowed-trace-patterns.txt'
+$allowedFaultTracePath = Join-Path $PSScriptRoot 'allowed-fault-injection-trace-patterns.txt'
+$script:allowedTracePatterns = if (Test-Path -LiteralPath $allowedTracePath) { @(Get-Content -LiteralPath $allowedTracePath | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and -not $_.TrimStart().StartsWith('#') }) } else { @() }
+$script:allowedFaultInjectionTracePatterns = if (Test-Path -LiteralPath $allowedFaultTracePath) { @(Get-Content -LiteralPath $allowedFaultTracePath | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and -not $_.TrimStart().StartsWith('#') }) } else { @() }
 
 function New-Finding {
     param([string]$Code,[string]$Title,[string]$Area,[string]$Severity,[string[]]$Evidence,[string[]]$Notes = @())
@@ -32,9 +36,16 @@ function Get-ValidationRunDirectories {
 
 function Test-TraceLineAllowed {
     param([string]$Line)
-    $allowPath = Join-Path $PSScriptRoot 'allowed-trace-patterns.txt'
-    $patterns = if (Test-Path -LiteralPath $allowPath) { @(Get-Content -LiteralPath $allowPath | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and -not $_.TrimStart().StartsWith('#') }) } else { @() }
-    foreach ($pattern in $patterns) {
+    foreach ($pattern in $script:allowedTracePatterns) {
+        if ($Line -match [regex]::Escape($pattern)) { return $true }
+    }
+    return $false
+}
+
+function Test-FaultInjectionTraceLineAllowed {
+    param([string]$Line,[string]$FaultProfile)
+    if ([string]::IsNullOrWhiteSpace($FaultProfile) -or $FaultProfile -eq 'none') { return $false }
+    foreach ($pattern in $script:allowedFaultInjectionTracePatterns) {
         if ($Line -match [regex]::Escape($pattern)) { return $true }
     }
     return $false
@@ -71,6 +82,7 @@ foreach ($run in $runs) {
     $summaryPath = Join-Path $run.FullName 'ux-deep-summary.json'
     $summary = Get-Content -Raw -LiteralPath $summaryPath | ConvertFrom-Json
     $runId = [string](Get-JsonPropertyValue -Object $summary -Name 'ResultName' -Default $run.Name)
+    $faultProfile = [string](Get-JsonPropertyValue -Object $summary -Name 'FaultProfile' -Default 'none')
     [void]$runSummaries.Add([pscustomobject]@{ resultName=$runId; path=$run.FullName; configPhaseStatus=[string](Get-JsonPropertyValue -Object $summary -Name 'ConfigPhaseStatus'); desktopPhaseStatus=[string](Get-JsonPropertyValue -Object $summary -Name 'DesktopPhaseStatus'); fullScreenToggleStatus=[string](Get-JsonPropertyValue -Object $summary -Name 'FullScreenToggleStatus'); notes=@(Get-JsonPropertyValue -Object $summary -Name 'Notes' -Default @()) })
 
     foreach ($statusName in @('ConfigPhaseStatus','DesktopPhaseStatus','FullScreenToggleStatus')) {
@@ -104,7 +116,10 @@ foreach ($run in $runs) {
         $hits = @(Select-String -LiteralPath $trace.FullName -Pattern '(?i)\b(error|fatal|exception|failed|timeout|warning|warn|missing|blank|source-missing|jitter|burst|unhandled)\b' -ErrorAction SilentlyContinue | Select-Object -First 40)
         foreach ($hit in $hits) {
             $line = "{0}:{1}: {2}" -f $trace.Name, $hit.LineNumber, $hit.Line.Trim()
-            if (-not (Test-TraceLineAllowed -Line $line)) { [void]$traceLines.Add($line) }
+            if (-not (Test-TraceLineAllowed -Line $line) -and
+                -not (Test-FaultInjectionTraceLineAllowed -Line $line -FaultProfile $faultProfile)) {
+                [void]$traceLines.Add($line)
+            }
         }
     }
     if ($traceLines.Count -gt 0) {

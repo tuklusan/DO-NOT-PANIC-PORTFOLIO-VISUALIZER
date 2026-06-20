@@ -14,10 +14,14 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
 {
     private static readonly TimeSpan ReceiveLoopDrainTimeout = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan GoodbyeTimeout = TimeSpan.FromSeconds(1);
+    private const int MaxCanceledRequestOperations = 2048;
     private readonly SemaphoreSlim _connectGate = new(1, 1);
     private readonly SemaphoreSlim _writeGate = new(1, 1);
     private readonly YFinanceServerConnectionOptions _options;
     private readonly ConcurrentDictionary<string, IPendingRequest> _pendingRequests = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, string> _canceledRequestOperations = new(StringComparer.Ordinal);
+    private readonly ConcurrentQueue<string> _canceledRequestOrder = new();
+    private readonly object _canceledRequestEvictionGate = new();
     private TcpClient? _tcpClient;
     private NetworkStream? _stream;
     private CancellationTokenSource? _connectionCts;
@@ -135,8 +139,15 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
 
         using CancellationTokenRegistration registration = cancellationToken.Register(() =>
         {
+            RememberCanceledRequest(requestId, operation);
             if (_pendingRequests.TryRemove(requestId, out IPendingRequest? removed))
+            {
                 removed.TrySetCanceled(cancellationToken);
+            }
+            else
+            {
+                ForgetCanceledRequest(requestId);
+            }
         });
         return await pending.Task.ConfigureAwait(false);
     }
@@ -258,6 +269,18 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
 
                 if (!_pendingRequests.TryRemove(response.RequestId, out IPendingRequest? pending))
                 {
+                    if (TryForgetCanceledRequest(response.RequestId, out string? canceledOperation))
+                    {
+                        _options.TraceSink.Info("ClientResponseLateCanceled",
+                        [
+                            new("request_id", response.RequestId),
+                            new("operation", response.Operation),
+                            new("canceled_operation", canceledOperation),
+                            new("status", response.Status)
+                        ]);
+                        continue;
+                    }
+
                     _options.TraceSink.Warn("ClientResponseUnexpected",
                     [
                         new("request_id", response.RequestId),
@@ -375,6 +398,7 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
         _stream = null;
         _tcpClient = null;
         _helloSent = false;
+        ClearCanceledRequestTracking();
         try { stream?.Dispose(); } catch { }
         try { tcpClient?.Dispose(); } catch { }
         connectionCts?.Dispose();
@@ -420,6 +444,7 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
         _stream = null;
         _tcpClient = null;
         _helloSent = false;
+        ClearCanceledRequestTracking();
 
         try { stream?.Dispose(); } catch { }
         try { tcpClient?.Dispose(); } catch { }
@@ -462,6 +487,64 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
         {
             if (_pendingRequests.TryRemove(requestId, out IPendingRequest? removed))
                 removed.TrySetException(ex);
+        }
+    }
+
+    private void RememberCanceledRequest(string requestId, string operation)
+    {
+        lock (_canceledRequestEvictionGate)
+        {
+            _canceledRequestOperations[requestId] = operation;
+            _canceledRequestOrder.Enqueue(requestId);
+            CompactCanceledRequestOrderIfNeeded();
+
+            while (_canceledRequestOperations.Count > MaxCanceledRequestOperations &&
+                   _canceledRequestOrder.TryDequeue(out string? evictedRequestId))
+            {
+                _canceledRequestOperations.TryRemove(evictedRequestId, out _);
+            }
+        }
+    }
+
+    private bool TryForgetCanceledRequest(string requestId, out string? operation)
+    {
+        lock (_canceledRequestEvictionGate)
+        {
+            return _canceledRequestOperations.TryRemove(requestId, out operation);
+        }
+    }
+
+    private void ForgetCanceledRequest(string requestId)
+    {
+        lock (_canceledRequestEvictionGate)
+        {
+            _canceledRequestOperations.TryRemove(requestId, out _);
+            CompactCanceledRequestOrderIfNeeded();
+        }
+    }
+
+    private void CompactCanceledRequestOrderIfNeeded()
+    {
+        if (_canceledRequestOrder.Count <= MaxCanceledRequestOperations * 2)
+            return;
+
+        string[] liveRequestIds = _canceledRequestOperations.Keys.ToArray();
+        while (_canceledRequestOrder.TryDequeue(out _))
+        {
+        }
+
+        foreach (string liveRequestId in liveRequestIds)
+            _canceledRequestOrder.Enqueue(liveRequestId);
+    }
+
+    private void ClearCanceledRequestTracking()
+    {
+        lock (_canceledRequestEvictionGate)
+        {
+            _canceledRequestOperations.Clear();
+            while (_canceledRequestOrder.TryDequeue(out _))
+            {
+            }
         }
     }
 

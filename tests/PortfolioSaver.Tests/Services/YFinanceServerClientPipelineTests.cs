@@ -161,6 +161,52 @@ public sealed class YFinanceServerClientPipelineTests
     }
 
     [Fact]
+    public async Task Client_LogsLateCanceledResponseAsInfo_AndProcessesSubsequentValidResponse()
+    {
+        using TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using CancellationTokenSource cts = new(TimeSpan.FromSeconds(10));
+        using CancellationTokenSource requestCts = new();
+        TaskCompletionSource firstRequestRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource releaseLateCanceledResponse = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task serverTask = Task.Run(async () =>
+        {
+            await using NetworkStream stream = (await listener.AcceptTcpClientAsync(cts.Token).ConfigureAwait(false)).GetStream();
+
+            ProtocolRequest<JsonElement> requestA = await ReadRequestAsync(stream, cts.Token).ConfigureAwait(false);
+            firstRequestRead.SetResult();
+            ProtocolRequest<JsonElement> requestB = await ReadRequestAsync(stream, cts.Token).ConfigureAwait(false);
+
+            await releaseLateCanceledResponse.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+            await WriteQuoteResponseAsync(stream, requestA, cts.Token).ConfigureAwait(false);
+            await WriteQuoteResponseAsync(stream, requestB, cts.Token).ConfigureAwait(false);
+        }, cts.Token);
+
+        RecordingClientTraceSink traceSink = new();
+        await using YFinanceServerClient client = new(new YFinanceServerConnectionOptions(
+            "127.0.0.1",
+            port,
+            TimeSpan.FromSeconds(3),
+            traceSink));
+
+        Task<QuoteDto> cancelled = client.GetQuoteAsync("LATE", requestCts.Token);
+        await firstRequestRead.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+        requestCts.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await cancelled.ConfigureAwait(false)).ConfigureAwait(false);
+
+        Task<QuoteDto> validQuoteTask = client.GetQuoteAsync("GOOD", cts.Token);
+        releaseLateCanceledResponse.SetResult();
+        QuoteDto validQuote = await validQuoteTask.ConfigureAwait(false);
+
+        Assert.Equal("GOOD", validQuote.Symbol);
+        Assert.Contains(traceSink.InfoEvents, eventName => string.Equals(eventName, "ClientResponseLateCanceled", StringComparison.Ordinal));
+        Assert.DoesNotContain(traceSink.WarnEvents, eventName => string.Equals(eventName, "ClientResponseUnexpected", StringComparison.Ordinal));
+        await serverTask;
+    }
+
+    [Fact]
     public async Task Client_DisposeWhileRequestPending_CompletesAndSettlesPendingRequest()
     {
         using TcpListener listener = new(IPAddress.Loopback, 0);
@@ -469,7 +515,17 @@ public sealed class YFinanceServerClientPipelineTests
     private sealed class RecordingClientTraceSink : IYFinanceServerClientTraceSink
     {
         private readonly object _sync = new();
+        private readonly List<string> _infoEvents = [];
         private readonly List<string> _warnEvents = [];
+
+        public IReadOnlyList<string> InfoEvents
+        {
+            get
+            {
+                lock (_sync)
+                    return [.. _infoEvents];
+            }
+        }
 
         public IReadOnlyList<string> WarnEvents
         {
@@ -482,6 +538,8 @@ public sealed class YFinanceServerClientPipelineTests
 
         public void Info(string eventName, IReadOnlyList<KeyValuePair<string, object?>> fields)
         {
+            lock (_sync)
+                _infoEvents.Add(eventName);
         }
 
         public void Warn(string eventName, IReadOnlyList<KeyValuePair<string, object?>> fields)
