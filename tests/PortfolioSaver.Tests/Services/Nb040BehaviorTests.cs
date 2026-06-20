@@ -824,6 +824,18 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
+            "RuntimeTapeStructuralSyncInterval = TimeSpan.FromSeconds(5)",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "ApplyQuotesToDisplayedTapeItems(deltaQuotes.Values)",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "DateTimeOffset.UtcNow - _lastFullTapeSyncUtc > RuntimeTapeStructuralSyncInterval",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
             "PruneStaleRuntimeQuoteRequests();",
             source,
             StringComparison.Ordinal);

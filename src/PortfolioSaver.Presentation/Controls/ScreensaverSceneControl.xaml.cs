@@ -43,6 +43,7 @@ public partial class ScreensaverSceneControl : UserControl
     // the legacy portfolio/off-hours refresh sliders.
     private static readonly TimeSpan RuntimeQuoteDispatchInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan RuntimeQuoteRequestTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan RuntimeTapeStructuralSyncInterval = TimeSpan.FromSeconds(5);
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly Dictionary<string, FloatingGraphControl> _graphControlsByKey = new(StringComparer.OrdinalIgnoreCase);
     private readonly ObservableCollection<MarketSpriteViewModel> _marketSprites = [];
@@ -118,6 +119,8 @@ public partial class ScreensaverSceneControl : UserControl
     private int _runtimeSymbolCursor;
     private int _runtimeQuoteFailureStreak;
     private DateTimeOffset _lastAllRuntimeQuotesInFlightTraceUtc = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastDisplayedTapeSampleTraceUtc = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastFullTapeSyncUtc = DateTimeOffset.MinValue;
     private CancellationTokenSource? _newsRefreshCancellation;
     private Task? _newsRefreshTask;
     private int _newsRefreshInFlight;
@@ -3555,6 +3558,7 @@ public partial class ScreensaverSceneControl : UserControl
 
     private void SyncTapes(IReadOnlyList<TapeViewModel> sourceTapes)
     {
+        _lastFullTapeSyncUtc = DateTimeOffset.UtcNow;
         bool structureChanged = _tapes.Count != sourceTapes.Count;
         if (!structureChanged)
         {
@@ -3680,8 +3684,9 @@ public partial class ScreensaverSceneControl : UserControl
     private static void UpdateTapeItem(TapeItemViewModel target, TapeItemViewModel source)
     {
         bool hadPriorSymbol = !string.IsNullOrWhiteSpace(target.SymbolText);
-        bool valueChanged = !string.Equals(target.LastText, source.LastText, StringComparison.Ordinal) ||
-                            !string.Equals(target.ChangeText, source.ChangeText, StringComparison.Ordinal);
+        // Flash only on raw displayed price changes. Percent-only churn is too noisy
+        // for the one-symbol runtime cadence and was a visible source of false motion.
+        bool valueChanged = !string.Equals(target.LastText, source.LastText, StringComparison.Ordinal);
 
         target.SymbolText = source.SymbolText;
         target.LastText = source.LastText;
@@ -3698,6 +3703,85 @@ public partial class ScreensaverSceneControl : UserControl
 
         if (hadPriorSymbol && valueChanged && !string.IsNullOrWhiteSpace(source.LastText))
             target.TriggerValueFlash(source.ChangeForeground);
+    }
+
+    private bool ApplyQuotesToDisplayedTapeItems(IEnumerable<QuoteSnapshot> quotes)
+    {
+        bool allConfiguredTapeSymbolsMatched = true;
+        foreach (QuoteSnapshot quote in quotes)
+        {
+            if (!ApplyQuoteToDisplayedTapeItems(quote))
+                allConfiguredTapeSymbolsMatched = false;
+        }
+
+        return allConfiguredTapeSymbolsMatched;
+    }
+
+    private bool ApplyQuoteToDisplayedTapeItems(QuoteSnapshot quote)
+    {
+        Debug.Assert(Dispatcher.CheckAccess(), "Displayed tape items must be mutated on the WPF dispatcher thread.");
+        if (string.IsNullOrWhiteSpace(quote.Symbol))
+            return true;
+
+        decimal? last = quote.Last ?? quote.PreviousClose;
+        decimal? percent = quote.ChangePercent;
+        bool hasUsableValue = last is not null;
+        if (!hasUsableValue)
+            return !IsConfiguredTapeSymbol(quote.Symbol);
+
+        string lastText = last is decimal lastValue
+            ? lastValue.ToString("0.00", CultureInfo.InvariantCulture)
+            : string.Empty;
+        string percentText = percent is decimal percentValue
+            ? $"{(percentValue >= 0 ? "+" : string.Empty)}{percentValue:0.00}%"
+            : string.Empty;
+        Brush changeBrush = percent switch
+        {
+            > 0 => Brushes.LimeGreen,
+            < 0 => Brushes.OrangeRed,
+            _ => Brushes.Gainsboro
+        };
+
+        bool matchedDisplayedItem = false;
+        foreach (TapeItemViewModel item in _tapes.SelectMany(tape => tape.Items))
+        {
+            if (!string.Equals(item.SymbolText, quote.Symbol, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            matchedDisplayedItem = true;
+            bool valueChanged = !string.Equals(item.LastText, lastText, StringComparison.Ordinal);
+            item.LastText = lastText;
+            item.ChangeText = percentText;
+            item.IsWaitingOnData = false;
+            item.HasMissingData = false;
+            item.WaitingGlyphText = string.Empty;
+            item.LastForeground = Brushes.WhiteSmoke;
+            item.ChangeForeground = changeBrush;
+            item.QuoteUpdateToken = quote.FetchTimestampUtc != default ? quote.FetchTimestampUtc.UtcTicks : 0;
+
+            if (valueChanged && hasUsableValue)
+                item.TriggerValueFlash(changeBrush);
+        }
+
+        return matchedDisplayedItem || !IsConfiguredTapeSymbol(quote.Symbol);
+    }
+
+    private bool IsConfiguredTapeSymbol(string symbol)
+    {
+        return _settings.Groups
+            .Where(group => group.Enabled)
+            .SelectMany(group => group.Tickers)
+            .Any(ticker => ticker.Enabled && string.Equals(ticker.Symbol, symbol, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void TraceDisplayedTapeSampleIfDue()
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        if (now - _lastDisplayedTapeSampleTraceUtc < TimeSpan.FromSeconds(15))
+            return;
+
+        _lastDisplayedTapeSampleTraceUtc = now;
+        TraceDisplayedTapeSample();
     }
 
     private void TraceDisplayedTapeSample()
@@ -3938,7 +4022,12 @@ public partial class ScreensaverSceneControl : UserControl
         _startupCoordinator.PrimeRuntimeQuotes(deltaQuotes);
         _runtimeQuoteFailureStreak = 0;
 
-        SyncTapes(_startupCoordinator.BuildTapesForQuotes(_settings, _latestQuotes));
+        bool tapeStructureStillMatched = ApplyQuotesToDisplayedTapeItems(deltaQuotes.Values);
+        // Config apply performs a full scene/tape sync immediately. During ordinary
+        // quote flow, keep the hot path surgical and run only a short structural
+        // hygiene sync to catch unexpected drift without rebuilding every tick.
+        if (!tapeStructureStillMatched || DateTimeOffset.UtcNow - _lastFullTapeSyncUtc > RuntimeTapeStructuralSyncInterval)
+            SyncTapes(_startupCoordinator.BuildTapesForQuotes(_settings, _latestQuotes));
         UpdateStatusFreshnessText();
         if (HasMeaningfulMacroDelta(previousQuotes, deltaQuotes))
             QueueMacroRefresh("quote-delta");
@@ -3949,7 +4038,7 @@ public partial class ScreensaverSceneControl : UserControl
         if (HasMeaningfulWorldMarketDelta(previousQuotes, deltaQuotes))
             QueueWorldMarketsRefresh(refreshAncillary: false, reason: "quote-delta");
 
-        TraceDisplayedTapeSample();
+        TraceDisplayedTapeSampleIfDue();
         TraceSceneState(
             "RuntimeQuoteApplied",
             new KeyValuePair<string, object?>("requested_symbol", symbol),
