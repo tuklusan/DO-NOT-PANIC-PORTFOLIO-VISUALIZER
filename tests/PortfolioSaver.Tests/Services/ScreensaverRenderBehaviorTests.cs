@@ -902,7 +902,22 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("_statusViewModel.UpdatedPrefixText = \"Last Updated:\";", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_statusViewModel.UpdatedTickerFieldText = StartupCoordinator.FormatUpdatedTickerField", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_statusViewModel.UpdatedTickerFieldForeground = StartupCoordinator.ResolveUpdatedTickerFieldBrush", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("_statusViewModel.DataFreshnessText = StartupCoordinator.ResolveDataFreshnessText", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RuntimeQuoteOfflineFailureThreshold = 10", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ResolveEffectiveDataFreshnessNetworkState", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("failure_counted", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("UpdateDataFreshnessStatus();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"data_freshness_text\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StartupCoordinator.TryGetLatestUpdatedSymbol(_latestQuotes, out string latestUpdatedSymbol, out DateTimeOffset latestUpdatedFetchUtc)", sceneCodeBehind, StringComparison.Ordinal);
+
+        string statusBarXaml = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Render",
+            "Controls",
+            "StatusBarControl.xaml"));
+        Assert.Contains("DataFreshnessText", statusBarXaml, StringComparison.Ordinal);
+        Assert.Contains("DataFreshnessForeground", statusBarXaml, StringComparison.Ordinal);
     }
 
     [Fact]

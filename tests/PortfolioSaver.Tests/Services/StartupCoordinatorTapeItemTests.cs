@@ -135,6 +135,33 @@ public sealed class StartupCoordinatorTapeItemTests
         Assert.Equal(string.Empty, item.WaitingGlyphText);
     }
 
+    [Fact]
+    public void ResolveDataFreshnessText_ReportsLiveOfflineAndStaleStates()
+    {
+        Dictionary<string, QuoteSnapshot> emptyQuotes = new(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, QuoteSnapshot> liveQuotes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["VOO"] = new QuoteSnapshot { Symbol = "VOO", Last = 688.11m, IsStale = false }
+        };
+        Dictionary<string, QuoteSnapshot> staleQuotes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["VOO"] = new QuoteSnapshot { Symbol = "VOO", Last = 688.11m, IsStale = true }
+        };
+
+        Assert.Equal("OFFLINE - waiting for data", StartupCoordinator.ResolveDataFreshnessText(false, emptyQuotes));
+        Assert.Equal("LOADING - waiting for data", StartupCoordinator.ResolveDataFreshnessText(true, emptyQuotes));
+        Assert.Equal("OFFLINE - showing last values", StartupCoordinator.ResolveDataFreshnessText(false, liveQuotes));
+        Assert.Equal("LIVE quote feed", StartupCoordinator.ResolveDataFreshnessText(true, liveQuotes));
+        Assert.Equal("STALE - cached values present", StartupCoordinator.ResolveDataFreshnessText(true, staleQuotes));
+        Assert.Equal(Brushes.Orange, StartupCoordinator.ResolveDataFreshnessBrush(false, liveQuotes));
+        Assert.Equal(Brushes.Gainsboro, StartupCoordinator.ResolveDataFreshnessBrush(true, emptyQuotes));
+        Assert.Equal(Brushes.LimeGreen, StartupCoordinator.ResolveDataFreshnessBrush(true, liveQuotes));
+        Assert.Equal(Brushes.Goldenrod, StartupCoordinator.ResolveDataFreshnessBrush(true, staleQuotes));
+        Assert.True(StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(true, consecutiveQuoteFailures: 9, offlineFailureThreshold: 10));
+        Assert.False(StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(true, consecutiveQuoteFailures: 10, offlineFailureThreshold: 10));
+        Assert.False(StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(false, consecutiveQuoteFailures: 0, offlineFailureThreshold: 10));
+    }
+
     private static TapeItemViewModel InvokeBuildTapeItem(string symbol, QuoteSnapshot? quote, string displayName, DateTimeOffset nowUtc)
     {
         MethodInfo? method = typeof(StartupCoordinator).GetMethod(

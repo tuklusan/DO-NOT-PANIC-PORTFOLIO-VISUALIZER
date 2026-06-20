@@ -47,6 +47,13 @@
                                TextWrapping="NoWrap"
                                TextTrimming="CharacterEllipsis" />
                 </StackPanel>
+                <TextBlock Text="{Binding DataFreshnessText}"
+                           Foreground="{Binding DataFreshnessForeground}"
+                           FontFamily="{StaticResource StableClockFont}"
+                           FontSize="10"
+                           Margin="0,2,0,0"
+                           TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis" />
             </StackPanel>
 
             <ItemsControl Grid.Column="1"

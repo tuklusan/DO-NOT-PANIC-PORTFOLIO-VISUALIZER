@@ -10,6 +10,8 @@ public sealed class StatusBarViewModel : BindableBase
     private string _updatedPrefixText = "Last Updated:";
     private string _updatedTickerFieldText = string.Empty;
     private Brush _updatedTickerFieldForeground = Brushes.Gainsboro;
+    private string _dataFreshnessText = "LOADING - initializing";
+    private Brush _dataFreshnessForeground = Brushes.Gainsboro;
     private string _clockDateText = DateTime.Now.ToString("ddd dd-MMM-yyyy").ToUpperInvariant();
     private string _clockText = DateTime.Now.ToLongTimeString();
     private ObservableCollection<MacroMeterViewModel> _macroMeters = [];
@@ -36,6 +38,18 @@ public sealed class StatusBarViewModel : BindableBase
     {
         get => _updatedTickerFieldForeground;
         set => SetProperty(ref _updatedTickerFieldForeground, value);
+    }
+
+    public string DataFreshnessText
+    {
+        get => _dataFreshnessText;
+        set => SetProperty(ref _dataFreshnessText, value);
+    }
+
+    public Brush DataFreshnessForeground
+    {
+        get => _dataFreshnessForeground;
+        set => SetProperty(ref _dataFreshnessForeground, value);
     }
 
     public string ClockText

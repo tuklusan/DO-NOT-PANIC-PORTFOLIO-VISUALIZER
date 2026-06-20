@@ -106,6 +106,8 @@ public sealed class StartupCoordinator
                     hasBootstrapUpdatedSymbol && cachedQuotes.TryGetValue(latestBootstrapSymbol, out bootstrapQuote)
                         ? bootstrapQuote.ChangePercent
                         : null),
+                DataFreshnessText = ResolveDataFreshnessText(networkAvailable, cachedQuotes),
+                DataFreshnessForeground = ResolveDataFreshnessBrush(networkAvailable, cachedQuotes),
                 ClockDateText = DateTimeOffset.UtcNow.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
                 ClockText = $"{DateTimeOffset.UtcNow:HH:mm} UTC"
             },
@@ -1190,6 +1192,8 @@ public sealed class StartupCoordinator
             UpdatedPrefixText = "Last Updated:",
             UpdatedTickerFieldText = FormatUpdatedTickerField(hasLatestUpdatedSymbol ? latestUpdatedSymbol : null, hasLatestUpdatedSymbol ? quotes.GetValueOrDefault(latestUpdatedSymbol)?.ChangePercent : null, lastUpdate),
             UpdatedTickerFieldForeground = ResolveUpdatedTickerFieldBrush(hasLatestUpdatedSymbol ? quotes.GetValueOrDefault(latestUpdatedSymbol)?.ChangePercent : null),
+            DataFreshnessText = ResolveDataFreshnessText(networkAvailable, quotes),
+            DataFreshnessForeground = ResolveDataFreshnessBrush(networkAvailable, quotes),
             ClockDateText = nowUtc.ToString("ddd dd-MMM", CultureInfo.InvariantCulture).ToUpperInvariant(),
             ClockText = $"{nowUtc:HH:mm} UTC"
         };
@@ -1245,6 +1249,38 @@ public sealed class StartupCoordinator
             < 0m => Brushes.OrangeRed,
             _ => Brushes.Gainsboro
         };
+
+    public static string ResolveDataFreshnessText(bool networkAvailable, IReadOnlyDictionary<string, QuoteSnapshot> quotes)
+    {
+        if (!networkAvailable)
+            return quotes.Count == 0 ? "OFFLINE - waiting for data" : "OFFLINE - showing last values";
+
+        if (quotes.Count == 0)
+            return "LOADING - waiting for data";
+
+        return quotes.Values.Any(quote => quote.IsStale)
+            ? "STALE - cached values present"
+            : "LIVE quote feed";
+    }
+
+    public static Brush ResolveDataFreshnessBrush(bool networkAvailable, IReadOnlyDictionary<string, QuoteSnapshot> quotes)
+    {
+        if (!networkAvailable)
+            return Brushes.Orange;
+
+        if (quotes.Count == 0)
+            return Brushes.Gainsboro;
+
+        return quotes.Values.Any(quote => quote.IsStale)
+            ? Brushes.Goldenrod
+            : Brushes.LimeGreen;
+    }
+
+    public static bool ResolveEffectiveDataFreshnessNetworkState(
+        bool networkAvailable,
+        int consecutiveQuoteFailures,
+        int offlineFailureThreshold)
+        => networkAvailable && consecutiveQuoteFailures < Math.Max(1, offlineFailureThreshold);
 }
 
 internal sealed record PendingQuoteRequest(

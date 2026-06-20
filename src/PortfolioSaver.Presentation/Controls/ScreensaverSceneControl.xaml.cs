@@ -29,6 +29,7 @@ namespace PortfolioSaver.Screensaver.Controls;
 
 public partial class ScreensaverSceneControl : UserControl
 {
+    private const int RuntimeQuoteOfflineFailureThreshold = 10;
     private static readonly bool EnableMarketCritters = false;
     private const string PinnedNycExchangeKey = "NewYorkNasdaq";
     private const int MaxVisibleGraphCards = 16;
@@ -109,6 +110,7 @@ public partial class ScreensaverSceneControl : UserControl
     private readonly Dictionary<string, Task<IReadOnlyList<QuoteSnapshot>>> _inFlightQuoteRequests = new(StringComparer.OrdinalIgnoreCase);
     private List<string> _orderedRuntimeSymbols = [];
     private int _runtimeSymbolCursor;
+    private int _runtimeQuoteFailureStreak;
     private CancellationTokenSource? _newsRefreshCancellation;
     private Task? _newsRefreshTask;
     private int _newsRefreshInFlight;
@@ -191,6 +193,7 @@ public partial class ScreensaverSceneControl : UserControl
         {
             TraceScene("OnLoaded starting.");
             _initialized = true;
+            _runtimeQuoteFailureStreak = 0;
             _activeBackgroundImage = BackgroundImageA;
             _inactiveBackgroundImage = BackgroundImageB;
             ApplySceneState(_startupCoordinator.BuildBootstrapScene(), preserveLayout: false);
@@ -550,6 +553,7 @@ public partial class ScreensaverSceneControl : UserControl
             new KeyValuePair<string, object?>("graph_count", _graphs.Count),
             new KeyValuePair<string, object?>("tape_count", _tapes.Count),
             new KeyValuePair<string, object?>("updated_ticker_field", _statusViewModel?.UpdatedTickerFieldText),
+            new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel?.DataFreshnessText),
             new KeyValuePair<string, object?>("waiting_overlay_visible", NetworkWaitingHost.Visibility == Visibility.Visible),
             new KeyValuePair<string, object?>("clock_visible", _clockViewModel is not null));
     }
@@ -3818,12 +3822,27 @@ public partial class ScreensaverSceneControl : UserControl
                 : null;
             _statusViewModel.UpdatedTickerFieldText = StartupCoordinator.FormatUpdatedTickerField(latestUpdatedSymbol, changePercent, latestUpdatedFetchUtc);
             _statusViewModel.UpdatedTickerFieldForeground = StartupCoordinator.ResolveUpdatedTickerFieldBrush(changePercent);
+            UpdateDataFreshnessStatus();
             return;
         }
 
         _statusViewModel.UpdatedPrefixText = "Last Updated:";
         _statusViewModel.UpdatedTickerFieldText = StartupCoordinator.FormatUpdatedTickerField(null, null, DateTimeOffset.MinValue);
         _statusViewModel.UpdatedTickerFieldForeground = Brushes.Gainsboro;
+        UpdateDataFreshnessStatus();
+    }
+
+    private void UpdateDataFreshnessStatus()
+    {
+        if (_statusViewModel is null)
+            return;
+
+        bool networkAvailable = StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(
+            _networkAvailabilityService.IsNetworkAvailable(),
+            _runtimeQuoteFailureStreak,
+            RuntimeQuoteOfflineFailureThreshold);
+        _statusViewModel.DataFreshnessText = StartupCoordinator.ResolveDataFreshnessText(networkAvailable, _latestQuotes);
+        _statusViewModel.DataFreshnessForeground = StartupCoordinator.ResolveDataFreshnessBrush(networkAvailable, _latestQuotes);
     }
 
     private void ApplyCompletedRuntimeQuote(string symbol, Task<IReadOnlyList<QuoteSnapshot>> task)
@@ -3839,16 +3858,29 @@ public partial class ScreensaverSceneControl : UserControl
         }
         catch (Exception ex)
         {
+            bool failureCounted = !_isValidationPaused && ex is not OperationCanceledException;
+            if (failureCounted)
+            {
+                _runtimeQuoteFailureStreak++;
+                UpdateStatusFreshnessText();
+            }
             TraceSceneState(
                 "RuntimeQuoteRequestFailed",
                 new KeyValuePair<string, object?>("symbol", symbol),
                 new KeyValuePair<string, object?>("message", ex.Message),
+                new KeyValuePair<string, object?>("failure_counted", failureCounted),
+                new KeyValuePair<string, object?>("failure_streak", _runtimeQuoteFailureStreak),
+                new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel?.DataFreshnessText),
                 new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
             return;
         }
 
         if (quotes.Count == 0)
+        {
+            _runtimeQuoteFailureStreak = 0;
+            UpdateStatusFreshnessText();
             return;
+        }
 
         Dictionary<string, QuoteSnapshot> deltaQuotes = new(StringComparer.OrdinalIgnoreCase);
         foreach (QuoteSnapshot quote in quotes)
@@ -3857,6 +3889,7 @@ public partial class ScreensaverSceneControl : UserControl
         IReadOnlyDictionary<string, QuoteSnapshot> previousQuotes = _latestQuotes;
         _latestQuotes = MergeQuotes(_latestQuotes, deltaQuotes);
         _startupCoordinator.PrimeRuntimeQuotes(deltaQuotes);
+        _runtimeQuoteFailureStreak = 0;
 
         SyncTapes(_startupCoordinator.BuildTapesForQuotes(_settings, _latestQuotes));
         UpdateStatusFreshnessText();
@@ -3892,6 +3925,7 @@ public partial class ScreensaverSceneControl : UserControl
             _statusViewModel.UpdatedTickerFieldForeground = source.UpdatedTickerFieldForeground;
             _statusViewModel.ClockDateText = source.ClockDateText;
             _statusViewModel.ClockText = source.ClockText;
+            UpdateDataFreshnessStatus();
         }
         EnsureMacroMetersInitialized();
         if (forceMacroRefresh)
