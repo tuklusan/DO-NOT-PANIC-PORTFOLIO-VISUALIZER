@@ -3409,7 +3409,8 @@ try {
 
             $path = Join-Path $results ("desktop-{0:D3}.png" -f $i)
             Capture-Screen -Path $path
-            Write-RuntimeFreshnessSnapshot -CaptureIndex $i -Phase 'capture' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop
+            $includeVisibleFreshnessForCapture = $FaultProfile -eq 'offline-then-recover-runtime' -and $recoveryApplied
+            Write-RuntimeFreshnessSnapshot -CaptureIndex $i -Phase 'capture' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop -IncludeVisibleFreshness:$includeVisibleFreshnessForCapture
             if ($isLongRunSoak) {
                 $summary.ScreensaverShots++
             }

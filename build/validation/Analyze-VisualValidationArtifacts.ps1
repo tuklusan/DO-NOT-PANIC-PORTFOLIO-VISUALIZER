@@ -198,10 +198,23 @@ foreach ($run in $runs) {
             $recoveredFreshnessHits = @()
             # Recovery proof is intentionally source-local: an OFFLINE marker and
             # later LIVE marker must be ordered within the same evidence file.
+            # Harness freshness snapshots also carry the effective fault profile;
+            # for those, order recovery against the last OFFLINE snapshot captured
+            # while the fault was active. Later trace-only stale OFFLINE tail reads
+            # after the fault clears should not erase a UI-visible LIVE recovery.
             if ($freshnessScopedOfflineHits.Count -gt 0 -and (Test-Path -LiteralPath $freshnessTrace)) {
-                $lastFreshnessOfflineLine = @($freshnessScopedOfflineHits | Sort-Object LineNumber | Select-Object -Last 1)[0].LineNumber
+                $freshnessOfflineRecoveryBasisHits = @($freshnessScopedOfflineHits | Where-Object { $_.Line -match 'effective_fault_profile=offline' })
+                if ($freshnessOfflineRecoveryBasisHits.Count -eq 0) {
+                    $freshnessOfflineRecoveryBasisHits = $freshnessScopedOfflineHits
+                }
+                $lastFreshnessOfflineLine = @($freshnessOfflineRecoveryBasisHits | Sort-Object LineNumber | Select-Object -Last 1)[0].LineNumber
                 $recoveredFreshnessHits += @(Select-String -LiteralPath $freshnessTrace -Pattern 'latest_freshness=LIVE quote feed' -ErrorAction SilentlyContinue |
-                    Where-Object { $null -ne $_ -and $_.LineNumber -gt $lastFreshnessOfflineLine })
+                    Where-Object {
+                        $null -ne $_ -and
+                        $_.LineNumber -gt $lastFreshnessOfflineLine -and
+                        $_.Line -match 'effective_fault_profile=none' -and
+                        ($_.Line -match 'latest_freshness_source=ui|latest_freshness_source=ui-trace-stale|ui_freshness=LIVE quote feed')
+                    })
             }
             if ($combinedScopedOfflineHits.Count -gt 0 -and (Test-Path -LiteralPath $combinedTrace)) {
                 $lastCombinedOfflineLine = @($combinedScopedOfflineHits | Sort-Object LineNumber | Select-Object -Last 1)[0].LineNumber

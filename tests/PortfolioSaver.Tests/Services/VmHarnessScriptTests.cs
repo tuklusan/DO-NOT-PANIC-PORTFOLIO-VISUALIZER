@@ -524,6 +524,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("-IncludeVisibleFreshness", script, StringComparison.Ordinal);
         Assert.Contains("desktop-after-recovery-clear-{0:D3}.png", script, StringComparison.Ordinal);
         Assert.Contains("Write-ReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $i", script, StringComparison.Ordinal);
+        Assert.Contains("$includeVisibleFreshnessForCapture = $FaultProfile -eq 'offline-then-recover-runtime' -and $recoveryApplied", script, StringComparison.Ordinal);
+        Assert.Contains("-IncludeVisibleFreshness:$includeVisibleFreshnessForCapture", script, StringComparison.Ordinal);
         Assert.Contains("runtime-freshness-events.log", script, StringComparison.Ordinal);
         Assert.Contains("latest_freshness=", script, StringComparison.Ordinal);
         Assert.Contains("Runtime freshness snapshot failed", script, StringComparison.Ordinal);
