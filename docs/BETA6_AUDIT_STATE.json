@@ -98,6 +98,25 @@
         "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-18 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260518-075758 after the NB-026 review, cleanup, dry-run, and smoke-test pass.",
         "A fresh 20-minute direct-agent UX validation completed successfully on 2026-05-19 in build/vm/artifacts/ssh-runs/ux-deep-ssh-20260519-130940 after replacing the brittle ping-based config connectivity gate, pausing the desktop scene during the config session, and trusting recent local quote/profile evidence so Validate no longer falls into a Yahoo Finance 429 loop."
       ]
+    },
+    "last_autonomous_validation": {
+      "date": "2026-06-20",
+      "commits": [
+        "c240296",
+        "07e25aa",
+        "bb94efe",
+        "4b64942"
+      ],
+      "local_tests": [
+        "dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~StartupCoordinatorTapeItemTests|FullyQualifiedName~ScreensaverRenderBehaviorTests: 74/74 passing",
+        "dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~VmHarnessScriptTests: 19/19 passing",
+        "build/validation/Test-ValidationScripts.ps1: passed"
+      ],
+      "vm_run": "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405",
+      "fault_profile": "offline-during-runtime",
+      "artifact_analysis": "build/validation/artifacts/visual-validation-analysis-20260620-095412.json",
+      "deepseek_artifact_review": "build/validation/artifacts/deepseek-artifact-review-20260620-095412.md",
+      "result": "clean; offline freshness proof present; screenshots manually spot-checked for visible OFFLINE state and no blank background"
     }
   },
   "post_remote_recovery_replay": {
@@ -3733,7 +3752,7 @@
       "priority": 1,
       "area": "ux_degradation_feedback",
       "title": "Define user-facing status indicators and error messaging for degraded modes",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_ux_anomaly_review_2026_06_13",
       "severity": "High",
       "evidence": [
@@ -3743,7 +3762,12 @@
       "notes": [
         "Define healthy, degraded/fallback, stale, offline, unavailable, and recovery states for top-left market status, ticker tapes, graph cards, macro cards, world markets, news scroller, background, and config window.",
         "Messages must be actionable and must not expose implementation details such as HTTP codes, checksum failures, JSON errors, server ports, or crumb/cookie internals.",
-        "All status text must fit without clipping or layout churn."
+        "All status text must fit without clipping or layout churn.",
+        "DeepSeek code review gate cleared the runtime freshness implementation in build/deepseek-review/deepseek-review-20260620-090210.md.",
+        "Focused local tests passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~StartupCoordinatorTapeItemTests|FullyQualifiedName~ScreensaverRenderBehaviorTests (74/74).",
+        "Validation smoke passed: build/validation/Test-ValidationScripts.ps1.",
+        "VM degraded runtime run passed: build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405 with FaultProfile=offline-during-runtime.",
+        "Artifact analysis passed with DeepSeek second opinion: visual-validation-analysis-20260620-095412.json and deepseek-artifact-review-20260620-095412.md."
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the anomalous/degraded condition.",
@@ -3757,7 +3781,9 @@
         "A reference table documents the expected display for every major visible component in healthy/degraded/offline states.",
         "Injected degradation updates the visible state within 2 seconds where practical.",
         "Stale data is never styled identically to fresh/live data."
-      ]
+      ],
+      "closed_date": "2026-06-20",
+      "resolution": "Closed on 2026-06-20 after implementing the status-band DataFreshnessText/DataFreshnessForeground indicator and proving offline degraded runtime behavior in VM run build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405. Evidence: desktop-008.png, desktop-060.png, and desktop-fullscreen-entry.png show OFFLINE - showing last values; combined-trace-tail.txt contains data_freshness_text=LOADING, LIVE quote feed, and OFFLINE - showing last values; visual-validation-analysis-20260620-095412.json reports clean=true/findings=0 with the new offline freshness proof check; deepseek-artifact-review-20260620-095412.md recommends pass with only nonblocking residual harness/coverage observations."
     },
     {
       "id": "CR-087",
@@ -3807,7 +3833,13 @@
       "notes": [
         "Cover live to stale, stale to unavailable, unavailable to recovered, slow-updating, and cached-at-start transitions.",
         "User-facing timestamps should be accurate and update only when fresh data arrives.",
-        "Graph cards must not flash when cached data is re-rendered with unchanged raw price."
+        "Graph cards must not flash when cached data is re-rendered with unchanged raw price.",
+        "DeepSeek code review gate cleared the runtime freshness implementation in build/deepseek-review/deepseek-review-20260620-090210.md.",
+        "Focused local tests passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~StartupCoordinatorTapeItemTests|FullyQualifiedName~ScreensaverRenderBehaviorTests (74/74).",
+        "Validation smoke passed: build/validation/Test-ValidationScripts.ps1.",
+        "VM degraded runtime run passed: build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405 with FaultProfile=offline-during-runtime.",
+        "Artifact analysis passed with DeepSeek second opinion: visual-validation-analysis-20260620-095412.json and deepseek-artifact-review-20260620-095412.md.",
+        "Partial evidence on 2026-06-20: VM run build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405 proved live-to-offline freshness communication with visible OFFLINE - showing last values and clean artifact analysis; offline-to-recovered transition remains to be proven before closure."
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the anomalous/degraded condition.",
@@ -5219,4 +5251,3 @@
     }
   ]
 }
-
