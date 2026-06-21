@@ -346,18 +346,36 @@ public sealed class MainWindowViewModel : BindableBase
             if (symbolValidation.WasRateLimited || symbolValidation.DeferredSymbols.Count > 0)
             {
                 string deferredList = string.Join(", ", symbolValidation.DeferredSymbols.Take(8));
-                StatusMessage = "YFinance.NET throttled ticker validation. Nothing was disabled; try Validate again shortly.";
-                AppendValidationLog("TICKER VALIDATION DEFERRED BY YAHOO RATE LIMITING");
+                bool wasRateLimited = symbolValidation.WasRateLimited;
+                string statusMessage = wasRateLimited
+                    ? "YFinance.NET throttled ticker validation. Nothing was disabled; try Validate again shortly."
+                    : "YFinance.NET validation is unavailable. Nothing was disabled; check connection and try Validate again.";
+                string logMessage = wasRateLimited
+                    ? "TICKER VALIDATION DEFERRED BY YAHOO RATE LIMITING"
+                    : "TICKER VALIDATION DEFERRED: YFINANCE.NET UNAVAILABLE";
+                string dialogTitle = wasRateLimited
+                    ? "Ticker Validation Rate Limited"
+                    : "Ticker Validation Unavailable";
+                string dialogLead = wasRateLimited
+                    ? "YFinance.NET temporarily throttled ticker validation."
+                    : "YFinance.NET could not validate tickers right now.";
+                string retryInstruction = wasRateLimited
+                    ? "Wait a little and click Validate again."
+                    : "Check the connection and click Validate again.";
+                StatusMessage = statusMessage;
+                AppendValidationLog(logMessage);
                 TraceValidation("TickerValidationDeferred",
                     ("rate_limited", symbolValidation.WasRateLimited),
                     ("deferred_count", symbolValidation.DeferredSymbols.Count),
                     ("invalid_count", symbolValidation.InvalidSymbols.Count));
+                EndValidationRun();
+                completedValidatedState = true;
                 WpfMessageBox.Show(
-                    "YFinance.NET temporarily throttled ticker validation." + Environment.NewLine + Environment.NewLine +
+                    dialogLead + Environment.NewLine + Environment.NewLine +
                     "No ticker entries were disabled during this pass." + Environment.NewLine +
-                    "Wait a little and click Validate again." +
+                    retryInstruction +
                     (string.IsNullOrWhiteSpace(deferredList) ? string.Empty : Environment.NewLine + Environment.NewLine + "Deferred symbols: " + deferredList),
-                    "Ticker Validation Rate Limited",
+                    dialogTitle,
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -370,6 +388,8 @@ public sealed class MainWindowViewModel : BindableBase
                 TraceValidation("TickerValidationInvalid",
                     ("invalid_count", symbolValidation.InvalidSymbols.Count),
                     ("disabled_count", disabledCount));
+                EndValidationRun();
+                completedValidatedState = true;
                 WpfMessageBox.Show(
                     "These symbols are invalid on YFinance.NET:" + Environment.NewLine + Environment.NewLine +
                     string.Join(Environment.NewLine, symbolValidation.InvalidSymbols.Select(symbol => $"- {symbol}")) +
