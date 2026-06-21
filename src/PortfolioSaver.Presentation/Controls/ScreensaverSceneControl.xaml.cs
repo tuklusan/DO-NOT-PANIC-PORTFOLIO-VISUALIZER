@@ -2872,6 +2872,11 @@ public partial class ScreensaverSceneControl : UserControl
             targetGraph.NominalVelocityX = sourceGraph.NominalVelocityX;
             targetGraph.NominalVelocityY = sourceGraph.NominalVelocityY;
             targetGraph.RefreshTravelTargetY = sourceGraph.RefreshTravelTargetY;
+            targetGraph.RawLastValue = sourceGraph.RawLastValue;
+            targetGraph.QuoteUpdateToken = sourceGraph.QuoteUpdateToken;
+            targetGraph.FlashBrush = sourceGraph.FlashBrush;
+            targetGraph.IsRefreshTravelFlashActive = sourceGraph.IsRefreshTravelFlashActive;
+            targetGraph.RefreshTravelFlashStartedUtc = sourceGraph.RefreshTravelFlashStartedUtc;
         }
     }
 

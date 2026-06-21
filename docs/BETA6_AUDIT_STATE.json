@@ -4952,6 +4952,37 @@
         "Ticket is marked resolved/closed with the fixing commit and evidence."
       ],
       "resolution": "Closed on 2026-06-20 by commit 6157ee2. Deterministic visual analysis now fails low-yield VM capture loops via the capture-loop-starved finding, preventing sparse/invalid proof artifacts from being reported as clean. Local validation-script smoke tests passed, and re-analysis of ux-deep-ssh-20260620-220032 correctly changed from clean to one High finding."
+    },
+    {
+      "id": "CR-121",
+      "tracking_number": "CR-121",
+      "priority": 1,
+      "area": "graph_cards",
+      "title": "Graph cards continuously flash after refresh/travel cue regression",
+      "status": "open",
+      "source": "user_vm_observation_2026_06_20",
+      "severity": "High",
+      "evidence": [
+        "User observed that almost all graph cards are floating around continuously flashing, instead of flashing only during the high-speed edge-travel cue after a fresh raw-price movement.",
+        "Prior behavior was established by NB-010, NB-064, and CR-115: flash only on actual raw price change; travel quickly to top for gain or bottom for loss; stop flashing at boundary or bounded timeout; then resume normal bounce speed.",
+        "Current code still gates ApplyQuoteToGraph on graph.RawLastValue != last, but ApplyOrUpdateGraph replaces graph view-models during warm graph sync and CopyMotion only preserves X/Y/velocity/nominal velocity/RefreshTravelTargetY, not RawLastValue, IsRefreshTravelFlashActive, or RefreshTravelFlashStartedUtc.",
+        "Likely regression vector: rebuilt graph models lose the raw-price baseline and can be treated as fresh raw-price changes when current quotes are re-applied, retriggering sustained flash/travel across many cards.",
+        "FloatingGraphControl BeginSustainedCardFlash repeats forever until IsRefreshTravelFlashActive becomes false, so any missed/extended reset appears as continuous flashing."
+      ],
+      "notes": [
+        "Investigate trace frequency of GraphCardFlash by symbol against quote raw_last values and graph rebuild events.",
+        "Fix should preserve raw-price baseline and flash/travel state across graph view-model replacement, or avoid replacing graph models when only historical graph points refresh.",
+        "Acceptance must prove unchanged raw price does not flash even across graph sync/rebuild; active travel flash clears at edge or timeout; normal bounce resumes.",
+        "Direction convention currently implemented and tested is positive percent -> top edge/lime green, negative percent -> bottom edge/orange-red. If product wants negative to top/green too, clarify separately; this CR preserves the established visual semantics unless superseded."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

@@ -464,6 +464,47 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void ApplyQuoteToGraph_FirstLiveValueTriggersInitialCardFlash()
+    {
+        RunOnSta(() =>
+        {
+            ScreensaverSceneControl control = new();
+            FloatingGraphViewModel graph = new()
+            {
+                Symbol = "AAPL",
+                IsVisible = true
+            };
+
+            Dictionary<string, QuoteSnapshot> quotes = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["AAPL"] = new QuoteSnapshot
+                {
+                    Symbol = "AAPL",
+                    Last = 190m,
+                    ChangePercent = 1.25m,
+                    FetchTimestampUtc = DateTimeOffset.UtcNow,
+                    IsStale = false
+                }
+            };
+
+            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+                "_latestQuotes",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_latestQuotes field not found.");
+            latestQuotesField.SetValue(control, quotes);
+
+            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+                "ApplyQuoteToGraph",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
+            applyQuoteMethod.Invoke(control, [graph]);
+
+            Assert.Equal(1, graph.FlashSequence);
+            Assert.Equal(190m, graph.RawLastValue);
+        });
+    }
+
+    [Fact]
     public void ApplyQuoteToGraph_AlignsLatestSegmentBrushWithLatestQuoteDirection()
     {
         RunOnSta(() =>
@@ -636,6 +677,88 @@ public sealed class ScreensaverRenderBehaviorTests
             Assert.True(graph.IsRefreshTravelFlashActive);
             Assert.Equal(120, graph.Y);
             Assert.Equal(9d, graph.VelocityY);
+        });
+    }
+
+    [Fact]
+    public void CopyMotion_PreservesGraphQuoteAndFlashStateAcrossModelReplacement()
+    {
+        DateTimeOffset started = DateTimeOffset.UtcNow.AddSeconds(-3);
+        FloatingGraphViewModel source = new()
+        {
+            X = 123,
+            Y = 234,
+            VelocityX = 4,
+            VelocityY = -8,
+            NominalVelocityX = 2,
+            NominalVelocityY = -5,
+            RefreshTravelTargetY = 17,
+            RawLastValue = 456.78m,
+            QuoteUpdateToken = 99,
+            FlashBrush = Brushes.LimeGreen,
+            IsRefreshTravelFlashActive = true,
+            RefreshTravelFlashStartedUtc = started
+        };
+        FloatingGraphViewModel target = new();
+
+        MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+            "CopyMotion",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("CopyMotion method not found.");
+        method.Invoke(null, [source, target]);
+
+        Assert.Equal(source.X, target.X);
+        Assert.Equal(source.Y, target.Y);
+        Assert.Equal(source.VelocityX, target.VelocityX);
+        Assert.Equal(source.VelocityY, target.VelocityY);
+        Assert.Equal(source.NominalVelocityX, target.NominalVelocityX);
+        Assert.Equal(source.NominalVelocityY, target.NominalVelocityY);
+        Assert.Equal(source.RefreshTravelTargetY, target.RefreshTravelTargetY);
+        Assert.Equal(source.RawLastValue, target.RawLastValue);
+        Assert.Equal(source.QuoteUpdateToken, target.QuoteUpdateToken);
+        Assert.Same(source.FlashBrush, target.FlashBrush);
+        Assert.Equal(source.IsRefreshTravelFlashActive, target.IsRefreshTravelFlashActive);
+        Assert.Equal(source.RefreshTravelFlashStartedUtc, target.RefreshTravelFlashStartedUtc);
+    }
+
+    [Fact]
+    public void FloatingGraphControl_DataContextChangeReconcilesSustainedFlashState()
+    {
+        RunOnSta(() =>
+        {
+            FloatingGraphControl control = new();
+            control.ApplyTemplate();
+            control.Measure(new Size(180, 120));
+            control.Arrange(new Rect(0, 0, 180, 120));
+            control.UpdateLayout();
+
+            FloatingGraphViewModel activeGraph = new()
+            {
+                Width = 140,
+                Height = 84,
+                IsVisible = true,
+                FlashBrush = Brushes.LimeGreen,
+                IsRefreshTravelFlashActive = true
+            };
+            FloatingGraphViewModel inactiveGraph = new()
+            {
+                Width = 140,
+                Height = 84,
+                IsVisible = true,
+                FlashBrush = Brushes.OrangeRed,
+                IsRefreshTravelFlashActive = false
+            };
+
+            control.DataContext = activeGraph;
+            Border rootBorder = Assert.IsType<Border>(control.FindName("RootBorder"));
+            SolidColorBrush activeBrush = Assert.IsType<SolidColorBrush>(rootBorder.Background);
+            Assert.True(activeBrush.HasAnimatedProperties);
+
+            control.DataContext = inactiveGraph;
+
+            SolidColorBrush inactiveBrush = Assert.IsType<SolidColorBrush>(rootBorder.Background);
+            Assert.False(inactiveBrush.HasAnimatedProperties);
+            Assert.Equal(Color.FromArgb(0x7A, 0x0D, 0x13, 0x1B), inactiveBrush.Color);
         });
     }
 

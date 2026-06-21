@@ -28,6 +28,11 @@ public partial class FloatingGraphControl : UserControl
             _graph = e.NewValue as FloatingGraphViewModel;
             if (_graph is not null)
                 _graph.PropertyChanged += OnGraphPropertyChanged;
+
+            if (_graph?.IsRefreshTravelFlashActive == true)
+                BeginSustainedCardFlash(_graph.FlashBrush);
+            else
+                EndSustainedCardFlash();
         }
     }
 
@@ -55,6 +60,9 @@ public partial class FloatingGraphControl : UserControl
 
     private void BeginCardFlash(Brush flashBrush)
     {
+        if (RootBorder is null)
+            return;
+
         Color flashColor = flashBrush is SolidColorBrush solid
             ? Color.FromArgb(236, solid.Color.R, solid.Color.G, solid.Color.B)
             : Color.FromArgb(236, 255, 196, 64);
@@ -75,6 +83,9 @@ public partial class FloatingGraphControl : UserControl
 
     private void BeginSustainedCardFlash(Brush flashBrush)
     {
+        if (RootBorder is null)
+            return;
+
         Color flashColor = flashBrush is SolidColorBrush solid
             ? Color.FromArgb(236, solid.Color.R, solid.Color.G, solid.Color.B)
             : Color.FromArgb(236, 255, 196, 64);
@@ -97,6 +108,9 @@ public partial class FloatingGraphControl : UserControl
 
     private void EndSustainedCardFlash()
     {
+        if (RootBorder is null)
+            return;
+
         SolidColorBrush baseBrush = RootBorder.Background as SolidColorBrush ?? new SolidColorBrush(BaseCardColor);
         RootBorder.Background = baseBrush;
         baseBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
