@@ -5094,7 +5094,7 @@
       "priority": 1,
       "area": "graph_cards_runtime_motion",
       "title": "Graph cards flash continuously instead of only on raw price changes",
-      "status": "open",
+      "status": "closed",
       "source": "user_observed_regression",
       "severity": "high",
       "evidence": [
@@ -5104,7 +5104,12 @@
       ],
       "notes": [
         "Add to autonomous CR queue ahead of broad degraded-mode validation because it is a visible runtime regression.",
-        "Acceptance requires code inspection plus local/VM visual or trace evidence that flash events are emitted only when raw price changes."
+        "Acceptance requires code inspection plus local/VM visual or trace evidence that flash events are emitted only when raw price changes.",
+        "Resolved by commit b94c310: ApplyQuoteToGraph now updates raw price/text while skipping GraphCardFlash and refresh-motion retargeting when IsRefreshTravelFlashActive is already true.",
+        "Focused local Release render test passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~ScreensaverRenderBehaviorTests => 71/71.",
+        "DeepSeek code review build/deepseek-review/deepseek-review-20260621-095657.md reported no actionable findings.",
+        "VM run ux-deep-ssh-20260621-095745 with FaultProfile=none passed remote build/test 479/479 and deterministic analyzer build/validation/artifacts/visual-validation-ux-deep-ssh-20260621-095745.json reported ANALYSIS_CLEAN=True, ANALYSIS_FINDINGS=0.",
+        "Graph flash trace evidence in ux-deep-ssh-20260621-095745 showed each retained graph-card symbol flashed at most once; VOO and QUAL each had exactly one GraphCardFlash and no repeated continuing flash storm in retained evidence."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
