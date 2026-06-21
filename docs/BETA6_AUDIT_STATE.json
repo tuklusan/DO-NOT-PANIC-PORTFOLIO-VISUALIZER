@@ -5067,7 +5067,7 @@
       "priority": 2,
       "area": "vm_harness_observability",
       "title": "Harness freshness probe reports unavailable despite visible LIVE quote feed",
-      "status": "open",
+      "status": "closed",
       "source": "autonomous_visual_validation",
       "severity": "Medium",
       "evidence": [
@@ -5077,7 +5077,13 @@
       ],
       "notes": [
         "Improve runtime freshness capture to read the status text reliably, e.g. by adding/using explicit automation properties for the freshness TextBlock or a more robust UIA search path.",
-        "After implementation, rerun an offline-during-config-validation VM pass and require ui_freshness to match LIVE quote feed after the fault clears."
+        "After implementation, rerun an offline-during-config-validation VM pass and require ui_freshness to match LIVE quote feed after the fault clears.",
+        "Resolved by commit b7bb69b: Guest-UxDeepExercise now probes visible runtime freshness on every desktop capture frame rather than only selected fault profiles.",
+        "Focused local validation passed: VmHarnessScriptTests 20/20 and build/validation/Test-ValidationScripts.ps1 smoke passed.",
+        "DeepSeek code review build/deepseek-review/deepseek-review-20260621-104247.md reported no actionable findings after the brittle comment assertion was removed.",
+        "VM run ux-deep-ssh-20260621-104345 passed remote build/test 479/479 and deterministic analyzer build/validation/artifacts/visual-validation-ux-deep-ssh-20260621-104345.json reported ANALYSIS_CLEAN=True and ANALYSIS_FINDINGS=0.",
+        "Runtime freshness evidence in ux-deep-ssh-20260621-104345 showed ui_freshness=LIVE quote feed for all 41 captured freshness frames, eliminating the previous harness-observability false unavailable state.",
+        "Follow-up quote-currency semantics from the same artifact review are tracked separately as CR-126."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -5110,6 +5116,59 @@
         "DeepSeek code review build/deepseek-review/deepseek-review-20260621-095657.md reported no actionable findings.",
         "VM run ux-deep-ssh-20260621-095745 with FaultProfile=none passed remote build/test 479/479 and deterministic analyzer build/validation/artifacts/visual-validation-ux-deep-ssh-20260621-095745.json reported ANALYSIS_CLEAN=True, ANALYSIS_FINDINGS=0.",
         "Graph flash trace evidence in ux-deep-ssh-20260621-095745 showed each retained graph-card symbol flashed at most once; VOO and QUAL each had exactly one GraphCardFlash and no repeated continuing flash storm in retained evidence."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-126",
+      "tracking_number": "CR-126",
+      "priority": 1,
+      "area": "runtime_quote_freshness_evidence",
+      "title": "Runtime quote freshness evidence stops after early cycles while UI remains LIVE",
+      "status": "open",
+      "source": "deepseek_artifact_review_20260621_112538",
+      "severity": "high",
+      "evidence": [
+        "VM run ux-deep-ssh-20260621-104345 captured ui_freshness=LIVE quote feed for 41/41 frames after CR-124 fix.",
+        "DeepSeek artifact review noted YFinance trace evidence appears to stop around 15:03 UTC while the desktop phase continued until 15:24 UTC, making LIVE quote feed potentially indistinguishable from cached/stale data.",
+        "Need determine whether this is expected YFinance.NET 10-minute cache behavior, circular trace sampling/export limitation, runtime quote loop pause, or a product freshness-label bug."
+      ],
+      "notes": [
+        "Acceptance should prove sustained runtime quote request/response or cache-hit evidence across a full VM run, and the top-left freshness label must not claim LIVE if no fresh/cached-valid evidence exists under the product freshness contract.",
+        "This CR is separate from CR-124: CR-124 concerns UIA visibility of the freshness label; this CR concerns whether the freshness label is semantically backed by current-enough quote evidence."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-127",
+      "tracking_number": "CR-127",
+      "priority": 2,
+      "area": "vm_harness_artifact_provenance",
+      "title": "VM screenshots need capture-time provenance independent of export timestamps",
+      "status": "open",
+      "source": "deepseek_artifact_review_20260621_112538",
+      "severity": "medium",
+      "evidence": [
+        "DeepSeek artifact review of ux-deep-ssh-20260621-104345 observed screenshot file modified times reflect artifact export time rather than capture time.",
+        "Without capture-time sidecar data, reviewers cannot reconstruct visual progression from file metadata alone."
+      ],
+      "notes": [
+        "Add screenshot capture timestamps to filenames or a sidecar manifest generated when Capture-Screen succeeds.",
+        "Acceptance should preserve existing filenames or provide backward-compatible manifest lookup for analyzer scripts."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
