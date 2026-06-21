@@ -29,7 +29,9 @@ public sealed class TraceLogTests
             Directory.CreateDirectory(traceDirectory);
             TraceLog.ResetCircularStateForTests();
             int expectedTraceBytes = 4 * 1024 * 1024;
-            Assert.Equal(expectedTraceBytes, CircularTraceSettings.ResolveMaxTraceBytes());
+            // CircularTraceSettingsTests owns environment parsing. This test pins
+            // the cache so the live background trace worker cannot race the
+            // configurable-size file allocation assertion in full-suite VM runs.
             FieldInfo maxTraceBytesField = typeof(TraceLog).GetField(
                 "_maxTraceBytes",
                 BindingFlags.NonPublic | BindingFlags.Static)
@@ -60,6 +62,7 @@ public sealed class TraceLogTests
                 });
 
             Assert.True(observed, "Trace marker was not observed in the circular trace file.");
+            // WriteCircular pre-allocates the circular buffer with SetLength(maxTraceBytes).
             Assert.Equal(expectedTraceBytes, new FileInfo(traceFilePath).Length);
         }
         finally
