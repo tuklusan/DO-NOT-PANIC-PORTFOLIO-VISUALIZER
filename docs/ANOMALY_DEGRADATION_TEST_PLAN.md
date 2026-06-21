@@ -160,10 +160,12 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 1
 - Severity: High
 - Area: quote_failures
-- Status: open
+- Status: closed
+- Closure evidence: focused local validation passed 19/19 on 2026-06-21 for provider partial responses, freshness state, macro/world-market lanes, stale macro preservation, and staged symbol ordering; post-test process check found no leftover server/app processes.
 - Evidence / rationale:
   - Individual symbols can fail due to delisting, bad ticker syntax, exchange suffix changes, no quote, Yahoo empty response, or unsupported market data.
   - One bad symbol must not poison an entire tape, macro set, or world market ribbon.
+  - Focused tests prove partial responses preserve healthy symbols and missing macro/world-market data preserves stable placeholders or stale values.
 - Notes:
   - Cover user portfolio symbols, macro symbols, global exchange symbols, and graph-card top movers.
   - Include validation-time and runtime-time failures separately.

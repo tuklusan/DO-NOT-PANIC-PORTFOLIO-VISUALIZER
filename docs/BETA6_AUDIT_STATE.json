@@ -3365,12 +3365,17 @@
       "priority": 1,
       "area": "quote_failures",
       "title": "Validate per-symbol YFinance failures and invalid/missing symbols across tapes, macros, and world markets",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "High",
       "evidence": [
         "Individual symbols can fail due to delisting, bad ticker syntax, exchange suffix changes, no quote, Yahoo empty response, or unsupported market data.",
-        "One bad symbol must not poison an entire tape, macro set, or world market ribbon."
+        "One bad symbol must not poison an entire tape, macro set, or world market ribbon.",
+        "YahooFinanceQuoteProviderTests prove partial YFinance responses preserve resolved symbols, can report missing symbols, return empty results when none resolve, handle duplicates, and propagate intentional cancellation without poisoning healthy symbols.",
+        "StartupCoordinatorTapeItemTests prove freshness text differentiates loading/offline/live/stale states while allowing mixed-age quote sets to remain live when at least one fresh quote is present.",
+        "Nb049/Nb051 behavior tests prove macro and world-market lanes are independent and patch their own UI state instead of rebuilding the whole scene when a quote delta arrives.",
+        "StatusMacroMeters_UpdateInPlace_AndPreserveStaleMacroValues proves missing macro refresh data preserves last/stale macro values instead of blanking healthy prior display state.",
+        "Nb058Nb060BehaviorTests prove runtime fetching order stages macros, then world markets, then tape symbols, so a portfolio symbol failure cannot block earlier macro/world-market lanes."
       ],
       "notes": [
         "Cover user portfolio symbols, macro symbols, global exchange symbols, and graph-card top movers.",
@@ -3386,6 +3391,12 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "Failures remain isolated to the affected symbol/card with trace evidence.",
         "Healthy symbols continue one-by-one updates."
+      ],
+      "closed_date": "2026-06-21",
+      "resolution": "Per-symbol quote failures are isolated by the YFinance provider partial-result mapping and by the runtime UI lanes. Missing symbols do not poison healthy quote updates; macro and world-market surfaces preserve placeholder/stale display state while healthy symbols continue updating through the ordered runtime symbol loop.",
+      "validation": "Focused local validation passed on 2026-06-21: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~YahooFinanceQuoteProviderTests|FullyQualifiedName~StartupCoordinatorTapeItemTests|FullyQualifiedName~Nb049BehaviorTests|FullyQualifiedName~Nb051BehaviorTests|FullyQualifiedName~ScreensaverRenderBehaviorTests.StatusMacroMeters_UpdateInPlace_AndPreserveStaleMacroValues|FullyQualifiedName~Nb058Nb060BehaviorTests\" --nologo passed 19/19. Post-test process check found no leftover YFinance.NET.Server, PortfolioSaver, or relevant dotnet child processes.",
+      "commits": [
+        "560066a"
       ]
     },
     {
