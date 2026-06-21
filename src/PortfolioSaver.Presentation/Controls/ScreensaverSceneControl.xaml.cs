@@ -4146,9 +4146,17 @@ public partial class ScreensaverSceneControl : UserControl
             QueueWorldMarketsRefresh(refreshAncillary: false, reason: "quote-delta");
 
         TraceDisplayedTapeSampleIfDue();
+        DateTimeOffset latestFetchUtc = deltaQuotes.Values
+            .Where(quote => quote.FetchTimestampUtc > DateTimeOffset.MinValue)
+            .Select(quote => quote.FetchTimestampUtc)
+            .DefaultIfEmpty(DateTimeOffset.MinValue)
+            .Max();
         TraceSceneState(
             "RuntimeQuoteApplied",
             new KeyValuePair<string, object?>("requested_symbol", symbol),
+            new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel?.DataFreshnessText),
+            new KeyValuePair<string, object?>("latest_fetch_timestamp_utc", latestFetchUtc == DateTimeOffset.MinValue ? null : latestFetchUtc),
+            new KeyValuePair<string, object?>("latest_fetch_age_seconds", latestFetchUtc == DateTimeOffset.MinValue ? null : Math.Round(Math.Max(0d, (DateTimeOffset.UtcNow - latestFetchUtc).TotalSeconds), 1)),
             new KeyValuePair<string, object?>("resolved_symbols", deltaQuotes.Keys.ToList()),
             new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
     }

@@ -28,6 +28,7 @@ public sealed class StartupCoordinator
     private const int MaxSceneGraphCards = 16;
     private const int MaxGraphBuildCacheEntries = 64;
     private const string StatusFreshnessAnchorSymbol = "^SPX";
+    public static readonly TimeSpan LiveQuoteFeedMaximumAge = TimeSpan.FromMinutes(15);
 
     private readonly ScreensaverSettingsService _settingsService = new();
     private readonly ExchangePhotoCacheService _exchangePhotoCacheService = new();
@@ -1251,6 +1252,9 @@ public sealed class StartupCoordinator
         };
 
     public static string ResolveDataFreshnessText(bool networkAvailable, IReadOnlyDictionary<string, QuoteSnapshot> quotes)
+        => ResolveDataFreshnessText(networkAvailable, quotes, DateTimeOffset.UtcNow);
+
+    public static string ResolveDataFreshnessText(bool networkAvailable, IReadOnlyDictionary<string, QuoteSnapshot> quotes, DateTimeOffset nowUtc)
     {
         if (!networkAvailable)
             return quotes.Count == 0 ? "OFFLINE - waiting for data" : "OFFLINE - showing last values";
@@ -1258,12 +1262,15 @@ public sealed class StartupCoordinator
         if (quotes.Count == 0)
             return "LOADING - waiting for data";
 
-        return quotes.Values.Any(quote => quote.IsStale)
+        return HasStaleQuoteEvidence(quotes, nowUtc)
             ? "STALE - cached values present"
             : "LIVE quote feed";
     }
 
     public static Brush ResolveDataFreshnessBrush(bool networkAvailable, IReadOnlyDictionary<string, QuoteSnapshot> quotes)
+        => ResolveDataFreshnessBrush(networkAvailable, quotes, DateTimeOffset.UtcNow);
+
+    public static Brush ResolveDataFreshnessBrush(bool networkAvailable, IReadOnlyDictionary<string, QuoteSnapshot> quotes, DateTimeOffset nowUtc)
     {
         if (!networkAvailable)
             return Brushes.Orange;
@@ -1271,9 +1278,26 @@ public sealed class StartupCoordinator
         if (quotes.Count == 0)
             return Brushes.Gainsboro;
 
-        return quotes.Values.Any(quote => quote.IsStale)
+        return HasStaleQuoteEvidence(quotes, nowUtc)
             ? Brushes.Goldenrod
             : Brushes.LimeGreen;
+    }
+
+    private static bool HasStaleQuoteEvidence(IReadOnlyDictionary<string, QuoteSnapshot> quotes, DateTimeOffset nowUtc)
+    {
+        if (quotes.Values.Any(quote => quote.IsStale))
+            return true;
+
+        // The top-left freshness label describes whether the overall feed is still
+        // moving. Per-symbol stale state is rendered on individual ticker widgets.
+        DateTimeOffset latestFetchUtc = quotes.Values
+            .Where(quote => quote.FetchTimestampUtc > DateTimeOffset.MinValue)
+            .Select(quote => quote.FetchTimestampUtc)
+            .DefaultIfEmpty(DateTimeOffset.MinValue)
+            .Max();
+
+        return latestFetchUtc > DateTimeOffset.MinValue &&
+               nowUtc - latestFetchUtc > LiveQuoteFeedMaximumAge;
     }
 
     public static bool ResolveEffectiveDataFreshnessNetworkState(

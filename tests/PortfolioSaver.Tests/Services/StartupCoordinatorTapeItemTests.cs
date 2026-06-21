@@ -138,25 +138,53 @@ public sealed class StartupCoordinatorTapeItemTests
     [Fact]
     public void ResolveDataFreshnessText_ReportsLiveOfflineAndStaleStates()
     {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         Dictionary<string, QuoteSnapshot> emptyQuotes = new(StringComparer.OrdinalIgnoreCase);
         Dictionary<string, QuoteSnapshot> liveQuotes = new(StringComparer.OrdinalIgnoreCase)
         {
-            ["VOO"] = new QuoteSnapshot { Symbol = "VOO", Last = 688.11m, IsStale = false }
+            ["VOO"] = new QuoteSnapshot { Symbol = "VOO", Last = 688.11m, FetchTimestampUtc = now.AddMinutes(-2), IsStale = false }
         };
         Dictionary<string, QuoteSnapshot> staleQuotes = new(StringComparer.OrdinalIgnoreCase)
         {
-            ["VOO"] = new QuoteSnapshot { Symbol = "VOO", Last = 688.11m, IsStale = true }
+            ["VOO"] = new QuoteSnapshot { Symbol = "VOO", Last = 688.11m, FetchTimestampUtc = now.AddMinutes(-2), IsStale = true }
+        };
+        Dictionary<string, QuoteSnapshot> agedQuotes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["VOO"] = new QuoteSnapshot { Symbol = "VOO", Last = 688.11m, FetchTimestampUtc = now - StartupCoordinator.LiveQuoteFeedMaximumAge - TimeSpan.FromSeconds(1), IsStale = false }
+        };
+        Dictionary<string, QuoteSnapshot> boundaryQuotes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["VOO"] = new QuoteSnapshot { Symbol = "VOO", Last = 688.11m, FetchTimestampUtc = now - StartupCoordinator.LiveQuoteFeedMaximumAge, IsStale = false }
+        };
+        Dictionary<string, QuoteSnapshot> nearlyAgedQuotes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["VOO"] = new QuoteSnapshot { Symbol = "VOO", Last = 688.11m, FetchTimestampUtc = now - StartupCoordinator.LiveQuoteFeedMaximumAge + TimeSpan.FromSeconds(1), IsStale = false }
+        };
+        Dictionary<string, QuoteSnapshot> mixedAgeQuotes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["VOO"] = new QuoteSnapshot { Symbol = "VOO", Last = 688.11m, FetchTimestampUtc = now - StartupCoordinator.LiveQuoteFeedMaximumAge - TimeSpan.FromMinutes(5), IsStale = false },
+            ["QUAL"] = new QuoteSnapshot { Symbol = "QUAL", Last = 215.89m, FetchTimestampUtc = now.AddMinutes(-1), IsStale = false }
+        };
+        Dictionary<string, QuoteSnapshot> missingTimestampQuotes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["VOO"] = new QuoteSnapshot { Symbol = "VOO", Last = 688.11m, FetchTimestampUtc = DateTimeOffset.MinValue, IsStale = false }
         };
 
-        Assert.Equal("OFFLINE - waiting for data", StartupCoordinator.ResolveDataFreshnessText(false, emptyQuotes));
-        Assert.Equal("LOADING - waiting for data", StartupCoordinator.ResolveDataFreshnessText(true, emptyQuotes));
-        Assert.Equal("OFFLINE - showing last values", StartupCoordinator.ResolveDataFreshnessText(false, liveQuotes));
-        Assert.Equal("LIVE quote feed", StartupCoordinator.ResolveDataFreshnessText(true, liveQuotes));
-        Assert.Equal("STALE - cached values present", StartupCoordinator.ResolveDataFreshnessText(true, staleQuotes));
-        Assert.Equal(Brushes.Orange, StartupCoordinator.ResolveDataFreshnessBrush(false, liveQuotes));
-        Assert.Equal(Brushes.Gainsboro, StartupCoordinator.ResolveDataFreshnessBrush(true, emptyQuotes));
-        Assert.Equal(Brushes.LimeGreen, StartupCoordinator.ResolveDataFreshnessBrush(true, liveQuotes));
-        Assert.Equal(Brushes.Goldenrod, StartupCoordinator.ResolveDataFreshnessBrush(true, staleQuotes));
+        Assert.Equal("OFFLINE - waiting for data", StartupCoordinator.ResolveDataFreshnessText(false, emptyQuotes, now));
+        Assert.Equal("LOADING - waiting for data", StartupCoordinator.ResolveDataFreshnessText(true, emptyQuotes, now));
+        Assert.Equal("OFFLINE - showing last values", StartupCoordinator.ResolveDataFreshnessText(false, liveQuotes, now));
+        Assert.Equal("LIVE quote feed", StartupCoordinator.ResolveDataFreshnessText(true, liveQuotes, now));
+        Assert.Equal("LIVE quote feed", StartupCoordinator.ResolveDataFreshnessText(true, boundaryQuotes, now));
+        Assert.Equal("LIVE quote feed", StartupCoordinator.ResolveDataFreshnessText(true, nearlyAgedQuotes, now));
+        Assert.Equal("LIVE quote feed", StartupCoordinator.ResolveDataFreshnessText(true, mixedAgeQuotes, now));
+        Assert.Equal("LIVE quote feed", StartupCoordinator.ResolveDataFreshnessText(true, missingTimestampQuotes, now));
+        Assert.Equal("STALE - cached values present", StartupCoordinator.ResolveDataFreshnessText(true, staleQuotes, now));
+        Assert.Equal("STALE - cached values present", StartupCoordinator.ResolveDataFreshnessText(true, agedQuotes, now));
+        Assert.Equal(Brushes.Orange, StartupCoordinator.ResolveDataFreshnessBrush(false, liveQuotes, now));
+        Assert.Equal(Brushes.Gainsboro, StartupCoordinator.ResolveDataFreshnessBrush(true, emptyQuotes, now));
+        Assert.Equal(Brushes.LimeGreen, StartupCoordinator.ResolveDataFreshnessBrush(true, liveQuotes, now));
+        Assert.Equal(Brushes.Goldenrod, StartupCoordinator.ResolveDataFreshnessBrush(true, staleQuotes, now));
+        Assert.Equal(Brushes.Goldenrod, StartupCoordinator.ResolveDataFreshnessBrush(true, agedQuotes, now));
         Assert.True(StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(true, consecutiveQuoteFailures: 9, offlineFailureThreshold: 10));
         Assert.False(StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(true, consecutiveQuoteFailures: 10, offlineFailureThreshold: 10));
         Assert.False(StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(false, consecutiveQuoteFailures: 0, offlineFailureThreshold: 10));

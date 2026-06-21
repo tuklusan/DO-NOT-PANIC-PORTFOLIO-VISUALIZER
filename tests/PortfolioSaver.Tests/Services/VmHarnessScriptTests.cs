@@ -510,6 +510,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Get-HarnessTracePath", script, StringComparison.Ordinal);
         Assert.Contains("function Get-KnownRuntimeFreshnessValues", script, StringComparison.Ordinal);
         Assert.Contains("function Get-VisibleRuntimeFreshnessText", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-LatestRuntimeQuoteEvidence", script, StringComparison.Ordinal);
         Assert.Contains("RuntimeDataFreshnessText", script, StringComparison.Ordinal);
         Assert.Contains("$knownFreshnessValues = Get-KnownRuntimeFreshnessValues", script, StringComparison.Ordinal);
         Assert.Contains("function Write-RuntimeFreshnessSnapshot", script, StringComparison.Ordinal);
@@ -545,6 +546,17 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("latest_freshness_source=", script, StringComparison.Ordinal);
         Assert.Contains("trace_age_seconds=", script, StringComparison.Ordinal);
         Assert.Contains("ui_freshness=", script, StringComparison.Ordinal);
+        Assert.Contains("latest_applied_quote_symbol=", script, StringComparison.Ordinal);
+        Assert.Contains("latest_applied_quote_trace_age_seconds=", script, StringComparison.Ordinal);
+        Assert.Contains("latest_applied_quote_fetch_age_seconds=", script, StringComparison.Ordinal);
+        Assert.Contains("latest_server_quote_symbol=", script, StringComparison.Ordinal);
+        Assert.Contains("latest_server_quote_trace_age_seconds=", script, StringComparison.Ordinal);
+        Assert.Contains("latest_server_quote_fetch_age_seconds=", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-TracePayloadFieldValue", script, StringComparison.Ordinal);
+        Assert.Contains("Get-LatestRuntimeQuoteEvidence -RelativePath 'Trace\\trace.circular.log' -EventName 'RuntimeQuoteApplied' -SymbolFieldName 'requested_symbol' -FetchTimestampFieldName 'latest_fetch_timestamp_utc'", script, StringComparison.Ordinal);
+        Assert.Contains("Get-LatestRuntimeQuoteEvidence -RelativePath 'Trace\\yfinance.circular.log' -EventName 'QuoteResponseObserved' -SymbolFieldName 'symbol' -FetchTimestampFieldName 'fetch_timestamp_utc'", script, StringComparison.Ordinal);
+        Assert.Contains("[DateTimeOffset]::UtcNow", script, StringComparison.Ordinal);
+        Assert.Contains("-split '\\r?\\n'", script, StringComparison.Ordinal);
         Assert.Contains("$traceFreshnessAgeSeconds -gt 90", script, StringComparison.Ordinal);
         Assert.Contains("$freshnessSource = 'ui-trace-stale'", script, StringComparison.Ordinal);
         Assert.Contains("-DesktopProcess $desktop", script, StringComparison.Ordinal);

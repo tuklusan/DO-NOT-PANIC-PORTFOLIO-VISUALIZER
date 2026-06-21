@@ -1806,7 +1806,7 @@ function Get-LatestDisplayedTapeSample {
         return @()
     }
 
-    $line = ($tailText -split "`r?`n") |
+    $line = ($tailText -split '\r?\n') |
         Where-Object { $_ -like '*event=DisplayedTapeSample*' } |
         Select-Object -Last 1
 
@@ -1951,6 +1951,90 @@ function Get-VisibleRuntimeFreshnessText {
     return ''
 }
 
+function Get-TracePayloadFieldValue {
+    param(
+        [Parameter(Mandatory = $true)][string]$Line,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    $eventIndex = $Line.IndexOf('event=')
+    if ($eventIndex -ge 0) {
+        $Line = $Line.Substring($eventIndex)
+    }
+
+    foreach ($token in ($Line -split ' / ')) {
+        $separator = $token.IndexOf('=')
+        if ($separator -le 0) {
+            continue
+        }
+
+        $key = $token.Substring(0, $separator).Trim()
+        if ($key -ne $Name) {
+            continue
+        }
+
+        return $token.Substring($separator + 1).Trim()
+    }
+
+    return $null
+}
+
+function Get-LatestRuntimeQuoteEvidence {
+    param(
+        [Parameter(Mandatory = $true)][string]$RelativePath,
+        [Parameter(Mandatory = $true)][string]$EventName,
+        [Parameter(Mandatory = $true)][string]$SymbolFieldName,
+        [string]$FetchTimestampFieldName = ''
+    )
+
+    $tracePath = Get-HarnessTracePath -RelativePath $RelativePath
+    if (-not (Test-Path -LiteralPath $tracePath)) {
+        return $null
+    }
+
+    $tailText = Read-TextFileTailShared -Path $tracePath -MaxBytes 262144
+    if ([string]::IsNullOrWhiteSpace($tailText)) {
+        return $null
+    }
+
+    $lines = @(($tailText -split '\r?\n') |
+        Where-Object { $_ -like "*event=$EventName*" } |
+        Select-Object -Last 1)
+    if ($lines.Count -eq 0) {
+        return $null
+    }
+
+    $line = [string]$lines[0]
+    $timestamp = $null
+    $timestampMatch = [regex]::Match($line, '^(?<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))\s+\|')
+    if ($timestampMatch.Success) {
+        try {
+            $timestamp = [DateTimeOffset]::Parse($timestampMatch.Groups['timestamp'].Value)
+        }
+        catch {}
+    }
+
+    $symbol = [string](Get-TracePayloadFieldValue -Line $line -Name $SymbolFieldName)
+    $fetchTimestamp = $null
+    if (-not [string]::IsNullOrWhiteSpace($FetchTimestampFieldName)) {
+        $fetchTimestampText = [string](Get-TracePayloadFieldValue -Line $line -Name $FetchTimestampFieldName)
+        if (-not [string]::IsNullOrWhiteSpace($fetchTimestampText)) {
+            try {
+                $fetchTimestamp = [DateTimeOffset]::Parse($fetchTimestampText)
+            }
+            catch {}
+        }
+    }
+
+    return [pscustomobject]@{
+        TraceTimestamp = $timestamp
+        TraceAgeSeconds = $(if ($null -eq $timestamp) { $null } else { [Math]::Round([Math]::Max(0, ([DateTimeOffset]::UtcNow - $timestamp).TotalSeconds), 1) })
+        FetchTimestamp = $fetchTimestamp
+        FetchAgeSeconds = $(if ($null -eq $fetchTimestamp) { $null } else { [Math]::Round([Math]::Max(0, ([DateTimeOffset]::UtcNow - $fetchTimestamp).TotalSeconds), 1) })
+        Symbol = $symbol
+    }
+}
+
 function Write-RuntimeFreshnessSnapshot {
     param(
         [Parameter(Mandatory = $true)][int]$CaptureIndex,
@@ -1968,12 +2052,15 @@ function Write-RuntimeFreshnessSnapshot {
             $uiFreshnessText = Get-VisibleRuntimeFreshnessText -DesktopProcess $DesktopProcess
         }
 
+        $latestAppliedQuote = Get-LatestRuntimeQuoteEvidence -RelativePath 'Trace\trace.circular.log' -EventName 'RuntimeQuoteApplied' -SymbolFieldName 'requested_symbol' -FetchTimestampFieldName 'latest_fetch_timestamp_utc'
+        $latestServerQuote = Get-LatestRuntimeQuoteEvidence -RelativePath 'Trace\yfinance.circular.log' -EventName 'QuoteResponseObserved' -SymbolFieldName 'symbol' -FetchTimestampFieldName 'fetch_timestamp_utc'
+
         $tracePath = Get-HarnessTracePath -RelativePath 'Trace\trace.circular.log'
         $latestFreshnessLine = ''
         if (Test-Path -LiteralPath $tracePath) {
             $tailText = Read-TextFileTailShared -Path $tracePath -MaxBytes 131072
             if (-not [string]::IsNullOrWhiteSpace($tailText)) {
-                $freshnessLines = @(($tailText -split "`r?`n") |
+                $freshnessLines = @(($tailText -split '\r?\n') |
                     Where-Object { $_ -like '*data_freshness_text=*' } |
                     Select-Object -Last 1)
                 if ($freshnessLines.Count -gt 0) {
@@ -2026,7 +2113,7 @@ function Write-RuntimeFreshnessSnapshot {
         }
 
         $freshnessTracePath = Join-Path $ResultsDir 'runtime-freshness-events.log'
-        $line = "timestamp={0} frame={1} phase={2} requested_fault_profile={3} effective_fault_profile={4} latest_freshness={5} latest_freshness_source={6} trace_age_seconds={7} ui_freshness={8}" -f `
+        $line = "timestamp={0} frame={1} phase={2} requested_fault_profile={3} effective_fault_profile={4} latest_freshness={5} latest_freshness_source={6} trace_age_seconds={7} ui_freshness={8} latest_applied_quote_symbol={9} latest_applied_quote_trace_age_seconds={10} latest_applied_quote_fetch_age_seconds={11} latest_server_quote_symbol={12} latest_server_quote_trace_age_seconds={13} latest_server_quote_fetch_age_seconds={14}" -f `
             (Get-Date).ToString('o'),
             $CaptureIndex,
             $Phase,
@@ -2035,7 +2122,13 @@ function Write-RuntimeFreshnessSnapshot {
             $(if ([string]::IsNullOrWhiteSpace($latestFreshnessText)) { 'unavailable' } else { $latestFreshnessText }),
             $freshnessSource,
             $(if ($null -eq $traceFreshnessAgeSeconds) { 'unknown' } else { $traceFreshnessAgeSeconds }),
-            $(if ([string]::IsNullOrWhiteSpace($uiFreshnessText)) { 'unavailable' } else { $uiFreshnessText })
+            $(if ([string]::IsNullOrWhiteSpace($uiFreshnessText)) { 'unavailable' } else { $uiFreshnessText }),
+            $(if ($null -eq $latestAppliedQuote -or [string]::IsNullOrWhiteSpace($latestAppliedQuote.Symbol)) { 'unavailable' } else { $latestAppliedQuote.Symbol }),
+            $(if ($null -eq $latestAppliedQuote -or $null -eq $latestAppliedQuote.TraceAgeSeconds) { 'unknown' } else { $latestAppliedQuote.TraceAgeSeconds }),
+            $(if ($null -eq $latestAppliedQuote -or $null -eq $latestAppliedQuote.FetchAgeSeconds) { 'unknown' } else { $latestAppliedQuote.FetchAgeSeconds }),
+            $(if ($null -eq $latestServerQuote -or [string]::IsNullOrWhiteSpace($latestServerQuote.Symbol)) { 'unavailable' } else { $latestServerQuote.Symbol }),
+            $(if ($null -eq $latestServerQuote -or $null -eq $latestServerQuote.TraceAgeSeconds) { 'unknown' } else { $latestServerQuote.TraceAgeSeconds }),
+            $(if ($null -eq $latestServerQuote -or $null -eq $latestServerQuote.FetchAgeSeconds) { 'unknown' } else { $latestServerQuote.FetchAgeSeconds })
         Add-Content -LiteralPath $freshnessTracePath -Value $line -Encoding UTF8
     }
     catch {
@@ -2064,7 +2157,7 @@ function Get-PreferredDisplayedTapeSample {
         return @()
     }
 
-    $sampleLines = @(($tailText -split "`r?`n") |
+    $sampleLines = @(($tailText -split '\r?\n') |
         Where-Object { $_ -like '*event=DisplayedTapeSample*' })
     if ($sampleLines.Count -eq 0) {
         return @()
