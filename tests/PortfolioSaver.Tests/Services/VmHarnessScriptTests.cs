@@ -549,6 +549,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("DisplayedVsReferenceFeed", script, StringComparison.Ordinal);
         Assert.Contains(".Replace(\"`0\", '')", script, StringComparison.Ordinal);
         Assert.Contains("[System.IO.Path]::ChangeExtension($Path, '.idx')", script, StringComparison.Ordinal);
+        Assert.Contains("$bytesToRead = [int][Math]::Min([int64]$MaxBytes, $length)", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("Read-AllBytesShared -Path $Path", script, StringComparison.Ordinal);
         Assert.Contains("function Read-AllBytesShared", sharedParser, StringComparison.Ordinal);
         Assert.Contains("$displayedSample = @(Get-PreferredDisplayedTapeSample)", script, StringComparison.Ordinal);
         Assert.DoesNotContain("query1.finance.yahoo.com/v7/finance/quote", script, StringComparison.Ordinal);

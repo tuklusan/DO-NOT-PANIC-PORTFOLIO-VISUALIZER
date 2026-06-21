@@ -2104,28 +2104,57 @@ function Read-TextFileTailShared {
     )
 
     try {
+        if ($MaxBytes -le 0) {
+            return ''
+        }
+
         $idxPath = [System.IO.Path]::ChangeExtension($Path, '.idx')
         if (Test-Path $idxPath) {
             $positionText = Get-Content -LiteralPath $idxPath -Raw -ErrorAction Stop
             $writePosition = 0
             if ([int]::TryParse($positionText.Trim(), [ref]$writePosition)) {
-                $bytes = Read-AllBytesShared -Path $Path
-                if ($bytes.Length -gt 0) {
-                    $position = [Math]::Max(0, [Math]::Min($writePosition, $bytes.Length))
-                    $orderedBytes = if ($position -eq 0) {
-                        $bytes
-                    }
-                    else {
-                        $suffixLength = $bytes.Length - $position
-                        $ordered = New-Object byte[] $bytes.Length
-                        [Array]::Copy($bytes, $position, $ordered, 0, $suffixLength)
-                        [Array]::Copy($bytes, 0, $ordered, $suffixLength, $position)
-                        $ordered
+                $fileStream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                try {
+                    $length = $fileStream.Length
+                    if ($length -le 0) {
+                        return ''
                     }
 
-                    $tailLength = [Math]::Min($MaxBytes, $orderedBytes.Length)
-                    $start = [Math]::Max(0, $orderedBytes.Length - $tailLength)
-                    return ([System.Text.Encoding]::UTF8.GetString($orderedBytes, $start, $tailLength)).Replace("`0", '')
+                    $bytesToRead = [int][Math]::Min([int64]$MaxBytes, $length)
+                    $position = [int64][Math]::Max(0, [Math]::Min([int64]$writePosition, $length))
+                    $buffer = New-Object byte[] $bytesToRead
+                    $offset = 0
+                    $start = $position - $bytesToRead
+                    if ($start -lt 0) {
+                        # Preserve chronological order for circular logs by reading
+                        # the older EOF chunk first, then the newer chunk ending at
+                        # the current write cursor.
+                        $firstChunkLength = [int](-$start)
+                        $firstChunkStart = $length - $firstChunkLength
+                        $null = $fileStream.Seek($firstChunkStart, [System.IO.SeekOrigin]::Begin)
+                        while ($offset -lt $firstChunkLength) {
+                            $read = $fileStream.Read($buffer, $offset, $firstChunkLength - $offset)
+                            if ($read -le 0) { break }
+                            $offset += $read
+                        }
+
+                        $start = 0
+                    }
+
+                    if ($offset -lt $bytesToRead) {
+                        $remaining = $bytesToRead - $offset
+                        $null = $fileStream.Seek($start, [System.IO.SeekOrigin]::Begin)
+                        while ($offset -lt $bytesToRead) {
+                            $read = $fileStream.Read($buffer, $offset, $bytesToRead - $offset)
+                            if ($read -le 0) { break }
+                            $offset += $read
+                        }
+                    }
+
+                    return ([System.Text.Encoding]::UTF8.GetString($buffer, 0, $offset)).Replace("`0", '')
+                }
+                finally {
+                    $fileStream.Dispose()
                 }
             }
         }
