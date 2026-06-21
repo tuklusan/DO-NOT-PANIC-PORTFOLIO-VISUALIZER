@@ -3486,12 +3486,16 @@
       "priority": 1,
       "area": "cache_staleness",
       "title": "Validate YFinance.NET cache expiry, stale fallback, and no-fresh-data behavior",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "High",
       "evidence": [
         "YFinance.NET has a 10-minute cache ceiling and the app intentionally removed its separate QuoteCacheService.",
-        "When network is unavailable after cache expiry, the app needs a truthful stale/unavailable policy."
+        "When network is unavailable after cache expiry, the app needs a truthful stale/unavailable policy.",
+        "Commit f7bdbf0 added direct TTL cache tests proving YFinance.NET memory and persistent caches do not return expired entries.",
+        "HybridHistoricalDataProvider_FallsBackToStaleCacheWhenFetchFails proves expired/failed fresh history fetches can preserve stale graph data instead of blanking graph cards.",
+        "StartupCoordinator freshness tests prove stale cache is not labeled fresh and no-data/loading/offline states remain truthful.",
+        "MarketDataCacheOwnership_RemainsInYFinanceNetWithoutLegacyQuoteCacheService proves the compiled app data/presentation assemblies do not contain the removed legacy QuoteCacheService type while YFinanceOptions still provides the YFinance.NET 10-minute cache default elsewhere in the suite."
       ],
       "notes": [
         "Exercise cache hit, cache nearing expiry, cache expired with network down, cache expired with slow network, and recovery to fresh data.",
@@ -3507,6 +3511,12 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "Stale cache is never labeled fresh.",
         "Expired-cache behavior is documented and consistent across tapes, macros, graph cards, and world markets."
+      ],
+      "closed_date": "2026-06-21",
+      "resolution": "YFinance.NET cache expiry and stale fallback behavior is validated. Memory and persistent TTL caches do not return expired entries, historical graph fetches fall back to stale cache on fetch failure, freshness labels distinguish live/stale/loading/offline/no-data states, and compiled app assemblies remain free of the removed legacy QuoteCacheService so YFinance.NET remains the sole quote-cache owner.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260621-174101.md found no actionable issues. Focused local validation passed on 2026-06-21: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~Nb040BehaviorTests.YFinanceMemoryTtlCache|FullyQualifiedName~Nb040BehaviorTests.YFinancePersistentTtlCache|FullyQualifiedName~Nb040BehaviorTests.MarketDataCacheOwnership|FullyQualifiedName~Nb040BehaviorTests.HybridHistoricalDataProvider_FallsBackToStaleCacheWhenFetchFails|FullyQualifiedName~StartupCoordinatorTapeItemTests.ResolveDataFreshnessText\" --nologo passed 5/5. Post-test process check found no leftover YFinance.NET.Server, PortfolioSaver, or relevant dotnet child processes.",
+      "commits": [
+        "f7bdbf0"
       ]
     },
     {

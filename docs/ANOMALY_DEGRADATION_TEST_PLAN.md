@@ -220,10 +220,12 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 1
 - Severity: High
 - Area: cache_staleness
-- Status: open
+- Status: closed
+- Closure evidence: commit `f7bdbf0` added cache staleness coverage; focused local validation passed 5/5 on 2026-06-21 for TTL expiry, stale history fallback, freshness labels, and absence of legacy QuoteCacheService; post-test process check found no leftover server/app processes.
 - Evidence / rationale:
   - YFinance.NET has a 10-minute cache ceiling and the app intentionally removed its separate QuoteCacheService.
   - When network is unavailable after cache expiry, the app needs a truthful stale/unavailable policy.
+  - Focused tests now prove expired entries are not returned, stale graph history fallback is preserved, freshness labels remain truthful, and no app-level QuoteCacheService has been reintroduced.
 - Notes:
   - Exercise cache hit, cache nearing expiry, cache expired with network down, cache expired with slow network, and recovery to fresh data.
   - Confirm there is still only one market-data cache owner.
