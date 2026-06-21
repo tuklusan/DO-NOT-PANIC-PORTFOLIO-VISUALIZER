@@ -15,6 +15,8 @@ public static class TraceLog
 {
     private const int MaxLineLength = 1900;
     private const int MaxFieldValueLength = 280;
+    private const int MaxTraceBatchLines = 512;
+    private const int TraceIndexCheckpointLines = 64;
     // TraceLogTests intentionally synchronize on this object when validating
     // circular cursor behavior against the background trace worker.
     private static readonly object FileSync = new();
@@ -244,7 +246,11 @@ public static class TraceLog
                     continue;
                 }
 
-                WriteCircular(line);
+                List<string> lines = [line];
+                while (lines.Count < MaxTraceBatchLines && Queue.TryDequeue(out string? nextLine))
+                    lines.Add(nextLine);
+
+                WriteCircularBatch(lines);
             }
             catch
             {
@@ -254,11 +260,16 @@ public static class TraceLog
     }
 
     private static void WriteCircular(string line)
+        => WriteCircularBatch([line]);
+
+    private static void WriteCircularBatch(IReadOnlyList<string> lines)
     {
-        byte[] payload = Encoding.UTF8.GetBytes(line + Environment.NewLine);
-        int maxTraceBytes = GetMaxTraceBytes();
-        if (payload.Length > maxTraceBytes)
-            payload = payload[^maxTraceBytes..];
+        if (lines.Count == 0)
+            return;
+
+        int maxTraceBytes = Math.Max(
+            CircularTraceSettings.MinimumMaxTraceMegabytes * 1024 * 1024,
+            GetMaxTraceBytes());
 
         lock (FileSync)
         {
@@ -281,22 +292,38 @@ public static class TraceLog
             if (writePosition < 0 || writePosition >= maxTraceBytes)
                 writePosition = 0;
 
-            int firstChunkLength = Math.Min(payload.Length, maxTraceBytes - writePosition);
-            stream.Position = writePosition;
-            stream.Write(payload, 0, firstChunkLength);
-
-            int remaining = payload.Length - firstChunkLength;
-            if (remaining > 0)
+            int nextPosition = writePosition;
+            int linesWritten = 0;
+            foreach (string line in lines)
             {
-                stream.Position = 0;
-                stream.Write(payload, firstChunkLength, remaining);
+                byte[] payload = Encoding.UTF8.GetBytes(line + Environment.NewLine);
+                if (payload.Length > maxTraceBytes)
+                    payload = payload[^maxTraceBytes..];
+
+                int firstChunkLength = Math.Min(payload.Length, maxTraceBytes - nextPosition);
+                stream.Position = nextPosition;
+                stream.Write(payload, 0, firstChunkLength);
+
+                int remaining = payload.Length - firstChunkLength;
+                if (remaining > 0)
+                {
+                    stream.Position = 0;
+                    stream.Write(payload, firstChunkLength, remaining);
+                }
+
+                nextPosition = (nextPosition + payload.Length) % maxTraceBytes;
+                linesWritten++;
+                // Bound crash recovery loss to 63 trace lines while preserving
+                // enough write batching to keep live diagnostic traces current.
+                if (linesWritten % TraceIndexCheckpointLines == 0)
+                    WritePosition(nextPosition);
             }
 
-            int nextPosition = (writePosition + payload.Length) % maxTraceBytes;
             _circularWritePosition = nextPosition;
             WritePosition(nextPosition);
-            // Dispose/Flush commits the stream to the OS. Avoid Flush(true) here:
-            // per-line disk fsync caused trace lag during 30-minute VM soaks.
+            // Dispose/Flush commits the batch to the OS. Avoid Flush(true) here:
+            // per-line disk fsync caused trace lag during 30-minute VM soaks,
+            // and the index is intentionally checkpointed during the batch and at the end.
             stream.Flush();
         }
     }

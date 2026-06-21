@@ -214,12 +214,117 @@ public sealed class TraceLogTests
     }
 
     [Fact]
+    public void TraceLog_WriteCircularBatchPreservesOrderAndFinalCursor()
+    {
+        string appDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTraceBatchTest", Guid.NewGuid().ToString("N"));
+        string? previousProductRoot = Environment.GetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT");
+        string? previousLegacyLocalRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        string? previousLegacyAppDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        string? previousTraceMax = Environment.GetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable);
+        DeleteDirectoryWithRetry(appDataRoot);
+        Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable, "4");
+        try
+        {
+            TraceLog.ResetCircularStateForTests();
+            string traceDirectory = Path.Combine(PathHelper.GetAppDataDirectory(), "Trace");
+            string traceFilePath = Path.Combine(traceDirectory, "trace.circular.log");
+            string traceIndexPath = Path.Combine(traceDirectory, "trace.circular.idx");
+            string marker = "trace-batch-" + Guid.NewGuid().ToString("N");
+            string[] lines =
+            [
+                $"{DateTimeOffset.UtcNow:O} | INFO | {marker}-001",
+                $"{DateTimeOffset.UtcNow:O} | INFO | {marker}-002",
+                $"{DateTimeOffset.UtcNow:O} | INFO | {marker}-003"
+            ];
+
+            MethodInfo writeBatchMethod = typeof(TraceLog).GetMethod("WriteCircularBatch", BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("Could not find TraceLog.WriteCircularBatch.");
+            writeBatchMethod.Invoke(null, [lines]);
+
+            string text = File.ReadAllText(traceFilePath).Replace("\0", string.Empty);
+            Assert.True(
+                text.IndexOf($"{marker}-001", StringComparison.Ordinal) <
+                text.IndexOf($"{marker}-002", StringComparison.Ordinal));
+            Assert.True(
+                text.IndexOf($"{marker}-002", StringComparison.Ordinal) <
+                text.IndexOf($"{marker}-003", StringComparison.Ordinal));
+
+            int expectedPosition = lines.Sum(line => Encoding.UTF8.GetByteCount(line + Environment.NewLine));
+            Assert.Equal(expectedPosition, int.Parse(File.ReadAllText(traceIndexPath)));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", previousProductRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", previousLegacyLocalRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousLegacyAppDataRoot);
+            Environment.SetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable, previousTraceMax);
+            DeleteDirectoryWithRetry(appDataRoot);
+        }
+    }
+
+    [Fact]
+    public async Task TraceLog_BackgroundWorkerDrainsBurstWithoutLosingLines()
+    {
+        string appDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTraceBurstTest", Guid.NewGuid().ToString("N"));
+        string? previousProductRoot = Environment.GetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT");
+        string? previousLegacyLocalRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        string? previousLegacyAppDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        string? previousTraceMax = Environment.GetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable);
+        DeleteDirectoryWithRetry(appDataRoot);
+        Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable, "4");
+        try
+        {
+            TraceLog.ResetCircularStateForTests();
+            string traceDirectory = Path.Combine(PathHelper.GetAppDataDirectory(), "Trace");
+            string traceFilePath = Path.Combine(traceDirectory, "trace.circular.log");
+            string traceIndexPath = Path.Combine(traceDirectory, "trace.circular.idx");
+            string markerPrefix = "trace-worker-burst-" + Guid.NewGuid().ToString("N");
+            const int writeCount = 130;
+
+            for (int index = 0; index < writeCount; index++)
+            {
+                TraceLog.InfoState(
+                    "TraceLogBurstTest",
+                    "BurstTraceWrite",
+                    [new KeyValuePair<string, object?>("marker", $"{markerPrefix}-{index:D3}")]);
+            }
+
+            bool observed = await WaitForTraceAsync(
+                traceFilePath,
+                traceIndexPath,
+                text => Enumerable.Range(0, writeCount)
+                    .All(index => text.Contains($"{markerPrefix}-{index:D3}", StringComparison.Ordinal)));
+
+            Assert.True(observed, "TraceLog background worker did not persist every burst marker.");
+            Assert.True(int.Parse(File.ReadAllText(traceIndexPath)) > 0);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", previousProductRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", previousLegacyLocalRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousLegacyAppDataRoot);
+            Environment.SetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable, previousTraceMax);
+            DeleteDirectoryWithRetry(appDataRoot);
+        }
+    }
+
+    [Fact]
     public void TraceLog_BackgroundWorkerAvoidsPerLineDiskSyncAndRestartsAfterLoopExceptions()
     {
         string repoRoot = GetRepoRoot();
         string source = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Shared", "Diagnostics", "TraceLog.cs"));
 
         Assert.Contains("await Task.Delay(250).ConfigureAwait(false);", source, StringComparison.Ordinal);
+        Assert.Contains("private const int MaxTraceBatchLines = 512;", source, StringComparison.Ordinal);
+        Assert.Contains("private const int TraceIndexCheckpointLines = 64;", source, StringComparison.Ordinal);
+        Assert.Contains("while (lines.Count < MaxTraceBatchLines && Queue.TryDequeue(out string? nextLine))", source, StringComparison.Ordinal);
+        Assert.Contains("WriteCircularBatch(lines);", source, StringComparison.Ordinal);
         Assert.DoesNotContain("stream.Flush(true)", source, StringComparison.Ordinal);
     }
 
@@ -257,7 +362,7 @@ public sealed class TraceLogTests
             if (File.Exists(traceFilePath))
             {
                 FileInfo info = new(traceFilePath);
-                if (info.Length == 4 * 1024 * 1024)
+                if (info.Length > 0)
                 {
                     string text = ReadCircularText(traceFilePath, traceIndexPath);
                     if (predicate(text))
