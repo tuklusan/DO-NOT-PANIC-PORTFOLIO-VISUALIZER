@@ -3626,7 +3626,11 @@ try {
 
             $path = Join-Path $results ("desktop-{0:D3}.png" -f $i)
             Capture-Screen -Path $path
-            $includeVisibleFreshnessForCapture = $FaultProfile -in @('offline-at-start', 'offline-during-runtime') -or ($FaultProfile -eq 'offline-then-recover-runtime' -and $recoveryApplied)
+            # Freshness is a release-critical trust indicator, not only an
+            # offline/recovery assertion. Capture it on every desktop frame so
+            # artifact review can distinguish a real missing UI label from a
+            # harness probe that simply never ran.
+            $includeVisibleFreshnessForCapture = $true
             Write-RuntimeFreshnessSnapshot -CaptureIndex $i -Phase 'capture' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop -IncludeVisibleFreshness:$includeVisibleFreshnessForCapture
             if ($isLongRunSoak) {
                 $summary.ScreensaverShots++
