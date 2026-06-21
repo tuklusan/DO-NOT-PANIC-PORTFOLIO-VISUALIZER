@@ -256,6 +256,105 @@ try {
     $insufficientFinding = @($recoveryInsufficientReport.findings | Where-Object { $_.code -eq 'offline-recovery-insufficient-captures' })
     if ($insufficientFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag insufficient recovery capture frames.' }
 
+    $captureStarvedRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000011'
+    New-Item -ItemType Directory -Force -Path $captureStarvedRun | Out-Null
+    @{
+        ResultName = 'ux-deep-ssh-20990101-000011'
+        ConfigPhaseStatus = 'Completed'
+        DesktopPhaseStatus = 'Completed'
+        FullScreenToggleStatus = 'Completed'
+        DesktopShots = 3
+        TargetCaptureFrames = 180
+        Notes = @('Desktop capture count 3 was below 80 percent of estimated target 180; capture loop remained wall-clock bounded.')
+    } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $captureStarvedRun 'ux-deep-summary.json') -Encoding UTF8
+    $captureStarvedAnalysisPath = Join-Path $tempRoot 'capture-starved-with-note-analysis.json'
+    $captureStarvedOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $captureStarvedRun -OutputPath $captureStarvedAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($captureStarvedOutput -match 'ANALYSIS_REPORT=')) { throw 'Capture-starved analysis did not emit ANALYSIS_REPORT.' }
+    $captureStarvedReport = Get-Content -Raw -LiteralPath $captureStarvedAnalysisPath | ConvertFrom-Json
+    $captureStarvedFinding = @($captureStarvedReport.findings | Where-Object { $_.code -eq 'capture-loop-starved' })
+    if ($captureStarvedFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag capture-loop starvation with a low-yield note present.' }
+
+    $captureStarvedRatioRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000012'
+    New-Item -ItemType Directory -Force -Path $captureStarvedRatioRun | Out-Null
+    @{
+        ResultName = 'ux-deep-ssh-20990101-000012'
+        ConfigPhaseStatus = 'Completed'
+        DesktopPhaseStatus = 'Completed'
+        FullScreenToggleStatus = 'Completed'
+        DesktopShots = 10
+        TargetCaptureFrames = 180
+        Notes = @()
+    } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $captureStarvedRatioRun 'ux-deep-summary.json') -Encoding UTF8
+    $captureStarvedRatioAnalysisPath = Join-Path $tempRoot 'capture-starved-ratio-analysis.json'
+    $captureStarvedRatioOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $captureStarvedRatioRun -OutputPath $captureStarvedRatioAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($captureStarvedRatioOutput -match 'ANALYSIS_REPORT=')) { throw 'Capture-starved ratio analysis did not emit ANALYSIS_REPORT.' }
+    $captureStarvedRatioReport = Get-Content -Raw -LiteralPath $captureStarvedRatioAnalysisPath | ConvertFrom-Json
+    $captureStarvedRatioFinding = @($captureStarvedRatioReport.findings | Where-Object { $_.code -eq 'capture-loop-starved' })
+    if ($captureStarvedRatioFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag ratio-only capture-loop starvation.' }
+
+    $shortCaptureRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000013'
+    New-Item -ItemType Directory -Force -Path $shortCaptureRun | Out-Null
+    @{
+        ResultName = 'ux-deep-ssh-20990101-000013'
+        ConfigPhaseStatus = 'Completed'
+        DesktopPhaseStatus = 'Completed'
+        FullScreenToggleStatus = 'Completed'
+        DesktopShots = 1
+        TargetCaptureFrames = 5
+        Notes = @()
+    } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $shortCaptureRun 'ux-deep-summary.json') -Encoding UTF8
+    $shortCaptureAnalysisPath = Join-Path $tempRoot 'short-capture-analysis.json'
+    $shortCaptureOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $shortCaptureRun -OutputPath $shortCaptureAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($shortCaptureOutput -match 'ANALYSIS_REPORT=')) { throw 'Short-capture analysis did not emit ANALYSIS_REPORT.' }
+    $shortCaptureReport = Get-Content -Raw -LiteralPath $shortCaptureAnalysisPath | ConvertFrom-Json
+    $shortCaptureFinding = @($shortCaptureReport.findings | Where-Object { $_.code -eq 'capture-loop-starved' })
+    if ($shortCaptureFinding.Count -ne 0) { throw 'Analyze-VisualValidationArtifacts flagged capture-loop starvation for a short run below threshold.' }
+
+    $sufficientCaptureRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000014'
+    New-Item -ItemType Directory -Force -Path $sufficientCaptureRun | Out-Null
+    @{
+        ResultName = 'ux-deep-ssh-20990101-000014'
+        ConfigPhaseStatus = 'Completed'
+        DesktopPhaseStatus = 'Completed'
+        FullScreenToggleStatus = 'Completed'
+        DesktopShots = 8
+        TargetCaptureFrames = 10
+        Notes = @()
+    } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $sufficientCaptureRun 'ux-deep-summary.json') -Encoding UTF8
+    $sufficientCaptureAnalysisPath = Join-Path $tempRoot 'sufficient-capture-analysis.json'
+    $sufficientCaptureOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $sufficientCaptureRun -OutputPath $sufficientCaptureAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($sufficientCaptureOutput -match 'ANALYSIS_REPORT=')) { throw 'Sufficient-capture analysis did not emit ANALYSIS_REPORT.' }
+    $sufficientCaptureReport = Get-Content -Raw -LiteralPath $sufficientCaptureAnalysisPath | ConvertFrom-Json
+    $sufficientCaptureFinding = @($sufficientCaptureReport.findings | Where-Object { $_.code -eq 'capture-loop-starved' })
+    if ($sufficientCaptureFinding.Count -ne 0) { throw 'Analyze-VisualValidationArtifacts flagged capture-loop starvation at the 80 percent threshold.' }
+
+    $missingCaptureCountRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000015'
+    New-Item -ItemType Directory -Force -Path $missingCaptureCountRun | Out-Null
+    @{
+        ResultName = 'ux-deep-ssh-20990101-000015'
+        ConfigPhaseStatus = 'Completed'
+        DesktopPhaseStatus = 'Completed'
+        FullScreenToggleStatus = 'Completed'
+        TargetCaptureFrames = 180
+        Notes = @('Desktop capture count 3 was below 80 percent of estimated target 180; capture loop remained wall-clock bounded.')
+    } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $missingCaptureCountRun 'ux-deep-summary.json') -Encoding UTF8
+    $missingCaptureCountAnalysisPath = Join-Path $tempRoot 'missing-capture-count-analysis.json'
+    $missingCaptureCountOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $missingCaptureCountRun -OutputPath $missingCaptureCountAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($missingCaptureCountOutput -match 'ANALYSIS_REPORT=')) { throw 'Missing-capture-count analysis did not emit ANALYSIS_REPORT.' }
+    $missingCaptureCountReport = Get-Content -Raw -LiteralPath $missingCaptureCountAnalysisPath | ConvertFrom-Json
+    $missingCaptureCountFinding = @($missingCaptureCountReport.findings | Where-Object { $_.code -eq 'capture-loop-starved' })
+    if ($missingCaptureCountFinding.Count -ne 0) { throw 'Analyze-VisualValidationArtifacts flagged capture-loop starvation when DesktopShots was absent.' }
+
     $auditFixture = Join-Path $tempRoot 'audit-state.json'
     @{
         pending_next_build_issues = @(

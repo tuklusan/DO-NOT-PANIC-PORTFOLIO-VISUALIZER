@@ -27,6 +27,15 @@ function Get-JsonPropertyValue {
     return $Default
 }
 
+function Get-JsonIntPropertyValue {
+    param($Object,[string]$Name)
+    if ($null -eq $Object -or -not ($Object.PSObject.Properties.Name -contains $Name)) { return $null }
+    $value = Get-JsonPropertyValue -Object $Object -Name $Name
+    $parsed = 0
+    if ([int]::TryParse([string]$value, [ref]$parsed)) { return $parsed }
+    return $null
+}
+
 function Get-ValidationRunDirectories {
     param([string]$Root)
     $rootItem = Get-Item -LiteralPath (Resolve-Path -LiteralPath $Root).Path
@@ -101,6 +110,18 @@ foreach ($run in $runs) {
     $screenshots = @(Get-ChildItem -LiteralPath $run.FullName -File -Include '*.png' -Recurse -ErrorAction SilentlyContinue)
     if ($screenshots.Count -lt $MinimumScreenshots) {
         [void]$findings.Add((New-Finding -Code 'capture-count-low' -Title 'VM validation produced too few screenshots for visual proof' -Area 'VM validation harness' -Severity 'Medium' -Evidence @("Run ${runId} produced $($screenshots.Count) screenshot(s); minimum expected is $MinimumScreenshots.", "Run directory: $($run.FullName)") -Notes @('Visual validation needs enough captures to verify background, graph-card, news, and ribbon behavior.')))
+    }
+
+    $targetCaptureFrames = Get-JsonIntPropertyValue -Object $summary -Name 'TargetCaptureFrames'
+    $desktopShots = Get-JsonIntPropertyValue -Object $summary -Name 'DesktopShots'
+    if ($null -ne $targetCaptureFrames -and
+        $null -ne $desktopShots -and
+        $targetCaptureFrames -ge 10 -and
+        $desktopShots -lt [Math]::Floor($targetCaptureFrames * 0.8)) {
+        [void]$findings.Add((New-Finding -Code 'capture-loop-starved' -Title 'VM validation capture loop yielded too few runtime frames' -Area 'VM validation harness' -Severity 'High' -Evidence @(
+            "Run ${runId} targeted $targetCaptureFrames capture frame(s) but recorded DesktopShots=$desktopShots.",
+            "Run directory: $($run.FullName)"
+        ) -Notes @('A clean visual validation report requires enough runtime frames to verify UI fluidity, background rotation, news scroller, graph cards, and ticker ribbons.')))
     }
 
     $dark = New-Object System.Collections.Generic.List[string]

@@ -4920,6 +4920,34 @@
         "A VM recovery run proves post-clear recovery with retained trace evidence."
       ],
       "resolution": "Implementation is complete locally, but CR-119 remains open until a fresh committed VM validation run proves post-recovery LIVE freshness using runtime-freshness-events.log with direct UI freshness and trace_age_seconds <= 180 under the enlarged circular trace cap."
+    },
+    {
+      "id": "CR-120",
+      "tracking_number": "CR-120",
+      "priority": 1,
+      "area": "validation_harness",
+      "title": "VM visual analyzer must fail low-yield capture loops",
+      "status": "open",
+      "source": "deepseek_artifact_advisory_2026_06_20_230531",
+      "severity": "High",
+      "evidence": [
+        "VM run ux-deep-ssh-20260620-220032 produced only 3 loop desktop captures for TargetCaptureFrames=180 while deterministic analysis reported clean.",
+        "ux-deep-summary.json note: Desktop capture count 3 was below 80 percent of estimated target 180; capture loop remained wall-clock bounded.",
+        "DeepSeek artifact review flagged capture starvation and false-clean analysis risk."
+      ],
+      "notes": [
+        "Promote low-yield capture-loop summary notes and/or TargetCaptureFrames vs actual loop captures into deterministic findings.",
+        "A clean VM visual validation report must not be possible when proof artifacts are too sparse to validate UI fluidity/background/news/ticker behavior."
+      ],
+      "acceptance": [
+        "Analyze-VisualValidationArtifacts emits capture-loop-starved when TargetCaptureFrames is at least 10 and DesktopShots are below 80 percent of target.",
+        "Analyze-VisualValidationArtifacts treats missing or malformed capture-count fields as unknown and does not emit capture-loop-starved solely from a human-readable note.",
+        "Analyze-VisualValidationArtifacts does not emit capture-loop-starved for short proof runs below the threshold or for runs meeting at least 80 percent yield.",
+        "Validation-script smoke tests cover low-yield with note, ratio-only low-yield, short-run, exact-threshold, and missing-count cases.",
+        "DeepSeek code review gate reports no blocking findings.",
+        "Local validation-script smoke tests pass.",
+        "Ticket is marked resolved/closed with the fixing commit and evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
