@@ -4927,13 +4927,16 @@
       "priority": 1,
       "area": "validation_harness",
       "title": "VM visual analyzer must fail low-yield capture loops",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_artifact_advisory_2026_06_20_230531",
       "severity": "High",
       "evidence": [
         "VM run ux-deep-ssh-20260620-220032 produced only 3 loop desktop captures for TargetCaptureFrames=180 while deterministic analysis reported clean.",
         "ux-deep-summary.json note: Desktop capture count 3 was below 80 percent of estimated target 180; capture loop remained wall-clock bounded.",
-        "DeepSeek artifact review flagged capture starvation and false-clean analysis risk."
+        "DeepSeek artifact review flagged capture starvation and false-clean analysis risk.",
+        "Implemented in commit 6157ee2: Analyze-VisualValidationArtifacts now emits capture-loop-starved when DesktopShots are below 80 percent of TargetCaptureFrames for target runs >= 10 frames.",
+        "Validation-script smoke test passed after adding low-yield with note, ratio-only low-yield, short-run, exact-threshold, and missing-count fixtures.",
+        "Re-analysis of ux-deep-ssh-20260620-220032 now reports ANALYSIS_CLEAN=False with one capture-loop-starved finding: targeted 180 frames, DesktopShots=5."
       ],
       "notes": [
         "Promote low-yield capture-loop summary notes and/or TargetCaptureFrames vs actual loop captures into deterministic findings.",
@@ -4947,7 +4950,8 @@
         "DeepSeek code review gate reports no blocking findings.",
         "Local validation-script smoke tests pass.",
         "Ticket is marked resolved/closed with the fixing commit and evidence."
-      ]
+      ],
+      "resolution": "Closed on 2026-06-20 by commit 6157ee2. Deterministic visual analysis now fails low-yield VM capture loops via the capture-loop-starved finding, preventing sparse/invalid proof artifacts from being reported as clean. Local validation-script smoke tests passed, and re-analysis of ux-deep-ssh-20260620-220032 correctly changed from clean to one High finding."
     }
   ],
   "remaining_validation_gaps": [],
