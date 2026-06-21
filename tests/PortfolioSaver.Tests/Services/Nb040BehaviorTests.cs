@@ -90,7 +90,7 @@ public sealed class Nb040BehaviorTests
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", previousLocalOverride);
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousLegacyOverride);
             if (Directory.Exists(overrideRoot))
-                Directory.Delete(overrideRoot, recursive: true);
+                DeleteDirectoryWithRetry(overrideRoot);
         }
     }
 
@@ -535,7 +535,7 @@ public sealed class Nb040BehaviorTests
         finally
         {
             if (Directory.Exists(cacheRoot))
-                Directory.Delete(cacheRoot, recursive: true);
+                DeleteDirectoryWithRetry(cacheRoot);
         }
     }
 
@@ -1043,7 +1043,7 @@ public sealed class Nb040BehaviorTests
         finally
         {
             if (Directory.Exists(tempRoot))
-                Directory.Delete(tempRoot, recursive: true);
+                DeleteDirectoryWithRetry(tempRoot);
         }
     }
 
@@ -1072,8 +1072,34 @@ public sealed class Nb040BehaviorTests
         finally
         {
             if (Directory.Exists(tempRoot))
-                Directory.Delete(tempRoot, recursive: true);
+                DeleteDirectoryWithRetry(tempRoot);
         }
+    }
+
+    private static void DeleteDirectoryWithRetry(string path)
+    {
+        if (!Directory.Exists(path))
+            return;
+
+        IOException? lastIoException = null;
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            try
+            {
+                Directory.Delete(path, recursive: true);
+                return;
+            }
+            catch (IOException ex)
+            {
+                lastIoException = ex;
+                Thread.Sleep(100);
+            }
+        }
+
+        if (lastIoException is not null)
+            throw lastIoException;
+
+        Directory.Delete(path, recursive: true);
     }
 
     private static string GetRepoRoot()
