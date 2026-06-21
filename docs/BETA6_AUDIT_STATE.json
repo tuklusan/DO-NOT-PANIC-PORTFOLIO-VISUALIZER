@@ -3446,12 +3446,17 @@
       "priority": 1,
       "area": "market_data_integrity",
       "title": "Validate malformed numeric market data: null, NaN, Infinity, zero, negative, huge values, missing change percent",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "High",
       "evidence": [
         "Financial UI rendering depends on prices, changes, percentages, and chart series being sane.",
-        "Bad numeric data can cause clipped text, incorrect red/green coloring, graph-card flashing, layout overflow, or exceptions."
+        "Bad numeric data can cause clipped text, incorrect red/green coloring, graph-card flashing, layout overflow, or exceptions.",
+        "Commit 5798f8a added invariant-culture malformed numeric quote parsing coverage for null, NaN, Infinity, overflow, non-numeric volume, zero, negative, and missing change percent values.",
+        "ApplyQuoteToGraph_PercentOnlyChange_DoesNotTriggerCardFlash proves percent-only text churn cannot trigger graph-card flashing when raw price is unchanged.",
+        "ApplyQuoteToGraph_RawPriceChangeDuringTravel_DoesNotRetriggerSustainedFlash proves a card already traveling on a prior raw price change does not repeatedly retrigger sustained flashing.",
+        "MacroMeter and stale macro tests prove macro controls clamp/display placeholders or preserve stale values instead of throwing or resizing wildly under missing/extreme data.",
+        "StartupCoordinator freshness tests prove missing timestamps and mixed-age quote sets produce intentional live/stale/loading/offline labels rather than exceptions."
       ],
       "notes": [
         "Include raw price unchanged with percent churn because graph-cards should flash only on actual raw price changes.",
@@ -3467,6 +3472,12 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "Malformed numeric fields are rejected or displayed with intentional placeholders.",
         "No malformed value causes layout runaway, graph rendering exception, or false flashing."
+      ],
+      "closed_date": "2026-06-21",
+      "resolution": "Malformed numeric market data is now covered at parser and rendering behavior seams. YFinance quote parsing treats null, NaN, Infinity, overflow, non-numeric, and missing percent values as absent while preserving valid zero/negative invariant values; graph-card behavior suppresses percent-only false flashes and prevents retrigger during travel; macro/freshness rendering preserves intentional placeholders/stale values.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260621-173159.md found no actionable issues. Focused local validation passed on 2026-06-21: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~Nb040BehaviorTests.YFinanceQuoteParsing_TreatsMalformedNumericFieldsAsMissing|FullyQualifiedName~ScreensaverRenderBehaviorTests.ApplyQuoteToGraph_PercentOnlyChange_DoesNotTriggerCardFlash|FullyQualifiedName~ScreensaverRenderBehaviorTests.ApplyQuoteToGraph_RawPriceChangeDuringTravel_DoesNotRetriggerSustainedFlash|FullyQualifiedName~ScreensaverRenderBehaviorTests.MacroMeter|FullyQualifiedName~ScreensaverRenderBehaviorTests.StatusMacroMeters_UpdateInPlace_AndPreserveStaleMacroValues|FullyQualifiedName~StartupCoordinatorTapeItemTests.ResolveDataFreshnessText\" --nologo passed 6/6. Post-test process check found no leftover YFinance.NET.Server, PortfolioSaver, or relevant dotnet child processes.",
+      "commits": [
+        "5798f8a"
       ]
     },
     {

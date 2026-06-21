@@ -200,10 +200,12 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 1
 - Severity: High
 - Area: market_data_integrity
-- Status: open
+- Status: closed
+- Closure evidence: commit `5798f8a` added malformed numeric parser coverage; focused local validation passed 6/6 on 2026-06-21 for parser, graph flash, macro placeholder/clamp, and freshness behavior; post-test process check found no leftover server/app processes.
 - Evidence / rationale:
   - Financial UI rendering depends on prices, changes, percentages, and chart series being sane.
   - Bad numeric data can cause clipped text, incorrect red/green coloring, graph-card flashing, layout overflow, or exceptions.
+  - Focused tests now cover malformed parser inputs, percent-only graph flash suppression, travel flash retrigger prevention, macro placeholder/stale behavior, and freshness labels.
 - Notes:
   - Include raw price unchanged with percent churn because graph-cards should flash only on actual raw price changes.
   - Include chart series with too few points, duplicate timestamps, descending timestamps, and gaps.
