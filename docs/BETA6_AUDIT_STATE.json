@@ -4959,7 +4959,7 @@
       "priority": 1,
       "area": "graph_cards",
       "title": "Graph cards continuously flash after refresh/travel cue regression",
-      "status": "open",
+      "status": "closed",
       "source": "user_vm_observation_2026_06_20",
       "severity": "High",
       "evidence": [
@@ -4982,7 +4982,9 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Closed on 2026-06-21 by commit 9915b77. The graph-card sustained-flash regression was fixed by reconciling FloatingGraphControl sustained animation state when DataContext changes and preserving RawLastValue, QuoteUpdateToken, FlashBrush, IsRefreshTravelFlashActive, and RefreshTravelFlashStartedUtc across graph view-model replacement. This prevents unchanged raw prices from being treated as fresh updates after graph rebuilds while preserving the established gain/loss travel semantics.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260621-004048.md reported no blocking findings. Focused local render behavior tests passed 70/70. VM run ux-deep-ssh-20260621-021600 completed; analyzer report build/validation/artifacts/visual-validation-20260621-021600.json was clean with 0 findings; manual screenshot spot-check of desktop-001, desktop-022, and desktop-044 showed graph cards were not in blanket continuous flashing and tapes/background/news remained active."
     },
     {
       "id": "CR-122",
@@ -4990,7 +4992,7 @@
       "priority": 1,
       "area": "vm_validation",
       "title": "VM full-suite trace-log test is order-sensitive under circular trace cache",
-      "status": "open",
+      "status": "closed",
       "source": "vm_test_failure_2026_06_21",
       "severity": "High",
       "evidence": [
@@ -5010,7 +5012,9 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Closed on 2026-06-21 by commits 9b78a0f, c9ed848, cb4c257, and 1e91f26. The full-suite VM trace-log blockers were fixed by making TraceLogTests deterministic under the static circular trace cache and by retrying transient IOException cleanup locks in NB-040 environment/appdata tests.",
+      "validation": "DeepSeek reviews were run for the trace-test and cleanup changes; blocking feedback was adjudicated and addressed. Focused local TraceLog/CircularTraceSettings tests passed 13/13 and NB-040 behavior tests passed 47/47. VM run ux-deep-ssh-20260621-021600 passed the full remote build/test suite 478/478 before entering UX validation."
     },
     {
       "id": "CR-123",
@@ -5018,7 +5022,7 @@
       "priority": 1,
       "area": "vm_validation_harness",
       "title": "VM UX capture loop starves after fullscreen transition freshness probe becomes unavailable",
-      "status": "open",
+      "status": "closed",
       "source": "visual_validation_20260621_010254",
       "severity": "High",
       "evidence": [
@@ -5039,7 +5043,9 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Closed on 2026-06-21 by commit 267356d. The VM UX capture-loop starvation was resolved by rewriting Guest-UxDeepExercise.ps1 circular trace tail reads to read only the requested tail window around the circular write cursor instead of loading/reordering the full 32 MB trace file on every runtime freshness sample. VmHarnessScriptTests now guard against reintroducing the whole-file tail read.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260621-020437.md reported no blocking findings; cheap hardening was applied. Focused local VmHarnessScriptTests passed 20/20. VM run ux-deep-ssh-20260621-021600 produced 44 scheduled desktop captures plus transition captures, no low-yield note, clean visual analyzer result with 0 findings, and DeepSeek artifact review build/validation/artifacts/deepseek-artifact-review-20260621-025827.md. Manual screenshot spot-check confirmed first/middle/final frames were alive."
     }
   ],
   "remaining_validation_gaps": [],
