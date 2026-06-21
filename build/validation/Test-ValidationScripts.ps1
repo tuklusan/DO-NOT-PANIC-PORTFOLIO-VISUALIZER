@@ -108,7 +108,7 @@ try {
     @(
         'timestamp=2026-01-01T00:02:00Z frame=1 phase=capture requested_fault_profile=offline-then-recover-runtime effective_fault_profile=offline latest_freshness=OFFLINE - showing last values latest_freshness_source=trace trace_age_seconds=20 ui_freshness=unavailable',
         'timestamp=2026-01-01T00:05:06Z frame=2 phase=after-recovery-clear requested_fault_profile=offline-then-recover-runtime effective_fault_profile=none latest_freshness=LIVE quote feed latest_freshness_source=ui-trace-stale trace_age_seconds=180 ui_freshness=LIVE quote feed',
-        'timestamp=2026-01-01T00:05:07Z frame=2 phase=capture requested_fault_profile=offline-then-recover-runtime effective_fault_profile=none latest_freshness=LIVE quote feed latest_freshness_source=ui trace_age_seconds=unknown ui_freshness=LIVE quote feed'
+        'timestamp=2026-01-01T00:05:07Z frame=2 phase=capture requested_fault_profile=offline-then-recover-runtime effective_fault_profile=none latest_freshness=LIVE quote feed latest_freshness_source=ui trace_age_seconds=10 ui_freshness=LIVE quote feed'
     ) | Set-Content -LiteralPath (Join-Path $recoveryPassRun 'runtime-freshness-events.log') -Encoding UTF8
     $recoveryPassAnalysisPath = Join-Path $tempRoot 'recovery-pass-analysis.json'
     $recoveryPassOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $recoveryPassRun -OutputPath $recoveryPassAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
@@ -116,45 +116,47 @@ try {
     $recoveryPassReport = Get-Content -Raw -LiteralPath $recoveryPassAnalysisPath | ConvertFrom-Json
     if (-not $recoveryPassReport.clean) { throw 'Analyze-VisualValidationArtifacts reported findings for the offline recovery proof fixture.' }
 
-    $recoveryVisibleProofRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000010'
-    New-Item -ItemType Directory -Force -Path $recoveryVisibleProofRun | Out-Null
+    $recoveryStaleTraceRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000010'
+    New-Item -ItemType Directory -Force -Path $recoveryStaleTraceRun | Out-Null
     @{ ResultName = 'ux-deep-ssh-20990101-000010'; ConfigPhaseStatus = 'Completed'; DesktopPhaseStatus = 'Completed'; FullScreenToggleStatus = 'Completed'; FaultProfile = 'offline-then-recover-runtime'; TargetCaptureFrames = 2 } |
         ConvertTo-Json |
-        Set-Content -LiteralPath (Join-Path $recoveryVisibleProofRun 'ux-deep-summary.json') -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $recoveryStaleTraceRun 'ux-deep-summary.json') -Encoding UTF8
     @(
         '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=offline',
         '2026-01-01T00:05:00Z event=FaultProfileSet details=profile=none'
-    ) | Set-Content -LiteralPath (Join-Path $recoveryVisibleProofRun 'fault-injection-events.log') -Encoding UTF8
+    ) | Set-Content -LiteralPath (Join-Path $recoveryStaleTraceRun 'fault-injection-events.log') -Encoding UTF8
     @(
         'timestamp=2026-01-01T00:02:00Z frame=1 phase=capture requested_fault_profile=offline-then-recover-runtime effective_fault_profile=offline latest_freshness=OFFLINE - showing last values latest_freshness_source=trace trace_age_seconds=20 ui_freshness=unavailable',
         'timestamp=2026-01-01T00:05:07Z frame=2 phase=after-recovery-clear requested_fault_profile=offline-then-recover-runtime effective_fault_profile=none latest_freshness=LIVE quote feed latest_freshness_source=ui-trace-stale trace_age_seconds=300 ui_freshness=LIVE quote feed',
         'timestamp=2026-01-01T00:06:00Z frame=3 phase=capture requested_fault_profile=offline-then-recover-runtime effective_fault_profile=none latest_freshness=OFFLINE - showing last values latest_freshness_source=trace trace_age_seconds=350 ui_freshness=unavailable'
-    ) | Set-Content -LiteralPath (Join-Path $recoveryVisibleProofRun 'runtime-freshness-events.log') -Encoding UTF8
-    $recoveryVisibleProofAnalysisPath = Join-Path $tempRoot 'recovery-visible-proof-analysis.json'
-    $recoveryVisibleProofOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $recoveryVisibleProofRun -OutputPath $recoveryVisibleProofAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
-    if (-not ($recoveryVisibleProofOutput -match 'ANALYSIS_REPORT=')) { throw 'Recovery-visible-proof analysis did not emit ANALYSIS_REPORT.' }
-    $recoveryVisibleProofReport = Get-Content -Raw -LiteralPath $recoveryVisibleProofAnalysisPath | ConvertFrom-Json
-    if (-not $recoveryVisibleProofReport.clean) { throw 'Analyze-VisualValidationArtifacts rejected UI-visible offline recovery proof with stale trace tail.' }
+    ) | Set-Content -LiteralPath (Join-Path $recoveryStaleTraceRun 'runtime-freshness-events.log') -Encoding UTF8
+    $recoveryStaleTraceAnalysisPath = Join-Path $tempRoot 'recovery-stale-trace-analysis.json'
+    $recoveryStaleTraceOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $recoveryStaleTraceRun -OutputPath $recoveryStaleTraceAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($recoveryStaleTraceOutput -match 'ANALYSIS_REPORT=')) { throw 'Recovery-stale-trace analysis did not emit ANALYSIS_REPORT.' }
+    $recoveryStaleTraceReport = Get-Content -Raw -LiteralPath $recoveryStaleTraceAnalysisPath | ConvertFrom-Json
+    $staleTraceFinding = @($recoveryStaleTraceReport.findings | Where-Object { $_.code -eq 'offline-recovery-ux-state-unverified' })
+    if ($staleTraceFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts accepted stale trace-backed recovery proof.' }
 
-    $recoveryCombinedOnlyPassRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000008'
-    New-Item -ItemType Directory -Force -Path $recoveryCombinedOnlyPassRun | Out-Null
+    $recoveryCombinedOnlyRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000008'
+    New-Item -ItemType Directory -Force -Path $recoveryCombinedOnlyRun | Out-Null
     @{ ResultName = 'ux-deep-ssh-20990101-000008'; ConfigPhaseStatus = 'Completed'; DesktopPhaseStatus = 'Completed'; FullScreenToggleStatus = 'Completed'; FaultProfile = 'offline-then-recover-runtime'; TargetCaptureFrames = 2 } |
         ConvertTo-Json |
-        Set-Content -LiteralPath (Join-Path $recoveryCombinedOnlyPassRun 'ux-deep-summary.json') -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $recoveryCombinedOnlyRun 'ux-deep-summary.json') -Encoding UTF8
     @(
         '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=none',
         '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=offline',
         '2026-01-01T00:05:00Z event=FaultProfileSet details=profile=none'
-    ) | Set-Content -LiteralPath (Join-Path $recoveryCombinedOnlyPassRun 'fault-injection-events.log') -Encoding UTF8
+    ) | Set-Content -LiteralPath (Join-Path $recoveryCombinedOnlyRun 'fault-injection-events.log') -Encoding UTF8
     @(
         'event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values',
         'event=RuntimeQuoteApplied / data_freshness_text=LIVE quote feed'
-    ) | Set-Content -LiteralPath (Join-Path $recoveryCombinedOnlyPassRun 'combined-trace-tail.txt') -Encoding UTF8
-    $recoveryCombinedOnlyPassAnalysisPath = Join-Path $tempRoot 'recovery-combined-only-pass-analysis.json'
-    $recoveryCombinedOnlyPassOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $recoveryCombinedOnlyPassRun -OutputPath $recoveryCombinedOnlyPassAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
-    if (-not ($recoveryCombinedOnlyPassOutput -match 'ANALYSIS_REPORT=')) { throw 'Recovery-combined-only-pass analysis did not emit ANALYSIS_REPORT.' }
-    $recoveryCombinedOnlyPassReport = Get-Content -Raw -LiteralPath $recoveryCombinedOnlyPassAnalysisPath | ConvertFrom-Json
-    if (-not $recoveryCombinedOnlyPassReport.clean) { throw 'Analyze-VisualValidationArtifacts did not accept combined-trace-only offline recovery proof.' }
+    ) | Set-Content -LiteralPath (Join-Path $recoveryCombinedOnlyRun 'combined-trace-tail.txt') -Encoding UTF8
+    $recoveryCombinedOnlyAnalysisPath = Join-Path $tempRoot 'recovery-combined-only-analysis.json'
+    $recoveryCombinedOnlyOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $recoveryCombinedOnlyRun -OutputPath $recoveryCombinedOnlyAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($recoveryCombinedOnlyOutput -match 'ANALYSIS_REPORT=')) { throw 'Recovery-combined-only analysis did not emit ANALYSIS_REPORT.' }
+    $recoveryCombinedOnlyReport = Get-Content -Raw -LiteralPath $recoveryCombinedOnlyAnalysisPath | ConvertFrom-Json
+    $combinedOnlyFinding = @($recoveryCombinedOnlyReport.findings | Where-Object { $_.code -eq 'offline-recovery-ux-state-unverified' })
+    if ($combinedOnlyFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts accepted combined-trace-only offline recovery proof.' }
 
     $recoveryFailRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000004'
     New-Item -ItemType Directory -Force -Path $recoveryFailRun | Out-Null
@@ -205,8 +207,10 @@ try {
         '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=offline',
         '2026-01-01T00:05:00Z event=FaultProfileSet details=profile=none'
     ) | Set-Content -LiteralPath (Join-Path $recoveryMixedSourceRun 'fault-injection-events.log') -Encoding UTF8
-    'event=RuntimeQuoteApplied / data_freshness_text=LIVE quote feed' |
-        Set-Content -LiteralPath (Join-Path $recoveryMixedSourceRun 'combined-trace-tail.txt') -Encoding UTF8
+    @(
+        'event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values',
+        'event=RuntimeQuoteApplied / data_freshness_text=LIVE quote feed'
+    ) | Set-Content -LiteralPath (Join-Path $recoveryMixedSourceRun 'combined-trace-tail.txt') -Encoding UTF8
     'timestamp=2026-01-01T00:02:00Z frame=1 phase=capture requested_fault_profile=offline-then-recover-runtime effective_fault_profile=offline latest_freshness=OFFLINE - showing last values' |
         Set-Content -LiteralPath (Join-Path $recoveryMixedSourceRun 'runtime-freshness-events.log') -Encoding UTF8
     $recoveryMixedSourceAnalysisPath = Join-Path $tempRoot 'recovery-mixed-source-analysis.json'

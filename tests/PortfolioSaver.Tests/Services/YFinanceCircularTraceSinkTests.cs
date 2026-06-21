@@ -8,13 +8,18 @@ namespace PortfolioSaver.Tests.Services;
 [Collection("EnvironmentSerial")]
 public sealed class YFinanceCircularTraceSinkTests
 {
+    private const string TraceMaxMegabytesEnvironmentVariable = "DONOTPANICPORTFOLIOVISUALIZER_TRACE_MAX_MB";
+
     [Fact]
-    public async Task YFinanceCircularTraceSink_WritesToDedicatedFourMegCircularFileUnderAppData()
+    public async Task YFinanceCircularTraceSink_WritesToDedicatedConfigurableCircularFileUnderAppData()
     {
         string appDataRoot = Path.Combine(Path.GetTempPath(), "YFinanceTraceTest", Guid.NewGuid().ToString("N"));
+        string? previousTraceMax = Environment.GetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable, "4");
         try
         {
+            YFinanceCircularTraceSink.ResetCircularStateForTests();
             string traceDirectory = Path.Combine(appDataRoot, "Trace");
             string traceFilePath = Path.Combine(traceDirectory, "yfinance.circular.log");
             string traceIndexPath = Path.Combine(traceDirectory, "yfinance.circular.idx");
@@ -40,11 +45,13 @@ public sealed class YFinanceCircularTraceSinkTests
                     return true;
                 });
 
-            Assert.True(observed, "Dedicated YFinance trace marker was not observed in the 4MB circular trace file.");
+            Assert.True(observed, "Dedicated YFinance trace marker was not observed in the circular trace file.");
+            Assert.Equal(4 * 1024 * 1024, new FileInfo(traceFilePath).Length);
         }
         finally
         {
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", null);
+            Environment.SetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable, previousTraceMax);
         }
     }
 

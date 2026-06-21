@@ -13,7 +13,6 @@ namespace PortfolioSaver.Shared.Diagnostics;
 
 public static class TraceLog
 {
-    private const int MaxTraceBytes = 4 * 1024 * 1024;
     private const int MaxLineLength = 1900;
     private const int MaxFieldValueLength = 280;
     // TraceLogTests intentionally synchronize on this object when validating
@@ -23,6 +22,7 @@ public static class TraceLog
     private static readonly string ProgramName = Process.GetCurrentProcess().ProcessName;
     private static NetworkMetadata _networkMetadata = new(Environment.MachineName, "127.0.0.1");
     private static int _circularWritePosition = -1;
+    private static int _maxTraceBytes;
     private static int _workerStarted;
     private static int _metadataResolutionStarted;
 
@@ -44,6 +44,7 @@ public static class TraceLog
             }
 
             _circularWritePosition = -1;
+            Interlocked.Exchange(ref _maxTraceBytes, 0);
         }
     }
 
@@ -254,8 +255,9 @@ public static class TraceLog
     private static void WriteCircular(string line)
     {
         byte[] payload = Encoding.UTF8.GetBytes(line + Environment.NewLine);
-        if (payload.Length > MaxTraceBytes)
-            payload = payload[^MaxTraceBytes..];
+        int maxTraceBytes = GetMaxTraceBytes();
+        if (payload.Length > maxTraceBytes)
+            payload = payload[^maxTraceBytes..];
 
         lock (FileSync)
         {
@@ -267,18 +269,18 @@ public static class TraceLog
                 FileAccess.ReadWrite,
                 FileShare.ReadWrite);
 
-            if (stream.Length != MaxTraceBytes)
-                stream.SetLength(MaxTraceBytes);
+            if (stream.Length != maxTraceBytes)
+                stream.SetLength(maxTraceBytes);
 
             // The trace file is process-owned; cache the cursor after first read
             // so each log line does not re-open the index file.
             int writePosition = _circularWritePosition;
             if (writePosition < 0)
                 writePosition = ReadPosition();
-            if (writePosition < 0 || writePosition >= MaxTraceBytes)
+            if (writePosition < 0 || writePosition >= maxTraceBytes)
                 writePosition = 0;
 
-            int firstChunkLength = Math.Min(payload.Length, MaxTraceBytes - writePosition);
+            int firstChunkLength = Math.Min(payload.Length, maxTraceBytes - writePosition);
             stream.Position = writePosition;
             stream.Write(payload, 0, firstChunkLength);
 
@@ -289,11 +291,16 @@ public static class TraceLog
                 stream.Write(payload, firstChunkLength, remaining);
             }
 
-            int nextPosition = (writePosition + payload.Length) % MaxTraceBytes;
+            int nextPosition = (writePosition + payload.Length) % maxTraceBytes;
             _circularWritePosition = nextPosition;
             WritePosition(nextPosition);
             stream.Flush(true);
         }
+    }
+
+    private static int GetMaxTraceBytes()
+    {
+        return CircularTraceSettings.ResolveCachedMaxTraceBytes(ref _maxTraceBytes);
     }
 
     private static int ReadPosition()

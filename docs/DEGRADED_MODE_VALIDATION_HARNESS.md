@@ -66,6 +66,8 @@ Recovery:
 
 - When a profile file is changed back to `none`, subsequent market-data requests resume normal handling without restarting the harness.
 - The first fresh response after recovery must be traceable and visibly reflected without whole-scene redraw.
+- Long fault-injection runs require enough retained app and YFinance.NET trace to span the injected fault, the recovery clear, and at least one post-recovery quote response. The default circular trace cap is 32 MB per trace, configurable with `DONOTPANICPORTFOLIOVISUALIZER_TRACE_MAX_MB` for unusually long diagnostic runs.
+- Runtime recovery proof must come from `runtime-freshness-events.log`, where the harness records direct UI freshness plus `trace_age_seconds`; app/server circular trace tails can corroborate recovery, but line ordering in those tails alone is not sufficient because those tail lines do not carry harness freshness-age metadata.
 
 ## Example
 

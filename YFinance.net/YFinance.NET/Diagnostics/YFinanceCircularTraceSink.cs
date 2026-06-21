@@ -12,7 +12,6 @@ namespace YFinance.NET.Diagnostics;
 
 public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
 {
-    private const int MaxTraceBytes = 4 * 1024 * 1024;
     private const int MaxLineLength = 1900;
     private const int MaxFieldValueLength = 280;
     private static readonly object FileSync = new();
@@ -24,11 +23,21 @@ public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
         static () => new YFinanceCircularTraceSink(),
         LazyThreadSafetyMode.ExecutionAndPublication);
     private static int _workerStarted;
+    private static int _maxTraceBytes;
 
     public static YFinanceCircularTraceSink Instance => LazyInstance.Value;
 
     private YFinanceCircularTraceSink()
     {
+    }
+
+    internal static void ResetCircularStateForTests()
+    {
+        while (Queue.TryDequeue(out _))
+        {
+        }
+
+        Interlocked.Exchange(ref _maxTraceBytes, 0);
     }
 
     public void InfoState(string source, string eventName, IEnumerable<KeyValuePair<string, object?>> fields)
@@ -172,8 +181,9 @@ public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
     private static void WriteCircular(string line)
     {
         byte[] payload = Encoding.UTF8.GetBytes(line + Environment.NewLine);
-        if (payload.Length > MaxTraceBytes)
-            payload = payload[^MaxTraceBytes..];
+        int maxTraceBytes = GetMaxTraceBytes();
+        if (payload.Length > maxTraceBytes)
+            payload = payload[^maxTraceBytes..];
 
         lock (FileSync)
         {
@@ -185,14 +195,14 @@ public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
                 FileAccess.ReadWrite,
                 FileShare.ReadWrite);
 
-            if (stream.Length != MaxTraceBytes)
-                stream.SetLength(MaxTraceBytes);
+            if (stream.Length != maxTraceBytes)
+                stream.SetLength(maxTraceBytes);
 
             int writePosition = ReadPosition();
-            if (writePosition < 0 || writePosition >= MaxTraceBytes)
+            if (writePosition < 0 || writePosition >= maxTraceBytes)
                 writePosition = 0;
 
-            int firstChunkLength = Math.Min(payload.Length, MaxTraceBytes - writePosition);
+            int firstChunkLength = Math.Min(payload.Length, maxTraceBytes - writePosition);
             stream.Position = writePosition;
             stream.Write(payload, 0, firstChunkLength);
 
@@ -203,10 +213,15 @@ public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
                 stream.Write(payload, firstChunkLength, remaining);
             }
 
-            int nextPosition = (writePosition + payload.Length) % MaxTraceBytes;
+            int nextPosition = (writePosition + payload.Length) % maxTraceBytes;
             WritePosition(nextPosition);
             stream.Flush(true);
         }
+    }
+
+    private static int GetMaxTraceBytes()
+    {
+        return CircularTraceSettings.ResolveCachedMaxTraceBytes(ref _maxTraceBytes);
     }
 
     private static int ReadPosition()

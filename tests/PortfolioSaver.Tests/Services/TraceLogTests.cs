@@ -9,14 +9,18 @@ namespace PortfolioSaver.Tests.Services;
 [Collection("EnvironmentSerial")]
 public sealed class TraceLogTests
 {
+    private const string TraceMaxMegabytesEnvironmentVariable = "DONOTPANICPORTFOLIOVISUALIZER_TRACE_MAX_MB";
+
     [Fact]
-    public async Task TraceLog_WritesToFourMegCircularFileUnderAppData()
+    public async Task TraceLog_WritesToConfigurableCircularFileUnderAppData()
     {
         string appDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTraceTest", Guid.NewGuid().ToString("N"));
         string? previousProductRoot = Environment.GetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT");
         string? previousLegacyRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        string? previousTraceMax = Environment.GetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable);
         Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", appDataRoot);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable, "4");
         try
         {
             string traceDirectory = Path.Combine(PathHelper.GetAppDataDirectory(), "Trace");
@@ -30,7 +34,7 @@ public sealed class TraceLogTests
                 BindingFlags.NonPublic | BindingFlags.Static);
             Assert.NotNull(writeCircularMethod);
 
-            string line = $"{DateTimeOffset.UtcNow:O} | INFO | program=PortfolioSaver.Tests | source=TraceLogTests | function=TraceLog_WritesToFourMegCircularFileUnderAppData | {marker}";
+            string line = $"{DateTimeOffset.UtcNow:O} | INFO | program=PortfolioSaver.Tests | source=TraceLogTests | function=TraceLog_WritesToConfigurableCircularFileUnderAppData | {marker}";
             writeCircularMethod!.Invoke(null, [line]);
             writeCircularMethod!.Invoke(null, [line]);
             writeCircularMethod!.Invoke(null, [line]);
@@ -48,12 +52,14 @@ public sealed class TraceLogTests
                     return true;
                 });
 
-            Assert.True(observed, "Trace marker was not observed in the 4MB circular trace file.");
+            Assert.True(observed, "Trace marker was not observed in the circular trace file.");
+            Assert.Equal(4 * 1024 * 1024, new FileInfo(traceFilePath).Length);
         }
         finally
         {
             Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", previousProductRoot);
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousLegacyRoot);
+            Environment.SetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable, previousTraceMax);
             DeleteDirectoryWithRetry(appDataRoot);
         }
     }

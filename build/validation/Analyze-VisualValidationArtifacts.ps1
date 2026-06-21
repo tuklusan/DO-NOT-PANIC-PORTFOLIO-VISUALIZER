@@ -194,7 +194,6 @@ foreach ($run in $runs) {
                     Where-Object { $null -ne $_ -and $_.LineNumber -gt $lastOfflineProfileLine }
             })
             $freshnessScopedOfflineHits = @($offlineFreshnessHits | Where-Object { $_.Path -eq $freshnessTrace })
-            $combinedScopedOfflineHits = @($offlineFreshnessHits | Where-Object { $_.Path -eq $combinedTrace })
             $recoveredFreshnessHits = @()
             # Recovery proof is intentionally source-local: an OFFLINE marker and
             # later LIVE marker must be ordered within the same evidence file.
@@ -210,16 +209,16 @@ foreach ($run in $runs) {
                 $lastFreshnessOfflineLine = @($freshnessOfflineRecoveryBasisHits | Sort-Object LineNumber | Select-Object -Last 1)[0].LineNumber
                 $recoveredFreshnessHits += @(Select-String -LiteralPath $freshnessTrace -Pattern 'latest_freshness=LIVE quote feed' -ErrorAction SilentlyContinue |
                     Where-Object {
-                        $null -ne $_ -and
-                        $_.LineNumber -gt $lastFreshnessOfflineLine -and
-                        $_.Line -match 'effective_fault_profile=none' -and
-                        ($_.Line -match 'latest_freshness_source=ui|latest_freshness_source=ui-trace-stale|ui_freshness=LIVE quote feed')
+                        if ($null -eq $_ -or $_.LineNumber -le $lastFreshnessOfflineLine -or $_.Line -notmatch 'effective_fault_profile=none') { return $false }
+
+                        $hasDirectUiFreshness = $_.Line -match 'latest_freshness_source=ui(\s|$)' -and $_.Line -match 'ui_freshness=LIVE quote feed'
+                        $hasFreshTraceAge = $false
+                        if ($_.Line -match 'trace_age_seconds=([0-9]+(?:\.[0-9]+)?)') {
+                            $hasFreshTraceAge = ([System.Double]::Parse($Matches[1], [System.Globalization.CultureInfo]::InvariantCulture) -le 180.0)
+                        }
+
+                        return $hasDirectUiFreshness -and $hasFreshTraceAge
                     })
-            }
-            if ($combinedScopedOfflineHits.Count -gt 0 -and (Test-Path -LiteralPath $combinedTrace)) {
-                $lastCombinedOfflineLine = @($combinedScopedOfflineHits | Sort-Object LineNumber | Select-Object -Last 1)[0].LineNumber
-                $recoveredFreshnessHits += @(Select-String -LiteralPath $combinedTrace -Pattern 'data_freshness_text=LIVE quote feed' -ErrorAction SilentlyContinue |
-                    Where-Object { $null -ne $_ -and $_.LineNumber -gt $lastCombinedOfflineLine })
             }
             $recoveredFreshnessEvidenceHits = @($recoveredFreshnessHits | Select-Object -First 8)
 
@@ -229,7 +228,7 @@ foreach ($run in $runs) {
                 $recoveryEvidence.Add("Fault activation observed: $faultActivated.")
                 $recoveryEvidence.Add("Fault clear after offline observed: $($faultClearMatches.Count -gt 0).")
                 $recoveryEvidence.Add("Recovered LIVE freshness trace hits: $($recoveredFreshnessHits.Count).")
-                $recoveryEvidence.Add("Expected profile=none after the last profile=offline line in fault-injection-events.log and source-local data_freshness_text=LIVE quote feed or latest_freshness=LIVE quote feed after the last OFFLINE freshness line.")
+                $recoveryEvidence.Add("Expected profile=none after the last profile=offline line in fault-injection-events.log and latest_freshness=LIVE quote feed in runtime-freshness-events.log after the last OFFLINE freshness line, backed by direct UI freshness and trace_age_seconds <= 180.")
                 foreach ($hit in $offlineFreshnessSample) {
                     $recoveryEvidence.Add(("{0}:{1}: {2}" -f (Split-Path -Leaf $hit.Path), $hit.LineNumber, $hit.Line.Trim()))
                 }

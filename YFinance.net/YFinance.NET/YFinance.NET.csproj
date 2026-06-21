@@ -10,6 +10,7 @@
   <ItemGroup>
     <Compile Include="..\..\src\PortfolioSaver.Shared\Helpers\AppDataRootResolver.cs" Link="Shared\AppDataRootResolver.cs" />
     <Compile Include="..\..\src\PortfolioSaver.Shared\Diagnostics\SensitiveDataRedactor.cs" Link="Shared\SensitiveDataRedactor.cs" />
+    <Compile Include="..\..\src\PortfolioSaver.Shared\Diagnostics\CircularTraceSettings.cs" Link="Shared\CircularTraceSettings.cs" />
   </ItemGroup>
 
 </Project>

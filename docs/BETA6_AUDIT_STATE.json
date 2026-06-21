@@ -4838,7 +4838,7 @@
       "priority": 1,
       "area": "degraded_mode_ux",
       "title": "Offline cached graph values can coexist with loading tape cells for the same cached symbols",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_artifact_advisory_2026_06_20_192303",
       "severity": "High",
       "evidence": [
@@ -4862,7 +4862,7 @@
         "Local focused tests pass.",
         "VM offline/recovery validation and artifact analysis pass, with DeepSeek artifact advisory reviewed."
       ],
-      "resolution": "Closed on 2026-06-20 after 9effe36 changed the desktop config pause lifecycle so scene refresh/rebuild occurs only after the config dialog closes and OK-published runtime quote seeds are available. VM evidence from ux-deep-ssh-20260620-193212 proves the first post-close tape sample renders numeric live values for the previously loading VEA/VWO/VSS/EFV/EFG cells."
+      "resolution": "Closed on 2026-06-20 by commit 9effe36. Root cause was premature scene unpause during modal config validation; the fix keeps the scene paused until the OK/applied config session exits, allowing RuntimeQuoteSeedStore validation quotes to be published before scene reload. Local focused tests and VM run ux-deep-ssh-20260620-193212 proved cached_quote_count=33 and immediate live tape values for the previously loading symbols."
     },
     {
       "id": "CR-118",
@@ -4870,7 +4870,7 @@
       "priority": 1,
       "area": "runtime_tracing",
       "title": "Trace scan found anomaly lines during VM validation",
-      "status": "open",
+      "status": "closed",
       "source": "autonomous_visual_validation",
       "severity": "High",
       "evidence": [
@@ -4887,7 +4887,39 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Closed on 2026-06-20 by commit 8016322. Intentional cancellation of in-flight quote requests during config/open shutdown is now logged as QuoteRequestCanceled info instead of QuoteRequestFailed warning. Local focused provider tests and VM run ux-deep-ssh-20260620-202400 deterministic analysis found zero analyzer findings."
+    },
+    {
+      "id": "CR-119",
+      "tracking_number": "CR-119",
+      "priority": 1,
+      "area": "runtime_tracing",
+      "title": "Long offline recovery runs can outlive retained circular trace evidence",
+      "status": "open",
+      "source": "deepseek_artifact_advisory_2026_06_20_210821",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek artifact review for ux-deep-ssh-20260620-202400 flagged that UI returned to LIVE while runtime-freshness-events.log showed trace_age_seconds growing from 994 to 1536 seconds after fault clear.",
+        "The retained app circular trace latest embedded timestamp was 2026-06-21T00:42:45Z and retained YFinance trace latest embedded timestamp was 2026-06-21T00:46:21Z, while fault-injection-events.log cleared the offline profile at 2026-06-21T00:53:22Z.",
+        "The root cause is validation proof loss: 4 MB circular traces churn during offline fault injection and can no longer cover the recovery-clear window in a 30-minute run."
+      ],
+      "notes": [
+        "Implemented 32 MB default circular traces for both desktop TraceLog and YFinanceCircularTraceSink, configurable via DONOTPANICPORTFOLIOVISUALIZER_TRACE_MAX_MB.",
+        "Tightened Analyze-VisualValidationArtifacts so ui-trace-stale cannot prove recovery; direct UI freshness must be paired with trace_age_seconds <= 180 or source-local combined trace LIVE evidence after OFFLINE.",
+        "Updated DEGRADED_MODE_VALIDATION_HARNESS.md and validation-script fixtures.",
+        "Recovery analyzer now rejects combined-trace-only proof; runtime-freshness-events.log with direct UI freshness and trace_age_seconds <= 180 is the required recovery evidence.",
+        "All ongoing validation pipelines must emit runtime-freshness-events.log with latest_freshness_source, ui_freshness, effective_fault_profile, and trace_age_seconds; archived runs without those fields are not sufficient for CR-119 closure."
+      ],
+      "acceptance": [
+        "App and YFinance.NET traces retain enough evidence for 30-minute degraded-mode recovery runs under normal fault-injection churn.",
+        "Analyzer fails recovery proof when only stale trace-backed LIVE freshness is present.",
+        "Local validation-script fixtures prove stale trace-backed recovery is rejected and fresh trace-backed recovery is accepted.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes.",
+        "A VM recovery run proves post-clear recovery with retained trace evidence."
+      ],
+      "resolution": "Implementation is complete locally, but CR-119 remains open until a fresh committed VM validation run proves post-recovery LIVE freshness using runtime-freshness-events.log with direct UI freshness and trace_age_seconds <= 180 under the enlarged circular trace cap."
     }
   ],
   "remaining_validation_gaps": [],
