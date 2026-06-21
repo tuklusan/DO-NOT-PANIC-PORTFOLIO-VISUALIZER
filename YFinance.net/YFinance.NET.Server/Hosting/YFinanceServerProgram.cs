@@ -543,7 +543,7 @@ internal static class YFinanceServerProgram
         return response;
     }
 
-    private static string MapErrorCode(Exception ex)
+    internal static string MapErrorCode(Exception ex)
     {
         if (ex is HttpRequestException { StatusCode: HttpStatusCode.TooManyRequests })
             return ProtocolErrorCodes.UpstreamThrottled;
@@ -556,7 +556,7 @@ internal static class YFinanceServerProgram
         return ProtocolErrorCodes.InternalError;
     }
 
-    private static bool IsRetryable(Exception ex)
+    internal static bool IsRetryable(Exception ex)
         => ex is HttpRequestException or TaskCanceledException or TimeoutException;
 
     private static string ResolveTraceRoot()

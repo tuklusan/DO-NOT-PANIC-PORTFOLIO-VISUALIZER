@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reflection;
+using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using PortfolioSaver.Core.Enums;
@@ -19,6 +20,7 @@ using YFinance.NET.Config;
 using YFinance.NET.Exceptions;
 using YFinance.NET.Features.History;
 using YFinance.NET.Features.Quotes;
+using YFinance.NET.Protocol.Constants;
 using YFinance.NET.Protocol.Dtos;
 using YFinance.NET.Transport;
 using YQuoteSnapshot = YFinance.NET.Models.QuoteSnapshot;
@@ -228,6 +230,59 @@ public sealed class Nb040BehaviorTests
             () => MarketTimingService.ParseMarketTiming("AAPL", document.RootElement));
 
         Assert.Contains("symbol not found", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void YFinanceHttpDegradationPolicy_RefreshesSessionOnlyForAuthAndCrumbFailures()
+    {
+        Assert.True(YahooFinanceHttpClient.ShouldRefreshSession("anything", HttpStatusCode.Unauthorized));
+        Assert.True(YahooFinanceHttpClient.ShouldRefreshSession("anything", HttpStatusCode.Forbidden));
+        Assert.True(YahooFinanceHttpClient.ShouldRefreshSession("invalid cookie", HttpStatusCode.BadRequest));
+        Assert.True(YahooFinanceHttpClient.ShouldRefreshSession("invalid crumb", HttpStatusCode.BadRequest));
+        Assert.True(YahooFinanceHttpClient.ShouldRefreshSession("csrf token rejected", HttpStatusCode.BadRequest));
+
+        Assert.False(YahooFinanceHttpClient.ShouldRefreshSession("not found", HttpStatusCode.NotFound));
+        Assert.False(YahooFinanceHttpClient.ShouldRefreshSession("request timeout", HttpStatusCode.RequestTimeout));
+        Assert.False(YahooFinanceHttpClient.ShouldRefreshSession("server exploded", HttpStatusCode.InternalServerError));
+    }
+
+    [Fact]
+    public void YFinanceHttpDegradationPolicy_UsesRetryAfterOrExponentialBackoffForRateLimits()
+    {
+        using HttpResponseMessage explicitRetry = new(HttpStatusCode.TooManyRequests);
+        explicitRetry.Headers.TryAddWithoutValidation("Retry-After", "7");
+
+        using HttpResponseMessage implicitRetry = new(HttpStatusCode.TooManyRequests);
+        using HttpResponseMessage invalidRetryAfter = new(HttpStatusCode.TooManyRequests);
+        invalidRetryAfter.Headers.TryAddWithoutValidation("Retry-After", "not-a-number");
+
+        Assert.Equal(TimeSpan.FromSeconds(7), YahooFinanceHttpClient.GetRetryDelay(explicitRetry, 0));
+        Assert.Equal(TimeSpan.FromSeconds(2), YahooFinanceHttpClient.GetRetryDelay(implicitRetry, 0));
+        Assert.Equal(TimeSpan.FromSeconds(4), YahooFinanceHttpClient.GetRetryDelay(implicitRetry, 1));
+        Assert.Equal(TimeSpan.FromSeconds(8), YahooFinanceHttpClient.GetRetryDelay(implicitRetry, 2));
+        Assert.Equal(TimeSpan.FromSeconds(4), YahooFinanceHttpClient.GetRetryDelay(invalidRetryAfter, 1));
+    }
+
+    [Fact]
+    public void YFinanceServerErrorMapping_ClassifiesHttpFailuresForClientDegradation()
+    {
+        HttpRequestException rateLimited = new("rate limited", null, HttpStatusCode.TooManyRequests);
+        HttpRequestException requestTimeout = new("timeout", null, HttpStatusCode.RequestTimeout);
+        HttpRequestException serverUnavailable = new("server unavailable", null, HttpStatusCode.ServiceUnavailable);
+        TimeoutException timeout = new("operation timeout");
+        InvalidOperationException internalError = new("bad payload");
+
+        Assert.Equal(ProtocolErrorCodes.UpstreamThrottled, YFinance.NET.Server.Hosting.YFinanceServerProgram.MapErrorCode(rateLimited));
+        Assert.Equal(ProtocolErrorCodes.Timeout, YFinance.NET.Server.Hosting.YFinanceServerProgram.MapErrorCode(requestTimeout));
+        Assert.Equal(ProtocolErrorCodes.UpstreamUnavailable, YFinance.NET.Server.Hosting.YFinanceServerProgram.MapErrorCode(serverUnavailable));
+        Assert.Equal(ProtocolErrorCodes.Timeout, YFinance.NET.Server.Hosting.YFinanceServerProgram.MapErrorCode(timeout));
+        Assert.Equal(ProtocolErrorCodes.InternalError, YFinance.NET.Server.Hosting.YFinanceServerProgram.MapErrorCode(internalError));
+
+        Assert.True(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(rateLimited));
+        Assert.True(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(requestTimeout));
+        Assert.True(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(serverUnavailable));
+        Assert.True(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(timeout));
+        Assert.False(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(internalError));
     }
 
     [Fact]

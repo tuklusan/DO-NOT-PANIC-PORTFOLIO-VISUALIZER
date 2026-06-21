@@ -102,7 +102,7 @@ public sealed class YahooFinanceHttpClient : IDisposable
         return request;
     }
 
-    private static bool ShouldRefreshSession(string body, HttpStatusCode statusCode)
+    internal static bool ShouldRefreshSession(string body, HttpStatusCode statusCode)
     {
         int code = (int)statusCode;
         if (code is 401 or 403)
@@ -122,7 +122,7 @@ public sealed class YahooFinanceHttpClient : IDisposable
             || body.Contains("collectConsent", StringComparison.OrdinalIgnoreCase)
             || body.Contains("guce.yahoo.com", StringComparison.OrdinalIgnoreCase);
 
-    private static TimeSpan GetRetryDelay(HttpResponseMessage response, int attempt)
+    internal static TimeSpan GetRetryDelay(HttpResponseMessage response, int attempt)
     {
         if (response.Headers.TryGetValues("Retry-After", out IEnumerable<string>? values))
         {
