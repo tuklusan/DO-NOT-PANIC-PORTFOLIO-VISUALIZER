@@ -1,3 +1,3 @@
 using YFinance.NET.Server.Hosting;
 
-YFinanceServerProgram.Run(args);
+Environment.ExitCode = YFinanceServerProgram.Run(args);
