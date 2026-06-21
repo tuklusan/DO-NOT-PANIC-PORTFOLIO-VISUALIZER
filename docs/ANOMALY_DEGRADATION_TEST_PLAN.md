@@ -240,10 +240,12 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 1
 - Severity: High
 - Area: runtime_network_recovery
-- Status: open
+- Status: closed
+- Closure evidence: focused local validation passed 11/11 on 2026-06-21 for runtime recovery gate, internet probe behavior, freshness state, network waiting overlay, and one-at-a-time scheduler behavior; post-test process check found no leftover server/app processes.
 - Evidence / rationale:
   - The most common real-world degradation is Wi-Fi/VPN/internet loss after the app is already running.
   - The UI should keep rendering, stop claiming freshness, and recover without restart.
+  - Focused tests prove offline/freshness transitions, recovery reset gating, internet probe caching, network overlay availability, and non-batched one-at-a-time scheduler behavior.
 - Notes:
   - Inject loss while updating macro values, while updating world markets, while walking tape symbols, and while graph-card top movers are active.
   - Recovery should not cause a burst/batch redraw.

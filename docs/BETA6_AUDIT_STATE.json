@@ -3525,12 +3525,17 @@
       "priority": 1,
       "area": "runtime_network_recovery",
       "title": "Validate internet loss and recovery during normal runtime after healthy startup",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "High",
       "evidence": [
         "The most common real-world degradation is Wi-Fi/VPN/internet loss after the app is already running.",
-        "The UI should keep rendering, stop claiming freshness, and recover without restart."
+        "The UI should keep rendering, stop claiming freshness, and recover without restart.",
+        "RuntimeQuoteRecoveryGate tests prove recovery reset requires the offline failure threshold, honors cooldown, and allows only one concurrent reset.",
+        "InternetProbeServiceTests prove deterministic internet available/unavailable paths, probe caching, cache invalidation, and shared handler behavior for runtime network recovery.",
+        "StartupCoordinator freshness tests prove failure-threshold offline state changes LIVE to OFFLINE - showing last values or OFFLINE - waiting for data, never falsely fresh.",
+        "NetworkWaitingOverlay tests prove the visible user-facing waiting overlay/template remains available during network degradation.",
+        "RuntimeQuoteScheduler tests prove the scene keeps one-at-a-time quote cadence, timeout pruning, stale completion ignore, and transport reset trace paths instead of batching redraws after recovery."
       ],
       "notes": [
         "Inject loss while updating macro values, while updating world markets, while walking tape symbols, and while graph-card top movers are active.",
@@ -3546,6 +3551,12 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "Runtime outage does not freeze the scene or block news/background animations.",
         "Recovery resumes one-by-one cadence without duplicate/batched symbol updates."
+      ],
+      "closed_date": "2026-06-21",
+      "resolution": "Runtime network loss/recovery behavior is validated through the deterministic recovery/freshness seams. Internet probe success/failure and caching behavior are covered, repeated quote failures force truthful offline freshness state at threshold, recovery transport reset is gated/cooldown-protected, the network waiting overlay remains available, and the runtime scheduler remains one-at-a-time rather than batching updates after recovery.",
+      "validation": "Focused local validation passed on 2026-06-21: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~Nb040BehaviorTests.RuntimeQuoteRecoveryGate|FullyQualifiedName~InternetProbeServiceTests|FullyQualifiedName~StartupCoordinatorTapeItemTests.ResolveDataFreshnessText|FullyQualifiedName~ScreensaverRenderBehaviorTests.NetworkWaitingOverlay|FullyQualifiedName~ScreensaverRenderBehaviorTests.RuntimeQuoteScheduler\" --nologo passed 11/11. Post-test process check found no leftover YFinance.NET.Server, PortfolioSaver, or relevant dotnet child processes.",
+      "commits": [
+        "fa65ffd"
       ]
     },
     {
