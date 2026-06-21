@@ -516,6 +516,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Test-IsExpectedValidationUnavailableStatus", script, StringComparison.Ordinal);
         Assert.Contains("function Test-ConfigExpectsValidationUnavailable", script, StringComparison.Ordinal);
         Assert.Contains("function Close-ConfigWindowPatternFallback", script, StringComparison.Ordinal);
+        Assert.Contains("function Close-ConfigWindowMessageFallback", script, StringComparison.Ordinal);
+        Assert.Contains("NativeWindowMessaging", script, StringComparison.Ordinal);
+        Assert.Contains("WM_CLOSE", script, StringComparison.Ordinal);
         Assert.Contains("function Close-ConfigForExpectedValidationUnavailable", script, StringComparison.Ordinal);
         Assert.Contains("[switch]$ExpectedValidationUnavailable", script, StringComparison.Ordinal);
         Assert.Contains("ExpectedValidationUnavailableObserved", script, StringComparison.Ordinal);
@@ -527,6 +530,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("ExpectedValidationUnavailableChildDialogCloseWait", script, StringComparison.Ordinal);
         Assert.Contains("Wait-UIAutomationCondition -TimeoutSeconds 10 -PollMilliseconds 200 -TraceEvent 'ExpectedValidationUnavailableCloseWait'", script, StringComparison.Ordinal);
         Assert.Contains("Close-ConfigWindowPatternFallback", script, StringComparison.Ordinal);
+        Assert.Contains("Close-ConfigWindowMessageFallback", script, StringComparison.Ordinal);
+        Assert.Contains("ConfigWindowMessageCloseFallback", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Click-ConfigTitleBarCloseFallback", script, StringComparison.Ordinal);
         Assert.Contains("Runtime-only profiles intentionally stay out of this list", script, StringComparison.Ordinal);
         Assert.Contains("return $Profile -in @('offline-at-start', 'offline-during-config-validation', 'upstream-throttled', 'timeout')", script, StringComparison.Ordinal);

@@ -101,6 +101,16 @@ public static class NativeWindowSearch {
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
+public static class NativeWindowMessaging {
+    public const uint WM_CLOSE = 0x0010;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+}
+"@
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
 public static class NativeMouseInput {
     public const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
     public const uint MOUSEEVENTF_LEFTUP = 0x0004;
@@ -2643,6 +2653,45 @@ function Close-ConfigWindowPatternFallback {
     }
 }
 
+function Close-ConfigWindowMessageFallback {
+    param(
+        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process,
+        $Window
+    )
+
+    try {
+        $handle = [IntPtr]::Zero
+        if ($null -ne $Window) {
+            try {
+                $nativeHandle = [int]$Window.Current.NativeWindowHandle
+                if ($nativeHandle -ne 0) {
+                    $handle = [IntPtr]::new($nativeHandle)
+                }
+            }
+            catch {
+                Write-ConfigWindowTrace -Event 'ConfigWindowMessageCloseHandleFromAutomationFailed' -Details $_.Exception.Message
+            }
+        }
+
+        if ($handle -eq [IntPtr]::Zero) {
+            $handle = [NativeWindowSearch]::FindVisibleWindowByProcessAndTitleFragment($Process.Id, 'PORTFOLIO VISUALIZER Config')
+        }
+
+        if ($handle -eq [IntPtr]::Zero) {
+            Write-ConfigWindowTrace -Event 'ConfigWindowMessageCloseFallback' -Details 'result=NoHandle'
+            return $false
+        }
+
+        $posted = [NativeWindowMessaging]::PostMessage($handle, [NativeWindowMessaging]::WM_CLOSE, [IntPtr]::Zero, [IntPtr]::Zero)
+        Write-ConfigWindowTrace -Event 'ConfigWindowMessageCloseFallback' -Details ("result={0}; handle=0x{1:X}" -f $posted, $handle.ToInt64())
+        return $posted
+    }
+    catch {
+        Write-ConfigWindowTrace -Event 'ConfigWindowMessageCloseFallbackFailed' -Details $_.Exception.Message
+        return $false
+    }
+}
+
 function Get-ConfigStatusText {
     param(
         [Parameter(Mandatory = $true)]$Window
@@ -2788,10 +2837,11 @@ function Close-ConfigForExpectedValidationUnavailable {
     Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableObserved' -Details ("status={0}; buttons={1}" -f $StatusText, $buttonSnapshot)
 
     # Prefer UIA close first, then WindowPattern.Close for stale/lying button
-    # elements, then the footer coordinate fallback as a final escape hatch.
+    # elements, then native WM_CLOSE, then the footer coordinate fallback.
     $methods = @(
         @{ Name = 'Click-ConfigCloseButtonFallback'; Invoke = { param($targetWindow) Click-ConfigCloseButtonFallback -Window $targetWindow } },
         @{ Name = 'Close-ConfigWindowPatternFallback'; Invoke = { param($targetWindow) Close-ConfigWindowPatternFallback -Window $targetWindow } },
+        @{ Name = 'Close-ConfigWindowMessageFallback'; Invoke = { param($targetWindow) Close-ConfigWindowMessageFallback -Process $Process -Window $targetWindow } },
         @{ Name = 'Click-ConfigFooterButtonFallback'; Invoke = { param($targetWindow) Click-ConfigFooterButtonFallback -Window $targetWindow -CompletionMode 'Cancel' } }
     )
 
