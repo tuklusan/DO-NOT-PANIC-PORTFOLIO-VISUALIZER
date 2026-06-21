@@ -1,6 +1,7 @@
 using System.IO;
 using System.Diagnostics;
 using System.Net;
+using System.Net.Sockets;
 using System.Text.Json;
 using PortfolioSaver.Shared.Services;
 using YFinance.NET.Client;
