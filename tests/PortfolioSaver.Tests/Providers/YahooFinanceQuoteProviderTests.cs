@@ -41,6 +41,17 @@ public sealed class YahooFinanceQuoteProviderTests
     }
 
     [Fact]
+    public async Task GetQuotesAsync_PropagatesIntentionalCancellation()
+    {
+        using CancellationTokenSource cts = new();
+        YahooFinanceQuoteProvider provider = new((_, _, token) => Task.FromCanceled<QuotesResponseDto>(token));
+
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => provider.GetQuotesAsync(["AAPL"], cts.Token));
+    }
+
+    [Fact]
     public void MapQuotesResponse_PreservesResolvedSymbolsWhenResponseIsPartial()
     {
         QuotesResponseDto response = CreatePartialResponse();

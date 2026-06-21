@@ -3143,7 +3143,7 @@
       "priority": 1,
       "area": "startup_network_degradation",
       "title": "Validate cold startup when internet is unavailable before app launch",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "High",
       "evidence": [
@@ -4844,12 +4844,15 @@
       "evidence": [
         "DeepSeek artifact advisory build/validation/artifacts/deepseek-artifact-review-20260620-192303.md identified that reference-spot-checks.jsonl captured VEA, VWO, VSS, EFV, and EFG as tape State=loading with DisplayedLast=- while YFinance trace evidence had known prices for those symbols from 2026-06-20T22:35:42Z.",
         "Manual screenshot desktop-009.png from ux-deep-ssh-20260620-182801 shows the status band OFFLINE - showing last values while some graph cards for the same family of symbols are populated and some tape cells remain spinner/loading.",
-        "This is a user-visible degraded-mode consistency issue: if cached values are available for graph cards or trace-backed quote evidence, matching tape cells should not look like perpetual startup loading during an outage."
+        "This is a user-visible degraded-mode consistency issue: if cached values are available for graph cards or trace-backed quote evidence, matching tape cells should not look like perpetual startup loading during an outage.",
+        "Fix committed in 9effe36 keeps the desktop scene paused for the entire modal config session, so the scene reload happens after OK publishes validation quote seeds.",
+        "VM run ux-deep-ssh-20260620-193212 shows QuoteRefreshPlan cached_quote_count=33 immediately after config close, followed by DisplayedTapeSample values for VEA, VWO, VSS, EFV, and EFG: VEA~72.31~+0.96%~live, VWO~60.77~+1.73%~live, VSS~157.54~+0.37%~live, EFV~76.64~-0.18%~live, EFG~125.10~+1.34%~live."
       ],
       "notes": [
         "Investigate whether graph history cache is being used without a corresponding last quote cache, whether the startup progressive quote scheduler leaves early symbols in loading during fault injection, or whether the spot-check sample is reading stale DisplayedTapeSample lines.",
         "If the mismatch is real, render a stale/cached numeric quote where possible, or render a distinct unavailable/stale placeholder rather than loading.",
-        "If the mismatch is harness-only, tighten DisplayedTapeSample/spot-check selection to avoid comparing post-graph history values against stale tape sample lines."
+        "If the mismatch is harness-only, tighten DisplayedTapeSample/spot-check selection to avoid comparing post-graph history values against stale tape sample lines.",
+        "Root cause was not graph history cache: validation quote seeds were published only after OK, while the scene previously resumed as soon as validation activity ended and consumed zero seeds before OK was clicked."
       ],
       "acceptance": [
         "During offline fault validation, any sampled tape symbol with a known cached quote renders a numeric stale/cached value rather than indefinite loading.",
@@ -4858,6 +4861,32 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local focused tests pass.",
         "VM offline/recovery validation and artifact analysis pass, with DeepSeek artifact advisory reviewed."
+      ],
+      "resolution": "Closed on 2026-06-20 after 9effe36 changed the desktop config pause lifecycle so scene refresh/rebuild occurs only after the config dialog closes and OK-published runtime quote seeds are available. VM evidence from ux-deep-ssh-20260620-193212 proves the first post-close tape sample renders numeric live values for the previously loading VEA/VWO/VSS/EFV/EFG cells."
+    },
+    {
+      "id": "CR-118",
+      "tracking_number": "CR-118",
+      "priority": 1,
+      "area": "runtime_tracing",
+      "title": "Trace scan found anomaly lines during VM validation",
+      "status": "open",
+      "source": "autonomous_visual_validation",
+      "severity": "High",
+      "evidence": [
+        "Run ux-deep-ssh-20260620-193212 trace anomaly sample:",
+        "combined-trace-tail.txt:183: 2026-06-20T23:40:16.5157554+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=3488 | tid=4 | event=QuoteRequestFailed / operation_id=quotes-00000026 / requested_count=1 / symbols=[^IXIC] / message=A task was canceled. trace.circular.log:182: 2026-06-20T23:40:16.5157554+00:00 | WARN | program=PortfolioSaver.Desktop | source=YFinanceUiBridge | function=GetQuotesAsync | host=windows10 | ip=192.168.56.102 | pid=3488 | tid=4 | event=QuoteRequestFailed / operation_id=quotes-00000026 / requested_count=1 / symbols=[^IXIC] / message=A task was canceled."
+      ],
+      "notes": [
+        "Unexpected trace anomalies are escalated so they are not lost after long autonomous runs."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ]
     }
   ],

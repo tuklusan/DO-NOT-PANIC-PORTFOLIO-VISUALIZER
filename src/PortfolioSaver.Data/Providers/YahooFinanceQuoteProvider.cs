@@ -58,6 +58,14 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
                     cancellationToken)
                 .ConfigureAwait(false);
         }
+        catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
+        {
+            TraceLog.InfoState(
+                "YFinanceUiBridge",
+                "QuoteRequestCanceled",
+                [new("operation_id", operationId), new("requested_count", requestedSymbols.Count), new("symbols", requestedSymbols), new("message", ex.Message)]);
+            throw;
+        }
         catch (Exception ex)
         {
             TraceLog.WarnState(
