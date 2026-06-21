@@ -117,7 +117,8 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 1
 - Severity: High
 - Area: yfinance_transport_degradation
-- Status: open
+- Status: closed
+- Closure evidence: clean-head focused local validation passed 45/45 on 2026-06-21 for `YFinanceServerClientPipelineTests` and `YFinanceClientServerProtocolTests` after commits `298d0f5` and `479beee`; post-test process check found no leftover server/app processes.
 - Evidence / rationale:
   - The protocol is asynchronous/pipelined; requests should continue on cadence and responses are processed when they arrive.
   - Disconnects, late responses, malformed frames, checksum failures, timestamp skew, and server exceptions need proof.

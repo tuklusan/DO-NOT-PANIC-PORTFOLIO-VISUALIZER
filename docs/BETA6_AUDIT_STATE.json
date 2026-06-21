@@ -3288,12 +3288,15 @@
       "priority": 1,
       "area": "yfinance_transport_degradation",
       "title": "Validate asynchronous client/server disconnect, reconnect, malformed response, and late response handling",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "High",
       "evidence": [
         "The protocol is asynchronous/pipelined; requests should continue on cadence and responses are processed when they arrive.",
-        "Disconnects, late responses, malformed frames, checksum failures, timestamp skew, and server exceptions need proof."
+        "Disconnects, late responses, malformed frames, checksum failures, timestamp skew, and server exceptions need proof.",
+        "Added deterministic client transport tests for abrupt server disconnect before response, malformed frame receive-loop failure, reconnection on the next request, late canceled responses, corrupt responses/events, and dispose-start public-call rejection.",
+        "YFinanceServerClient now detaches faulted connection state after receive-loop failures and serializes stream writes/fault cleanup through _writeGate and _connectionStateGate so the next request reconnects instead of reusing a dead stream.",
+        "Focused local validation passed from clean HEAD: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~YFinanceServerClientPipelineTests|FullyQualifiedName~YFinanceClientServerProtocolTests\" --nologo passed 45/45 on 2026-06-21."
       ],
       "notes": [
         "Include request/response/async-message timestamp and checksum expectations from the NB-031 ICD.",
@@ -3309,6 +3312,13 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "Client recovers or degrades predictably after transport break without blocking UI cadence.",
         "Invalid frames/checksums are rejected and traced."
+      ],
+      "closed_date": "2026-06-21",
+      "resolution": "Transport fault recovery now fails only the affected in-flight request, traces malformed/corrupt/late response paths, detaches faulted sockets safely, and allows the next request to reconnect cleanly without batch UI implications.",
+      "validation": "DeepSeek code reviews through build/deepseek-review/deepseek-review-20260621-170454.md and follow-up assertion review build/deepseek-review/deepseek-review-20260621-170833.md cleared the implementation; clean-head focused local validation passed 45/45; post-test process check found no leftover YFinance.NET.Server, PortfolioSaver, or relevant dotnet child processes.",
+      "commits": [
+        "298d0f5",
+        "479beee"
       ]
     },
     {
