@@ -2761,7 +2761,22 @@ function Close-ConfigForExpectedValidationUnavailable {
         [Parameter(Mandatory = $true)][string]$StatusText
     )
 
-    $buttonSnapshot = Get-WindowButtonSnapshot -Window $Window
+    # Validation-unavailable failures show a modal warning dialog before the
+    # main window can close. This is intentionally idempotent with the attempt-
+    # level child-window cleanup because the warning appears after Validate is
+    # invoked, not before the attempt starts.
+    Close-ConfigChildWindows -MainProcessId $Process.Id
+    [void](Wait-UIAutomationCondition -TimeoutSeconds 3 -PollMilliseconds 100 -TraceEvent 'ExpectedValidationUnavailableChildDialogCloseWait' -Condition {
+        $dialog = Get-ConfigBlockingDialog -Process $Process
+        return ($null -eq $dialog)
+    })
+    $currentWindow = Find-ConfigWindowOwned -Process $Process
+    if ($null -eq $currentWindow) {
+        Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableClosed' -Details 'method=Close-ConfigChildWindows'
+        return $true
+    }
+
+    $buttonSnapshot = Get-WindowButtonSnapshot -Window $currentWindow
     Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableObserved' -Details ("status={0}; buttons={1}" -f $StatusText, $buttonSnapshot)
 
     # Prefer UIA close first, then WindowPattern.Close for stale/lying button
@@ -2773,8 +2788,8 @@ function Close-ConfigForExpectedValidationUnavailable {
     )
 
     foreach ($method in $methods) {
-        $Window = Find-ConfigWindowOwned -Process $Process
-        if ($null -eq $Window) {
+        $currentWindow = Find-ConfigWindowOwned -Process $Process
+        if ($null -eq $currentWindow) {
             Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableClosed'
             return $true
         }
@@ -2783,7 +2798,7 @@ function Close-ConfigForExpectedValidationUnavailable {
         try {
             Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableCloseAttempt' -Details ("method={0}" -f $method['Name'])
             $invokeCloseMethod = $method['Invoke']
-            $invoked = & $invokeCloseMethod $Window
+            $invoked = & $invokeCloseMethod $currentWindow
         }
         catch {
             Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableCloseException' -Details ("method={0}; message={1}" -f $method['Name'], $_.Exception.Message)
@@ -3286,36 +3301,40 @@ try {
         }
 
         Test-ConfigPhaseBudget -StartedAt $configInteractionStartedAt -Stage 'validate-close'
-        if ($FaultProfile -eq 'offline-during-config-validation') {
-            Set-YFinanceFaultProfile -Profile 'offline'
-        }
-        $expectedValidationUnavailable = Test-ConfigExpectsValidationUnavailable -Profile $FaultProfile
-        $configClosedNaturally = Validate-AndCloseConfigWindow -Process $desktop -Window $window -CompletionMode $ValidationCompletionMode -ExpectedValidationUnavailable:$expectedValidationUnavailable
-        if ($configClosedNaturally) {
-            $closeVerified = Wait-UIAutomationCondition -TimeoutSeconds 3 -PollMilliseconds 100 -TraceEvent 'ConfigClosedVerificationWait' -Condition {
-                $remaining = Find-ConfigWindowOwned -Process $desktop
-                return ($null -eq $remaining)
+        try {
+            if ($FaultProfile -eq 'offline-during-config-validation') {
+                Set-YFinanceFaultProfile -Profile 'offline'
             }
-            if ($closeVerified -eq $true) {
-                $window = $null
+            $expectedValidationUnavailable = Test-ConfigExpectsValidationUnavailable -Profile $FaultProfile
+            $configClosedNaturally = Validate-AndCloseConfigWindow -Process $desktop -Window $window -CompletionMode $ValidationCompletionMode -ExpectedValidationUnavailable:$expectedValidationUnavailable
+            if ($configClosedNaturally) {
+                $closeVerified = Wait-UIAutomationCondition -TimeoutSeconds 3 -PollMilliseconds 100 -TraceEvent 'ConfigClosedVerificationWait' -Condition {
+                    $remaining = Find-ConfigWindowOwned -Process $desktop
+                    return ($null -eq $remaining)
+                }
+                if ($closeVerified -eq $true) {
+                    $window = $null
+                }
+                else {
+                    $window = Find-ConfigWindowOwned -Process $desktop
+                }
+                if ($null -ne $window) {
+                    $configClosedNaturally = $false
+                }
+            }
+
+            if (-not $configClosedNaturally) {
+                $summary.Notes += 'Validate did not close the config window automatically; falling back to forced close.'
+                throw 'Validate did not close the config window automatically.'
             }
             else {
-                $window = Find-ConfigWindowOwned -Process $desktop
-            }
-            if ($null -ne $window) {
-                $configClosedNaturally = $false
+                $window = $null
             }
         }
-
-        if (-not $configClosedNaturally) {
-            $summary.Notes += 'Validate did not close the config window automatically; falling back to forced close.'
-            throw 'Validate did not close the config window automatically.'
-        }
-        else {
-            $window = $null
-        }
-        if ($FaultProfile -eq 'offline-during-config-validation') {
-            Clear-YFinanceFaultProfile
+        finally {
+            if ($FaultProfile -eq 'offline-during-config-validation') {
+                Clear-YFinanceFaultProfile
+            }
         }
 
         $summary.ConfigPhaseStatus = "Completed"

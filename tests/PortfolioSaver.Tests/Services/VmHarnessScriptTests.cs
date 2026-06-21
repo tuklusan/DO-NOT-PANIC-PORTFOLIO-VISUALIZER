@@ -522,7 +522,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("ExpectedValidationUnavailableCloseException", script, StringComparison.Ordinal);
         Assert.Contains("ExpectedValidationUnavailableCloseMethodDidNotDismiss", script, StringComparison.Ordinal);
         Assert.Contains("ExpectedValidationUnavailableRetryScheduled", script, StringComparison.Ordinal);
-        Assert.Contains("Prefer UIA close first, then WindowPattern.Close", script, StringComparison.Ordinal);
+        Assert.Contains("main window can close. This is intentionally idempotent", script, StringComparison.Ordinal);
+        Assert.Contains("ExpectedValidationUnavailableChildDialogCloseWait", script, StringComparison.Ordinal);
         Assert.Contains("Wait-UIAutomationCondition -TimeoutSeconds 10 -PollMilliseconds 200 -TraceEvent 'ExpectedValidationUnavailableCloseWait'", script, StringComparison.Ordinal);
         Assert.Contains("Close-ConfigWindowPatternFallback", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Click-ConfigTitleBarCloseFallback", script, StringComparison.Ordinal);
@@ -530,6 +531,8 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("return $Profile -in @('offline-at-start', 'offline-during-config-validation', 'upstream-throttled', 'timeout')", script, StringComparison.Ordinal);
         Assert.Contains("$expectedValidationUnavailable = Test-ConfigExpectsValidationUnavailable -Profile $FaultProfile", script, StringComparison.Ordinal);
         Assert.Contains("-ExpectedValidationUnavailable:$expectedValidationUnavailable", script, StringComparison.Ordinal);
+        Assert.Contains("finally {", script, StringComparison.Ordinal);
+        Assert.Contains("Clear-YFinanceFaultProfile", script, StringComparison.Ordinal);
         Assert.Contains("[switch]$IncludeVisibleFreshness", script, StringComparison.Ordinal);
         Assert.Contains("if ($IncludeVisibleFreshness -and $null -ne $DesktopProcess", script, StringComparison.Ordinal);
         Assert.Contains("Get-VisibleRuntimeFreshnessText -DesktopProcess $DesktopProcess", script, StringComparison.Ordinal);

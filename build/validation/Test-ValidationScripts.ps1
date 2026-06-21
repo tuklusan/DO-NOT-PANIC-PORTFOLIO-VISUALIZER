@@ -91,6 +91,52 @@ try {
     $offlineFinding = @($offlineFailReport.findings | Where-Object { $_.code -eq 'offline-ux-state-unverified' })
     if ($offlineFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag missing offline UX proof.' }
 
+    $offlineRuntimeNoActivationRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000018'
+    New-Item -ItemType Directory -Force -Path $offlineRuntimeNoActivationRun | Out-Null
+    @{ ResultName = 'ux-deep-ssh-20990101-000018'; ConfigPhaseStatus = 'Completed'; DesktopPhaseStatus = 'Completed'; FullScreenToggleStatus = 'Completed'; FaultProfile = 'offline-during-runtime' } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $offlineRuntimeNoActivationRun 'ux-deep-summary.json') -Encoding UTF8
+    '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=none' |
+        Set-Content -LiteralPath (Join-Path $offlineRuntimeNoActivationRun 'fault-injection-events.log') -Encoding UTF8
+    'event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values' |
+        Set-Content -LiteralPath (Join-Path $offlineRuntimeNoActivationRun 'combined-trace-tail.txt') -Encoding UTF8
+    $offlineRuntimeNoActivationAnalysisPath = Join-Path $tempRoot 'offline-runtime-no-activation-analysis.json'
+    $offlineRuntimeNoActivationOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $offlineRuntimeNoActivationRun -OutputPath $offlineRuntimeNoActivationAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($offlineRuntimeNoActivationOutput -match 'ANALYSIS_FINDINGS=1')) { throw "Offline-runtime-no-activation analysis did not report exactly one finding. Output: $offlineRuntimeNoActivationOutput" }
+    $offlineRuntimeNoActivationReport = Get-Content -Raw -LiteralPath $offlineRuntimeNoActivationAnalysisPath | ConvertFrom-Json
+    $offlineRuntimeActivationFinding = @($offlineRuntimeNoActivationReport.findings | Where-Object { $_.code -eq 'offline-fault-injection-unverified' })
+    if ($offlineRuntimeActivationFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag missing runtime offline fault activation.' }
+
+    $configOfflinePassRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000016'
+    New-Item -ItemType Directory -Force -Path $configOfflinePassRun | Out-Null
+    @{ ResultName = 'ux-deep-ssh-20990101-000016'; ConfigPhaseStatus = 'Completed'; DesktopPhaseStatus = 'Completed'; FullScreenToggleStatus = 'Completed'; FaultProfile = 'offline-during-config-validation' } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $configOfflinePassRun 'ux-deep-summary.json') -Encoding UTF8
+    @(
+        '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=none',
+        '2026-01-01T00:00:10Z event=FaultProfileSet details=profile=offline',
+        '2026-01-01T00:00:20Z event=FaultProfileSet details=profile=none'
+    ) | Set-Content -LiteralPath (Join-Path $configOfflinePassRun 'fault-injection-events.log') -Encoding UTF8
+    $configOfflinePassAnalysisPath = Join-Path $tempRoot 'config-offline-pass-analysis.json'
+    $configOfflinePassOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $configOfflinePassRun -OutputPath $configOfflinePassAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($configOfflinePassOutput -match 'ANALYSIS_REPORT=')) { throw 'Config-offline-pass analysis did not emit ANALYSIS_REPORT.' }
+    $configOfflinePassReport = Get-Content -Raw -LiteralPath $configOfflinePassAnalysisPath | ConvertFrom-Json
+    if (-not $configOfflinePassReport.clean) { throw 'Analyze-VisualValidationArtifacts required runtime offline freshness for config-only offline validation.' }
+
+    $configOfflineNoActivationRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000017'
+    New-Item -ItemType Directory -Force -Path $configOfflineNoActivationRun | Out-Null
+    @{ ResultName = 'ux-deep-ssh-20990101-000017'; ConfigPhaseStatus = 'Completed'; DesktopPhaseStatus = 'Completed'; FullScreenToggleStatus = 'Completed'; FaultProfile = 'offline-during-config-validation' } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $configOfflineNoActivationRun 'ux-deep-summary.json') -Encoding UTF8
+    '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=none' |
+        Set-Content -LiteralPath (Join-Path $configOfflineNoActivationRun 'fault-injection-events.log') -Encoding UTF8
+    $configOfflineNoActivationAnalysisPath = Join-Path $tempRoot 'config-offline-no-activation-analysis.json'
+    $configOfflineNoActivationOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $configOfflineNoActivationRun -OutputPath $configOfflineNoActivationAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($configOfflineNoActivationOutput -match 'ANALYSIS_FINDINGS=1')) { throw "Config-offline-no-activation analysis did not report exactly one finding. Output: $configOfflineNoActivationOutput" }
+    $configOfflineNoActivationReport = Get-Content -Raw -LiteralPath $configOfflineNoActivationAnalysisPath | ConvertFrom-Json
+    $configOfflineActivationFinding = @($configOfflineNoActivationReport.findings | Where-Object { $_.code -eq 'offline-fault-injection-unverified' })
+    if ($configOfflineActivationFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag missing config-only offline fault activation.' }
+
     $recoveryPassRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000003'
     New-Item -ItemType Directory -Force -Path $recoveryPassRun | Out-Null
     @{ ResultName = 'ux-deep-ssh-20990101-000003'; ConfigPhaseStatus = 'Completed'; DesktopPhaseStatus = 'Completed'; FullScreenToggleStatus = 'Completed'; FaultProfile = 'offline-then-recover-runtime'; TargetCaptureFrames = 2 } |
@@ -233,8 +279,8 @@ try {
     $recoveryNoActivationOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $recoveryNoActivationRun -OutputPath $recoveryNoActivationAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
     if (-not ($recoveryNoActivationOutput -match 'ANALYSIS_REPORT=')) { throw 'Recovery-no-activation analysis did not emit ANALYSIS_REPORT.' }
     $recoveryNoActivationReport = Get-Content -Raw -LiteralPath $recoveryNoActivationAnalysisPath | ConvertFrom-Json
-    $missingActivationFindings = @($recoveryNoActivationReport.findings | Where-Object { $_.code -in @('offline-ux-state-unverified', 'offline-recovery-ux-state-unverified') })
-    if ($missingActivationFindings.Count -ne 2) { throw 'Analyze-VisualValidationArtifacts did not flag missing offline activation for recovery profile.' }
+    $missingActivationFindings = @($recoveryNoActivationReport.findings | Where-Object { $_.code -eq 'offline-fault-injection-unverified' })
+    if ($missingActivationFindings.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag missing offline activation for recovery profile.' }
 
     $recoveryInsufficientRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000006'
     New-Item -ItemType Directory -Force -Path $recoveryInsufficientRun | Out-Null

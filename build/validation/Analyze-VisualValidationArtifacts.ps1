@@ -162,7 +162,11 @@ foreach ($run in $runs) {
         }
     }
 
-    if ($faultProfile -match '(?i)offline') {
+    $offlineFaultProfile = $faultProfile -match '(?i)offline'
+    # Keep this list in sync with runtime-scoped offline profiles in Guest-UxDeepExercise.ps1.
+    # Config-only offline profiles prove fault activation, then clear before runtime UX validation.
+    $runtimeOfflineFaultProfile = $faultProfile -in @('offline-at-start', 'offline-during-runtime', 'offline-then-recover-runtime')
+    if ($offlineFaultProfile) {
         $faultTrace = Join-Path $run.FullName 'fault-injection-events.log'
         $combinedTrace = Join-Path $run.FullName 'combined-trace-tail.txt'
         $freshnessTrace = Join-Path $run.FullName 'runtime-freshness-events.log'
@@ -173,6 +177,16 @@ foreach ($run in $runs) {
                 Where-Object { $null -ne $_ }
         })
         $faultActivated = $faultActivationMatches.Count -gt 0
+
+        if (-not $faultActivated) {
+            [void]$findings.Add((New-Finding -Code 'offline-fault-injection-unverified' -Title 'Offline fault run did not prove fault activation' -Area 'degraded_mode_harness' -Severity 'High' -Evidence @("Run ${runId} used FaultProfile=$faultProfile.", "Expected fault-injection-events.log to contain profile=offline.") -Notes @('Every offline fault profile must prove the harness actually injected the offline condition.')))
+            continue
+        }
+
+        if (-not $runtimeOfflineFaultProfile) {
+            continue
+        }
+
         $offlineFreshnessHits = @()
         # The product trace and harness snapshot can report the same state; for
         # degraded-mode proof, corroborating hits are benign because validation
