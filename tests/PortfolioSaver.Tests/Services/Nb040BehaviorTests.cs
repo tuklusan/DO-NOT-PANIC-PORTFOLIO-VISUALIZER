@@ -744,33 +744,44 @@ public sealed class Nb040BehaviorTests
         foreach (string symbol in symbols)
             provider.Complete(symbol, new QuoteSnapshot { Symbol = symbol, Last = 100m, FetchTimestampUtc = DateTimeOffset.UtcNow });
 
-        using ManualResetEventSlim startGate = new(false);
-        using CountdownEvent readyGate = new(8);
-        Task<(int CompletedCount, int ResultCount)>[] drains = Enumerable.Range(0, 8)
-            .Select(_ => Task.Run(async () =>
-            {
-                readyGate.Signal();
-                startGate.Wait();
-                Dictionary<string, QuoteSnapshot> results = new(StringComparer.OrdinalIgnoreCase);
-                object taskObject = drainMethod.Invoke(coordinator, [results])!;
-                await (Task)taskObject;
-                object drainResult = taskObject.GetType().GetProperty("Result")!.GetValue(taskObject)!;
-                int completedCount = (int)drainResult.GetType().GetProperty("CompletedCount")!.GetValue(drainResult)!;
-                return (completedCount, results.Count);
-            }))
-            .ToArray();
+        const int workerCount = 8;
+        // VM validation can run this gate while the build host is CPU-saturated; keep this roomy but bounded.
+        TimeSpan rendezvousTimeout = TimeSpan.FromSeconds(30);
+        Barrier? startBarrier = null;
+        Task<(bool Rendezvous, int CompletedCount, int ResultCount)>[] drains;
+        try
+        {
+            startBarrier = new Barrier(workerCount + 1);
+            drains = Enumerable.Range(0, workerCount)
+                .Select(_ => Task.Run(async () =>
+                {
+                    bool rendezvous = startBarrier.SignalAndWait(rendezvousTimeout);
+                    Dictionary<string, QuoteSnapshot> results = new(StringComparer.OrdinalIgnoreCase);
+                    object taskObject = drainMethod.Invoke(coordinator, [results])!;
+                    await (Task)taskObject;
+                    object drainResult = taskObject.GetType().GetProperty("Result")!.GetValue(taskObject)!;
+                    int completedCount = (int)drainResult.GetType().GetProperty("CompletedCount")!.GetValue(drainResult)!;
+                    return (rendezvous, completedCount, results.Count);
+                }))
+                .ToArray();
 
-        Assert.True(readyGate.Wait(TimeSpan.FromSeconds(5)));
-        startGate.Set();
+            bool mainRendezvous = startBarrier.SignalAndWait(rendezvousTimeout);
 
-        (int CompletedCount, int ResultCount)[] outcomes = await Task.WhenAll(drains);
-        object pending = pendingField.GetValue(coordinator)!;
-        int pendingCount = (int)pending.GetType().GetProperty("Count")!.GetValue(pending)!;
+            (bool Rendezvous, int CompletedCount, int ResultCount)[] outcomes = await Task.WhenAll(drains);
+            object pending = pendingField.GetValue(coordinator)!;
+            int pendingCount = (int)pending.GetType().GetProperty("Count")!.GetValue(pending)!;
 
-        Assert.Equal(symbols.Length, outcomes.Sum(outcome => outcome.CompletedCount));
-        Assert.Equal(symbols.Length, outcomes.Sum(outcome => outcome.ResultCount));
-        Assert.Single(outcomes.Where(outcome => outcome.CompletedCount > 0));
-        Assert.Equal(0, pendingCount);
+            Assert.True(mainRendezvous, "The main test thread should rendezvous with all concurrent drain workers.");
+            Assert.All(outcomes, outcome => Assert.True(outcome.Rendezvous, "All concurrent drain workers should rendezvous before draining the pipeline."));
+            Assert.Equal(symbols.Length, outcomes.Sum(outcome => outcome.CompletedCount));
+            Assert.Equal(symbols.Length, outcomes.Sum(outcome => outcome.ResultCount));
+            Assert.Single(outcomes.Where(outcome => outcome.CompletedCount > 0));
+            Assert.Equal(0, pendingCount);
+        }
+        finally
+        {
+            startBarrier?.Dispose();
+        }
     }
 
     [Fact]
