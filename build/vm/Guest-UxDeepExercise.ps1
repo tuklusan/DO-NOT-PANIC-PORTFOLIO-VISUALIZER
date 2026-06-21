@@ -2613,6 +2613,28 @@ function Click-ConfigCloseButtonFallback {
     }
 }
 
+function Close-ConfigWindowPatternFallback {
+    param(
+        [Parameter(Mandatory = $true)]$Window
+    )
+
+    if ($null -eq $Window) {
+        Write-ConfigWindowTrace -Event 'ConfigWindowPatternCloseFallback' -Details 'result=NoWindow'
+        return $false
+    }
+
+    try {
+        $windowPattern = $Window.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
+        $windowPattern.Close()
+        Write-ConfigWindowTrace -Event 'ConfigWindowPatternCloseFallback' -Details 'result=True'
+        return $true
+    }
+    catch {
+        Write-ConfigWindowTrace -Event 'ConfigWindowPatternCloseFallbackFailed' -Details $_.Exception.Message
+        return $false
+    }
+}
+
 function Get-ConfigStatusText {
     param(
         [Parameter(Mandatory = $true)]$Window
@@ -2741,21 +2763,38 @@ function Close-ConfigForExpectedValidationUnavailable {
 
     $buttonSnapshot = Get-WindowButtonSnapshot -Window $Window
     Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableObserved' -Details ("status={0}; buttons={1}" -f $StatusText, $buttonSnapshot)
-    $closed = $false
-    try {
-        Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableCloseAttempt' -Details 'method=Click-ConfigCloseButtonFallback'
-        $closed = Click-ConfigCloseButtonFallback -Window $Window
-        if (-not $closed) {
-            Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableCloseAttempt' -Details 'method=Click-ConfigFooterButtonFallback'
-            $closed = Click-ConfigFooterButtonFallback -Window $Window -CompletionMode 'Cancel'
-        }
-    }
-    catch {
-        Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableCloseException' -Details $_.Exception.Message
-        return $false
-    }
 
-    if ($closed) {
+    # Prefer UIA close first, then WindowPattern.Close for stale/lying button
+    # elements, then the footer coordinate fallback as a final escape hatch.
+    $methods = @(
+        @{ Name = 'Click-ConfigCloseButtonFallback'; Invoke = { param($targetWindow) Click-ConfigCloseButtonFallback -Window $targetWindow } },
+        @{ Name = 'Close-ConfigWindowPatternFallback'; Invoke = { param($targetWindow) Close-ConfigWindowPatternFallback -Window $targetWindow } },
+        @{ Name = 'Click-ConfigFooterButtonFallback'; Invoke = { param($targetWindow) Click-ConfigFooterButtonFallback -Window $targetWindow -CompletionMode 'Cancel' } }
+    )
+
+    foreach ($method in $methods) {
+        $Window = Find-ConfigWindowOwned -Process $Process
+        if ($null -eq $Window) {
+            Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableClosed'
+            return $true
+        }
+
+        $invoked = $false
+        try {
+            Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableCloseAttempt' -Details ("method={0}" -f $method['Name'])
+            $invokeCloseMethod = $method['Invoke']
+            $invoked = & $invokeCloseMethod $Window
+        }
+        catch {
+            Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableCloseException' -Details ("method={0}; message={1}" -f $method['Name'], $_.Exception.Message)
+            continue
+        }
+
+        if (-not $invoked) {
+            Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableCloseMethodFailed' -Details ("method={0}; invoked=False" -f $method['Name'])
+            continue
+        }
+
         $closeObserved = Wait-UIAutomationCondition -TimeoutSeconds 10 -PollMilliseconds 200 -TraceEvent 'ExpectedValidationUnavailableCloseWait' -Condition {
             $Process.Refresh()
             $remaining = Find-ConfigWindowOwned -Process $Process
@@ -2763,9 +2802,11 @@ function Close-ConfigForExpectedValidationUnavailable {
         }
 
         if ($closeObserved -eq $true) {
-            Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableClosed'
+            Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableClosed' -Details ("method={0}" -f $method['Name'])
             return $true
         }
+
+        Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableCloseMethodDidNotDismiss' -Details ("method={0}" -f $method['Name'])
     }
 
     Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableCloseFailed'

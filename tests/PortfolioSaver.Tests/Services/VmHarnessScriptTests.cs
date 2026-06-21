@@ -514,12 +514,18 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Write-RuntimeFreshnessSnapshot", script, StringComparison.Ordinal);
         Assert.Contains("function Test-IsExpectedValidationUnavailableStatus", script, StringComparison.Ordinal);
         Assert.Contains("function Test-ConfigExpectsValidationUnavailable", script, StringComparison.Ordinal);
+        Assert.Contains("function Close-ConfigWindowPatternFallback", script, StringComparison.Ordinal);
         Assert.Contains("function Close-ConfigForExpectedValidationUnavailable", script, StringComparison.Ordinal);
         Assert.Contains("[switch]$ExpectedValidationUnavailable", script, StringComparison.Ordinal);
         Assert.Contains("ExpectedValidationUnavailableObserved", script, StringComparison.Ordinal);
         Assert.Contains("ExpectedValidationUnavailableCloseAttempt", script, StringComparison.Ordinal);
         Assert.Contains("ExpectedValidationUnavailableCloseException", script, StringComparison.Ordinal);
+        Assert.Contains("ExpectedValidationUnavailableCloseMethodDidNotDismiss", script, StringComparison.Ordinal);
         Assert.Contains("ExpectedValidationUnavailableRetryScheduled", script, StringComparison.Ordinal);
+        Assert.Contains("Prefer UIA close first, then WindowPattern.Close", script, StringComparison.Ordinal);
+        Assert.Contains("Wait-UIAutomationCondition -TimeoutSeconds 10 -PollMilliseconds 200 -TraceEvent 'ExpectedValidationUnavailableCloseWait'", script, StringComparison.Ordinal);
+        Assert.Contains("Close-ConfigWindowPatternFallback", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("Click-ConfigTitleBarCloseFallback", script, StringComparison.Ordinal);
         Assert.Contains("Runtime-only profiles intentionally stay out of this list", script, StringComparison.Ordinal);
         Assert.Contains("return $Profile -in @('offline-at-start', 'offline-during-config-validation', 'upstream-throttled', 'timeout')", script, StringComparison.Ordinal);
         Assert.Contains("$expectedValidationUnavailable = Test-ConfigExpectsValidationUnavailable -Profile $FaultProfile", script, StringComparison.Ordinal);
