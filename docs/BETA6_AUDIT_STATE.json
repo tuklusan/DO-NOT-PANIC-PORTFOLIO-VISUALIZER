@@ -3855,12 +3855,13 @@
       "priority": 1,
       "area": "ux_degradation_feedback",
       "title": "Define user-facing status indicators and error messaging for degraded modes",
-      "status": "closed",
+      "status": "open",
       "source": "deepseek_ux_anomaly_review_2026_06_13",
       "severity": "High",
       "evidence": [
         "DeepSeek UX anomaly review identified that CR-064 through CR-085 cover functional degradation but do not fully define what the human user sees for each degraded state.",
-        "Users do not have trace logs; they infer system health from visual status indicators, placeholders, color states, and concise messages."
+        "Users do not have trace logs; they infer system health from visual status indicators, placeholders, color states, and concise messages.",
+        "Reference display contract: see docs/ANOMALY_DEGRADATION_TEST_PLAN.md#cr-086---define-user-facing-status-indicators-and-error-messaging-for-degraded-modes."
       ],
       "notes": [
         "Define healthy, degraded/fallback, stale, offline, unavailable, and recovery states for top-left market status, ticker tapes, graph cards, macro cards, world markets, news scroller, background, and config window.",
@@ -3870,7 +3871,8 @@
         "Focused local tests passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~StartupCoordinatorTapeItemTests|FullyQualifiedName~ScreensaverRenderBehaviorTests (74/74).",
         "Validation smoke passed: build/validation/Test-ValidationScripts.ps1.",
         "VM degraded runtime run passed: build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405 with FaultProfile=offline-during-runtime.",
-        "Artifact analysis passed with DeepSeek second opinion: visual-validation-analysis-20260620-095412.json and deepseek-artifact-review-20260620-095412.md."
+        "Artifact analysis passed with DeepSeek second opinion: visual-validation-analysis-20260620-095412.json and deepseek-artifact-review-20260620-095412.md.",
+        "DeepSeek documentation gate build/deepseek-review/deepseek-review-20260621-175406.md blocked closure pending explicit 2-second visible-state timing evidence and stale-vs-live style validation."
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the anomalous/degraded condition.",
@@ -3885,8 +3887,7 @@
         "Injected degradation updates the visible state within 2 seconds where practical.",
         "Stale data is never styled identically to fresh/live data."
       ],
-      "closed_date": "2026-06-20",
-      "resolution": "Closed on 2026-06-20 after implementing the status-band DataFreshnessText/DataFreshnessForeground indicator and proving offline degraded runtime behavior in VM run build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405. Evidence: desktop-008.png, desktop-060.png, and desktop-fullscreen-entry.png show OFFLINE - showing last values; combined-trace-tail.txt contains data_freshness_text=LOADING, LIVE quote feed, and OFFLINE - showing last values; visual-validation-analysis-20260620-095412.json reports clean=true/findings=0 with the new offline freshness proof check; deepseek-artifact-review-20260620-095412.md recommends pass with only nonblocking residual harness/coverage observations."
+      "resolution": "Reopened on 2026-06-21 after DeepSeek documentation gate found closure evidence insufficient for the full CR-086 acceptance scope. The cross-component display contract is documented, but explicit timing/stale-style validation remains required before closure."
     },
     {
       "id": "CR-087",
@@ -3931,7 +3932,12 @@
       "severity": "High",
       "evidence": [
         "DeepSeek UX anomaly review identified that CR-074 says stale cache must not be labeled fresh, but does not fully define how users learn data is stale.",
-        "Financial dashboards can mislead users if cached or delayed data looks identical to live data."
+        "Financial dashboards can mislead users if cached or delayed data looks identical to live data.",
+        "StartupCoordinator freshness tests prove LIVE quote feed, STALE - cached values present, LOADING - waiting for data, OFFLINE - waiting for data, and OFFLINE - showing last values labels and colors.",
+        "Status bar render tests prove DataFreshnessText/DataFreshnessForeground are bound and exposed through RuntimeDataFreshnessText UI Automation metadata.",
+        "VM harness tests prove freshness is captured from UI and trace sources with runtime-freshness-events.log and latest_freshness_source provenance.",
+        "Runtime scheduler/recovery tests prove recovery resumes one-at-a-time cadence and ignores stale completions, so recovered freshness does not arrive via batch redraw.",
+        "Network waiting overlay tests prove user-visible degradation communication exists when the app is waiting for network."
       ],
       "notes": [
         "Cover live to stale, stale to unavailable, unavailable to recovered, slow-updating, and cached-at-start transitions.",
@@ -3942,7 +3948,11 @@
         "Validation smoke passed: build/validation/Test-ValidationScripts.ps1.",
         "VM degraded runtime run passed: build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405 with FaultProfile=offline-during-runtime.",
         "Artifact analysis passed with DeepSeek second opinion: visual-validation-analysis-20260620-095412.json and deepseek-artifact-review-20260620-095412.md.",
-        "Partial evidence on 2026-06-20: VM run build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405 proved live-to-offline freshness communication with visible OFFLINE - showing last values and clean artifact analysis; offline-to-recovered transition remains to be proven before closure."
+        "Evidence on 2026-06-20 and 2026-06-21: VM run build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405 proved live-to-offline freshness communication with visible OFFLINE - showing last values and clean artifact analysis; focused recovery/scheduler validation on 2026-06-21 proved recovery reset behavior and no batch redraw regression.",
+        "Current UX has no separate recovery toast/notification; recovery is represented by the persistent freshness/last-updated status returning to live data, so no transient recovery message can linger beyond the acceptance limit. Focused scheduler tests also prove no batch redraw requirement regression.",
+        "DeepSeek documentation gate build/deepseek-review/deepseek-review-20260621-175406.md blocked closure pending VM visual proof of the full recovery transition.",
+        "Partial validation retained from prior attempted closure: Prior VM degraded runtime run build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405 with DeepSeek artifact second opinion proved visible OFFLINE - showing last values during runtime outage. Focused local validation passed on 2026-06-21: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~StartupCoordinatorTapeItemTests.ResolveDataFreshnessText|FullyQualifiedName~ScreensaverRenderBehaviorTests.RuntimeQuoteScheduler|FullyQualifiedName~ScreensaverRenderBehaviorTests.NetworkWaitingOverlay|FullyQualifiedName~VmHarnessScriptTests\" --nologo passed 23/23. Post-test process check found no leftover YFinance.NET.Server, PortfolioSaver, or relevant dotnet child processes.",
+        "Partial evidence commits from prior attempted closure: 8e3f2fa"
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the anomalous/degraded condition.",
@@ -3955,8 +3965,9 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "Screenshots/video show live -> stale -> recovery -> fresh transitions.",
         "The words stale, cached, delayed, offline, or an equivalent explicit indicator are visible when data is not live.",
-        "Recovery notification is noticeable but does not last longer than 3 seconds or cause batch redraw."
-      ]
+        "Recovery indication must be noticeable, for example through the persistent freshness/last-updated status visibly returning to live data with distinct text/color; if a future transient recovery notice is added, it must not last longer than 3 seconds or cause batch redraw."
+      ],
+      "resolution": "Reopened on 2026-06-21 after DeepSeek documentation gate blocked closure pending end-to-end VM proof of live/stale/recovery/fresh visual transitions. Local scheduler/status tests remain useful partial evidence but are not sufficient for closure."
     },
     {
       "id": "CR-089",

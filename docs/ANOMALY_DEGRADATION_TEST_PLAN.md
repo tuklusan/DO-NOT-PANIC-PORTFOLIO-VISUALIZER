@@ -445,6 +445,9 @@ DeepSeek reviewed CR-064 through CR-085 on 2026-06-13 with a specific prompt to 
 - Priority: 1
 - Severity: High
 - Area: ux_degradation_feedback
+- Status: open
+- Partial evidence: VM degraded runtime run `ux-deep-ssh-20260620-090405` proved visible offline freshness feedback; `visual-validation-analysis-20260620-095412.json` and DeepSeek artifact review `deepseek-artifact-review-20260620-095412.md` reported clean results with no blocking user-visible degradation findings.
+- Open validation: DeepSeek documentation gate `build/deepseek-review/deepseek-review-20260621-175406.md` blocked closure pending explicit 2-second visible-state timing evidence and stale-vs-live style validation.
 - UX rationale:
   - DeepSeek UX anomaly review identified that CR-064 through CR-085 cover functional degradation but do not fully define what the human user sees for each degraded state.
   - Users do not have trace logs; they infer system health from visual status indicators, placeholders, color states, and concise messages.
@@ -452,6 +455,19 @@ DeepSeek reviewed CR-064 through CR-085 on 2026-06-13 with a specific prompt to 
   - A reference table documents the expected display for every major visible component in healthy/degraded/offline states.
   - Injected degradation updates the visible state within 2 seconds where practical.
   - Stale data is never styled identically to fresh/live data.
+
+Reference display contract:
+
+| Component | Healthy display | Degraded/stale display | Offline/unavailable display |
+| --- | --- | --- | --- |
+| Top-left market status | Market phase, opening/closing countdown when known, `Last Updated: <symbol> <age>` and `LIVE quote feed` freshness text. | Keep last known market/status text if available; freshness changes to `STALE - cached values` or equivalent explicit stale/delayed wording with stale color. | Keep the scene visible; show `OFFLINE - waiting for data` before any values or `OFFLINE - showing last values` when cached values exist. Do not show `Timing unavailable`; leave unavailable timing blank. |
+| Ticker tapes | Each symbol fills one-by-one with current value/change styling; value changes may trigger the approved value-change flash only. | Symbols with last-known values remain visible with stale/cached indication through the global freshness state; failed symbols keep stable placeholders without layout churn. | Cached symbols may show last values under offline freshness; unknown symbols show stable placeholders rather than spinners that imply active fresh data. |
+| Graph cards | Top movers render up to the configured cap with current price/change, motion, and flash only on raw-price movement. | Cards with stale data remain visually stable and must not flash as if new data arrived; missing history uses existing graceful placeholder behavior. | Cards remain on screen when cached data exists; if no usable data exists, the card area remains stable and unclipped. |
+| Macro ribbon/cards | Macro values populate one-by-one and use normal red/green change styling. | Missing or malformed macro values preserve last known values or stable placeholders without resizing the ribbon. | Ribbon remains present; unavailable items show stable placeholders and rely on global offline freshness rather than technical error text. |
+| World markets ribbon | Markets populate independently and keep fixed layout, optional weather, and compact value/change display. | Stale values keep visible last-known data or stable placeholders; no row/field width oscillation. | Ribbon remains visible with stable placeholders or cached values and no technical network messages. |
+| Finance news scroller | Current RSS/AI text animates according to selected style and remains non-blocking. | RSS-only fallback or prior cached news remains readable; style degradation must not block the scene. | News area remains visible with cached/RSS fallback or a concise unavailable message, not a blank strip. |
+| Background image | Current background rotates at configured cadence with transition/zoom behavior enabled when supported. | Failed downloads, corrupt images, or decode failures keep the current or bundled fallback image. | Bundled fallback backgrounds remain available; no blank background period is acceptable. |
+| Config window | Validation progress and success/failure controls are clear; OK/Cancel workflow applies after successful validation. | Slow/failed validation gives plain-language retry/cancel guidance and leaves controls responsive. | Offline validation shows actionable network/fallback language, re-enables Validate after failure, and Cancel closes promptly. |
 
 ### CR-087 - Validate accessibility of anomaly states for screen readers, high contrast, and keyboard users
 
@@ -471,13 +487,16 @@ DeepSeek reviewed CR-064 through CR-085 on 2026-06-13 with a specific prompt to 
 - Priority: 1
 - Severity: High
 - Area: ux_freshness_communication
+- Status: open
+- Partial evidence: prior VM run `ux-deep-ssh-20260620-090405` proved visible live-to-offline freshness state with DeepSeek artifact review; focused local validation passed 23/23 on 2026-06-21 for freshness labels, status bindings, VM harness freshness provenance, network overlay, and recovery scheduler behavior.
+- Open validation: DeepSeek documentation gate `build/deepseek-review/deepseek-review-20260621-175406.md` blocked closure pending VM visual proof of the full recovery transition.
 - UX rationale:
   - DeepSeek UX anomaly review identified that CR-074 says stale cache must not be labeled fresh, but does not fully define how users learn data is stale.
   - Financial dashboards can mislead users if cached or delayed data looks identical to live data.
 - Acceptance highlights:
   - Screenshots/video show live -> stale -> recovery -> fresh transitions.
   - The words stale, cached, delayed, offline, or an equivalent explicit indicator are visible when data is not live.
-  - Recovery notification is noticeable but does not last longer than 3 seconds or cause batch redraw.
+  - Recovery indication must be noticeable, for example through the persistent freshness/last-updated status visibly returning to live data with distinct text/color; if a future transient recovery notice is added, it must not last longer than 3 seconds or cause batch redraw.
 
 ### CR-089 - Validate degraded symbol placeholder UX and consistency across components
 
