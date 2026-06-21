@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reflection;
+using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
@@ -283,6 +284,54 @@ public sealed class Nb040BehaviorTests
         Assert.True(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(serverUnavailable));
         Assert.True(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(timeout));
         Assert.False(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(internalError));
+    }
+
+    [Fact]
+    public void YFinanceQuoteParsing_TreatsMalformedNumericFieldsAsMissing()
+    {
+        CultureInfo originalCulture = CultureInfo.CurrentCulture;
+        CultureInfo originalUiCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            // Yahoo numeric strings are invariant/dot-decimal. Run under a
+            // comma-decimal culture to prove QuoteService keeps that contract.
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-DE");
+            using JsonDocument document = JsonDocument.Parse(
+                """
+                {
+                  "symbol": "BADNUM",
+                  "regularMarketPrice": null,
+                  "regularMarketPreviousClose": "0",
+                  "regularMarketChange": "NaN",
+                  "regularMarketChangePercent": "Infinity",
+                  "regularMarketOpen": "-123.45",
+                  "regularMarketDayHigh": "999999999999999999999999999999999999999999",
+                  "regularMarketDayLow": 0,
+                  "regularMarketVolume": "not-a-number",
+                  "averageVolume": "92233720368547758079223372036854775807"
+                }
+                """);
+
+            YQuoteSnapshot quote = QuoteService.CreateSnapshot(document.RootElement, "BADNUM");
+
+            Assert.Equal("BADNUM", quote.Symbol);
+            Assert.Null(quote.RegularMarketPrice);
+            Assert.Equal(0m, quote.RegularMarketPreviousClose);
+            Assert.Null(quote.RegularMarketChange);
+            Assert.Null(quote.RegularMarketChangePercent);
+            Assert.Equal(-123.45m, quote.RegularMarketOpen);
+            Assert.Null(quote.RegularMarketDayHigh);
+            Assert.Equal(0m, quote.RegularMarketDayLow);
+            Assert.Null(quote.RegularMarketVolume);
+            Assert.Null(quote.AverageVolume);
+            Assert.Null(quote.ComputedChangePercent);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
     }
 
     [Fact]
