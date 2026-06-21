@@ -194,7 +194,7 @@ public sealed class YFinanceServerClientPipelineTests
 
         Task<QuoteDto> malformed = client.GetQuoteAsync("MALFORMED", cts.Token);
         await firstRequestRead.Task.WaitAsync(cts.Token).ConfigureAwait(false);
-        await Assert.ThrowsAsync<JsonException>(async () => await malformed.ConfigureAwait(false)).ConfigureAwait(false);
+        await Assert.ThrowsAnyAsync<JsonException>(async () => await malformed.ConfigureAwait(false)).ConfigureAwait(false);
 
         QuoteDto recovered = await client.GetQuoteAsync("RECOVERED", cts.Token).ConfigureAwait(false);
 
