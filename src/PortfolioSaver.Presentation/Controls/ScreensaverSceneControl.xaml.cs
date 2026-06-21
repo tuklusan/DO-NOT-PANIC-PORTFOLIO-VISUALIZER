@@ -4030,6 +4030,12 @@ public partial class ScreensaverSceneControl : UserControl
 
         if (hadPriorSymbol && rawPriceChanged && !string.IsNullOrWhiteSpace(lastText))
         {
+            if (graph.IsRefreshTravelFlashActive)
+            {
+                TraceScene($"GraphCardFlashSkipped symbol={graph.Symbol} raw_last={(last?.ToString("0.####") ?? "--")} percent={(percent?.ToString("0.####") ?? "--")} reason=refresh-travel-active");
+                return;
+            }
+
             ApplyRefreshMotionCue(graph, percent);
             graph.TriggerCardFlash(changeBrush);
             TraceScene($"GraphCardFlash symbol={graph.Symbol} raw_last={(last?.ToString("0.####") ?? "--")} percent={(percent?.ToString("0.####") ?? "--")} reason=raw-price-change");

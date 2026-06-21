@@ -681,6 +681,74 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void ApplyQuoteToGraph_RawPriceChangeDuringTravel_DoesNotRetriggerSustainedFlash()
+    {
+        RunOnSta(() =>
+        {
+            ScreensaverSceneControl control = new()
+            {
+                Width = 800,
+                Height = 600
+            };
+            control.Measure(new Size(800, 600));
+            control.Arrange(new Rect(0, 0, 800, 600));
+            control.UpdateLayout();
+
+            DateTimeOffset originalStartedUtc = DateTimeOffset.UtcNow.AddSeconds(-2);
+            FloatingGraphViewModel graph = new()
+            {
+                Symbol = "AAPL",
+                LastText = "190.00",
+                ChangeText = "+0.50%",
+                RawLastValue = 190m,
+                FlashSequence = 7,
+                Width = 140,
+                Height = 84,
+                X = 240,
+                Y = 260,
+                VelocityY = -14,
+                NominalVelocityY = -7,
+                RefreshTravelTargetY = 0,
+                RefreshTravelFlashStartedUtc = originalStartedUtc,
+                IsRefreshTravelFlashActive = true,
+                IsVisible = true
+            };
+
+            Dictionary<string, QuoteSnapshot> quotes = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["AAPL"] = new QuoteSnapshot
+                {
+                    Symbol = "AAPL",
+                    Last = 191m,
+                    ChangePercent = 1.25m,
+                    FetchTimestampUtc = DateTimeOffset.UtcNow,
+                    IsStale = false
+                }
+            };
+
+            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+                "_latestQuotes",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_latestQuotes field not found.");
+            latestQuotesField.SetValue(control, quotes);
+
+            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+                "ApplyQuoteToGraph",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
+            applyQuoteMethod.Invoke(control, [graph]);
+
+            Assert.Equal(191m, graph.RawLastValue);
+            Assert.Equal("191.00", graph.LastText);
+            Assert.Equal(7, graph.FlashSequence);
+            Assert.Equal(0, graph.RefreshTravelTargetY);
+            Assert.True(graph.IsRefreshTravelFlashActive);
+            Assert.Equal(originalStartedUtc, graph.RefreshTravelFlashStartedUtc);
+            Assert.Equal(-14d, graph.VelocityY);
+        });
+    }
+
+    [Fact]
     public void CopyMotion_PreservesGraphQuoteAndFlashStateAcrossModelReplacement()
     {
         DateTimeOffset started = DateTimeOffset.UtcNow.AddSeconds(-3);
