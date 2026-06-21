@@ -3148,7 +3148,11 @@
       "severity": "High",
       "evidence": [
         "Startup is the most fragile time because quotes, news, background downloads, DeepSeek/RSS, upstream diagnostics, and YFinance server startup may all begin near each other.",
-        "The app must not hang, show misleading fresh values, or fail to render when launched fully offline."
+        "The app must not hang, show misleading fresh values, or fail to render when launched fully offline.",
+        "VM run ux-deep-ssh-20260621-055258 completed ConfigPhaseStatus=Completed, DesktopPhaseStatus=Completed, and FullScreenToggleStatus=Completed under FaultProfile=offline-at-start.",
+        "Artifact analyzer build/validation/artifacts/visual-validation-ux-deep-ssh-20260621-055258.json reported ANALYSIS_CLEAN=True and ANALYSIS_FINDINGS=0.",
+        "Runtime freshness trace proved user-visible offline state: latest_freshness=OFFLINE - waiting for data throughout the offline-at-start desktop phase.",
+        "DeepSeek artifact advisory build/validation/artifacts/deepseek-artifact-review-20260621-063454.md agreed deterministic analysis was clean for the offline pathway."
       ],
       "notes": [
         "Expected behavior should distinguish no-data-yet from stale cached data.",
@@ -3216,15 +3220,16 @@
       "severity": "High",
       "evidence": [
         "The Validate button is intentionally disabled immediately after click and later transitions to OK/Cancel only on success.",
-        "Network loss, DNS stalls, or YFinance latency during validation could otherwise leave the dialog stuck."
+        "Network loss, DNS stalls, or YFinance latency during validation could otherwise leave the dialog stuck.",
+        "Closed after VM run ux-deep-ssh-20260621-090801 with FaultProfile=offline-during-config-validation: remote build/test passed 478/478, ConfigPhaseStatus=Completed, DesktopPhaseStatus=Completed, FullScreenToggleStatus=Completed.",
+        "Deterministic analyzer build/validation/artifacts/visual-validation-ux-deep-ssh-20260621-090801.json reported ANALYSIS_CLEAN=True and ANALYSIS_FINDINGS=0.",
+        "DeepSeek artifact advisory build/validation/artifacts/deepseek-artifact-review-20260621-094932.md found no deterministic blocker for the offline-during-validation pathway.",
+        "Config trace showed YFinance.NET validation unavailable status, expected unavailable close recovery, first close click did not dismiss, and WindowPattern close dismissed the config window without forced close."
       ],
       "notes": [
         "Exercise outage before first symbol, outage mid-symbol-list, slow responses, partial failures, and recovery before timeout.",
         "This specifically protects the recently repaired OK/Cancel and immediate-close validation flow.",
-        "Closed after VM run ux-deep-ssh-20260621-090801 with FaultProfile=offline-during-config-validation: remote build/test passed 478/478, ConfigPhaseStatus=Completed, DesktopPhaseStatus=Completed, FullScreenToggleStatus=Completed.",
-        "Deterministic analyzer build/validation/artifacts/visual-validation-ux-deep-ssh-20260621-090801.json reported ANALYSIS_CLEAN=True and ANALYSIS_FINDINGS=0.",
-        "Config trace showed YFinance.NET validation unavailable status, expected unavailable close recovery, first close click did not dismiss, and WindowPattern close dismissed the config window without forced close.",
-        "DeepSeek artifact advisory build/validation/artifacts/deepseek-artifact-review-20260621-094932.md found no deterministic blocker; its missing validation-error screenshot recommendation is treated as follow-up harness coverage, not a CR-067 failure."
+        "Harness-level screenshot coverage for the validation-error state remains a separate follow-up coverage gap; it was not a deterministic blocker for CR-067 closure."
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
@@ -3244,12 +3249,13 @@
       "priority": 1,
       "area": "yfinance_server_lifecycle",
       "title": "Validate YFinance.NET server launch failures, duplicate process, port conflicts, and owned shutdown",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "High",
       "evidence": [
         "The UI now relies on owned YFinance.NET server/client communication for market data.",
-        "Port conflicts, duplicate stale server processes, failed server startup, or server crash can break every quote lane."
+        "Port conflicts, duplicate stale server processes, failed server startup, or server crash can break every quote lane.",
+        "Local deterministic lifecycle suite passed 29/29 on 2026-06-21 after commits b8266a3, 0797674, 6ef823e, and 9744b07."
       ],
       "notes": [
         "Include duplicate process check behavior requested during NB-031 work.",
@@ -3265,6 +3271,15 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "Server lifecycle failures produce clear traces and user-visible degradation without crashing the UI.",
         "Owned server exits when the owning UI exits, unless documented otherwise."
+      ],
+      "closed_date": "2026-06-21",
+      "resolution": "Added deterministic process-level lifecycle coverage for real YFinance.NET server health, duplicate same-port launch, per-port duplicate guard scoping, non-server port conflict, and owned-mode owner-exit shutdown. Documented CR-068 expected user-visible degraded behavior in docs/ANOMALY_DEGRADATION_TEST_PLAN.md before closure. Fixed owned-mode shutdown race where ProcessExit could call Cancel() after the server CancellationTokenSource was disposed, producing an unhandled ObjectDisposedException and .NET crash exit code. Fixed YFinance.NET.Server top-level entry point to propagate YFinanceServerProgram.Run(args) through Environment.ExitCode so process-level lifecycle failures are externally diagnosable.",
+      "validation": "DeepSeek review: build/deepseek-review/deepseek-review-20260621-162750.md reviewed lifecycle test additions; non-blocking flakiness notes handled/accepted. DeepSeek review: build/deepseek-review/deepseek-review-20260621-163255.md cleared server owned-shutdown race fix. DeepSeek review: build/deepseek-review/deepseek-review-20260621-163531.md reviewed process exit-code propagation; Run signature confirmed as synchronous int. Local test: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~YFinanceClientServerProtocolTests --nologo passed 29/29 on 2026-06-21. Post-test process check found no leftover YFinance.NET.Server, PortfolioSaver, or relevant dotnet test child processes.",
+      "commits": [
+        "b8266a3",
+        "0797674",
+        "6ef823e",
+        "9744b07"
       ]
     },
     {

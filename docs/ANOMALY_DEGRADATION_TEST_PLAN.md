@@ -35,7 +35,8 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 1
 - Severity: High
 - Area: startup_network_degradation
-- Status: open
+- Status: closed
+- Closure evidence: VM run `ux-deep-ssh-20260621-055258` completed config, desktop, and fullscreen phases under `FaultProfile=offline-at-start`; analyzer `visual-validation-ux-deep-ssh-20260621-055258.json` reported clean with 0 findings, runtime trace showed `OFFLINE - waiting for data`, and DeepSeek artifact advisory `deepseek-artifact-review-20260621-063454.md` found no deterministic blocker for the offline pathway.
 - Evidence / rationale:
   - Startup is the most fragile time because quotes, news, background downloads, DeepSeek/RSS, upstream diagnostics, and YFinance server startup may all begin near each other.
   - The app must not hang, show misleading fresh values, or fail to render when launched fully offline.
@@ -53,7 +54,8 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 1
 - Severity: High
 - Area: config_network_degradation
-- Status: open
+- Status: closed
+- Closure evidence: VM run `ux-deep-ssh-20260621-055258` completed config, desktop, and fullscreen phases under `FaultProfile=offline-at-start`; analyzer `visual-validation-ux-deep-ssh-20260621-055258.json` reported clean with 0 findings, and DeepSeek artifact advisory `deepseek-artifact-review-20260621-063454.md` found no deterministic blocker for the offline pathway.
 - Evidence / rationale:
   - The config window may be opened while the machine is offline, before any validation starts.
   - Controls and validation affordances must remain understandable and the window must not get stuck.
@@ -71,13 +73,15 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 1
 - Severity: High
 - Area: config_validation_degradation
-- Status: open
+- Status: closed
+- Closure evidence: VM run `ux-deep-ssh-20260621-090801` completed config, desktop, and fullscreen phases under `FaultProfile=offline-during-config-validation`; remote build/test passed 478/478, analyzer `visual-validation-ux-deep-ssh-20260621-090801.json` reported clean with 0 findings, and DeepSeek artifact advisory `deepseek-artifact-review-20260621-094932.md` found no deterministic blocker.
 - Evidence / rationale:
   - The Validate button is intentionally disabled immediately after click and later transitions to OK/Cancel only on success.
   - Network loss, DNS stalls, or YFinance latency during validation could otherwise leave the dialog stuck.
 - Notes:
   - Exercise outage before first symbol, outage mid-symbol-list, slow responses, partial failures, and recovery before timeout.
   - This specifically protects the recently repaired OK/Cancel and immediate-close validation flow.
+  - Harness-level screenshot coverage for the validation-error state remains a separate follow-up coverage gap; it was not a deterministic blocker for CR-067 closure.
 - Acceptance highlights:
   - A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.
   - Expected user-visible behavior is documented before implementation changes are made.
@@ -89,7 +93,8 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 1
 - Severity: High
 - Area: yfinance_server_lifecycle
-- Status: open
+- Status: closed
+- Closure evidence: local deterministic lifecycle suite passed 29/29 on 2026-06-21 after commits b8266a3, 0797674, 6ef823e, and 9744b07.
 - Evidence / rationale:
   - The UI now relies on owned YFinance.NET server/client communication for market data.
   - Port conflicts, duplicate stale server processes, failed server startup, or server crash can break every quote lane.
