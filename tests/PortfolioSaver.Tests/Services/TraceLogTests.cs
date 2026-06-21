@@ -16,9 +16,12 @@ public sealed class TraceLogTests
     {
         string appDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTraceTest", Guid.NewGuid().ToString("N"));
         string? previousProductRoot = Environment.GetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT");
-        string? previousLegacyRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        string? previousLegacyLocalRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        string? previousLegacyAppDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
         string? previousTraceMax = Environment.GetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable);
+        DeleteDirectoryWithRetry(appDataRoot);
         Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", appDataRoot);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", appDataRoot);
         Environment.SetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable, "4");
         try
@@ -27,6 +30,7 @@ public sealed class TraceLogTests
             string traceFilePath = Path.Combine(traceDirectory, "trace.circular.log");
             string traceIndexPath = Path.Combine(traceDirectory, "trace.circular.idx");
             Directory.CreateDirectory(traceDirectory);
+            Assert.StartsWith(Path.GetFullPath(appDataRoot), Path.GetFullPath(traceDirectory), StringComparison.OrdinalIgnoreCase);
             TraceLog.ResetCircularStateForTests();
             int expectedTraceBytes = 4 * 1024 * 1024;
             // CircularTraceSettingsTests owns environment parsing. This test pins
@@ -65,7 +69,8 @@ public sealed class TraceLogTests
         finally
         {
             Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", previousProductRoot);
-            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousLegacyRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", previousLegacyLocalRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousLegacyAppDataRoot);
             Environment.SetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable, previousTraceMax);
             DeleteDirectoryWithRetry(appDataRoot);
         }
@@ -149,14 +154,19 @@ public sealed class TraceLogTests
     {
         string appDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTraceCacheTest", Guid.NewGuid().ToString("N"));
         string? previousProductRoot = Environment.GetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT");
-        string? previousLegacyRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        string? previousLegacyLocalRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        string? previousLegacyAppDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        DeleteDirectoryWithRetry(appDataRoot);
         Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", appDataRoot);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", appDataRoot);
         try
         {
             string traceDirectory = Path.Combine(PathHelper.GetAppDataDirectory(), "Trace");
+            string traceFilePath = Path.Combine(traceDirectory, "trace.circular.log");
             string traceIndexPath = Path.Combine(traceDirectory, "trace.circular.idx");
             Directory.CreateDirectory(traceDirectory);
+            Assert.StartsWith(Path.GetFullPath(appDataRoot), Path.GetFullPath(traceDirectory), StringComparison.OrdinalIgnoreCase);
             TraceLog.ResetCircularStateForTests();
 
             FieldInfo positionField = typeof(TraceLog).GetField("_circularWritePosition", BindingFlags.NonPublic | BindingFlags.Static)
@@ -180,6 +190,8 @@ public sealed class TraceLogTests
             // keeps the background trace worker from advancing the cursor mid-test.
             lock (fileSync)
             {
+                File.Delete(traceFilePath);
+                File.Delete(traceIndexPath);
                 positionField.SetValue(null, -1);
                 writeCircularMethod.Invoke(null, [firstLine]);
                 int firstPosition = int.Parse(File.ReadAllText(traceIndexPath));
@@ -195,7 +207,8 @@ public sealed class TraceLogTests
         finally
         {
             Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", previousProductRoot);
-            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousLegacyRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", previousLegacyLocalRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousLegacyAppDataRoot);
             DeleteDirectoryWithRetry(appDataRoot);
         }
     }
