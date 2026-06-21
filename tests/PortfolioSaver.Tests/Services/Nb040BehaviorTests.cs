@@ -16,6 +16,7 @@ using PortfolioSaver.Shared.Services;
 using PortfolioSaver.Screensaver.Services;
 using PortfolioSaver.Shared.Helpers;
 using Xunit;
+using YFinance.NET.Caching;
 using YFinance.NET.Client;
 using YFinance.NET.Config;
 using YFinance.NET.Exceptions;
@@ -733,6 +734,55 @@ public sealed class Nb040BehaviorTests
 
         TickerHistorySnapshot snapshot = Assert.Single(snapshots);
         Assert.Same(stale, snapshot);
+    }
+
+    [Fact]
+    public void YFinanceMemoryTtlCache_ExpiresEntriesAndRemovesThem()
+    {
+        MemoryTtlCache<string> cache = new();
+        cache.Set("quote:AAPL", "fresh", TimeSpan.FromMinutes(10));
+        Assert.True(cache.TryGet("quote:AAPL", out string? fresh));
+        Assert.Equal("fresh", fresh);
+
+        // Zero TTL is the explicit contract for immediate expiration in this
+        // small YFinance.NET cache wrapper.
+        cache.Set("quote:AAPL", "expired", TimeSpan.Zero);
+
+        Assert.False(cache.TryGet("quote:AAPL", out _));
+    }
+
+    [Fact]
+    public async Task YFinancePersistentTtlCache_DoesNotReturnExpiredEntries()
+    {
+        string cacheRoot = Path.Combine(Path.GetTempPath(), "dnppv-yfinance-cache-test-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            // PersistentTtlCache is stateless over individual file operations and
+            // does not implement IDisposable.
+            PersistentTtlCache<string> cache = new(cacheRoot);
+
+            await cache.SetAsync("history:AAPL", "fresh", TimeSpan.FromMinutes(10));
+            Assert.Equal("fresh", await cache.GetAsync("history:AAPL"));
+
+            await cache.SetAsync("history:AAPL", "expired", TimeSpan.Zero);
+
+            Assert.Null(await cache.GetAsync("history:AAPL"));
+        }
+        finally
+        {
+            if (Directory.Exists(cacheRoot))
+                DeleteDirectoryWithRetry(cacheRoot);
+        }
+    }
+
+    [Fact]
+    public void MarketDataCacheOwnership_RemainsInYFinanceNetWithoutLegacyQuoteCacheService()
+    {
+        // Deliberate architectural tripwire: app-level quote caching was removed
+        // because YFinance.NET owns quote caching. A reintroduced type with this
+        // name should force an explicit review.
+        Assert.DoesNotContain("QuoteCacheService", typeof(YahooFinanceQuoteProvider).Assembly.GetTypes().Select(static type => type.Name));
+        Assert.DoesNotContain("QuoteCacheService", typeof(StartupCoordinator).Assembly.GetTypes().Select(static type => type.Name));
     }
 
     [Fact]
