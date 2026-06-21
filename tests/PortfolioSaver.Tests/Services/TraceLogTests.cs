@@ -12,7 +12,7 @@ public sealed class TraceLogTests
     private const string TraceMaxMegabytesEnvironmentVariable = "DONOTPANICPORTFOLIOVISUALIZER_TRACE_MAX_MB";
 
     [Fact]
-    public async Task TraceLog_WritesToConfigurableCircularFileUnderAppData()
+    public void TraceLog_WritesToConfigurableCircularFileUnderAppData()
     {
         string appDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTraceTest", Guid.NewGuid().ToString("N"));
         string? previousProductRoot = Environment.GetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT");
@@ -36,7 +36,10 @@ public sealed class TraceLogTests
                 "_maxTraceBytes",
                 BindingFlags.NonPublic | BindingFlags.Static)
                 ?? throw new InvalidOperationException("Could not find TraceLog._maxTraceBytes.");
-            maxTraceBytesField.SetValue(null, expectedTraceBytes);
+            FieldInfo fileSyncField = typeof(TraceLog).GetField("FileSync", BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("Could not find TraceLog.FileSync.");
+            object fileSync = fileSyncField.GetValue(null)
+                ?? throw new InvalidOperationException("TraceLog.FileSync was null.");
             string marker = "trace-test-" + Guid.NewGuid().ToString("N");
             MethodInfo? writeCircularMethod = typeof(TraceLog).GetMethod(
                 "WriteCircular",
@@ -44,26 +47,20 @@ public sealed class TraceLogTests
             Assert.NotNull(writeCircularMethod);
 
             string line = $"{DateTimeOffset.UtcNow:O} | INFO | program=PortfolioSaver.Tests | source=TraceLogTests | function=TraceLog_WritesToConfigurableCircularFileUnderAppData | {marker}";
-            writeCircularMethod!.Invoke(null, [line]);
-            writeCircularMethod!.Invoke(null, [line]);
-            writeCircularMethod!.Invoke(null, [line]);
+            lock (fileSync)
+            {
+                maxTraceBytesField.SetValue(null, expectedTraceBytes);
+                writeCircularMethod!.Invoke(null, [line]);
+                writeCircularMethod!.Invoke(null, [line]);
+                writeCircularMethod!.Invoke(null, [line]);
 
-            bool observed = await WaitForTraceAsync(
-                traceFilePath,
-                traceIndexPath,
-                text =>
-                {
-                    if (!text.Contains(marker, StringComparison.Ordinal))
-                        return false;
-
-                    Assert.Contains("program=", text, StringComparison.Ordinal);
-                    Assert.Contains("function=", text, StringComparison.Ordinal);
-                    return true;
-                });
-
-            Assert.True(observed, "Trace marker was not observed in the circular trace file.");
-            // WriteCircular pre-allocates the circular buffer with SetLength(maxTraceBytes).
-            Assert.Equal(expectedTraceBytes, new FileInfo(traceFilePath).Length);
+                string text = File.ReadAllText(traceFilePath);
+                Assert.Contains(marker, text, StringComparison.Ordinal);
+                Assert.Contains("program=", text, StringComparison.Ordinal);
+                Assert.Contains("function=", text, StringComparison.Ordinal);
+                // WriteCircular pre-allocates the circular buffer with SetLength(maxTraceBytes).
+                Assert.Equal(expectedTraceBytes, new FileInfo(traceFilePath).Length);
+            }
         }
         finally
         {
