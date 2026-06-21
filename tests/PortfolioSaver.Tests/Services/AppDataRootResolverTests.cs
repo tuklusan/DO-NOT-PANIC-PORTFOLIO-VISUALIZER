@@ -38,7 +38,11 @@ public sealed class AppDataRootResolverTests
     {
         using EnvironmentScope scope = new();
         string productRoot = NewTempRoot("product");
+        if (Directory.Exists(productRoot))
+            Directory.Delete(productRoot, recursive: true);
         scope.Set(AppDataRootResolver.ProductLocalDataRootEnvironmentVariable, productRoot);
+        scope.Set(AppDataRootResolver.LegacyLocalDataRootEnvironmentVariable, null);
+        scope.Set(AppDataRootResolver.LegacyAppDataRootEnvironmentVariable, null);
 
         string resolved = AppDataRootResolver.ResolveInstalledLocalDataRoot(createDirectory: false);
 
@@ -51,7 +55,11 @@ public sealed class AppDataRootResolverTests
     {
         using EnvironmentScope scope = new();
         string productRoot = NewTempRoot("product");
+        if (Directory.Exists(productRoot))
+            Directory.Delete(productRoot, recursive: true);
         scope.Set(AppDataRootResolver.ProductLocalDataRootEnvironmentVariable, productRoot);
+        scope.Set(AppDataRootResolver.LegacyLocalDataRootEnvironmentVariable, null);
+        scope.Set(AppDataRootResolver.LegacyAppDataRootEnvironmentVariable, null);
 
         try
         {
