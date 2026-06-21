@@ -3211,7 +3211,7 @@
       "priority": 1,
       "area": "config_validation_degradation",
       "title": "Validate network loss or severe latency after Validate is clicked",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "High",
       "evidence": [
@@ -3220,7 +3220,11 @@
       ],
       "notes": [
         "Exercise outage before first symbol, outage mid-symbol-list, slow responses, partial failures, and recovery before timeout.",
-        "This specifically protects the recently repaired OK/Cancel and immediate-close validation flow."
+        "This specifically protects the recently repaired OK/Cancel and immediate-close validation flow.",
+        "Closed after VM run ux-deep-ssh-20260621-090801 with FaultProfile=offline-during-config-validation: remote build/test passed 478/478, ConfigPhaseStatus=Completed, DesktopPhaseStatus=Completed, FullScreenToggleStatus=Completed.",
+        "Deterministic analyzer build/validation/artifacts/visual-validation-ux-deep-ssh-20260621-090801.json reported ANALYSIS_CLEAN=True and ANALYSIS_FINDINGS=0.",
+        "Config trace showed YFinance.NET validation unavailable status, expected unavailable close recovery, first close click did not dismiss, and WindowPattern close dismissed the config window without forced close.",
+        "DeepSeek artifact advisory build/validation/artifacts/deepseek-artifact-review-20260621-094932.md found no deterministic blocker; its missing validation-error screenshot recommendation is treated as follow-up harness coverage, not a CR-067 failure."
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
@@ -5074,6 +5078,33 @@
       "notes": [
         "Improve runtime freshness capture to read the status text reliably, e.g. by adding/using explicit automation properties for the freshness TextBlock or a more robust UIA search path.",
         "After implementation, rerun an offline-during-config-validation VM pass and require ui_freshness to match LIVE quote feed after the fault clears."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-125",
+      "tracking_number": "CR-125",
+      "priority": 1,
+      "area": "graph_cards_runtime_motion",
+      "title": "Graph cards flash continuously instead of only on raw price changes",
+      "status": "open",
+      "source": "user_observed_regression",
+      "severity": "high",
+      "evidence": [
+        "User observed prior graph-card behavior regressed: graph cards are floating around continuously flashing rather than flashing only when fresh data changes raw price.",
+        "Expected behavior: on fresh data with ticker up, flash green and move quickly toward top edge; on fresh data with ticker down, flash red and move quickly toward bottom edge; stop flashing when edge bounce/normal motion resumes.",
+        "Need inspect prior implementation and traces to identify why price-change gating regressed."
+      ],
+      "notes": [
+        "Add to autonomous CR queue ahead of broad degraded-mode validation because it is a visible runtime regression.",
+        "Acceptance requires code inspection plus local/VM visual or trace evidence that flash events are emitted only when raw price changes."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
