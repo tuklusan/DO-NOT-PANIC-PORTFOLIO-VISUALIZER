@@ -202,15 +202,18 @@ public sealed class YFinanceCircularTraceSinkTests
 
     private static string GetRepoRoot()
     {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-        while (directory is not null)
+        foreach (string startDirectory in new[] { Environment.CurrentDirectory, AppContext.BaseDirectory })
         {
-            if (Directory.Exists(Path.Combine(directory.FullName, ".git")))
-                return directory.FullName;
+            DirectoryInfo? directory = new(startDirectory);
+            while (directory is not null)
+            {
+                if (File.Exists(Path.Combine(directory.FullName, "PortfolioScreensaver.sln")))
+                    return directory.FullName;
 
-            directory = directory.Parent;
+                directory = directory.Parent;
+            }
         }
 
-        throw new InvalidOperationException("Could not find repository root.");
+        throw new InvalidOperationException("Could not find repository root from test working directories.");
     }
 }
