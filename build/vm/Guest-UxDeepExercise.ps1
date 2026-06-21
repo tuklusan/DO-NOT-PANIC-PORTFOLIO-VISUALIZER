@@ -2714,12 +2714,71 @@ function Wait-ConfigPrimaryButtonReady {
     return $null
 }
 
+function Test-IsExpectedValidationUnavailableStatus {
+    param([AllowNull()][string]$StatusText)
+
+    if ([string]::IsNullOrWhiteSpace($StatusText)) {
+        return $false
+    }
+
+    return $StatusText -match '(?i)(validation.*unavailable|throttl.*validation)'
+}
+
+function Test-ConfigExpectsValidationUnavailable {
+    param([AllowNull()][string]$Profile)
+
+    # Runtime-only profiles intentionally stay out of this list because their
+    # fault is activated after the settings workflow has completed.
+    return $Profile -in @('offline-at-start', 'offline-during-config-validation', 'upstream-throttled', 'timeout')
+}
+
+function Close-ConfigForExpectedValidationUnavailable {
+    param(
+        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process,
+        [Parameter(Mandatory = $true)]$Window,
+        [Parameter(Mandatory = $true)][string]$StatusText
+    )
+
+    $buttonSnapshot = Get-WindowButtonSnapshot -Window $Window
+    Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableObserved' -Details ("status={0}; buttons={1}" -f $StatusText, $buttonSnapshot)
+    $closed = $false
+    try {
+        Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableCloseAttempt' -Details 'method=Click-ConfigCloseButtonFallback'
+        $closed = Click-ConfigCloseButtonFallback -Window $Window
+        if (-not $closed) {
+            Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableCloseAttempt' -Details 'method=Click-ConfigFooterButtonFallback'
+            $closed = Click-ConfigFooterButtonFallback -Window $Window -CompletionMode 'Cancel'
+        }
+    }
+    catch {
+        Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableCloseException' -Details $_.Exception.Message
+        return $false
+    }
+
+    if ($closed) {
+        $closeObserved = Wait-UIAutomationCondition -TimeoutSeconds 10 -PollMilliseconds 200 -TraceEvent 'ExpectedValidationUnavailableCloseWait' -Condition {
+            $Process.Refresh()
+            $remaining = Find-ConfigWindowOwned -Process $Process
+            return ($null -eq $remaining)
+        }
+
+        if ($closeObserved -eq $true) {
+            Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableClosed'
+            return $true
+        }
+    }
+
+    Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableCloseFailed'
+    return $false
+}
+
 function Validate-AndCloseConfigWindow {
     param(
         [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process,
         $Window,
         [ValidateSet('Apply', 'Cancel')]
-        [string]$CompletionMode = 'Apply'
+        [string]$CompletionMode = 'Apply',
+        [switch]$ExpectedValidationUnavailable
     )
 
     for ($attempt = 0; $attempt -lt 2; $attempt++) {
@@ -2775,6 +2834,16 @@ function Validate-AndCloseConfigWindow {
                     $Window = Find-ConfigWindow -Process $Process -TimeoutSeconds 1
                 }
             }
+
+            if ($ExpectedValidationUnavailable -and (Test-IsExpectedValidationUnavailableStatus -StatusText $statusText)) {
+                if (Close-ConfigForExpectedValidationUnavailable -Process $Process -Window $Window -StatusText $statusText) {
+                    return $true
+                }
+
+                Write-ConfigWindowTrace -Event 'ExpectedValidationUnavailableRetryScheduled' -Details ("attempt={0}" -f ($attempt + 1))
+                break
+            }
+
             if ($null -ne $Window) {
                 $validatedStatusReady = -not [string]::IsNullOrWhiteSpace($statusText) -and
                     $statusText -like '*Validation passed. Click OK to save/apply, or Cancel to discard.*'
@@ -3179,7 +3248,8 @@ try {
         if ($FaultProfile -eq 'offline-during-config-validation') {
             Set-YFinanceFaultProfile -Profile 'offline'
         }
-        $configClosedNaturally = Validate-AndCloseConfigWindow -Process $desktop -Window $window -CompletionMode $ValidationCompletionMode
+        $expectedValidationUnavailable = Test-ConfigExpectsValidationUnavailable -Profile $FaultProfile
+        $configClosedNaturally = Validate-AndCloseConfigWindow -Process $desktop -Window $window -CompletionMode $ValidationCompletionMode -ExpectedValidationUnavailable:$expectedValidationUnavailable
         if ($configClosedNaturally) {
             $closeVerified = Wait-UIAutomationCondition -TimeoutSeconds 3 -PollMilliseconds 100 -TraceEvent 'ConfigClosedVerificationWait' -Condition {
                 $remaining = Find-ConfigWindowOwned -Process $desktop

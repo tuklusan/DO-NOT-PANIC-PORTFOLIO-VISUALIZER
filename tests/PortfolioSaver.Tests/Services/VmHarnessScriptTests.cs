@@ -512,6 +512,18 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Get-VisibleRuntimeFreshnessText", script, StringComparison.Ordinal);
         Assert.Contains("$knownFreshnessValues = Get-KnownRuntimeFreshnessValues", script, StringComparison.Ordinal);
         Assert.Contains("function Write-RuntimeFreshnessSnapshot", script, StringComparison.Ordinal);
+        Assert.Contains("function Test-IsExpectedValidationUnavailableStatus", script, StringComparison.Ordinal);
+        Assert.Contains("function Test-ConfigExpectsValidationUnavailable", script, StringComparison.Ordinal);
+        Assert.Contains("function Close-ConfigForExpectedValidationUnavailable", script, StringComparison.Ordinal);
+        Assert.Contains("[switch]$ExpectedValidationUnavailable", script, StringComparison.Ordinal);
+        Assert.Contains("ExpectedValidationUnavailableObserved", script, StringComparison.Ordinal);
+        Assert.Contains("ExpectedValidationUnavailableCloseAttempt", script, StringComparison.Ordinal);
+        Assert.Contains("ExpectedValidationUnavailableCloseException", script, StringComparison.Ordinal);
+        Assert.Contains("ExpectedValidationUnavailableRetryScheduled", script, StringComparison.Ordinal);
+        Assert.Contains("Runtime-only profiles intentionally stay out of this list", script, StringComparison.Ordinal);
+        Assert.Contains("return $Profile -in @('offline-at-start', 'offline-during-config-validation', 'upstream-throttled', 'timeout')", script, StringComparison.Ordinal);
+        Assert.Contains("$expectedValidationUnavailable = Test-ConfigExpectsValidationUnavailable -Profile $FaultProfile", script, StringComparison.Ordinal);
+        Assert.Contains("-ExpectedValidationUnavailable:$expectedValidationUnavailable", script, StringComparison.Ordinal);
         Assert.Contains("[switch]$IncludeVisibleFreshness", script, StringComparison.Ordinal);
         Assert.Contains("if ($IncludeVisibleFreshness -and $null -ne $DesktopProcess", script, StringComparison.Ordinal);
         Assert.Contains("Get-VisibleRuntimeFreshnessText -DesktopProcess $DesktopProcess", script, StringComparison.Ordinal);
