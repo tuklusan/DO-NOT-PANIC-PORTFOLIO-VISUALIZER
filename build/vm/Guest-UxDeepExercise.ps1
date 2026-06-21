@@ -1892,6 +1892,14 @@ function Get-VisibleRuntimeFreshnessText {
             return ''
         }
 
+        $freshnessElement = Find-DescendantByAutomationId -Root $window -AutomationId 'RuntimeDataFreshnessText'
+        if ($null -ne $freshnessElement) {
+            $freshnessText = ([string]$freshnessElement.Current.Name).Trim()
+            if ($knownFreshnessValues -contains $freshnessText) {
+                return $freshnessText
+            }
+        }
+
         $textCondition = New-Object System.Windows.Automation.PropertyCondition(
             [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
             [System.Windows.Automation.ControlType]::Text)

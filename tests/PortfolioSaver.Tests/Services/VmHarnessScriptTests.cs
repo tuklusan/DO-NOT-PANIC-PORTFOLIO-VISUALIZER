@@ -510,6 +510,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Get-HarnessTracePath", script, StringComparison.Ordinal);
         Assert.Contains("function Get-KnownRuntimeFreshnessValues", script, StringComparison.Ordinal);
         Assert.Contains("function Get-VisibleRuntimeFreshnessText", script, StringComparison.Ordinal);
+        Assert.Contains("RuntimeDataFreshnessText", script, StringComparison.Ordinal);
         Assert.Contains("$knownFreshnessValues = Get-KnownRuntimeFreshnessValues", script, StringComparison.Ordinal);
         Assert.Contains("function Write-RuntimeFreshnessSnapshot", script, StringComparison.Ordinal);
         Assert.Contains("function Test-IsExpectedValidationUnavailableStatus", script, StringComparison.Ordinal);

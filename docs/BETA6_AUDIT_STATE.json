@@ -5056,6 +5056,33 @@
       ],
       "resolution": "Closed on 2026-06-21 by commit 267356d. The VM UX capture-loop starvation was resolved by rewriting Guest-UxDeepExercise.ps1 circular trace tail reads to read only the requested tail window around the circular write cursor instead of loading/reordering the full 32 MB trace file on every runtime freshness sample. VmHarnessScriptTests now guard against reintroducing the whole-file tail read.",
       "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260621-020437.md reported no blocking findings; cheap hardening was applied. Focused local VmHarnessScriptTests passed 20/20. VM run ux-deep-ssh-20260621-021600 produced 44 scheduled desktop captures plus transition captures, no low-yield note, clean visual analyzer result with 0 findings, and DeepSeek artifact review build/validation/artifacts/deepseek-artifact-review-20260621-025827.md. Manual screenshot spot-check confirmed first/middle/final frames were alive."
+    },
+    {
+      "id": "CR-124",
+      "tracking_number": "CR-124",
+      "priority": 2,
+      "area": "vm_harness_observability",
+      "title": "Harness freshness probe reports unavailable despite visible LIVE quote feed",
+      "status": "open",
+      "source": "autonomous_visual_validation",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek artifact advisory build/validation/artifacts/deepseek-artifact-review-20260621-081656.md flagged ui_freshness=unavailable throughout VM run ux-deep-ssh-20260621-073224 after config-only offline fault cleared.",
+        "Manual screenshot review of desktop-010.png from that run shows the top-left status visibly displays LIVE quote feed, so the product UI appears correct while the harness/UIA freshness probe is blind or brittle.",
+        "The deterministic analyzer was clean for CR-067, but future artifact analysis should not depend on manual image review to distinguish product freshness bugs from harness observability gaps."
+      ],
+      "notes": [
+        "Improve runtime freshness capture to read the status text reliably, e.g. by adding/using explicit automation properties for the freshness TextBlock or a more robust UIA search path.",
+        "After implementation, rerun an offline-during-config-validation VM pass and require ui_freshness to match LIVE quote feed after the fault clears."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

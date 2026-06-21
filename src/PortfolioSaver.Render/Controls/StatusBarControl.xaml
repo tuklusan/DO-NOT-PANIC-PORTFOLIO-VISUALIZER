@@ -48,6 +48,8 @@
                                TextTrimming="CharacterEllipsis" />
                 </StackPanel>
                 <TextBlock Text="{Binding DataFreshnessText}"
+                           AutomationProperties.AutomationId="RuntimeDataFreshnessText"
+                           AutomationProperties.Name="{Binding DataFreshnessText}"
                            Foreground="{Binding DataFreshnessForeground}"
                            FontFamily="{StaticResource StableClockFont}"
                            FontSize="10"
