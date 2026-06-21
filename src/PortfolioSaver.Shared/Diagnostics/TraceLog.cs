@@ -236,18 +236,19 @@ public static class TraceLog
     {
         while (true)
         {
-            if (!Queue.TryDequeue(out string? line))
-            {
-                await Task.Delay(25).ConfigureAwait(false);
-                continue;
-            }
-
             try
             {
+                if (!Queue.TryDequeue(out string? line))
+                {
+                    await Task.Delay(25).ConfigureAwait(false);
+                    continue;
+                }
+
                 WriteCircular(line);
             }
             catch
             {
+                await Task.Delay(250).ConfigureAwait(false);
             }
         }
     }
@@ -294,7 +295,9 @@ public static class TraceLog
             int nextPosition = (writePosition + payload.Length) % maxTraceBytes;
             _circularWritePosition = nextPosition;
             WritePosition(nextPosition);
-            stream.Flush(true);
+            // Dispose/Flush commits the stream to the OS. Avoid Flush(true) here:
+            // per-line disk fsync caused trace lag during 30-minute VM soaks.
+            stream.Flush();
         }
     }
 
@@ -323,7 +326,7 @@ public static class TraceLog
     {
         try
         {
-            File.WriteAllText(CircularIndexPath, position.ToString());
+            File.WriteAllText(CircularIndexPath, position.ToString(CultureInfo.InvariantCulture));
         }
         catch
         {

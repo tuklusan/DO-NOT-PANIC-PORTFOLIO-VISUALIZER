@@ -22,6 +22,7 @@ public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
     private static readonly Lazy<YFinanceCircularTraceSink> LazyInstance = new(
         static () => new YFinanceCircularTraceSink(),
         LazyThreadSafetyMode.ExecutionAndPublication);
+    private static int _circularWritePosition = -1;
     private static int _workerStarted;
     private static int _maxTraceBytes;
 
@@ -33,11 +34,15 @@ public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
 
     internal static void ResetCircularStateForTests()
     {
-        while (Queue.TryDequeue(out _))
+        lock (FileSync)
         {
-        }
+            while (Queue.TryDequeue(out _))
+            {
+            }
 
-        Interlocked.Exchange(ref _maxTraceBytes, 0);
+            Interlocked.Exchange(ref _maxTraceBytes, 0);
+            _circularWritePosition = -1;
+        }
     }
 
     public void InfoState(string source, string eventName, IEnumerable<KeyValuePair<string, object?>> fields)
@@ -162,18 +167,19 @@ public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
     {
         while (true)
         {
-            if (!Queue.TryDequeue(out string? line))
-            {
-                await Task.Delay(25).ConfigureAwait(false);
-                continue;
-            }
-
             try
             {
+                if (!Queue.TryDequeue(out string? line))
+                {
+                    await Task.Delay(25).ConfigureAwait(false);
+                    continue;
+                }
+
                 WriteCircular(line);
             }
             catch
             {
+                await Task.Delay(250).ConfigureAwait(false);
             }
         }
     }
@@ -198,7 +204,9 @@ public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
             if (stream.Length != maxTraceBytes)
                 stream.SetLength(maxTraceBytes);
 
-            int writePosition = ReadPosition();
+            int writePosition = _circularWritePosition;
+            if (writePosition < 0)
+                writePosition = ReadPosition();
             if (writePosition < 0 || writePosition >= maxTraceBytes)
                 writePosition = 0;
 
@@ -214,8 +222,11 @@ public sealed class YFinanceCircularTraceSink : IYFinanceTraceSink
             }
 
             int nextPosition = (writePosition + payload.Length) % maxTraceBytes;
+            _circularWritePosition = nextPosition;
             WritePosition(nextPosition);
-            stream.Flush(true);
+            // Dispose/Flush commits the stream to the OS. Avoid Flush(true) here:
+            // per-line disk fsync caused trace lag during 30-minute VM soaks.
+            stream.Flush();
         }
     }
 

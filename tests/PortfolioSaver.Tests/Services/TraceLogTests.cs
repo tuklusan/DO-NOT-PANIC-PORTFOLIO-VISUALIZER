@@ -213,6 +213,16 @@ public sealed class TraceLogTests
         }
     }
 
+    [Fact]
+    public void TraceLog_BackgroundWorkerAvoidsPerLineDiskSyncAndRestartsAfterLoopExceptions()
+    {
+        string repoRoot = GetRepoRoot();
+        string source = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Shared", "Diagnostics", "TraceLog.cs"));
+
+        Assert.Contains("await Task.Delay(250).ConfigureAwait(false);", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("stream.Flush(true)", source, StringComparison.Ordinal);
+    }
+
     private static void DeleteDirectoryWithRetry(string path)
     {
         if (!Directory.Exists(path))

@@ -139,6 +139,23 @@ public sealed class YFinanceCircularTraceSinkTests
         }
     }
 
+    [Fact]
+    public void YFinanceCircularTraceSink_AvoidsPerLineDiskSyncAndCachesCircularCursor()
+    {
+        string repoRoot = GetRepoRoot();
+        string source = File.ReadAllText(Path.Combine(
+            repoRoot,
+            "YFinance.net",
+            "YFinance.NET",
+            "Diagnostics",
+            "YFinanceCircularTraceSink.cs"));
+
+        Assert.Contains("private static int _circularWritePosition = -1;", source, StringComparison.Ordinal);
+        Assert.Contains("await Task.Delay(250).ConfigureAwait(false);", source, StringComparison.Ordinal);
+        Assert.Contains("_circularWritePosition = nextPosition;", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("stream.Flush(true)", source, StringComparison.Ordinal);
+    }
+
     private static async Task<bool> WaitForTraceAsync(
         string traceFilePath,
         string traceIndexPath,
@@ -181,5 +198,19 @@ public sealed class YFinanceCircularTraceSinkTests
         Buffer.BlockCopy(bytes, position, reordered, 0, bytes.Length - position);
         Buffer.BlockCopy(bytes, 0, reordered, bytes.Length - position, position);
         return Encoding.UTF8.GetString(reordered).Replace("\0", string.Empty);
+    }
+
+    private static string GetRepoRoot()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (Directory.Exists(Path.Combine(directory.FullName, ".git")))
+                return directory.FullName;
+
+            directory = directory.Parent;
+        }
+
+        throw new InvalidOperationException("Could not find repository root.");
     }
 }
