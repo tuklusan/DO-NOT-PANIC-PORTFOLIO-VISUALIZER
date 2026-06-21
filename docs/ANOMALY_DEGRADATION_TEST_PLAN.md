@@ -180,10 +180,12 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 1
 - Severity: High
 - Area: yfinance_http_degradation
-- Status: open
+- Status: closed
+- Closure evidence: commit `26d720e` added deterministic YFinance.NET HTTP degradation policy tests; focused local validation passed 18/18 on 2026-06-21; post-test process check found no leftover server/app processes.
 - Evidence / rationale:
   - Yahoo-backed APIs can fail with authentication/crumb issues, throttling, transient server errors, and empty/malformed responses.
   - YFinance.NET owns all Yahoo communication, so these failures must be simulated and proven at that layer.
+  - Deterministic tests now cover auth/crumb refresh classification, 429 backoff, server protocol error mapping, malformed chart payload handling, and validation-time rate-limit deferral.
 - Notes:
   - Do not reintroduce direct Yahoo calls outside YFinance.NET while adding tests.
   - Check cache behavior and backoff behavior separately for each class of response.

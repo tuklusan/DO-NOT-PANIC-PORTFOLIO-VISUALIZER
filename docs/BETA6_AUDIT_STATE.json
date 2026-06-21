@@ -3405,12 +3405,18 @@
       "priority": 1,
       "area": "yfinance_http_degradation",
       "title": "Validate YFinance/Yahoo HTTP failures including 401, 403, 404, 408, 429, 5xx, crumb/cookie failure, and empty JSON",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "High",
       "evidence": [
         "Yahoo-backed APIs can fail with authentication/crumb issues, throttling, transient server errors, and empty/malformed responses.",
-        "YFinance.NET owns all Yahoo communication, so these failures must be simulated and proven at that layer."
+        "YFinance.NET owns all Yahoo communication, so these failures must be simulated and proven at that layer.",
+        "Commit 26d720e made the Yahoo HTTP/session retry classifiers and server protocol error classifiers internal for deterministic test coverage without changing their runtime behavior.",
+        "YFinanceHttpDegradationPolicy_RefreshesSessionOnlyForAuthAndCrumbFailures proves 401/403 and invalid cookie/crumb/csrf trigger session refresh while 404/408/500 do not incorrectly churn session state.",
+        "YFinanceHttpDegradationPolicy_UsesRetryAfterOrExponentialBackoffForRateLimits proves 429 retry delay honors Retry-After and falls back to 2/4/8-second exponential delays for missing or invalid headers.",
+        "YFinanceServerErrorMapping_ClassifiesHttpFailuresForClientDegradation proves 429 maps to upstream-throttled, 408/timeout maps to timeout, generic HTTP failures map to upstream-unavailable, and internal payload errors remain non-retryable.",
+        "Existing history/market-timing parsing tests prove empty/null Yahoo chart data degrades to empty/null results while malformed chart nodes and Yahoo chart errors throw YFinanceApiException.",
+        "YahooSymbolValidationServiceTests prove validation-time 429s mark symbols deferred/rate-limited instead of invalid."
       ],
       "notes": [
         "Do not reintroduce direct Yahoo calls outside YFinance.NET while adding tests.",
@@ -3426,6 +3432,12 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "Each HTTP failure class is mapped to an intentional retry/backoff/cache/degrade behavior.",
         "Trace records enough detail for support without leaking secrets."
+      ],
+      "closed_date": "2026-06-21",
+      "resolution": "YFinance.NET now has deterministic coverage for Yahoo HTTP degradation classification. Session refresh is limited to auth/crumb/csrf failures, 429 retry delays honor Retry-After or exponential backoff, server-side transport errors map to intentional protocol error codes/retryability, malformed Yahoo chart payloads throw or degrade predictably, and validation-time Yahoo rate limits defer symbols instead of marking them invalid.",
+      "validation": "DeepSeek review build/deepseek-review/deepseek-review-20260621-172614.md found no actionable issues after the testability refactor. Focused local validation passed on 2026-06-21: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~Nb040BehaviorTests.YFinanceHttpDegradationPolicy|FullyQualifiedName~Nb040BehaviorTests.YFinanceServerErrorMapping|FullyQualifiedName~Nb040BehaviorTests.HistoryParsing|FullyQualifiedName~Nb040BehaviorTests.MarketTimingParsing|FullyQualifiedName~YahooSymbolValidationServiceTests\" --nologo passed 18/18. Post-test process check found no leftover YFinance.NET.Server, PortfolioSaver, or relevant dotnet child processes.",
+      "commits": [
+        "26d720e"
       ]
     },
     {
