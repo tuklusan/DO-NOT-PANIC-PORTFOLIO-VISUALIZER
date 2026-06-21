@@ -3327,12 +3327,15 @@
       "priority": 1,
       "area": "quote_latency",
       "title": "Validate quote latency greater than the one-second request cadence",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "High",
       "evidence": [
         "Runtime quote fetching is intended to be simple: send one symbol request, render that symbol when its response arrives, wait one second, then send the next request.",
-        "If YFinance or the server responds slower than one second, responses may overlap or arrive out of order."
+        "If YFinance or the server responds slower than one second, responses may overlap or arrive out of order.",
+        "ScreensaverRefreshTimer_UsesOneSecondAsyncQuoteDispatchPath asserts the fixed one-second runtime timer, one-at-a-time dispatch path, 15-second timeout, timeout trace, transport reset trace, stale completion trace, and waiting_for_in_flight_request skip path.",
+        "RuntimeQuoteInFlightTracker_PrunesTimedOutRequestsAndCancelsThem proves latency at or beyond timeout removes the request, cancels the token, and leaves the scheduler free to continue.",
+        "RuntimeQuoteInFlightTracker_IgnoresStaleCompletionAfterSymbolWasRequeued proves late responses from pruned requests cannot overwrite newer symbol state."
       ],
       "notes": [
         "Exercise 2s, 5s, 15s, and timeout-level quote latency profiles.",
@@ -3348,6 +3351,12 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "UI updates remain surgical: at most the affected ticker and corresponding graph-card update per response.",
         "Late responses are handled according to documented ordering/freshness policy."
+      ],
+      "closed_date": "2026-06-21",
+      "resolution": "The runtime quote scheduler is intentionally one-outstanding-request only: a slow quote does not create overlapping dispatches or response bursts, and requests older than the 15-second timeout are pruned, canceled, traced, and ignored if they complete later. This validates the degraded-latency behavior without changing the surgical UI cadence.",
+      "validation": "Focused local validation passed on 2026-06-21: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~Nb040BehaviorTests.RuntimeQuote|FullyQualifiedName~ScreensaverRenderBehaviorTests.RuntimeQuoteScheduler\" --nologo passed 7/7. Post-test process check found no leftover YFinance.NET.Server, PortfolioSaver, or relevant dotnet child processes.",
+      "commits": [
+        "9bbbff5"
       ]
     },
     {

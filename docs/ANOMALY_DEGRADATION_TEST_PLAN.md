@@ -140,10 +140,12 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 1
 - Severity: High
 - Area: quote_latency
-- Status: open
+- Status: closed
+- Closure evidence: focused local validation passed 7/7 on 2026-06-21 for the runtime quote scheduler/in-flight timeout tests; post-test process check found no leftover server/app processes.
 - Evidence / rationale:
   - Runtime quote fetching is intended to be simple: send one symbol request, render that symbol when its response arrives, wait one second, then send the next request.
   - If YFinance or the server responds slower than one second, responses may overlap or arrive out of order.
+  - Existing scheduler coverage proves slow requests cannot create overlapping dispatches or late stale overwrites.
 - Notes:
   - Exercise 2s, 5s, 15s, and timeout-level quote latency profiles.
   - Verify no dispatcher batching, scene-wide lock-up, graph-card over-flashing, or stale overwrite.
