@@ -4983,6 +4983,34 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-122",
+      "tracking_number": "CR-122",
+      "priority": 1,
+      "area": "vm_validation",
+      "title": "VM full-suite trace-log test is order-sensitive under circular trace cache",
+      "status": "open",
+      "source": "vm_test_failure_2026_06_21",
+      "severity": "High",
+      "evidence": [
+        "VM build/test gate failed before UI launch because TraceLog_WritesToConfigurableCircularFileUnderAppData expected a 4 MB circular trace but observed the already-cached 32 MB default.",
+        "TraceLog uses a live static background worker and cached _maxTraceBytes; full-suite VM ordering can initialize the cache before the configurable-path test applies its 4 MB environment setting.",
+        "Local focused graph-card tests passed, but VM validation cannot proceed until this test is deterministic."
+      ],
+      "notes": [
+        "Separate CircularTraceSettings environment parsing from direct WriteCircular file-size behavior.",
+        "Pin the private cached trace byte limit inside the test after proving the environment resolver returns 4 MB, then rely on ResetCircularStateForTests to clear static cache afterward.",
+        "Acceptance: DeepSeek review has no blocking findings or any findings are explicitly adjudicated with source evidence; local TraceLog tests pass; VM full-suite build/test reaches the UI phase."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

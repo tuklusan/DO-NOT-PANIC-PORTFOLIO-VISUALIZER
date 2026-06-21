@@ -28,6 +28,13 @@ public sealed class TraceLogTests
             string traceIndexPath = Path.Combine(traceDirectory, "trace.circular.idx");
             Directory.CreateDirectory(traceDirectory);
             TraceLog.ResetCircularStateForTests();
+            int expectedTraceBytes = 4 * 1024 * 1024;
+            Assert.Equal(expectedTraceBytes, CircularTraceSettings.ResolveMaxTraceBytes());
+            FieldInfo maxTraceBytesField = typeof(TraceLog).GetField(
+                "_maxTraceBytes",
+                BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("Could not find TraceLog._maxTraceBytes.");
+            maxTraceBytesField.SetValue(null, expectedTraceBytes);
             string marker = "trace-test-" + Guid.NewGuid().ToString("N");
             MethodInfo? writeCircularMethod = typeof(TraceLog).GetMethod(
                 "WriteCircular",
@@ -53,7 +60,7 @@ public sealed class TraceLogTests
                 });
 
             Assert.True(observed, "Trace marker was not observed in the circular trace file.");
-            Assert.Equal(4 * 1024 * 1024, new FileInfo(traceFilePath).Length);
+            Assert.Equal(expectedTraceBytes, new FileInfo(traceFilePath).Length);
         }
         finally
         {
