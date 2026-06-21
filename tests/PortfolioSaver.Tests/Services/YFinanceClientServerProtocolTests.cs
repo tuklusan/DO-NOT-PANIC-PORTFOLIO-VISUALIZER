@@ -527,15 +527,15 @@ public sealed class YFinanceClientServerProtocolTests
     [Fact]
     public async Task ServerProcess_RespondsToHealthRequest_OverTcpProtocol()
     {
-        using Process server = StartServerProcess(14871);
+        (Process server, int port) = await StartReachableServerProcessAsync();
+        using (server)
         try
         {
-            await WaitForPortAsync(14871);
-            await using YFinanceServerClient client = new(new YFinanceServerConnectionOptions("127.0.0.1", 14871, TimeSpan.FromSeconds(5), NullYFinanceServerClientTraceSink.Instance));
+            await using YFinanceServerClient client = new(new YFinanceServerConnectionOptions("127.0.0.1", port, TimeSpan.FromSeconds(5), NullYFinanceServerClientTraceSink.Instance));
             HelloResponseDto hello = await client.HelloAsync(new HelloRequestDto("PortfolioSaver.Tests", "BETA-7", "TESTHASH", false, Environment.ProcessId));
             HealthResponseDto health = await client.HealthAsync();
 
-            Assert.Equal(14871, hello.ListenerPort);
+            Assert.Equal(port, hello.ListenerPort);
             Assert.Equal("standalone", hello.Mode);
             Assert.Equal("ok", health.Status);
         }
@@ -548,15 +548,14 @@ public sealed class YFinanceClientServerProtocolTests
     [Fact]
     public async Task DuplicateServerGuard_IsScopedPerPort_NotGlobal()
     {
-        using Process serverA = StartServerProcess(14872);
-        using Process serverB = StartServerProcess(14873);
+        (Process serverA, int portA) = await StartReachableServerProcessAsync();
+        (Process serverB, int portB) = await StartReachableServerProcessAsync();
+        using (serverA)
+        using (serverB)
         try
         {
-            await WaitForPortAsync(14872);
-            await WaitForPortAsync(14873);
-
-            await using YFinanceServerClient clientA = new(new YFinanceServerConnectionOptions("127.0.0.1", 14872, TimeSpan.FromSeconds(5), NullYFinanceServerClientTraceSink.Instance));
-            await using YFinanceServerClient clientB = new(new YFinanceServerConnectionOptions("127.0.0.1", 14873, TimeSpan.FromSeconds(5), NullYFinanceServerClientTraceSink.Instance));
+            await using YFinanceServerClient clientA = new(new YFinanceServerConnectionOptions("127.0.0.1", portA, TimeSpan.FromSeconds(5), NullYFinanceServerClientTraceSink.Instance));
+            await using YFinanceServerClient clientB = new(new YFinanceServerConnectionOptions("127.0.0.1", portB, TimeSpan.FromSeconds(5), NullYFinanceServerClientTraceSink.Instance));
 
             HealthResponseDto healthA = await clientA.HealthAsync();
             HealthResponseDto healthB = await clientB.HealthAsync();
@@ -568,6 +567,70 @@ public sealed class YFinanceClientServerProtocolTests
         {
             KillProcessIfRunning(serverA);
             KillProcessIfRunning(serverB);
+        }
+    }
+
+    [Fact]
+    public async Task DuplicateServerGuard_SecondProcessExitsCleanlyWithoutReplacingPrimary()
+    {
+        (Process primary, int port) = await StartReachableServerProcessAsync();
+        Process? duplicate = null;
+        using (primary)
+        {
+            try
+            {
+                duplicate = StartServerProcess(port);
+
+                Assert.True(await WaitForExitAsync(duplicate, TimeSpan.FromSeconds(10)));
+                // Duplicate launch is a no-op guard, not a fatal bind failure: the
+                // second process logs DuplicateServerStartRejected and leaves the
+                // already-serving primary process untouched.
+                Assert.Equal(0, duplicate.ExitCode);
+
+                await using YFinanceServerClient client = new(new YFinanceServerConnectionOptions("127.0.0.1", port, TimeSpan.FromSeconds(5), NullYFinanceServerClientTraceSink.Instance));
+                HealthResponseDto health = await client.HealthAsync();
+                Assert.Equal("ok", health.Status);
+            }
+            finally
+            {
+                if (duplicate is not null)
+                    KillProcessIfRunning(duplicate);
+                KillProcessIfRunning(primary);
+                duplicate?.Dispose();
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ServerProcess_ReturnsFatalExitWhenPortIsOccupiedByNonServer()
+    {
+        int port = GetAvailablePort();
+        using TcpListener blocker = new(IPAddress.Loopback, port);
+        blocker.Start();
+        using Process server = StartServerProcess(port);
+
+        Assert.True(await WaitForExitAsync(server, TimeSpan.FromSeconds(10)));
+        Assert.NotEqual(0, server.ExitCode);
+    }
+
+    [Fact]
+    public async Task OwnedServerProcess_ExitsWhenOwnerProcessExits()
+    {
+        int port = GetAvailablePort();
+        using Process owner = StartShortLivedOwnerProcess();
+        using Process server = StartServerProcess(port, $"--owned --owner-pid {owner.Id}");
+        try
+        {
+            await WaitForPortAsync(port);
+
+            Assert.True(await WaitForExitAsync(owner, TimeSpan.FromSeconds(10)));
+            Assert.True(await WaitForExitAsync(server, TimeSpan.FromSeconds(30)));
+            Assert.Equal(0, server.ExitCode);
+        }
+        finally
+        {
+            KillProcessIfRunning(owner);
+            KillProcessIfRunning(server);
         }
     }
 
@@ -586,14 +649,18 @@ public sealed class YFinanceClientServerProtocolTests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 
-    private static Process StartServerProcess(int port)
+    private static Process StartServerProcess(int port, string extraArguments = "")
     {
         string repoRoot = GetRepoRoot();
         string serverDll = Path.Combine(repoRoot, "YFinance.net", "YFinance.NET.Server", "bin", "Release", "net10.0", "YFinance.NET.Server.dll");
+        string arguments = $"\"{serverDll}\" --port {port} --max-clients 16";
+        if (!string.IsNullOrWhiteSpace(extraArguments))
+            arguments += " " + extraArguments;
+
         ProcessStartInfo startInfo = new()
         {
             FileName = "dotnet",
-            Arguments = $"\"{serverDll}\" --port {port} --max-clients 16",
+            Arguments = arguments,
             UseShellExecute = false,
             CreateNoWindow = true,
             WindowStyle = ProcessWindowStyle.Hidden
@@ -602,9 +669,82 @@ public sealed class YFinanceClientServerProtocolTests
         return Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start YFinance.NET.Server process.");
     }
 
-    private static async Task WaitForPortAsync(int port)
+    private static async Task<(Process Process, int Port)> StartReachableServerProcessAsync(string extraArguments = "", int attempts = 5)
     {
-        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(15));
+        List<Exception> failures = [];
+        for (int attempt = 0; attempt < attempts; attempt++)
+        {
+            // A child process cannot inherit an already-bound port reservation,
+            // so this best-effort probe is paired with retries to avoid rare
+            // loopback port races in parallel or noisy test environments.
+            int port = GetAvailablePort();
+            Process process = StartServerProcess(port, extraArguments);
+            try
+            {
+                await WaitForPortAsync(port, TimeSpan.FromSeconds(5));
+                return (process, port);
+            }
+            catch (Exception ex)
+            {
+                failures.Add(ex);
+                KillProcessIfRunning(process);
+                process.Dispose();
+            }
+        }
+
+        throw new AggregateException("Failed to start a reachable YFinance.NET.Server process on an available loopback port.", failures);
+    }
+
+    private static Process StartShortLivedOwnerProcess()
+    {
+        ProcessStartInfo startInfo = OperatingSystem.IsWindows()
+            ? new ProcessStartInfo
+            {
+                FileName = "powershell",
+                Arguments = "-NoProfile -Command \"Start-Sleep -Seconds 2\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            }
+            : new ProcessStartInfo
+            {
+                FileName = "sh",
+                Arguments = "-c \"sleep 2\"",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+        return Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start short-lived owner process.");
+    }
+
+    private static int GetAvailablePort()
+    {
+        using TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+        return port;
+    }
+
+    private static async Task<bool> WaitForExitAsync(Process process, TimeSpan timeout)
+    {
+        try
+        {
+            await process.WaitForExitAsync().WaitAsync(timeout);
+            return true;
+        }
+        catch (Exception ex) when (ex is TimeoutException or OperationCanceledException)
+        {
+            return false;
+        }
+    }
+
+    private static async Task WaitForPortAsync(int port)
+        => await WaitForPortAsync(port, TimeSpan.FromSeconds(15));
+
+    private static async Task WaitForPortAsync(int port, TimeSpan timeoutDuration)
+    {
+        using CancellationTokenSource timeout = new(timeoutDuration);
         while (!timeout.IsCancellationRequested)
         {
             try

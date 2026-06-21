@@ -96,6 +96,11 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Notes:
   - Include duplicate process check behavior requested during NB-031 work.
   - Cover desktop and config startup independently, plus shutdown when the UI closes.
+- Expected user-visible behavior:
+  - If an owned server is already reachable, desktop/config startup must continue normally without launching a duplicate server.
+  - If the owned server bundle is missing or cannot launch, the desktop/config shell must remain responsive and trace `ServerLaunchFailed`/startup failure; market-data areas should remain blank, stale, partial, or unavailable rather than showing misleading fresh values.
+  - If a non-server process occupies the YFinance.NET port, startup must not hang the dispatcher; the failure must be traceable as a server fatal/bind failure.
+  - If the owning UI exits, the owned server must exit promptly so no stale hidden market-data server is left behind for the next run.
 - Acceptance highlights:
   - A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.
   - Expected user-visible behavior is documented before implementation changes are made.
