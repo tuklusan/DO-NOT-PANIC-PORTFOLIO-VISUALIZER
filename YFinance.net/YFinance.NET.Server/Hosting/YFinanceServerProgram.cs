@@ -44,12 +44,14 @@ internal static class YFinanceServerProgram
         }
 
         using CancellationTokenSource cts = new();
-        Console.CancelKeyPress += (_, e) =>
+        ConsoleCancelEventHandler cancelKeyHandler = (_, e) =>
         {
             e.Cancel = true;
-            cts.Cancel();
+            CancelIfAvailable(cts);
         };
-        AppDomain.CurrentDomain.ProcessExit += (_, _) => cts.Cancel();
+        EventHandler processExitHandler = (_, _) => CancelIfAvailable(cts);
+        Console.CancelKeyPress += cancelKeyHandler;
+        AppDomain.CurrentDomain.ProcessExit += processExitHandler;
 
         YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ServerStartup",
         [new("port", options.Port), new("bind_address", options.BindAddress.ToString()), new("owned_mode", options.OwnedMode), new("owner_pid", options.OwnerProcessId), new("max_clients", options.MaxConcurrentClients), new("upstream_sync_check_enabled", options.EnableUpstreamSyncCheck)]);
@@ -67,6 +69,23 @@ internal static class YFinanceServerProgram
         {
             YFinanceCircularTraceSink.Instance.ErrorState("YFinanceServer", "ServerFatal", [], ex);
             return -1;
+        }
+        finally
+        {
+            Console.CancelKeyPress -= cancelKeyHandler;
+            AppDomain.CurrentDomain.ProcessExit -= processExitHandler;
+        }
+    }
+
+    private static void CancelIfAvailable(CancellationTokenSource cts)
+    {
+        try
+        {
+            cts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            YFinanceCircularTraceSink.Instance.WarnState("YFinanceServer", "ShutdownCancellationAfterDispose", []);
         }
     }
 
