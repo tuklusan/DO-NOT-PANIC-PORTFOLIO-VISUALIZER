@@ -22,6 +22,7 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
     private readonly ConcurrentDictionary<string, string> _canceledRequestOperations = new(StringComparer.Ordinal);
     private readonly ConcurrentQueue<string> _canceledRequestOrder = new();
     private readonly object _canceledRequestEvictionGate = new();
+    private readonly object _connectionStateGate = new();
     private TcpClient? _tcpClient;
     private NetworkStream? _stream;
     private CancellationTokenSource? _connectionCts;
@@ -123,7 +124,12 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
             if (!allowDisposed)
                 ThrowIfDisposed();
 
-            NetworkStream stream = _stream ?? throw new InvalidOperationException("YFinance server client is not connected.");
+            NetworkStream stream;
+            lock (_connectionStateGate)
+            {
+                stream = _stream ?? throw new InvalidOperationException("YFinance server client is not connected.");
+            }
+
             await LengthPrefixedProtocolStream.WriteAsync(stream, ProtocolJson.Serialize(request), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -318,6 +324,62 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
                 new("message", ex.Message)
             ]);
             FailPendingRequests(ex);
+            await MarkConnectionFaultedAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task MarkConnectionFaultedAsync()
+    {
+        if (Volatile.Read(ref _disposeStarted) != 0)
+            return;
+
+        await _writeGate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+
+        ConnectionSnapshot snapshot;
+        try
+        {
+            snapshot = DetachConnectionState();
+        }
+        finally
+        {
+            _writeGate.Release();
+        }
+
+        try { snapshot.ConnectionCts?.Cancel(); } catch { }
+        TryDisposeFaultedConnection(snapshot.Stream, "ClientFaultCleanupStreamDisposeError");
+        TryDisposeFaultedConnection(snapshot.TcpClient, "ClientFaultCleanupTcpDisposeError");
+        TryDisposeFaultedConnection(snapshot.ConnectionCts, "ClientFaultCleanupCtsDisposeError");
+    }
+
+    private ConnectionSnapshot DetachConnectionState()
+    {
+        lock (_connectionStateGate)
+        {
+            // The first teardown path wins ownership of the live objects; racing
+            // dispose/fault paths receive nulls and therefore cannot double-dispose.
+            ConnectionSnapshot snapshot = new(_connectionCts, _receiveLoopTask, _stream, _tcpClient);
+            _connectionCts = null;
+            _receiveLoopTask = null;
+            _stream = null;
+            _tcpClient = null;
+            _helloSent = false;
+            ClearCanceledRequestTracking();
+            return snapshot;
+        }
+    }
+
+    private void TryDisposeFaultedConnection(IDisposable? disposable, string eventName)
+    {
+        if (disposable is null)
+            return;
+
+        try
+        {
+            disposable.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _options.TraceSink.Warn(eventName, [new("message", ex.Message)]);
         }
     }
 
@@ -364,10 +426,11 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
 
     private async ValueTask DisposeSocketCoreAsync()
     {
-        CancellationTokenSource? connectionCts = _connectionCts;
-        Task? receiveLoopTask = _receiveLoopTask;
-        NetworkStream? stream = _stream;
-        TcpClient? tcpClient = _tcpClient;
+        ConnectionSnapshot snapshot = DetachConnectionState();
+        CancellationTokenSource? connectionCts = snapshot.ConnectionCts;
+        Task? receiveLoopTask = snapshot.ReceiveLoopTask;
+        NetworkStream? stream = snapshot.Stream;
+        TcpClient? tcpClient = snapshot.TcpClient;
 
         try { connectionCts?.Cancel(); } catch { }
 
@@ -393,12 +456,6 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
         }
 
         FailPendingRequests(new ObjectDisposedException(nameof(YFinanceServerClient), "YFinance server client connection is closing."));
-        _connectionCts = null;
-        _receiveLoopTask = null;
-        _stream = null;
-        _tcpClient = null;
-        _helloSent = false;
-        ClearCanceledRequestTracking();
         try { stream?.Dispose(); } catch { }
         try { tcpClient?.Dispose(); } catch { }
         connectionCts?.Dispose();
@@ -426,10 +483,11 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
 
     private void DisposeSocketCore()
     {
-        CancellationTokenSource? connectionCts = _connectionCts;
-        Task? receiveLoopTask = _receiveLoopTask;
-        NetworkStream? stream = _stream;
-        TcpClient? tcpClient = _tcpClient;
+        ConnectionSnapshot snapshot = DetachConnectionState();
+        CancellationTokenSource? connectionCts = snapshot.ConnectionCts;
+        Task? receiveLoopTask = snapshot.ReceiveLoopTask;
+        NetworkStream? stream = snapshot.Stream;
+        TcpClient? tcpClient = snapshot.TcpClient;
 
         try { connectionCts?.Cancel(); } catch { }
 
@@ -439,12 +497,6 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
         }
 
         FailPendingRequests(new ObjectDisposedException(nameof(YFinanceServerClient), "YFinance server client connection is closing."));
-        _connectionCts = null;
-        _receiveLoopTask = null;
-        _stream = null;
-        _tcpClient = null;
-        _helloSent = false;
-        ClearCanceledRequestTracking();
 
         try { stream?.Dispose(); } catch { }
         try { tcpClient?.Dispose(); } catch { }
@@ -453,23 +505,49 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
 
     private async Task TrySendGoodbyeOnCurrentConnectionAsync()
     {
-        TcpClient? tcpClient = _tcpClient;
-        NetworkStream? stream = _stream;
-        if (tcpClient is not { Connected: true } || stream is null)
-            return;
-
         using CancellationTokenSource goodbyeTimeout = new(GoodbyeTimeout);
-        await SendCoreAsync<EmptyPayload, EmptyPayload>(
-            ProtocolOperations.Goodbye,
-            new EmptyPayload(),
-            goodbyeTimeout.Token,
-            allowDisposed: true).ConfigureAwait(false);
+        await _writeGate.WaitAsync(goodbyeTimeout.Token).ConfigureAwait(false);
+        try
+        {
+            NetworkStream? stream;
+            lock (_connectionStateGate)
+            {
+                TcpClient? tcpClient = _tcpClient;
+                stream = _stream;
+                if (tcpClient is not { Connected: true } || stream is null)
+                    return;
+            }
+
+            await WriteGoodbyeFrameAsync(stream, goodbyeTimeout.Token).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Goodbye is best-effort; shutdown/fault paths may already own the socket.
+        }
+        finally
+        {
+            _writeGate.Release();
+        }
     }
 
     private void ThrowIfDisposed()
     {
-        if (Volatile.Read(ref _disposed) != 0)
+        // Once disposal begins, public calls must not create fresh connections.
+        // DisposeAsync uses a private best-effort Goodbye path instead.
+        if (Volatile.Read(ref _disposed) != 0 || Volatile.Read(ref _disposeStarted) != 0)
             throw new ObjectDisposedException(nameof(YFinanceServerClient));
+    }
+
+    private async Task WriteGoodbyeFrameAsync(NetworkStream stream, CancellationToken cancellationToken)
+    {
+        ProtocolRequest<EmptyPayload> request = new()
+        {
+            RequestId = $"bye-{Interlocked.Increment(ref _requestSequence):D8}",
+            Operation = ProtocolOperations.Goodbye,
+            Payload = new EmptyPayload()
+        };
+        ProtocolIntegrity.Stamp(request, request.Payload);
+        await LengthPrefixedProtocolStream.WriteAsync(stream, ProtocolJson.Serialize(request), cancellationToken).ConfigureAwait(false);
     }
 
     private static void ObserveLateReceiveLoopFault(Task receiveLoopTask)
@@ -505,6 +583,12 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
             }
         }
     }
+
+    private readonly record struct ConnectionSnapshot(
+        CancellationTokenSource? ConnectionCts,
+        Task? ReceiveLoopTask,
+        NetworkStream? Stream,
+        TcpClient? TcpClient);
 
     private bool TryForgetCanceledRequest(string requestId, out string? operation)
     {

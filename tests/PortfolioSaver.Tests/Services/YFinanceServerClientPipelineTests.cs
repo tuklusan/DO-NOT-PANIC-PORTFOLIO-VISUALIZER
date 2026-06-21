@@ -120,6 +120,90 @@ public sealed class YFinanceServerClientPipelineTests
     }
 
     [Fact]
+    public async Task Client_ReconnectsAfterServerClosesConnectionBeforeResponse()
+    {
+        using TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using CancellationTokenSource cts = new(TimeSpan.FromSeconds(10));
+        TaskCompletionSource firstRequestRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task serverTask = Task.Run(async () =>
+        {
+            using (TcpClient first = await listener.AcceptTcpClientAsync(cts.Token).ConfigureAwait(false))
+            {
+                await using NetworkStream firstStream = first.GetStream();
+                _ = await ReadRequestAsync(firstStream, cts.Token).ConfigureAwait(false);
+                firstRequestRead.SetResult();
+            }
+
+            await using NetworkStream secondStream = (await listener.AcceptTcpClientAsync(cts.Token).ConfigureAwait(false)).GetStream();
+            ProtocolRequest<JsonElement> secondRequest = await ReadRequestAsync(secondStream, cts.Token).ConfigureAwait(false);
+            await WriteQuoteResponseAsync(secondStream, secondRequest, cts.Token).ConfigureAwait(false);
+        }, cts.Token);
+
+        await using YFinanceServerClient client = new(new YFinanceServerConnectionOptions(
+            "127.0.0.1",
+            port,
+            TimeSpan.FromSeconds(3),
+            NullYFinanceServerClientTraceSink.Instance));
+
+        Task<QuoteDto> disconnected = client.GetQuoteAsync("BROKEN", cts.Token);
+        await firstRequestRead.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+        Exception disconnectException = await Assert.ThrowsAnyAsync<Exception>(async () => await disconnected.ConfigureAwait(false)).ConfigureAwait(false);
+        Assert.True(
+            disconnectException is IOException or ObjectDisposedException,
+            $"Expected a transport-close exception, got {disconnectException.GetType().FullName}: {disconnectException.Message}");
+
+        QuoteDto recovered = await client.GetQuoteAsync("RECOVERED", cts.Token).ConfigureAwait(false);
+
+        Assert.Equal("RECOVERED", recovered.Symbol);
+        await serverTask;
+    }
+
+    [Fact]
+    public async Task Client_ReconnectsAfterMalformedFrameBreaksReceiveLoop()
+    {
+        using TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using CancellationTokenSource cts = new(TimeSpan.FromSeconds(10));
+        TaskCompletionSource firstRequestRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task serverTask = Task.Run(async () =>
+        {
+            using (TcpClient first = await listener.AcceptTcpClientAsync(cts.Token).ConfigureAwait(false))
+            {
+                await using NetworkStream firstStream = first.GetStream();
+                _ = await ReadRequestAsync(firstStream, cts.Token).ConfigureAwait(false);
+                firstRequestRead.SetResult();
+                await LengthPrefixedProtocolStream.WriteAsync(firstStream, "{ malformed json"u8.ToArray(), cts.Token).ConfigureAwait(false);
+            }
+
+            await using NetworkStream secondStream = (await listener.AcceptTcpClientAsync(cts.Token).ConfigureAwait(false)).GetStream();
+            ProtocolRequest<JsonElement> secondRequest = await ReadRequestAsync(secondStream, cts.Token).ConfigureAwait(false);
+            await WriteQuoteResponseAsync(secondStream, secondRequest, cts.Token).ConfigureAwait(false);
+        }, cts.Token);
+
+        RecordingClientTraceSink traceSink = new();
+        await using YFinanceServerClient client = new(new YFinanceServerConnectionOptions(
+            "127.0.0.1",
+            port,
+            TimeSpan.FromSeconds(3),
+            traceSink));
+
+        Task<QuoteDto> malformed = client.GetQuoteAsync("MALFORMED", cts.Token);
+        await firstRequestRead.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+        await Assert.ThrowsAsync<JsonException>(async () => await malformed.ConfigureAwait(false)).ConfigureAwait(false);
+
+        QuoteDto recovered = await client.GetQuoteAsync("RECOVERED", cts.Token).ConfigureAwait(false);
+
+        Assert.Equal("RECOVERED", recovered.Symbol);
+        Assert.Contains(traceSink.WarnEvents, eventName => string.Equals(eventName, "ClientReceiveLoopFailed", StringComparison.Ordinal));
+        await serverTask;
+    }
+
+    [Fact]
     public async Task Client_SkipsCorruptResponseForAlreadyCancelledRequest()
     {
         using TcpListener listener = new(IPAddress.Loopback, 0);
@@ -295,7 +379,6 @@ public sealed class YFinanceServerClientPipelineTests
 
             ProtocolRequest<JsonElement> goodbyeRequest = await ReadRequestAsync(stream, cts.Token).ConfigureAwait(false);
             goodbyeOperation.SetResult(goodbyeRequest.Operation);
-            await WriteEmptyResponseAsync(stream, goodbyeRequest, cts.Token).ConfigureAwait(false);
         }, cts.Token);
 
         await using (YFinanceServerClient client = new(new YFinanceServerConnectionOptions(
@@ -379,6 +462,43 @@ public sealed class YFinanceServerClientPipelineTests
         await client.DisposeAsync().ConfigureAwait(false);
 
         await Assert.ThrowsAsync<ObjectDisposedException>(async () => await client.HealthAsync().ConfigureAwait(false)).ConfigureAwait(false);
+    }
+
+    [Fact]
+    public async Task Client_PublicCallsAfterDisposeStarted_ThrowObjectDisposedException()
+    {
+        using TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        using CancellationTokenSource cts = new(TimeSpan.FromSeconds(10));
+        TaskCompletionSource healthResponded = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource releaseServer = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task serverTask = Task.Run(async () =>
+        {
+            await using NetworkStream stream = (await listener.AcceptTcpClientAsync(cts.Token).ConfigureAwait(false)).GetStream();
+            ProtocolRequest<JsonElement> healthRequest = await ReadRequestAsync(stream, cts.Token).ConfigureAwait(false);
+            await WriteHealthResponseAsync(stream, healthRequest, cts.Token).ConfigureAwait(false);
+            healthResponded.SetResult();
+            await releaseServer.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+        }, cts.Token);
+
+        YFinanceServerClient client = new(new YFinanceServerConnectionOptions(
+            "127.0.0.1",
+            port,
+            TimeSpan.FromSeconds(3),
+            NullYFinanceServerClientTraceSink.Instance));
+
+        await client.HealthAsync(cts.Token).ConfigureAwait(false);
+        await healthResponded.Task.WaitAsync(cts.Token).ConfigureAwait(false);
+
+        ValueTask disposeTask = client.DisposeAsync();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(async () => await client.HealthAsync(cts.Token).ConfigureAwait(false)).ConfigureAwait(false);
+
+        releaseServer.SetResult();
+        await disposeTask.AsTask().WaitAsync(cts.Token).ConfigureAwait(false);
+        await serverTask.ConfigureAwait(false);
     }
 
     private static async Task<ProtocolRequest<JsonElement>> ReadRequestAsync(NetworkStream stream, CancellationToken cancellationToken)

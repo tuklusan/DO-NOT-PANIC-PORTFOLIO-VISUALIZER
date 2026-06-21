@@ -124,6 +124,10 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Notes:
   - Include request/response/async-message timestamp and checksum expectations from the NB-031 ICD.
   - Ensure late responses cannot update the wrong symbol or cause batch UI redraws.
+- Expected user-visible behavior:
+  - A disconnected or malformed transport frame may fail the in-flight symbol request, but the UI must not freeze or batch-redraw unrelated symbols.
+  - The next scheduled symbol request should reconnect through the normal client path and update only the symbol represented by its response.
+  - Bad checksums, malformed frames, late responses, and async event integrity failures must be traced and must not apply data to the wrong ticker/card.
 - Acceptance highlights:
   - A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.
   - Expected user-visible behavior is documented before implementation changes are made.
