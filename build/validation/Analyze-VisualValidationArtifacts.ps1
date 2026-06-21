@@ -66,6 +66,31 @@ function Test-FaultInjectionTraceLineAllowed {
     return $false
 }
 
+function Test-TraceAgeFieldFresh {
+    param(
+        [Parameter(Mandatory = $true)][string]$Line,
+        [Parameter(Mandatory = $true)][string]$FieldName,
+        [double]$MaximumAgeSeconds = 180.0
+    )
+
+    $pattern = [regex]::Escape($FieldName) + '=([0-9]+(?:\.[0-9]+)?)'
+    $match = [regex]::Match($Line, $pattern)
+    if (-not $match.Success) {
+        return $false
+    }
+
+    $age = 0.0
+    if (-not [double]::TryParse(
+            $match.Groups[1].Value,
+            [System.Globalization.NumberStyles]::Float,
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            [ref]$age)) {
+        return $false
+    }
+
+    return $age -le $MaximumAgeSeconds
+}
+
 function Measure-ImageBrightness {
     param([string]$Path)
     Add-Type -AssemblyName System.Drawing
@@ -246,11 +271,9 @@ foreach ($run in $runs) {
                     Where-Object {
                         if ($null -eq $_ -or $_.LineNumber -le $lastFreshnessOfflineLine -or $_.Line -notmatch 'effective_fault_profile=none') { return $false }
 
+                        # The harness marks source=ui when direct UI text agrees with moving trace evidence.
                         $hasDirectUiFreshness = $_.Line -match 'latest_freshness_source=ui(\s|$)' -and $_.Line -match 'ui_freshness=LIVE quote feed'
-                        $hasFreshTraceAge = $false
-                        if ($_.Line -match 'trace_age_seconds=([0-9]+(?:\.[0-9]+)?)') {
-                            $hasFreshTraceAge = ([System.Double]::Parse($Matches[1], [System.Globalization.CultureInfo]::InvariantCulture) -le 180.0)
-                        }
+                        $hasFreshTraceAge = Test-TraceAgeFieldFresh -Line $_.Line -FieldName 'trace_age_seconds'
 
                         return $hasDirectUiFreshness -and $hasFreshTraceAge
                     })

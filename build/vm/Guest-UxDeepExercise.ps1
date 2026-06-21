@@ -1733,6 +1733,43 @@ function Write-ReferenceSpotCheck {
     Write-ReferenceSpotCheckComparison -OutputPath $referenceComparisonPath -Payload $payload
 }
 
+function Try-WriteReferenceSpotCheck {
+    param(
+        [Parameter(Mandatory = $true)][string]$OutputPath,
+        [Parameter(Mandatory = $true)][int]$CaptureIndex,
+        [Parameter(Mandatory = $true)][string]$Context
+    )
+
+    # Reference spot-checks are advisory: they should enrich validation evidence
+    # but must not abort the capture loop after recovery has already been proven.
+    try {
+        Write-ReferenceSpotCheck -OutputPath $OutputPath -CaptureIndex $CaptureIndex
+        return $true
+    }
+    catch {
+        $message = "Reference spot-check failed during ${Context}: $($_.Exception.Message)"
+        Write-Warning $message
+        try {
+            $outputParent = Split-Path -Path ([System.IO.Path]::GetFullPath($OutputPath)) -Parent
+            if (-not [string]::IsNullOrWhiteSpace($outputParent)) {
+                New-Item -ItemType Directory -Force -Path $outputParent | Out-Null
+                $errorLogPath = Join-Path $outputParent 'reference-spot-check-errors.log'
+                if ((Test-Path -LiteralPath $errorLogPath) -and (Get-Item -LiteralPath $errorLogPath).Length -gt 10240) {
+                    Remove-Item -LiteralPath $errorLogPath -Force
+                }
+                Add-Content -LiteralPath $errorLogPath -Value ("{0} {1}" -f (Get-Date).ToString('o'), $message) -Encoding UTF8
+            }
+        }
+        catch {
+            Write-Warning ("Reference spot-check error-log write failed: {0}" -f $_.Exception.Message)
+        }
+        if ($null -ne $script:summary -and $null -ne $script:summary.Notes) {
+            $script:summary.Notes += $message
+        }
+        return $false
+    }
+}
+
 function Test-YFinanceTraceEvidencePresent {
     return (Read-YFinanceTraceText) -match 'event=QuoteResponseObserved'
 }
@@ -2100,6 +2137,11 @@ function Write-RuntimeFreshnessSnapshot {
         $freshnessSource = 'trace'
         if ([string]::IsNullOrWhiteSpace($latestFreshnessText)) {
             $latestFreshnessText = $uiFreshnessText
+            $freshnessSource = 'ui'
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($uiFreshnessText) -and $uiFreshnessText -eq $latestFreshnessText) {
+            # Direct UI evidence is stronger validation proof when it agrees
+            # with the moving trace; keep trace age alongside it for freshness.
             $freshnessSource = 'ui'
         }
         # Trace is authoritative while it is moving. If the trace freshness line is
@@ -3713,7 +3755,10 @@ try {
                     Write-Warning "Post-recovery reference spot-check skipped because referenceSpotCheckPath was empty."
                 }
                 else {
-                    Write-ReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $i
+                    $postRecoverySpotCheckSucceeded = Try-WriteReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $i -Context 'after-recovery-clear'
+                    if (-not $postRecoverySpotCheckSucceeded) {
+                        Write-SummaryFiles
+                    }
                 }
             }
 
@@ -3756,7 +3801,10 @@ try {
                 Write-Warning "Post-recovery reference spot-check skipped because referenceSpotCheckPath was empty."
             }
             else {
-                Write-ReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $lastCaptureIndex
+                $postRecoverySpotCheckSucceeded = Try-WriteReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $lastCaptureIndex -Context 'after-recovery-clear'
+                if (-not $postRecoverySpotCheckSucceeded) {
+                    Write-SummaryFiles
+                }
             }
         }
         if ($lastCaptureIndex -lt [Math]::Floor($targetFrames * 0.8)) {

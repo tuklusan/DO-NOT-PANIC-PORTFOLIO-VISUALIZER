@@ -475,12 +475,23 @@ public sealed class VmHarnessScriptTests
         string script = ReadRepoText("build",
             "validation",
             "Test-ValidationScripts.ps1");
+        string analyzer = ReadRepoText("build",
+            "validation",
+            "Analyze-VisualValidationArtifacts.ps1");
+        string guestHarness = ReadRepoText("build",
+            "vm",
+            "Guest-UxDeepExercise.ps1");
 
         Assert.Contains("offline-then-recover-runtime", script, StringComparison.Ordinal);
         Assert.Contains("offline-recovery-ux-state-unverified", script, StringComparison.Ordinal);
         Assert.Contains("offline-recovery-insufficient-captures", script, StringComparison.Ordinal);
         Assert.Contains("recovery-no-activation-analysis.json", script, StringComparison.Ordinal);
         Assert.Contains("data_freshness_text=LIVE quote feed", script, StringComparison.Ordinal);
+        Assert.Contains("function Test-TraceAgeFieldFresh", analyzer, StringComparison.Ordinal);
+        Assert.Contains("[double]::TryParse", analyzer, StringComparison.Ordinal);
+        Assert.Contains("$hasFreshTraceAge = Test-TraceAgeFieldFresh -Line $_.Line -FieldName 'trace_age_seconds'", analyzer, StringComparison.Ordinal);
+        Assert.Contains("$hasDirectUiFreshness = $_.Line -match 'latest_freshness_source=ui(\\s|$)' -and $_.Line -match 'ui_freshness=LIVE quote feed'", analyzer, StringComparison.Ordinal);
+        Assert.Contains("elseif (-not [string]::IsNullOrWhiteSpace($uiFreshnessText) -and $uiFreshnessText -eq $latestFreshnessText)", guestHarness, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -562,7 +573,17 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("-DesktopProcess $desktop", script, StringComparison.Ordinal);
         Assert.Contains("-IncludeVisibleFreshness", script, StringComparison.Ordinal);
         Assert.Contains("desktop-after-recovery-clear-{0:D3}.png", script, StringComparison.Ordinal);
-        Assert.Contains("Write-ReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $i", script, StringComparison.Ordinal);
+        Assert.Contains("function Try-WriteReferenceSpotCheck", script, StringComparison.Ordinal);
+        Assert.Contains("Reference spot-checks are advisory", script, StringComparison.Ordinal);
+        Assert.Contains("$postRecoverySpotCheckSucceeded = Try-WriteReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $i -Context 'after-recovery-clear'", script, StringComparison.Ordinal);
+        Assert.Contains("if (-not $postRecoverySpotCheckSucceeded) {", script, StringComparison.Ordinal);
+        Assert.Contains("Write-SummaryFiles", script, StringComparison.Ordinal);
+        Assert.Contains("Reference spot-check failed during ${Context}", script, StringComparison.Ordinal);
+        Assert.Contains("reference-spot-check-errors.log", script, StringComparison.Ordinal);
+        Assert.Contains("Length -gt 10240", script, StringComparison.Ordinal);
+        Assert.Contains("[System.IO.Path]::GetFullPath($OutputPath)", script, StringComparison.Ordinal);
+        Assert.Contains("Reference spot-check error-log write failed", script, StringComparison.Ordinal);
+        Assert.Contains("return $false", script, StringComparison.Ordinal);
         Assert.Contains("$includeVisibleFreshnessForCapture = $true", script, StringComparison.Ordinal);
         Assert.DoesNotContain("$includeVisibleFreshnessForCapture = $FaultProfile", script, StringComparison.Ordinal);
         Assert.Contains("-IncludeVisibleFreshness:$includeVisibleFreshnessForCapture", script, StringComparison.Ordinal);
