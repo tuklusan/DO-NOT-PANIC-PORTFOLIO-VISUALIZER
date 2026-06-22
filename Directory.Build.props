@@ -51,9 +51,7 @@
     <None Include="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md"
           Link="THIRD-PARTY-NOTICES.md"
           Pack="true"
-          PackagePath=""
-          CopyToOutputDirectory="PreserveNewest"
-          CopyToPublishDirectory="PreserveNewest" />
+          PackagePath="" />
   </ItemGroup>
 
   <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES')">
@@ -61,9 +59,7 @@
           Link="THIRD-PARTY-LICENSES\%(RecursiveDir)%(Filename)%(Extension)"
           TargetPath="THIRD-PARTY-LICENSES\%(RecursiveDir)%(Filename)%(Extension)"
           Pack="true"
-          PackagePath="THIRD-PARTY-LICENSES\%(RecursiveDir)"
-          CopyToOutputDirectory="PreserveNewest"
-          CopyToPublishDirectory="PreserveNewest" />
+          PackagePath="THIRD-PARTY-LICENSES\%(RecursiveDir)" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(PortfolioSaverInstallerBaseIntermediateRoot)' != ''">

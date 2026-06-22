@@ -32,6 +32,7 @@ public sealed class ProjectLicenseServiceTests
     {
         string repoRoot = GetRepoRoot();
         string props = File.ReadAllText(Path.Combine(repoRoot, "Directory.Build.props"));
+        string targets = File.ReadAllText(Path.Combine(repoRoot, "Directory.Build.targets"));
         string sharedProject = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Shared", "PortfolioSaver.Shared.csproj"));
 
         Assert.Contains("<PackageLicenseFile Condition=\"'$(PackageLicenseFile)' == ''\">LICENSE</PackageLicenseFile>", props, StringComparison.Ordinal);
@@ -46,6 +47,9 @@ public sealed class ProjectLicenseServiceTests
         Assert.Contains("Link=\"THIRD-PARTY-LICENSES\\%(RecursiveDir)%(Filename)%(Extension)\"", props, StringComparison.Ordinal);
         Assert.Contains("TargetPath=\"THIRD-PARTY-LICENSES\\%(RecursiveDir)%(Filename)%(Extension)\"", props, StringComparison.Ordinal);
         Assert.Contains("PackagePath=\"THIRD-PARTY-LICENSES\\%(RecursiveDir)\"", props, StringComparison.Ordinal);
+        Assert.Contains("CopyPortfolioSaverThirdPartyFilesToBuildOutput", targets, StringComparison.Ordinal);
+        Assert.Contains("CopyPortfolioSaverThirdPartyFilesToPublishOutput", targets, StringComparison.Ordinal);
+        Assert.Contains("DestinationFiles=\"@(PortfolioSaverThirdPartyDistributionFile->'$(PublishDir)%(TargetPath)')\"", targets, StringComparison.Ordinal);
         Assert.Contains("<EmbeddedResource Include=\"..\\..\\LICENSE\" LogicalName=\"PortfolioSaver.LICENSE\" />", sharedProject, StringComparison.Ordinal);
     }
 
