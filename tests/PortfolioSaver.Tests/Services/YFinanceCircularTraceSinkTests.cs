@@ -225,6 +225,54 @@ public sealed class YFinanceCircularTraceSinkTests
     }
 
     [Fact]
+    public void YFinanceCircularTraceSink_CorruptCircularIndexRecoversWithoutThrowing()
+    {
+        string appDataRoot = Path.Combine(Path.GetTempPath(), "YFinanceTraceCorruptIndexTest", Guid.NewGuid().ToString("N"));
+        string? previousProductRoot = Environment.GetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT");
+        string? previousLegacyLocalRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        string? previousLegacyAppDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        string? previousTraceMax = Environment.GetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable);
+        Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable, "4");
+        try
+        {
+            YFinanceCircularTraceSink.ResetCircularStateForTests();
+            string traceDirectory = Path.Combine(appDataRoot, "Trace");
+            string traceFilePath = Path.Combine(traceDirectory, "yfinance.circular.log");
+            string traceIndexPath = Path.Combine(traceDirectory, "yfinance.circular.idx");
+            Directory.CreateDirectory(traceDirectory);
+            File.WriteAllText(traceIndexPath, "not-a-number");
+
+            MethodInfo writeCircularMethod = typeof(YFinanceCircularTraceSink).GetMethod("WriteCircular", BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("Could not find YFinanceCircularTraceSink.WriteCircular.");
+            FieldInfo fileSyncField = typeof(YFinanceCircularTraceSink).GetField("FileSync", BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("Could not find YFinanceCircularTraceSink.FileSync.");
+            object fileSync = fileSyncField.GetValue(null)
+                ?? throw new InvalidOperationException("YFinanceCircularTraceSink.FileSync was null.");
+            string marker = "yfinance-corrupt-index-" + Guid.NewGuid().ToString("N");
+
+            lock (fileSync)
+            {
+                writeCircularMethod.Invoke(null, [$"{DateTimeOffset.UtcNow:O} | INFO | {marker}"]);
+            }
+
+            string text = File.ReadAllText(traceFilePath).Replace("\0", string.Empty);
+            Assert.Contains(marker, text, StringComparison.Ordinal);
+            Assert.True(int.Parse(File.ReadAllText(traceIndexPath)) > 0);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", previousProductRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", previousLegacyLocalRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousLegacyAppDataRoot);
+            Environment.SetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable, previousTraceMax);
+            DeleteDirectoryWithRetry(appDataRoot);
+        }
+    }
+
+    [Fact]
     public async Task YFinanceCircularTraceSink_BackgroundWorkerDrainsBurstWithoutLosingLines()
     {
         string appDataRoot = Path.Combine(Path.GetTempPath(), "YFinanceTraceBurstTest", Guid.NewGuid().ToString("N"));
@@ -289,6 +337,30 @@ public sealed class YFinanceCircularTraceSinkTests
         }
 
         return false;
+    }
+
+    private static void DeleteDirectoryWithRetry(string path)
+    {
+        if (!Directory.Exists(path))
+            return;
+
+        IOException? lastIoException = null;
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            try
+            {
+                Directory.Delete(path, recursive: true);
+                return;
+            }
+            catch (IOException ex)
+            {
+                lastIoException = ex;
+                Thread.Sleep(50);
+            }
+        }
+
+        if (lastIoException is not null)
+            throw lastIoException;
     }
 
     private static byte[] ReadAllBytesShared(string path)

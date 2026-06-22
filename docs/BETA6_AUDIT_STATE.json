@@ -3732,7 +3732,7 @@
       "priority": 2,
       "area": "trace_degradation",
       "title": "Validate trace/logging degradation: circular log full, file lock, access denied, corrupt index, excessive anomaly volume",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "Medium",
       "evidence": [
@@ -3741,7 +3741,8 @@
       ],
       "notes": [
         "Cover both client and YFinance.NET server traces.",
-        "Ensure high-volume failures are summarized or throttled without losing first-cause evidence."
+        "Ensure high-volume failures are summarized or throttled without losing first-cause evidence.",
+        "Closure proof covers both client and YFinance.NET server circular traces. Malformed index files now have explicit regression tests proving writers recover safely and keep logging rather than throwing."
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
@@ -3753,6 +3754,12 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "Trace subsystem fails soft and surfaces enough diagnostics when file output is unavailable.",
         "Circular trace recovery after corrupt index/position is proven."
+      ],
+      "closed_date": "2026-06-22",
+      "resolution": "Added corrupt circular-index recovery regression coverage for both UI and YFinance circular trace writers; existing trace tests already cover configurable circular traces, redaction, burst draining, batching, shared reads, and VM trace-tail behavior.",
+      "validation": [
+        "Focused local validation passed 44/44 on 2026-06-22 for TraceLogTests, YFinanceCircularTraceSinkTests, CircularTraceSettingsTests, and VmHarnessScriptTests.",
+        "Validation-script smoke passed on 2026-06-22 before CR-080 review/commit."
       ]
     },
     {

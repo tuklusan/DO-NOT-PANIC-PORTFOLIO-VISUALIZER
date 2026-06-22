@@ -266,6 +266,55 @@ public sealed class TraceLogTests
     }
 
     [Fact]
+    public void TraceLog_CorruptCircularIndexRecoversWithoutThrowing()
+    {
+        string appDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTraceCorruptIndexTest", Guid.NewGuid().ToString("N"));
+        string? previousProductRoot = Environment.GetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT");
+        string? previousLegacyLocalRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        string? previousLegacyAppDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        string? previousTraceMax = Environment.GetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable);
+        DeleteDirectoryWithRetry(appDataRoot);
+        Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", appDataRoot);
+        Environment.SetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable, "4");
+        try
+        {
+            TraceLog.ResetCircularStateForTests();
+            string traceDirectory = Path.Combine(PathHelper.GetAppDataDirectory(), "Trace");
+            string traceFilePath = Path.Combine(traceDirectory, "trace.circular.log");
+            string traceIndexPath = Path.Combine(traceDirectory, "trace.circular.idx");
+            Directory.CreateDirectory(traceDirectory);
+            File.WriteAllText(traceIndexPath, "not-a-number");
+
+            MethodInfo writeCircularMethod = typeof(TraceLog).GetMethod("WriteCircular", BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("Could not find TraceLog.WriteCircular.");
+            FieldInfo fileSyncField = typeof(TraceLog).GetField("FileSync", BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("Could not find TraceLog.FileSync.");
+            object fileSync = fileSyncField.GetValue(null)
+                ?? throw new InvalidOperationException("TraceLog.FileSync was null.");
+            string marker = "trace-corrupt-index-" + Guid.NewGuid().ToString("N");
+
+            lock (fileSync)
+            {
+                writeCircularMethod.Invoke(null, [$"{DateTimeOffset.UtcNow:O} | INFO | {marker}"]);
+            }
+
+            string text = File.ReadAllText(traceFilePath).Replace("\0", string.Empty);
+            Assert.Contains(marker, text, StringComparison.Ordinal);
+            Assert.True(int.Parse(File.ReadAllText(traceIndexPath)) > 0);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DONOTPANICPORTFOLIOVISUALIZER_LOCALDATA_ROOT", previousProductRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", previousLegacyLocalRoot);
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousLegacyAppDataRoot);
+            Environment.SetEnvironmentVariable(TraceMaxMegabytesEnvironmentVariable, previousTraceMax);
+            DeleteDirectoryWithRetry(appDataRoot);
+        }
+    }
+
+    [Fact]
     public async Task TraceLog_BackgroundWorkerDrainsBurstWithoutLosingLines()
     {
         string appDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTraceBurstTest", Guid.NewGuid().ToString("N"));

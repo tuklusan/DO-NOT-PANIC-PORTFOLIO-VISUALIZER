@@ -342,13 +342,16 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 2
 - Severity: Medium
 - Area: trace_degradation
-- Status: open
+- Status: closed
 - Evidence / rationale:
   - End-user support depends on circular trace files, including client/server communication logs.
   - Trace failures must not crash the app or hide critical degradation events.
 - Notes:
   - Cover both client and YFinance.NET server traces.
   - Ensure high-volume failures are summarized or throttled without losing first-cause evidence.
+- Closure evidence:
+  - Closed on 2026-06-22 after adding explicit corrupt circular-index recovery regression coverage for both `TraceLog` and `YFinanceCircularTraceSink`. Existing trace degradation coverage already validates configurable Local AppData circular files, secret redaction, shared trace reads, batching without per-line fsync, in-memory cursor use, burst draining, concurrent YFinance trace writes, and VM harness trace-tail parsing.
+  - Focused local validation passed 44/44 using `dotnet test tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj -c Release --filter "FullyQualifiedName~TraceLogTests|FullyQualifiedName~YFinanceCircularTraceSinkTests|FullyQualifiedName~CircularTraceSettingsTests|FullyQualifiedName~VmHarnessScriptTests" --nologo`.
 - Acceptance highlights:
   - A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.
   - Expected user-visible behavior is documented before implementation changes are made.
@@ -546,4 +549,5 @@ Reference display contract:
   - A high-latency harness profile proves controls provide feedback within 500ms of user input.
   - Cancel/Escape closes dialogs promptly while requests are pending.
   - No user input is lost or replayed unexpectedly after network recovery.
+
 
