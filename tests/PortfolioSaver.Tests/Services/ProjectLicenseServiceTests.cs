@@ -41,11 +41,9 @@ public sealed class ProjectLicenseServiceTests
         Assert.Contains("PackagePath=\"\"", props, StringComparison.Ordinal);
         Assert.Contains("CopyToOutputDirectory=\"PreserveNewest\"", props, StringComparison.Ordinal);
         Assert.Contains("CopyToPublishDirectory=\"PreserveNewest\"", props, StringComparison.Ordinal);
-        Assert.Contains("Include=\"$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md\"", props, StringComparison.Ordinal);
-        Assert.Contains("Link=\"THIRD-PARTY-NOTICES.md\"", props, StringComparison.Ordinal);
-        Assert.Contains("Include=\"$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES\\**\\*\"", props, StringComparison.Ordinal);
-        Assert.Contains("Link=\"THIRD-PARTY-LICENSES\\%(RecursiveDir)%(Filename)%(Extension)\"", props, StringComparison.Ordinal);
-        Assert.Contains("TargetPath=\"THIRD-PARTY-LICENSES\\%(RecursiveDir)%(Filename)%(Extension)\"", props, StringComparison.Ordinal);
+        Assert.Contains("<TfmSpecificPackageFile Include=\"$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md\"", props, StringComparison.Ordinal);
+        Assert.Contains("PackagePath=\"\"", props, StringComparison.Ordinal);
+        Assert.Contains("<TfmSpecificPackageFile Include=\"$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES\\**\\*\"", props, StringComparison.Ordinal);
         Assert.Contains("PackagePath=\"THIRD-PARTY-LICENSES\\%(RecursiveDir)\"", props, StringComparison.Ordinal);
         Assert.Contains("CopyPortfolioSaverThirdPartyFilesToBuildOutput", targets, StringComparison.Ordinal);
         Assert.Contains("CopyPortfolioSaverThirdPartyFilesToPublishOutput", targets, StringComparison.Ordinal);

@@ -48,28 +48,17 @@
   </ItemGroup>
 
   <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md')">
-    <!-- Distribution copying is handled by Directory.Build.targets for executable outputs only.
-         Keep these pack items out of the SDK transitive publish pipeline to avoid duplicate
-         source/destination aggregation from project references. -->
-    <None Include="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md"
-          Link="THIRD-PARTY-NOTICES.md"
-          Pack="true"
-          PackagePath=""
-          CopyToOutputDirectory="Never"
-          CopyToPublishDirectory="Never" />
+    <!-- Package inclusion only. Directory.Build.targets defines executable output
+         copy items separately with their own TargetPath metadata. -->
+    <TfmSpecificPackageFile Include="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md"
+                            PackagePath="" />
   </ItemGroup>
 
   <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES')">
-    <!-- Distribution copying is handled by Directory.Build.targets for executable outputs only.
-         Keep these pack items out of the SDK transitive publish pipeline to avoid duplicate
-         source/destination aggregation from project references. -->
-    <None Include="$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES\**\*"
-          Link="THIRD-PARTY-LICENSES\%(RecursiveDir)%(Filename)%(Extension)"
-          TargetPath="THIRD-PARTY-LICENSES\%(RecursiveDir)%(Filename)%(Extension)"
-          Pack="true"
-          PackagePath="THIRD-PARTY-LICENSES\%(RecursiveDir)"
-          CopyToOutputDirectory="Never"
-          CopyToPublishDirectory="Never" />
+    <!-- Package inclusion only. Directory.Build.targets defines executable output
+         copy items separately with their own TargetPath metadata. -->
+    <TfmSpecificPackageFile Include="$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES\**\*"
+                            PackagePath="THIRD-PARTY-LICENSES\%(RecursiveDir)" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(PortfolioSaverInstallerBaseIntermediateRoot)' != ''">
