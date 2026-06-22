@@ -28,6 +28,10 @@
           AfterTargets="Build"
           Condition="'$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe'">
     <ItemGroup>
+      <PortfolioSaverThirdPartyDistributionFile Include="$(MSBuildThisFileDirectory)LICENSE"
+                                                Condition="Exists('$(MSBuildThisFileDirectory)LICENSE')">
+        <TargetPath>LICENSE</TargetPath>
+      </PortfolioSaverThirdPartyDistributionFile>
       <PortfolioSaverThirdPartyDistributionFile Include="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md"
                                                 Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md')">
         <TargetPath>THIRD-PARTY-NOTICES.md</TargetPath>
@@ -47,6 +51,10 @@
           AfterTargets="Publish"
           Condition="('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe') And '$(PublishDir)' != ''">
     <ItemGroup>
+      <PortfolioSaverThirdPartyDistributionFile Include="$(MSBuildThisFileDirectory)LICENSE"
+                                                Condition="Exists('$(MSBuildThisFileDirectory)LICENSE')">
+        <TargetPath>LICENSE</TargetPath>
+      </PortfolioSaverThirdPartyDistributionFile>
       <PortfolioSaverThirdPartyDistributionFile Include="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md"
                                                 Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md')">
         <TargetPath>THIRD-PARTY-NOTICES.md</TargetPath>
