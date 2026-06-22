@@ -5577,7 +5577,7 @@
       "priority": 3,
       "area": "build_validation_publish_paths",
       "title": "Harden publish validation paths against apostrophe-containing repository directories",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_artifact_review_2026_06_22_license_validation",
       "severity": "low",
       "evidence": [
@@ -5595,6 +5595,12 @@
         "Build documentation explains why publish proof should avoid apostrophe-containing directories.",
         "A local publish proof demonstrates the selected safe path behavior.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Hardened build/publish-safe-temp.ps1 so the temp workspace carries Directory.Build.targets plus LICENSE, THIRD-PARTY-NOTICES.md, and THIRD-PARTY-LICENSES, keeping safe-temp publish behavior aligned with normal executable distribution output.",
+        "Added build/validation/Test-ValidationScripts.ps1 smoke assertions for the safe-temp publish contract and required legal-file workspace inputs.",
+        "Documented safe-temp publish as the canonical release proof path in README.md, including the apostrophe-path MSBuild transform hazard.",
+        "Validation evidence: build/validation/Test-ValidationScripts.ps1 passes and publish-safe-temp.ps1 uses a temp workspace outside apostrophe-containing repository paths."
       ]
     }
   ],

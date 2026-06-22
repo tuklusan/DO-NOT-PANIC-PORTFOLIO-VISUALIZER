@@ -64,6 +64,19 @@ $pathValidationIndex = $vmText.IndexOf('Test-Path $localResultDir', [StringCompa
 $stdoutEmissionIndex = $vmText.IndexOf('Write-Output $localResultDirLine[0]', [StringComparison]::Ordinal)
 if ($pathValidationIndex -lt 0 -or $stdoutEmissionIndex -lt 0 -or $stdoutEmissionIndex -lt $pathValidationIndex) { throw 'Invoke-VmBuildTest does not emit a validated LOCAL_RESULT_DIR on stdout.' }
 
+$publishSafeTempScript = Join-Path $repoRoot 'build\publish-safe-temp.ps1'
+$publishSafeTempText = Get-Content -Raw -LiteralPath $publishSafeTempScript
+foreach ($requiredSnippet in @(
+    'PortfolioSaverPublishWorkspace',
+    'Copy-RequiredRepositoryItem',
+    'Directory.Build.targets',
+    'THIRD-PARTY-LICENSES'
+)) {
+    if ($publishSafeTempText -notmatch [regex]::Escape($requiredSnippet)) {
+        throw "publish-safe-temp.ps1 is missing required safe-temp publish contract snippet: $requiredSnippet"
+    }
+}
+
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ('dnppv-validation-smoke-' + [Guid]::NewGuid().ToString('N'))
 try {
     $singleRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000000'

@@ -70,6 +70,24 @@ function Test-Deadline {
     }
 }
 
+function Copy-RequiredRepositoryItem {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$WorkspaceRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$RelativePath
+    )
+
+    $sourcePath = Join-Path $RepositoryRoot $RelativePath
+    if (-not (Test-Path -LiteralPath $sourcePath)) {
+        throw "Required repository item not found for safe-temp publish: $RelativePath"
+    }
+
+    Copy-Item -LiteralPath $sourcePath -Destination (Join-Path $WorkspaceRoot $RelativePath) -Recurse -Force
+}
+
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $tempRoot = Join-Path $env:TEMP "PortfolioSaverPublishWorkspace"
 $manifestScript = Join-Path $PSScriptRoot "generate-release-manifest.ps1"
@@ -90,7 +108,15 @@ if (Test-Path $tempRoot) {
 New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
 
 Copy-Item -LiteralPath (Join-Path $repoRoot "PortfolioScreensaver.sln") -Destination $tempRoot -Force
-Copy-Item -LiteralPath (Join-Path $repoRoot "Directory.Build.props") -Destination $tempRoot -Force
+foreach ($requiredRepositoryItem in @(
+    "Directory.Build.props",
+    "Directory.Build.targets",
+    "LICENSE",
+    "THIRD-PARTY-NOTICES.md",
+    "THIRD-PARTY-LICENSES"
+)) {
+    Copy-RequiredRepositoryItem -RepositoryRoot $repoRoot -WorkspaceRoot $tempRoot -RelativePath $requiredRepositoryItem
+}
 $tempBuildRoot = Join-Path $tempRoot "build"
 New-Item -ItemType Directory -Force -Path $tempBuildRoot | Out-Null
 $yfinanceServerTargets = Join-Path (Join-Path $repoRoot "build") "YFinanceServer.targets"

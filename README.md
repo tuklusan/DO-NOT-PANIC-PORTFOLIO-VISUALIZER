@@ -145,6 +145,8 @@ Use the scripts under `build/` for publish and packaging workflows, especially:
 - `build/publish-safe-temp.ps1`
 - `build/publish-standalone-installer.ps1`
 
+`build/publish-safe-temp.ps1` is the canonical publish proof path. It mirrors the repository into a temporary workspace before invoking `dotnet publish`, which avoids MSBuild item-transform quoting hazards when a developer's repository path contains apostrophes or other awkward shell characters. Do not use ad-hoc publish output directories under such paths for release validation.
+
 ## Current Baseline
 
 - Remote Git history has been intentionally rebased to start at the `BETA-5.4` baseline
