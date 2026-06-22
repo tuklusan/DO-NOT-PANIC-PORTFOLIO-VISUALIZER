@@ -445,9 +445,9 @@ DeepSeek reviewed CR-064 through CR-085 on 2026-06-13 with a specific prompt to 
 - Priority: 1
 - Severity: High
 - Area: ux_degradation_feedback
-- Status: open
-- Partial evidence: VM degraded runtime run `ux-deep-ssh-20260620-090405` proved visible offline freshness feedback; `visual-validation-analysis-20260620-095412.json` and DeepSeek artifact review `deepseek-artifact-review-20260620-095412.md` reported clean results with no blocking user-visible degradation findings.
-- Open validation: DeepSeek documentation gate `build/deepseek-review/deepseek-review-20260621-175406.md` blocked closure pending explicit 2-second visible-state timing evidence and stale-vs-live style validation.
+- Status: closed
+- Closure evidence: VM degraded runtime run `ux-deep-ssh-20260621-235045` completed config, desktop, and fullscreen phases under `FaultProfile=offline-during-runtime`; analyzer `visual-validation-analysis-20260622-003551.json` reported clean with 0 deterministic findings; DeepSeek artifact advisory `deepseek-artifact-review-20260622-003551.md` was reviewed; trace evidence shows fault activation at `2026-06-22T04:02:56.9495866+00:00` and user-visible `RuntimeDataFreshnessChanged` to `OFFLINE - showing last values` at `2026-06-22T04:02:58.7418313+00:00`, a `1.792s` transition within the 2-second target.
+- Prior evidence: VM degraded runtime run `ux-deep-ssh-20260620-090405` proved visible offline freshness feedback; `visual-validation-analysis-20260620-095412.json` and DeepSeek artifact review `deepseek-artifact-review-20260620-095412.md` reported clean results with no blocking user-visible degradation findings; DeepSeek documentation gate `build/deepseek-review/deepseek-review-20260621-175406.md` drove the explicit timing proof added by commits `af83f75` and `9556ecb`.
 - UX rationale:
   - DeepSeek UX anomaly review identified that CR-064 through CR-085 cover functional degradation but do not fully define what the human user sees for each degraded state.
   - Users do not have trace logs; they infer system health from visual status indicators, placeholders, color states, and concise messages.

@@ -3865,7 +3865,7 @@
       "priority": 1,
       "area": "ux_degradation_feedback",
       "title": "Define user-facing status indicators and error messaging for degraded modes",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_ux_anomaly_review_2026_06_13",
       "severity": "High",
       "evidence": [
@@ -3882,7 +3882,13 @@
         "Validation smoke passed: build/validation/Test-ValidationScripts.ps1.",
         "VM degraded runtime run passed: build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405 with FaultProfile=offline-during-runtime.",
         "Artifact analysis passed with DeepSeek second opinion: visual-validation-analysis-20260620-095412.json and deepseek-artifact-review-20260620-095412.md.",
-        "DeepSeek documentation gate build/deepseek-review/deepseek-review-20260621-175406.md blocked closure pending explicit 2-second visible-state timing evidence and stale-vs-live style validation."
+        "DeepSeek documentation gate build/deepseek-review/deepseek-review-20260621-175406.md blocked closure pending explicit 2-second visible-state timing evidence and stale-vs-live style validation.",
+        "Implementation evidence: commit af83f75 added RuntimeDataFreshnessChanged tracing and analyzer timing proof for visible offline transitions; commit 9556ecb changed the UI offline display threshold to the first counted quote failure while preserving the 10-failure transport recovery gate.",
+        "Focused local validation passed after the timing fix: build/validation/Test-ValidationScripts.ps1, plus dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~StartupCoordinatorTapeItemTests|FullyQualifiedName~ScreensaverRenderBehaviorTests|FullyQualifiedName~VmHarnessScriptTests --nologo (98/98 passing).",
+        "VM proof: build/vm/artifacts/ssh-runs/ux-deep-ssh-20260621-235045 with FaultProfile=offline-during-runtime completed config, desktop, and fullscreen phases on pushed commit 9556ecb.",
+        "Analyzer proof: build/validation/artifacts/visual-validation-analysis-20260622-003551.json reported ANALYSIS_CLEAN=True with zero deterministic findings; DeepSeek second-opinion artifact review was captured at build/validation/artifacts/deepseek-artifact-review-20260622-003551.md.",
+        "Timing proof: fault activation occurred at 2026-06-22T04:02:56.9495866+00:00 and RuntimeDataFreshnessChanged switched the user-visible freshness label from LIVE quote feed to OFFLINE - showing last values at 2026-06-22T04:02:58.7418313+00:00, a 1.792-second transition within the 2-second CR-086 target.",
+        "Residual advisory: DeepSeek noted desktop screenshot capture throughput below the ideal target; local artifact metadata confirms 274 desktop captures over the full 30-minute run, and the deterministic trace/UI-state timing proof is accepted for CR-086 while broader harness capture quality remains tracked by CR-127."
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the anomalous/degraded condition.",
@@ -3897,7 +3903,7 @@
         "Injected degradation updates the visible state within 2 seconds where practical.",
         "Stale data is never styled identically to fresh/live data."
       ],
-      "resolution": "Reopened on 2026-06-21 after DeepSeek documentation gate found closure evidence insufficient for the full CR-086 acceptance scope. The cross-component display contract is documented, but explicit timing/stale-style validation remains required before closure."
+      "resolution": "Closed on 2026-06-22 after commits af83f75 and 9556ecb plus clean 30-minute VM offline-during-runtime validation in ux-deep-ssh-20260621-235045. The visible freshness label now changes to OFFLINE - showing last values on the first counted quote failure, and the analyzer proves the injected runtime outage reached the user-visible status within 1.792 seconds while preserving stable last-known values."
     },
     {
       "id": "CR-087",
