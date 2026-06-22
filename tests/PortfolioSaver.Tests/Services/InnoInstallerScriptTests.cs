@@ -57,6 +57,10 @@ public sealed class InnoInstallerScriptTests
         Assert.Contains("/SUPPRESSMSGBOXES", cycleScript, StringComparison.Ordinal);
         Assert.Contains("#requires -Version 7.0", cycleScript, StringComparison.Ordinal);
         Assert.Contains("ArgumentList.Add", cycleScript, StringComparison.Ordinal);
+        Assert.Contains("function Get-InstalledInnoUninstallerPath", cycleScript, StringComparison.Ordinal);
+        Assert.Contains("UninstallString", cycleScript, StringComparison.Ordinal);
+        Assert.Contains("Could not locate Inno uninstaller path from registry", cycleScript, StringComparison.Ordinal);
+        Assert.DoesNotContain(@"Join-Path $uninstallRoot 'unins000.exe'", cycleScript, StringComparison.Ordinal);
         Assert.Contains(@"HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{B0839D4C-1D29-4D9C-95E3-C88E4D8E37E5}_is1", cycleScript, StringComparison.Ordinal);
         Assert.Contains("Inno uninstaller stub still present after uninstall", cycleScript, StringComparison.Ordinal);
         Assert.Contains("Install root still present after uninstall", cycleScript, StringComparison.Ordinal);

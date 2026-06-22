@@ -72,6 +72,22 @@ function Invoke-LoggedProcess {
     }
 }
 
+function Get-InstalledInnoUninstallerPath {
+    $uninstallKey = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{B0839D4C-1D29-4D9C-95E3-C88E4D8E37E5}_is1'
+    $properties = Get-ItemProperty -LiteralPath $uninstallKey -ErrorAction SilentlyContinue
+    if ($null -eq $properties -or [string]::IsNullOrWhiteSpace([string]$properties.UninstallString)) {
+        return ''
+    }
+
+    $uninstallString = [string]$properties.UninstallString
+    $match = [regex]::Match($uninstallString, '^\s*"(?<path>[^"]+)"')
+    if ($match.Success) {
+        return $match.Groups['path'].Value
+    }
+
+    return ($uninstallString -split '\s+', 2)[0]
+}
+
 function Assert-InstalledState {
     param([bool]$ExpectedInstalled)
 
@@ -79,7 +95,6 @@ function Assert-InstalledState {
     $desktopExe = Join-Path $installRoot 'PortfolioSaver.Desktop.exe'
     $license = Join-Path $installRoot 'LICENSE'
     $apache = Join-Path $installRoot 'THIRD-PARTY-LICENSES\APACHE-2.0.txt'
-    $uninstaller = Join-Path $installRoot 'unins000.exe'
     $uninstallKey = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{B0839D4C-1D29-4D9C-95E3-C88E4D8E37E5}_is1'
 
     if ($ExpectedInstalled) {
@@ -99,8 +114,14 @@ function Assert-InstalledState {
         throw "Desktop executable still present after uninstall: $desktopExe"
     }
 
-    if (Test-Path -LiteralPath $uninstaller) {
-        throw "Inno uninstaller stub still present after uninstall: $uninstaller"
+    $staleUninstallers = @()
+    if (Test-Path -LiteralPath $installRoot) {
+        $staleUninstallers = @(Get-ChildItem -LiteralPath $installRoot -Filter 'unins*.exe' -Force -ErrorAction SilentlyContinue |
+            ForEach-Object { $_.FullName })
+    }
+
+    if ($staleUninstallers.Count -gt 0) {
+        throw "Inno uninstaller stub still present after uninstall: $($staleUninstallers -join '; ')"
     }
 
     if (Test-Path -LiteralPath $installRoot) {
@@ -148,8 +169,11 @@ Invoke-LoggedProcess `
 
 Assert-InstalledState -ExpectedInstalled $true
 
-$uninstallRoot = Join-Path $env:ProgramFiles 'SANYALnet Labs\DoNotPanicPortfolioVisualizer'
-$uninstaller = Join-Path $uninstallRoot 'unins000.exe'
+$uninstaller = Get-InstalledInnoUninstallerPath
+if ([string]::IsNullOrWhiteSpace($uninstaller)) {
+    throw 'Could not locate Inno uninstaller path from registry. The expected uninstall key may be missing or invalid.'
+}
+
 if (-not (Test-Path -LiteralPath $uninstaller -PathType Leaf)) {
     throw "Inno uninstaller missing: $uninstaller"
 }
