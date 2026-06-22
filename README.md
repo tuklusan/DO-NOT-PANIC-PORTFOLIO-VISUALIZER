@@ -1,3 +1,28 @@
+<!--
+============================================================================
+Copyright (c) 2026 Supratim Sanyal of SANYALnet Labs.
+Proprietary rights reserved except as expressly licensed herein.
+
+DO NOT PANIC PORTFOLIO VIEWER
+This software and its derivatives are licensed for STRICTLY NON-COMMERCIAL,
+personal, educational, or hobbyist use only. Commercial exploitation,
+corporate internal operations, or AI model training are strictly forbidden.
+
+ATTRIBUTION & DEPENDENCIES: This application incorporates the YFinance library,
+which is licensed under the Apache License, Version 2.0. A copy of the Apache
+License is provided within the distribution environment.
+
+FINANCIAL DISCLAIMER: This software is a passive visualization tool only.
+It does not provide financial, investment, legal, or tax advice. All data
+calculation and scraping outputs are provided 'AS IS' with zero guarantee
+of real-time accuracy or upstream availability.
+
+This file is subject to the terms and conditions defined in the LICENSE
+file located in the root directory of this source code repository.
+Removal or modification of this legal notice constitutes copyright infringement.
+============================================================================
+-->
+
 # DO NOT PANIC PORTFOLIO VISUALIZER
 
 Market-aware Windows desktop visualizer and configuration suite by **SANYALnet Labs**, written by **Supratim Sanyal**.
@@ -44,6 +69,8 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
   - Full SANYALnet Labs Non-Commercial License text shown in a scroll box
   - **Accept** enabled only after scrolling to the end and checking agreement
 - Local fallback license text is bundled so license display still works without network access
+- Distribution outputs include the root `LICENSE`, `THIRD-PARTY-NOTICES.md`, and `THIRD-PARTY-LICENSES/APACHE-2.0.txt` beside the Windows binaries.
+- YFinance/yfinance attribution and the financial-data disclaimer are maintained in `THIRD-PARTY-NOTICES.md`.
 
 ## Data, Caching, and Runtime Paths
 
@@ -185,3 +212,5 @@ Test-artifact analysis also has a mandatory DeepSeek second-opinion step. Obtain
 This project is licensed under the **SANYALnet Labs Non-Commercial License**.
 
 - Bundled full text: [LICENSE](LICENSE)
+- Third-party notices: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)
+- Apache 2.0 text for YFinance/yfinance lineage: [THIRD-PARTY-LICENSES/APACHE-2.0.txt](THIRD-PARTY-LICENSES/APACHE-2.0.txt)

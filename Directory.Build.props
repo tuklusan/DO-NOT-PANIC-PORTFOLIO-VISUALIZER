@@ -1,3 +1,28 @@
+<!--
+  ============================================================================
+  Copyright (c) 2026 Supratim Sanyal of SANYALnet Labs.
+  Proprietary rights reserved except as expressly licensed herein.
+
+  DO NOT PANIC PORTFOLIO VIEWER
+  This software and its derivatives are licensed for STRICTLY NON-COMMERCIAL,
+  personal, educational, or hobbyist use only. Commercial exploitation,
+  corporate internal operations, or AI model training are strictly forbidden.
+
+  ATTRIBUTION & DEPENDENCIES: This application incorporates the YFinance library,
+  which is licensed under the Apache License, Version 2.0. A copy of the Apache
+  License is provided within the distribution environment.
+
+  FINANCIAL DISCLAIMER: This software is a passive visualization tool only.
+  It does not provide financial, investment, legal, or tax advice. All data
+  calculation and scraping outputs are provided 'AS IS' with zero guarantee
+  of real-time accuracy or upstream availability.
+
+  This file is subject to the terms and conditions defined in the LICENSE
+  file located in the root directory of this source code repository.
+  Removal or modification of this legal notice constitutes copyright infringement.
+  ============================================================================
+-->
+
 <Project>
   <PropertyGroup>
     <PortfolioSaverVersion>0.9.0-beta7</PortfolioSaverVersion>
@@ -9,7 +34,7 @@
     <Product Condition="'$(Product)' == ''">DO NOT PANIC PORTFOLIO VISUALIZER</Product>
     <Company Condition="'$(Company)' == ''">SANYALnet Labs</Company>
     <Authors Condition="'$(Authors)' == ''">Supratim Sanyal</Authors>
-    <Copyright Condition="'$(Copyright)' == ''">Copyright (c) 2026 Supratim Sanyal of SANYALnet Labs. All rights reserved.</Copyright>
+    <Copyright Condition="'$(Copyright)' == ''">Copyright (c) 2026 Supratim Sanyal of SANYALnet Labs. Proprietary rights reserved except as expressly licensed herein.</Copyright>
     <PackageLicenseFile Condition="'$(PackageLicenseFile)' == ''">LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
@@ -18,6 +43,24 @@
           Link="LICENSE"
           Pack="true"
           PackagePath=""
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md')">
+    <None Include="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md"
+          Link="THIRD-PARTY-NOTICES.md"
+          Pack="true"
+          PackagePath=""
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES')">
+    <None Include="$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES\**\*"
+          Link="THIRD-PARTY-LICENSES\%(RecursiveDir)%(Filename)%(Extension)"
+          Pack="true"
+          PackagePath="THIRD-PARTY-LICENSES\%(RecursiveDir)"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
@@ -31,7 +74,3 @@
     <BaseOutputPath>$([MSBuild]::EnsureTrailingSlash('$(PortfolioSaverInstallerBaseOutputRoot)'))$(MSBuildProjectName)\</BaseOutputPath>
   </PropertyGroup>
 </Project>
-
-
-
-

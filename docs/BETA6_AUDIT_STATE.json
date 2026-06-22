@@ -5470,6 +5470,92 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-129",
+      "tracking_number": "CR-129",
+      "priority": 1,
+      "area": "source_documentation_legal_headers",
+      "title": "Add protective SANYALnet non-commercial legal headers to source and documentation files",
+      "status": "open",
+      "source": "user_request_2026_06_22_license_header_policy",
+      "severity": "high",
+      "evidence": [
+        "User requested a brief protective header at the top of every code and documentation file.",
+        "Header must establish Supratim Sanyal/SANYALnet Labs ownership, strict non-commercial limits, corporate/internal-use and AI-training prohibitions, root LICENSE authority, and notice-removal infringement warning.",
+        "Attached reviewer text refines the header to avoid the All rights reserved ambiguity and adds YFinance/Apache attribution plus financial disclaimer language."
+      ],
+      "notes": [
+        "Use language-appropriate comments for C#, XAML/XML/MSBuild, PowerShell, Markdown, and plain text where safe.",
+        "For JSON or other formats that do not safely accept comments, preserve parseability by using structured legal_notice metadata only where schema-compatible; otherwise document exclusion.",
+        "Do not modify binaries, images, generated artifacts, VM run artifacts, ignored secrets, or third-party license texts."
+      ],
+      "acceptance": [
+        "Root cause or policy need is identified from user request, code inspection, or compliance review.",
+        "A minimal product, build, or documentation fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code or build outputs.",
+        "Distribution/publish output is checked when the change affects packaged artifacts.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-130",
+      "tracking_number": "CR-130",
+      "priority": 1,
+      "area": "license_dependency_compliance",
+      "title": "Resolve license wording ambiguity and include YFinance Apache 2.0 attribution in repo and distribution outputs",
+      "status": "open",
+      "source": "user_request_2026_06_22_yfinance_apache_compliance",
+      "severity": "high",
+      "evidence": [
+        "User accepted DeepSeek concern that All rights reserved wording is ambiguous alongside the license grant.",
+        "Attached text says YFinance is pulled directly under Apache 2.0 and requires prominent attribution plus Apache license text in distribution.",
+        "Upstream yfinance GitHub README/license metadata identifies yfinance as Apache-2.0 licensed and notes Yahoo Finance affiliation/terms caveats."
+      ],
+      "notes": [
+        "Update root LICENSE wording to use Proprietary rights reserved except as expressly licensed herein while preserving non-commercial restrictions.",
+        "Add third-party notices and Apache 2.0 license text to the repository.",
+        "Wire third-party notice/license files into .NET build and publish outputs alongside binaries.",
+        "Add or update tests proving output-copy metadata exists and published output carries required notices."
+      ],
+      "acceptance": [
+        "Root cause or policy need is identified from user request, code inspection, or compliance review.",
+        "A minimal product, build, or documentation fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code or build outputs.",
+        "Distribution/publish output is checked when the change affects packaged artifacts.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-131",
+      "tracking_number": "CR-131",
+      "priority": 1,
+      "area": "installer_distribution",
+      "title": "Integrate Inno Setup as the primary public installer and uninstaller distribution path",
+      "status": "open",
+      "source": "user_request_2026_06_22_inno_installer",
+      "severity": "high",
+      "evidence": [
+        "User requested Inno Installer integration as the primary public distribution method.",
+        "Attached text requires Inno Setup license page acceptance before install, bundled LICENSE, Apache/YFinance notices, and a two-step .NET publish plus ISCC compile sequence.",
+        "Current repository has a standalone .NET installer bootstrap and PowerShell install/uninstall scripts, but no primary Inno Setup script."
+      ],
+      "notes": [
+        "Create deployment/setup.iss or equivalent Inno script with LicenseFile pointing at root LICENSE.",
+        "Install published app binaries, root LICENSE, THIRD-PARTY-NOTICES.md, and THIRD-PARTY-LICENSES into application directory.",
+        "Provide Start Menu/Desktop shortcuts and clean uninstall behavior.",
+        "Add build documentation and harness/test coverage for the Inno script without requiring ISCC on machines where it is not installed."
+      ],
+      "acceptance": [
+        "Root cause or policy need is identified from user request, code inspection, or compliance review.",
+        "A minimal product, build, or documentation fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code or build outputs.",
+        "Distribution/publish output is checked when the change affects packaged artifacts.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

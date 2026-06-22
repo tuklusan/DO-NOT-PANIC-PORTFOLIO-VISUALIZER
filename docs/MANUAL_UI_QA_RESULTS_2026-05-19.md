@@ -1,3 +1,28 @@
+<!--
+============================================================================
+Copyright (c) 2026 Supratim Sanyal of SANYALnet Labs.
+Proprietary rights reserved except as expressly licensed herein.
+
+DO NOT PANIC PORTFOLIO VIEWER
+This software and its derivatives are licensed for STRICTLY NON-COMMERCIAL,
+personal, educational, or hobbyist use only. Commercial exploitation,
+corporate internal operations, or AI model training are strictly forbidden.
+
+ATTRIBUTION & DEPENDENCIES: This application incorporates the YFinance library,
+which is licensed under the Apache License, Version 2.0. A copy of the Apache
+License is provided within the distribution environment.
+
+FINANCIAL DISCLAIMER: This software is a passive visualization tool only.
+It does not provide financial, investment, legal, or tax advice. All data
+calculation and scraping outputs are provided 'AS IS' with zero guarantee
+of real-time accuracy or upstream availability.
+
+This file is subject to the terms and conditions defined in the LICENSE
+file located in the root directory of this source code repository.
+Removal or modification of this legal notice constitutes copyright infringement.
+============================================================================
+-->
+
 # Manual UI QA Results - 2026-05-19
 
 ## Execution summary
@@ -140,6 +165,3 @@ None during this pass.
 ## Closing note
 
 This rerun upgrades the earlier QA workbook closure to the current stabilized config-validation flow and confirms that the project is ready to begin broader UI QA execution from the desktop-first canonical harness.
-
-
-

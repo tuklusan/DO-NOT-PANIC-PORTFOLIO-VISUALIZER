@@ -1,3 +1,25 @@
+// ============================================================================
+// Copyright (c) 2026 Supratim Sanyal of SANYALnet Labs.
+// Proprietary rights reserved except as expressly licensed herein.
+//
+// DO NOT PANIC PORTFOLIO VIEWER
+// This software and its derivatives are licensed for STRICTLY NON-COMMERCIAL,
+// personal, educational, or hobbyist use only. Commercial exploitation,
+// corporate internal operations, or AI model training are strictly forbidden.
+//
+// ATTRIBUTION & DEPENDENCIES: This application incorporates the YFinance library,
+// which is licensed under the Apache License, Version 2.0. A copy of the Apache
+// License is provided within the distribution environment.
+//
+// FINANCIAL DISCLAIMER: This software is a passive visualization tool only.
+// It does not provide financial, investment, legal, or tax advice. All data
+// calculation and scraping outputs are provided 'AS IS' with zero guarantee
+// of real-time accuracy or upstream availability.
+//
+// This file is subject to the terms and conditions defined in the LICENSE
+// file located in the root directory of this source code repository.
+// Removal or modification of this legal notice constitutes copyright infringement.
+// ============================================================================
 using PortfolioSaver.Shared.Licensing;
 using Xunit;
 
@@ -18,7 +40,24 @@ public sealed class ProjectLicenseServiceTests
         Assert.Contains("PackagePath=\"\"", props, StringComparison.Ordinal);
         Assert.Contains("CopyToOutputDirectory=\"PreserveNewest\"", props, StringComparison.Ordinal);
         Assert.Contains("CopyToPublishDirectory=\"PreserveNewest\"", props, StringComparison.Ordinal);
+        Assert.Contains("Include=\"$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md\"", props, StringComparison.Ordinal);
+        Assert.Contains("Link=\"THIRD-PARTY-NOTICES.md\"", props, StringComparison.Ordinal);
+        Assert.Contains("Include=\"$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES\\**\\*\"", props, StringComparison.Ordinal);
+        Assert.Contains("Link=\"THIRD-PARTY-LICENSES\\%(RecursiveDir)%(Filename)%(Extension)\"", props, StringComparison.Ordinal);
+        Assert.Contains("PackagePath=\"THIRD-PARTY-LICENSES\\%(RecursiveDir)\"", props, StringComparison.Ordinal);
         Assert.Contains("<EmbeddedResource Include=\"..\\..\\LICENSE\" LogicalName=\"PortfolioSaver.LICENSE\" />", sharedProject, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StandaloneInstallerPayload_IncludesThirdPartyNotices()
+    {
+        string repoRoot = GetRepoRoot();
+        string script = File.ReadAllText(Path.Combine(repoRoot, "build", "publish-standalone-installer.ps1"));
+
+        Assert.Contains("THIRD-PARTY-NOTICES.md", script, StringComparison.Ordinal);
+        Assert.Contains("THIRD-PARTY-LICENSES", script, StringComparison.Ordinal);
+        Assert.Contains("Join-Path $payloadRoot \"THIRD-PARTY-NOTICES.md\"", script, StringComparison.Ordinal);
+        Assert.Contains("Join-Path $payloadRoot \"THIRD-PARTY-LICENSES\"", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -63,7 +102,7 @@ public sealed class ProjectLicenseServiceTests
         {
             string text = ProjectLicenseService.GetLicenseText([missingRoot], File.ReadAllText);
 
-            Assert.Contains("SANYALnet Labs. All rights reserved.", text, StringComparison.Ordinal);
+            Assert.Contains("SANYALnet Labs. Proprietary rights reserved except as expressly licensed herein.", text, StringComparison.Ordinal);
             Assert.Contains("STRICTLY NON-COMMERCIAL", text, StringComparison.Ordinal);
         }
         finally
@@ -81,7 +120,7 @@ public sealed class ProjectLicenseServiceTests
             [repoRoot],
             _ => throw new IOException("simulated read failure"));
 
-        Assert.Contains("SANYALnet Labs. All rights reserved.", text, StringComparison.Ordinal);
+        Assert.Contains("SANYALnet Labs. Proprietary rights reserved except as expressly licensed herein.", text, StringComparison.Ordinal);
         Assert.Contains("STRICTLY NON-COMMERCIAL", text, StringComparison.Ordinal);
     }
 
@@ -90,7 +129,7 @@ public sealed class ProjectLicenseServiceTests
     {
         string text = ProjectLicenseService.GetLicenseText(["\0"], File.ReadAllText);
 
-        Assert.Contains("SANYALnet Labs. All rights reserved.", text, StringComparison.Ordinal);
+        Assert.Contains("SANYALnet Labs. Proprietary rights reserved except as expressly licensed herein.", text, StringComparison.Ordinal);
         Assert.Contains("STRICTLY NON-COMMERCIAL", text, StringComparison.Ordinal);
     }
 
