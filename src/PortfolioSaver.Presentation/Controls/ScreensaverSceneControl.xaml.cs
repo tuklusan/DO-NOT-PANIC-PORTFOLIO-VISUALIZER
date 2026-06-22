@@ -118,6 +118,7 @@ public partial class ScreensaverSceneControl : UserControl
     private DateTimeOffset _lastSceneHeartbeatUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastGraphSelectionRefreshUtc = DateTimeOffset.MinValue;
     private bool _isValidationPaused;
+    private volatile bool _suppressGraphRefreshMotionCues;
     private readonly RuntimeQuoteInFlightTracker<IReadOnlyList<QuoteSnapshot>> _inFlightQuoteRequests = new(StringComparer.OrdinalIgnoreCase);
     private List<string> _orderedRuntimeSymbols = [];
     private int _runtimeSymbolCursor;
@@ -1237,7 +1238,16 @@ public partial class ScreensaverSceneControl : UserControl
     {
         try
         {
-            await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);
+            _suppressGraphRefreshMotionCues = true;
+            try
+            {
+                await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);
+            }
+            finally
+            {
+                _suppressGraphRefreshMotionCues = false;
+            }
+
             InitializeRuntimeQuoteLoop();
             _ = RefreshNewsLaneAsync(force: true, CancellationToken.None);
         }
@@ -4064,7 +4074,7 @@ public partial class ScreensaverSceneControl : UserControl
         graph.QuoteUpdateToken = quoteUpdateToken;
         graph.RawLastValue = last;
 
-        if (hadPriorSymbol && rawPriceChanged && !string.IsNullOrWhiteSpace(lastText))
+        if (hadPriorSymbol && rawPriceChanged && !string.IsNullOrWhiteSpace(lastText) && !_suppressGraphRefreshMotionCues)
         {
             if (graph.IsRefreshTravelFlashActive)
             {

@@ -684,6 +684,75 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void ApplyQuoteToGraph_SuppressedRebuildUpdatesValueWithoutStartingFlashTravel()
+    {
+        RunOnSta(() =>
+        {
+            ScreensaverSceneControl control = new()
+            {
+                Width = 800,
+                Height = 600
+            };
+            control.Measure(new Size(800, 600));
+            control.Arrange(new Rect(0, 0, 800, 600));
+            control.UpdateLayout();
+
+            FloatingGraphViewModel graph = new()
+            {
+                Symbol = "VOO",
+                LastText = "687.00",
+                ChangeText = "+0.50%",
+                RawLastValue = 687m,
+                Width = 140,
+                Height = 84,
+                X = 240,
+                Y = 260,
+                VelocityY = -7,
+                NominalVelocityY = -7,
+                IsVisible = true
+            };
+
+            Dictionary<string, QuoteSnapshot> quotes = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["VOO"] = new QuoteSnapshot
+                {
+                    Symbol = "VOO",
+                    Last = 688.11m,
+                    ChangePercent = 0.9833m,
+                    FetchTimestampUtc = DateTimeOffset.UtcNow,
+                    IsStale = false
+                }
+            };
+
+            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+                "_latestQuotes",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_latestQuotes field not found.");
+            latestQuotesField.SetValue(control, quotes);
+
+            FieldInfo suppressField = typeof(ScreensaverSceneControl).GetField(
+                "_suppressGraphRefreshMotionCues",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_suppressGraphRefreshMotionCues field not found.");
+            suppressField.SetValue(control, true);
+
+            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+                "ApplyQuoteToGraph",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
+            applyQuoteMethod.Invoke(control, [graph]);
+
+            Assert.Equal(688.11m, graph.RawLastValue);
+            Assert.Equal("688.11", graph.LastText);
+            Assert.Equal("+0.98%", graph.ChangeText);
+            Assert.Null(graph.RefreshTravelTargetY);
+            Assert.False(graph.IsRefreshTravelFlashActive);
+            Assert.Equal(0, graph.FlashSequence);
+            Assert.Equal(-7d, graph.VelocityY);
+        });
+    }
+
+    [Fact]
     public void ApplyQuoteToGraph_RawPriceChangeDuringTravel_DoesNotRetriggerSustainedFlash()
     {
         RunOnSta(() =>
