@@ -5548,7 +5548,7 @@
       "priority": 1,
       "area": "installer_distribution",
       "title": "Integrate Inno Setup as the primary public installer and uninstaller distribution path",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_22_inno_installer",
       "severity": "high",
       "evidence": [
@@ -5569,6 +5569,17 @@
         "Local build/test validation passes when the change affects code or build outputs.",
         "Distribution/publish output is checked when the change affects packaged artifacts.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Installed Inno Setup 6.7.3 locally and added build/installer/DoNotPanicPortfolioVisualizer.iss as the primary elevated Program Files installer.",
+        "Added build/publish-inno-installer.ps1 to assemble the safe-temp published desktop/config/screensaver/YFinanceServer payload and compile DoNotPanicPortfolioVisualizerSetup-0.9.0-beta7.exe with ISCC.",
+        "Added installer cleanup and validation scripts, including app-owned Local AppData cleanup, fixed Program Files install location, registry-driven uninstaller discovery, and delayed guarded cleanup for Inno's self-uninstaller stub.",
+        "Added static regression coverage in tests/PortfolioSaver.Tests/Services/InnoInstallerScriptTests.cs for license page, admin Program Files install, payload contents, safe-temp publishing, uninstall cleanup, and VM harness behavior.",
+        "Documented the Inno installer workflow in README.md and BUILD_AND_DEPLOY.md, including elevated validation and the fixed public install location under %ProgramFiles%\\SANYALnet Labs\\DoNotPanicPortfolioVisualizer.",
+        "DeepSeek code-review gates reported no blocking findings after fixes; final review response: build/deepseek-review/deepseek-review-20260622-155225.md.",
+        "Local validation passed: build/validation/artifacts/cr131-final-local-20260622-155341 contains focused InnoInstallerScriptTests results and successful ISCC compile output.",
+        "VM elevated install/uninstall validation passed: build/validation/artifacts/cr131-vm-inno-cycle-20260622-155636 recorded INNO_INSTALL_CYCLE_OK and post-uninstall InstallRootExists=false, UninstallerStubExists=false, UninstallKeyExists=false, LegacyUnbracedKeyExists=false.",
+        "DeepSeek artifact second opinion accepted the VM pass in build/validation/artifacts/deepseek-artifact-review-cr131-vm-inno-20260622-155737.raw.md, with only a residual robustness advisory that Inno logged transient directory-delete retries before final cleanup."
       ]
     },
     {
