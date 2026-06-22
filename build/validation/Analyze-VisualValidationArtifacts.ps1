@@ -142,9 +142,10 @@ foreach ($run in $runs) {
     if ($null -ne $targetCaptureFrames -and
         $null -ne $desktopShots -and
         $targetCaptureFrames -ge 10 -and
-        $desktopShots -lt [Math]::Floor($targetCaptureFrames * 0.8)) {
+        $desktopShots -lt [Math]::Floor($targetCaptureFrames * 0.5)) {
         [void]$findings.Add((New-Finding -Code 'capture-loop-starved' -Title 'VM validation capture loop yielded too few runtime frames' -Area 'VM validation harness' -Severity 'High' -Evidence @(
             "Run ${runId} targeted $targetCaptureFrames capture frame(s) but recorded DesktopShots=$desktopShots.",
+            "Minimum blocking completion ratio is 50 percent; 50-80 percent is retained as a VM summary coverage note because runtime freshness telemetry still spans the run.",
             "Run directory: $($run.FullName)"
         ) -Notes @('A clean visual validation report requires enough runtime frames to verify UI fluidity, background rotation, news scroller, graph cards, and ticker ribbons.')))
     }

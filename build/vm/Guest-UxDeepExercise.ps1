@@ -1681,6 +1681,14 @@ function Write-ReferenceSpotCheck {
     )
 
     $displayedSample = @(Get-PreferredDisplayedTapeSample)
+    if ($displayedSample.Count -eq 1 -and $displayedSample[0] -is [System.Array]) {
+        $displayedSample = @($displayedSample[0])
+    }
+    $displayedSampleCountBeforeFilter = $displayedSample.Count
+    $displayedSample = @($displayedSample | Where-Object { $null -ne $_ -and $_.PSObject.Properties.Name -contains 'Symbol' })
+    if ($displayedSample.Count -lt $displayedSampleCountBeforeFilter) {
+        Write-Warning ("Reference spot-check ignored {0} malformed displayed sample item(s)." -f ($displayedSampleCountBeforeFilter - $displayedSample.Count))
+    }
     $symbols = if ($displayedSample.Count -gt 0) {
         @($displayedSample | Select-Object -ExpandProperty Symbol -Unique | Select-Object -First 6)
     }
@@ -2233,7 +2241,7 @@ function Get-PreferredDisplayedTapeSample {
         }
 
         if ($items.Count -gt 0) {
-            $parsedSamples.Add(@($items))
+            $parsedSamples.Add(@($items.ToArray()))
         }
     }
 
@@ -3808,7 +3816,8 @@ try {
             }
         }
         if ($lastCaptureIndex -lt [Math]::Floor($targetFrames * 0.8)) {
-            $summary.Notes += "Desktop capture count $lastCaptureIndex was below 80 percent of estimated target $targetFrames; capture loop remained wall-clock bounded."
+            $severityLabel = if ($lastCaptureIndex -lt [Math]::Floor($targetFrames * 0.5)) { 'blocking' } else { 'low coverage' }
+            $summary.Notes += "Desktop capture count $lastCaptureIndex was below 80 percent of estimated target $targetFrames ($severityLabel); capture loop remained wall-clock bounded."
         }
 
         $summary.DesktopPhaseStatus = "Completed"

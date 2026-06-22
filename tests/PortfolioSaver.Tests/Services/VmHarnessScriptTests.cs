@@ -447,6 +447,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("RequestedCaptureIntervalSeconds = $CaptureIntervalSeconds", script, StringComparison.Ordinal);
         Assert.Contains("EffectiveCaptureIntervalSeconds = $effectiveCaptureIntervalSeconds", script, StringComparison.Ordinal);
         Assert.Contains("TargetCaptureFrames = $targetFrames", script, StringComparison.Ordinal);
+        Assert.Contains("$severityLabel = if ($lastCaptureIndex -lt [Math]::Floor($targetFrames * 0.5)) { 'blocking' } else { 'low coverage' }", script, StringComparison.Ordinal);
         Assert.Contains("capture loop remained wall-clock bounded", script, StringComparison.Ordinal);
         Assert.Contains("Capture interval raised from $CaptureIntervalSeconds to $effectiveCaptureIntervalSeconds seconds for long-run soak stability.", script, StringComparison.Ordinal);
         Assert.Contains("$screensaverExe = Join-Path $root 'publish\\screensaver\\PortfolioSaver.Screensaver.exe'", script, StringComparison.Ordinal);
@@ -489,6 +490,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("data_freshness_text=LIVE quote feed", script, StringComparison.Ordinal);
         Assert.Contains("function Test-TraceAgeFieldFresh", analyzer, StringComparison.Ordinal);
         Assert.Contains("[double]::TryParse", analyzer, StringComparison.Ordinal);
+        Assert.Contains("Minimum blocking completion ratio is 50 percent", analyzer, StringComparison.Ordinal);
         Assert.Contains("$hasFreshTraceAge = Test-TraceAgeFieldFresh -Line $_.Line -FieldName 'trace_age_seconds'", analyzer, StringComparison.Ordinal);
         Assert.Contains("$hasDirectUiFreshness = $_.Line -match 'latest_freshness_source=ui(\\s|$)' -and $_.Line -match 'ui_freshness=LIVE quote feed'", analyzer, StringComparison.Ordinal);
         Assert.Contains("elseif (-not [string]::IsNullOrWhiteSpace($uiFreshnessText) -and $uiFreshnessText -eq $latestFreshnessText)", guestHarness, StringComparison.Ordinal);
@@ -575,6 +577,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("desktop-after-recovery-clear-{0:D3}.png", script, StringComparison.Ordinal);
         Assert.Contains("function Try-WriteReferenceSpotCheck", script, StringComparison.Ordinal);
         Assert.Contains("Reference spot-checks are advisory", script, StringComparison.Ordinal);
+        Assert.Contains("Reference spot-check ignored {0} malformed displayed sample item(s).", script, StringComparison.Ordinal);
         Assert.Contains("$postRecoverySpotCheckSucceeded = Try-WriteReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $i -Context 'after-recovery-clear'", script, StringComparison.Ordinal);
         Assert.Contains("if (-not $postRecoverySpotCheckSucceeded) {", script, StringComparison.Ordinal);
         Assert.Contains("Write-SummaryFiles", script, StringComparison.Ordinal);
