@@ -48,18 +48,28 @@
   </ItemGroup>
 
   <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md')">
+    <!-- Distribution copying is handled by Directory.Build.targets for executable outputs only.
+         Keep these pack items out of the SDK transitive publish pipeline to avoid duplicate
+         source/destination aggregation from project references. -->
     <None Include="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md"
           Link="THIRD-PARTY-NOTICES.md"
           Pack="true"
-          PackagePath="" />
+          PackagePath=""
+          CopyToOutputDirectory="Never"
+          CopyToPublishDirectory="Never" />
   </ItemGroup>
 
   <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES')">
+    <!-- Distribution copying is handled by Directory.Build.targets for executable outputs only.
+         Keep these pack items out of the SDK transitive publish pipeline to avoid duplicate
+         source/destination aggregation from project references. -->
     <None Include="$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES\**\*"
           Link="THIRD-PARTY-LICENSES\%(RecursiveDir)%(Filename)%(Extension)"
           TargetPath="THIRD-PARTY-LICENSES\%(RecursiveDir)%(Filename)%(Extension)"
           Pack="true"
-          PackagePath="THIRD-PARTY-LICENSES\%(RecursiveDir)" />
+          PackagePath="THIRD-PARTY-LICENSES\%(RecursiveDir)"
+          CopyToOutputDirectory="Never"
+          CopyToPublishDirectory="Never" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(PortfolioSaverInstallerBaseIntermediateRoot)' != ''">
