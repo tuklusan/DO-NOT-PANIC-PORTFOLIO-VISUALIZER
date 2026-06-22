@@ -5477,7 +5477,7 @@
       "priority": 1,
       "area": "source_documentation_legal_headers",
       "title": "Add protective SANYALnet non-commercial legal headers to source and documentation files",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_22_license_header_policy",
       "severity": "high",
       "evidence": [
@@ -5497,6 +5497,12 @@
         "Local build/test validation passes when the change affects code or build outputs.",
         "Distribution/publish output is checked when the change affects packaged artifacts.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Added repository-wide legal header coverage for supported source and documentation formats, preserving parseability for formats that cannot accept comments.",
+        "Added LegalHeaderPolicyTests coverage for required legal header markers and documented exclusions.",
+        "Validated with DeepSeek code-review gate, full Release build, and full Release test suite.",
+        "Validation evidence: build/validation/artifacts/license-validation-final-target-proof-20260622-120722 shows restore/build succeeded and dotnet test passed 529/529."
       ]
     },
     {
@@ -5505,7 +5511,7 @@
       "priority": 1,
       "area": "license_dependency_compliance",
       "title": "Resolve license wording ambiguity and include YFinance Apache 2.0 attribution in repo and distribution outputs",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_22_yfinance_apache_compliance",
       "severity": "high",
       "evidence": [
@@ -5526,6 +5532,14 @@
         "Local build/test validation passes when the change affects code or build outputs.",
         "Distribution/publish output is checked when the change affects packaged artifacts.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Changed project copyright wording from ambiguous All rights reserved language to Proprietary rights reserved except as expressly licensed herein.",
+        "Added THIRD-PARTY-NOTICES.md and THIRD-PARTY-LICENSES/APACHE-2.0.txt for YFinance/yfinance Apache 2.0 attribution.",
+        "Moved runtime legal-file distribution copying into executable build/publish targets so LICENSE, THIRD-PARTY-NOTICES.md, and THIRD-PARTY-LICENSES/APACHE-2.0.txt sit beside the compiled Windows binaries.",
+        "Validated publish delivery to a clean temp publish directory: build/validation/artifacts/license-validation-publish-outside-apostrophe-20260622-120953.",
+        "Validated published legal file content markers and hashes: build/validation/artifacts/license-content-proof-20260622-121121.",
+        "DeepSeek artifact review build/validation/artifacts/deepseek-artifact-review-license-final-20260622-121100.md found no legal-delivery blocker after content proof; apostrophe-path publish behavior is tracked separately as CR-132."
       ]
     },
     {
@@ -5554,6 +5568,32 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code or build outputs.",
         "Distribution/publish output is checked when the change affects packaged artifacts.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-132",
+      "tracking_number": "CR-132",
+      "priority": 3,
+      "area": "build_validation_publish_paths",
+      "title": "Harden publish validation paths against apostrophe-containing repository directories",
+      "status": "open",
+      "source": "deepseek_artifact_review_2026_06_22_license_validation",
+      "severity": "low",
+      "evidence": [
+        "DeepSeek artifact review noted that publishing with -o under the repository path failed because the repository folder name contains an apostrophe.",
+        "The SDK publish target collapsed the destination transform to one item and raised MSB3094 when output was under D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\Don't-Panic-Portfolio-Visualizer\\build\\validation\\artifacts.",
+        "Publishing the same project to C:\\Users\\vagab\\AppData\\Local\\Temp\\dnppv-publish-proof-20260622-120953 succeeded and proved the legal-file delivery behavior."
+      ],
+      "notes": [
+        "This is an operational validation-path hazard, not a product packaging or legal-compliance blocker.",
+        "Prefer safe temp publish directories without apostrophes for validation scripts unless a stronger MSBuild escaping fix is implemented.",
+        "Document the hazard in build validation guidance and update reusable publish-proof scripts to avoid apostrophe-containing output paths."
+      ],
+      "acceptance": [
+        "Publish validation scripts consistently choose safe output paths that avoid MSBuild transform quoting hazards.",
+        "Build documentation explains why publish proof should avoid apostrophe-containing directories.",
+        "A local publish proof demonstrates the selected safe path behavior.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ]
     }
