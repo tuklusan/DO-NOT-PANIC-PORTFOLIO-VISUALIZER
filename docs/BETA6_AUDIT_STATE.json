@@ -3658,7 +3658,7 @@
       "priority": 2,
       "area": "background_degradation",
       "title": "Validate background rotation/download degradation: offline warm-up, slow downloads, partial TMP files, corrupt images, decode failures",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "Medium",
       "evidence": [
@@ -3667,7 +3667,8 @@
       ],
       "notes": [
         "Cover default three shipped images, downloaded manifest images, custom folder enabled/disabled, missing folder, corrupt file, and GPU-heavy transition fallback.",
-        "Attribution display must use short attribution strings only."
+        "Attribution display must use short attribution strings only.",
+        "Closure proof covers default three shipped images/local-only startup, downloaded manifest image warm-up with .TMP-to-final rename, custom folder enabled/disabled behavior, missing/partial/corrupt image handling, cancellation-safe warm-up, short attribution display, and render-side no-blank recovery behavior."
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
@@ -3679,6 +3680,13 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "No image download/decode failure causes a blank scene when a prior good image exists.",
         "TMP cleanup and rescan behavior is traced."
+      ],
+      "closed_date": "2026-06-22",
+      "resolution": "No product-code change required after audit; existing deterministic background degradation coverage proved the default, custom-folder, manifest download, TMP, corrupt/non-JPEG, cancellation, attribution, settings normalization, and render recovery paths.",
+      "validation": [
+        "Focused local validation passed 93/93 on 2026-06-22: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~ExchangePhotoCacheServiceTests|FullyQualifiedName~AppSettingsNormalizerTests.Normalize_RetiresRemoteBackgroundPaths_ToLocalOnlyDefaults|FullyQualifiedName~SettingsValidatorTests|FullyQualifiedName~ScreensaverRenderBehaviorTests\" --nologo.",
+        "Validation-script smoke passed on 2026-06-22: build\\validation\\Test-ValidationScripts.ps1 returned VALIDATION_SCRIPT_SMOKE_TEST=Passed.",
+        "Historical VM evidence for the blank-background regression and its transition/zoom recovery fix remains recorded in the closed background transition CR records in this audit state."
       ]
     },
     {

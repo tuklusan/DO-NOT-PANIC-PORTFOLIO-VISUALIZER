@@ -300,13 +300,16 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 2
 - Severity: Medium
 - Area: background_degradation
-- Status: open
+- Status: closed
 - Evidence / rationale:
   - Background logic can download images, clean TMP files, rotate local/managed images, and apply transitions/zoom.
   - Blank background periods were observed historically, so degraded asset paths need explicit proof.
 - Notes:
   - Cover default three shipped images, downloaded manifest images, custom folder enabled/disabled, missing folder, corrupt file, and GPU-heavy transition fallback.
   - Attribution display must use short attribution strings only.
+- Closure evidence:
+  - Closed on 2026-06-22 with no product-code change required after audit because existing deterministic coverage already exercises the degraded background paths. Focused local validation passed 93/93 using `dotnet test tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj -c Release --filter "FullyQualifiedName~ExchangePhotoCacheServiceTests|FullyQualifiedName~AppSettingsNormalizerTests.Normalize_RetiresRemoteBackgroundPaths_ToLocalOnlyDefaults|FullyQualifiedName~SettingsValidatorTests|FullyQualifiedName~ScreensaverRenderBehaviorTests" --nologo`; validation-script smoke returned `VALIDATION_SCRIPT_SMOKE_TEST=Passed`.
+  - Concrete coverage includes default-mode local-only startup, custom-folder-only selection, partial `.TMP` cleanup, fresh `.TMP` retention, manifest warm-up final rename behavior, concurrent warm-up serialization, cancellation-safe warm-up release, non-JPEG rejection, canceled download stop behavior, short footer attribution formatting, retirement of obsolete remote background paths, and render-side recovery/transition/zoom behavior. Historical VM evidence for blank-background regression remains recorded in the Beta audit state through the closed background transition CRs.
 - Acceptance highlights:
   - A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.
   - Expected user-visible behavior is documented before implementation changes are made.
