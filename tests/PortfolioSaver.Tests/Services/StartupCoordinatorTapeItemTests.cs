@@ -185,8 +185,8 @@ public sealed class StartupCoordinatorTapeItemTests
         Assert.Equal(Brushes.LimeGreen, StartupCoordinator.ResolveDataFreshnessBrush(true, liveQuotes, now));
         Assert.Equal(Brushes.Goldenrod, StartupCoordinator.ResolveDataFreshnessBrush(true, staleQuotes, now));
         Assert.Equal(Brushes.Goldenrod, StartupCoordinator.ResolveDataFreshnessBrush(true, agedQuotes, now));
-        Assert.True(StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(true, consecutiveQuoteFailures: 1, offlineFailureThreshold: 2));
-        Assert.False(StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(true, consecutiveQuoteFailures: 2, offlineFailureThreshold: 2));
+        Assert.True(StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(true, consecutiveQuoteFailures: 0, offlineFailureThreshold: 1));
+        Assert.False(StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(true, consecutiveQuoteFailures: 1, offlineFailureThreshold: 1));
         Assert.True(StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(true, consecutiveQuoteFailures: 9, offlineFailureThreshold: 10));
         Assert.False(StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(true, consecutiveQuoteFailures: 10, offlineFailureThreshold: 10));
         Assert.False(StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(false, consecutiveQuoteFailures: 0, offlineFailureThreshold: 10));

@@ -29,8 +29,8 @@ namespace PortfolioSaver.Screensaver.Controls;
 
 public partial class ScreensaverSceneControl : UserControl
 {
-    // User feedback should turn truthful quickly; transport resets stay conservative below.
-    private const int RuntimeQuoteOfflineDisplayFailureThreshold = 2;
+    // User feedback should turn truthful on the first counted failed lookup; transport resets stay conservative below.
+    private const int RuntimeQuoteOfflineDisplayFailureThreshold = 1;
     private const int RuntimeQuoteTransportRecoveryFailureThreshold = 10;
     private static readonly bool EnableMarketCritters = false;
     private const string PinnedNycExchangeKey = "NewYorkNasdaq";
