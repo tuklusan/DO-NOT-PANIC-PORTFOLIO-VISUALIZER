@@ -44,6 +44,7 @@ public sealed class ProjectLicenseServiceTests
         Assert.Contains("Link=\"THIRD-PARTY-NOTICES.md\"", props, StringComparison.Ordinal);
         Assert.Contains("Include=\"$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES\\**\\*\"", props, StringComparison.Ordinal);
         Assert.Contains("Link=\"THIRD-PARTY-LICENSES\\%(RecursiveDir)%(Filename)%(Extension)\"", props, StringComparison.Ordinal);
+        Assert.Contains("TargetPath=\"THIRD-PARTY-LICENSES\\%(RecursiveDir)%(Filename)%(Extension)\"", props, StringComparison.Ordinal);
         Assert.Contains("PackagePath=\"THIRD-PARTY-LICENSES\\%(RecursiveDir)\"", props, StringComparison.Ordinal);
         Assert.Contains("<EmbeddedResource Include=\"..\\..\\LICENSE\" LogicalName=\"PortfolioSaver.LICENSE\" />", sharedProject, StringComparison.Ordinal);
     }

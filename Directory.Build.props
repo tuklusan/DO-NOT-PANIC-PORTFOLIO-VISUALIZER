@@ -59,6 +59,7 @@
   <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES')">
     <None Include="$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES\**\*"
           Link="THIRD-PARTY-LICENSES\%(RecursiveDir)%(Filename)%(Extension)"
+          TargetPath="THIRD-PARTY-LICENSES\%(RecursiveDir)%(Filename)%(Extension)"
           Pack="true"
           PackagePath="THIRD-PARTY-LICENSES\%(RecursiveDir)"
           CopyToOutputDirectory="PreserveNewest"
