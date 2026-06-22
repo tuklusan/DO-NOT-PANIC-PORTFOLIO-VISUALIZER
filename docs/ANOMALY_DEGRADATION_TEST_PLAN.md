@@ -321,13 +321,16 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 2
 - Severity: High
 - Area: local_appdata_degradation
-- Status: open
+- Status: closed
 - Evidence / rationale:
   - All local application data should live under Local AppData for installer/uninstaller ownership.
   - Config, backgrounds, traces, caches, and runtime state may fail due to permissions, corruption, or disk exhaustion.
 - Notes:
   - Include first-run missing directories and upgrade from obsolete PortfolioSaver paths.
   - Do not delete user-selected custom image folders during cleanup tests.
+- Closure evidence:
+  - Closed on 2026-06-22 after adding `LocalAppDataStorageScriptTests`, which statically guards installer initialization of `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer`, legacy `%LOCALAPPDATA%\PortfolioSaver` migration, managed cache/trace cleanup, empty-only parent pruning, legacy preservation, and VM harness product-root trace lookup with legacy fallback only.
+  - Focused local validation passed 57/57 after hardening uninstall cleanup to avoid recursive deletion of parent `Backgrounds`/`Caches` folders that may contain user-selected custom content, using `dotnet test tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj -c Release --filter "FullyQualifiedName~LocalAppDataStorageScriptTests|FullyQualifiedName~AppDataRootResolverTests|FullyQualifiedName~PathHelperTests|FullyQualifiedName~SettingsFileServiceTests|FullyQualifiedName~TraceLogTests|FullyQualifiedName~YFinanceCircularTraceSinkTests|FullyQualifiedName~ExchangePhotoCacheServiceTests" --nologo`; validation-script smoke returned `VALIDATION_SCRIPT_SMOKE_TEST=Passed`.
 - Acceptance highlights:
   - A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.
   - Expected user-visible behavior is documented before implementation changes are made.
@@ -543,3 +546,4 @@ Reference display contract:
   - A high-latency harness profile proves controls provide feedback within 500ms of user input.
   - Cancel/Escape closes dialogs promptly while requests are pending.
   - No user input is lost or replayed unexpectedly after network recovery.
+

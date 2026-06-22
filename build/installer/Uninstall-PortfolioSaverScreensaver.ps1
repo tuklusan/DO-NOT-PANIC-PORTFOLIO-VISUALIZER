@@ -159,6 +159,29 @@ function Remove-ManagedDirectory {
     }
 }
 
+function Remove-EmptyManagedDirectory {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not (Test-Path $Path)) {
+        return
+    }
+
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    if ($null -eq $item) {
+        return
+    }
+
+    if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+        Write-Warning "Skipping managed parent reparse point during uninstall: $Path"
+        return
+    }
+
+    $remaining = Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    if (($remaining | Measure-Object).Count -eq 0) {
+        Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    }
+}
+
 if (-not (Test-IsAdministrator)) {
     Write-Host "Requesting administrator rights to uninstall the screensaver..."
     Start-ElevatedUninstall
@@ -283,9 +306,9 @@ foreach ($derivedCache in @($symbolProfileCache, $providerBudgetLedger)) {
     }
 }
 
-foreach ($managedDirectory in @($managedTraceRoot, (Join-Path $localDataRoot "Backgrounds"), (Join-Path $localDataRoot "Caches"))) {
-    Remove-ManagedDirectory -Path $managedDirectory
-}
+Remove-ManagedDirectory -Path $managedTraceRoot
+Remove-EmptyManagedDirectory -Path (Join-Path $localDataRoot "Backgrounds")
+Remove-EmptyManagedDirectory -Path (Join-Path $localDataRoot "Caches")
 
 Remove-Item -LiteralPath (Join-Path $localDataRoot $migrationMarkerName) -Force -ErrorAction SilentlyContinue
 

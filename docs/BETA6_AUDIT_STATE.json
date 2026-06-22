@@ -3695,7 +3695,7 @@
       "priority": 2,
       "area": "local_appdata_degradation",
       "title": "Validate Local AppData failures: missing, access denied, corrupt config, corrupt cache, disk full, read-only files",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "High",
       "evidence": [
@@ -3704,7 +3704,9 @@
       ],
       "notes": [
         "Include first-run missing directories and upgrade from obsolete PortfolioSaver paths.",
-        "Do not delete user-selected custom image folders during cleanup tests."
+        "Do not delete user-selected custom image folders during cleanup tests.",
+        "Closure proof verifies that install/harness defaults use Local AppData product root, legacy PortfolioSaver Local AppData is migration/fallback only, Roaming AppData is not used for product storage, and uninstall cleanup is scoped to managed Trace/Backgrounds/Caches data rather than arbitrary custom folders.",
+        "Uninstall cleanup now recursively removes only known managed directories such as Trace, Backgrounds\\ExchangePhotoCache, and Caches\\History; Backgrounds and Caches parent folders are removed only when empty, preserving any non-managed custom content under those parents."
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
@@ -3716,6 +3718,12 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "The app recreates expected Local AppData directories when possible.",
         "Corrupt config/cache files are quarantined or ignored safely with clear trace evidence."
+      ],
+      "closed_date": "2026-06-22",
+      "resolution": "Added static regression coverage for installer-owned Local AppData initialization, legacy PortfolioSaver migration, managed-only uninstall cleanup, VM harness product-root trace discovery with legacy fallback only, and hardened uninstall cleanup so managed Backgrounds/Caches parent folders are pruned only when empty instead of recursively deleted.",
+      "validation": [
+        "Focused local validation passed 57/57 on 2026-06-22 for LocalAppDataStorageScriptTests, AppDataRootResolverTests, PathHelperTests, SettingsFileServiceTests, TraceLogTests, YFinanceCircularTraceSinkTests, and ExchangePhotoCacheServiceTests.",
+        "Validation-script smoke passed on 2026-06-22: build\\validation\\Test-ValidationScripts.ps1 returned VALIDATION_SCRIPT_SMOKE_TEST=Passed."
       ]
     },
     {
