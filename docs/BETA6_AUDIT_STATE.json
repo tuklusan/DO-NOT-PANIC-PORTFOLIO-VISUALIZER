@@ -3805,7 +3805,7 @@
       "priority": 2,
       "area": "shutdown_degradation",
       "title": "Validate shutdown while network/file/background operations are pending",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "Medium",
       "evidence": [
@@ -3814,7 +3814,8 @@
       ],
       "notes": [
         "Cover desktop close, config close, screensaver exit, VM harness abort, and Windows session logoff if practical.",
-        "Shutdown must not leave orphaned YFinance server, VM agent, or downloader processes."
+        "Shutdown must not leave orphaned YFinance server, VM agent, or downloader processes.",
+        "Closure proof covers Desktop, Config, and Screensaver owned-server shutdown queueing, owner-PID server self-exit, VM harness abort cleanup, and partial background-download TMP cleanup."
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
@@ -3826,6 +3827,13 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "All owned child/background processes terminate or are intentionally detached with documentation.",
         "Partial downloads remain TMP and are cleaned on next warm-up."
+      ],
+      "closed_date": "2026-06-22",
+      "resolution": "Closed with existing lifecycle and cleanup coverage: interactive hosts queue non-background owned YFinance.NET shutdown on exit, owned server exits when the owner process disappears, VM abort cleanup stops PortfolioSaver processes, and background image partial downloads remain TMP and are cleaned on warm-up.",
+      "validation": [
+        "Focused local validation passed 66/66 on 2026-06-22 for YFinanceClientServerProtocolTests, ExchangePhotoCacheServiceTests, and VmHarnessScriptTests.",
+        "Validation-script smoke passed on 2026-06-22 before CR-082 review/commit.",
+        "VM validation was not rerun for this closure because the CR was closed as a documentation/audit correction with no product-code or harness-code changes."
       ]
     },
     {

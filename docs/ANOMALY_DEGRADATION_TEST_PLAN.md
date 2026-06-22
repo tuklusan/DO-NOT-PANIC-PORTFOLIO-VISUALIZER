@@ -385,13 +385,18 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 2
 - Severity: Medium
 - Area: shutdown_degradation
-- Status: open
+- Status: closed
 - Evidence / rationale:
   - The app must close cleanly while quote requests, news fetches, background downloads, trace writes, or YFinance server requests are in flight.
   - Owned server lifecycle requires special proof during shutdown.
 - Notes:
   - Cover desktop close, config close, screensaver exit, VM harness abort, and Windows session logoff if practical.
   - Shutdown must not leave orphaned YFinance server, VM agent, or downloader processes.
+- Closure evidence:
+  - Closed on 2026-06-22 with no product-code change required after audit. Desktop, Config, and Screensaver queue owned YFinance.NET shutdown on exit; the owned server also exits when the owner PID disappears; VM abort cleanup and partial background download cleanup are covered by existing tests.
+  - Focused local validation passed 66/66 using `dotnet test tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj -c Release --filter "FullyQualifiedName~YFinanceClientServerProtocolTests|FullyQualifiedName~ExchangePhotoCacheServiceTests|FullyQualifiedName~VmHarnessScriptTests" --nologo`.
+  - Validation-script smoke passed on 2026-06-22.
+  - VM validation was not rerun for this closure because the CR was closed as a documentation/audit correction with no product-code or harness-code changes.
 - Acceptance highlights:
   - A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.
   - Expected user-visible behavior is documented before implementation changes are made.
