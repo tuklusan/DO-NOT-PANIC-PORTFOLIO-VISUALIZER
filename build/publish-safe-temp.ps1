@@ -98,6 +98,8 @@ $screensaverOut = Join-Path $publishRoot "screensaver"
 $configOut = Join-Path $publishRoot "config"
 $desktopOut = Join-Path $publishRoot "desktop"
 $agentOut = Join-Path $publishRoot "agent"
+# The Inno installer pipeline packages this canonical server publish under
+# YFinanceServer in Program Files.
 $serverOut = Join-Path $publishRoot "server"
 $dotnetCli = Resolve-DotNetCli
 

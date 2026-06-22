@@ -93,8 +93,9 @@ function Copy-RequiredFile {
 function Get-PortfolioSaverVersion {
     param([Parameter(Mandatory = $true)][string]$DirectoryBuildPropsPath)
 
-    [xml]$props = Get-Content -Raw -LiteralPath $DirectoryBuildPropsPath
-    $version = $props.Project.PropertyGroup.PortfolioSaverVersion | Select-Object -First 1
+    $versionNode = Select-Xml -LiteralPath $DirectoryBuildPropsPath -XPath '/*[local-name()="Project"]/*[local-name()="PropertyGroup"]/*[local-name()="PortfolioSaverVersion"]' |
+        Select-Object -First 1
+    $version = if ($null -ne $versionNode) { $versionNode.Node.InnerText } else { $null }
     if ([string]::IsNullOrWhiteSpace($version)) {
         throw "PortfolioSaverVersion not found in $DirectoryBuildPropsPath"
     }
@@ -121,19 +122,24 @@ if (-not (Test-Path -LiteralPath $manifestScript -PathType Leaf)) {
 if (-not $SkipPublish) {
     Write-Step 'Running canonical safe-temp publish before Inno payload assembly'
     & (Join-Path $repoRoot 'build\publish-safe-temp.ps1') -Configuration $Configuration -RuntimeIdentifier $RuntimeIdentifier -TimeoutSeconds $PublishTimeoutSeconds
-    if ($LASTEXITCODE -ne 0) {
-        throw "publish-safe-temp.ps1 failed with exit code $LASTEXITCODE"
+    if (-not $?) {
+        throw "publish-safe-temp.ps1 did not complete successfully (exit code $LASTEXITCODE)."
     }
 }
 
 $desktopRoot = Join-Path $safeTempRoot 'desktop'
 $configRoot = Join-Path $safeTempRoot 'config'
 $screensaverRoot = Join-Path $safeTempRoot 'screensaver'
-if ($SkipPublish) {
-    foreach ($requiredSafeTempRoot in @($desktopRoot, $configRoot, $screensaverRoot)) {
-        if (-not (Test-Path -LiteralPath $requiredSafeTempRoot -PathType Container)) {
-            throw "Safe-temp publish directory missing: $requiredSafeTempRoot. Run without -SkipPublish or run build/publish-safe-temp.ps1 first."
+$serverRoot = Join-Path $safeTempRoot 'server'
+foreach ($requiredSafeTempRoot in @($desktopRoot, $configRoot, $screensaverRoot, $serverRoot)) {
+    if (-not (Test-Path -LiteralPath $requiredSafeTempRoot -PathType Container)) {
+        $hint = if ($SkipPublish) {
+            'Run without -SkipPublish or run build/publish-safe-temp.ps1 first.'
         }
+        else {
+            'publish-safe-temp.ps1 did not produce the expected canonical output directories.'
+        }
+        throw "Safe-temp publish directory missing: $requiredSafeTempRoot. $hint"
     }
 }
 
@@ -144,6 +150,7 @@ Write-Step 'Assembling Inno Program Files payload'
 Copy-DirectoryContents -Source $desktopRoot -Destination $payloadRoot
 Copy-DirectoryContents -Source $configRoot -Destination $payloadRoot
 Copy-DirectoryContents -Source $screensaverRoot -Destination $payloadRoot
+Copy-DirectoryContents -Source $serverRoot -Destination (Join-Path $payloadRoot 'YFinanceServer')
 Copy-RequiredFile -Source (Join-Path $screensaverRoot 'PortfolioSaver.Screensaver.exe') -Destination (Join-Path $payloadRoot 'PortfolioSaver.Screensaver.scr')
 Copy-RequiredFile -Source $cleanupScript -Destination (Join-Path $payloadRoot 'Installer\Cleanup-DoNotPanicPortfolioVisualizer.ps1')
 Get-ChildItem -LiteralPath $payloadRoot -Recurse -File -Include '*.pdb','*.nupkg' -ErrorAction SilentlyContinue |
@@ -166,8 +173,9 @@ foreach ($requiredPayloadFile in @(
 }
 
 & $manifestScript -PublishDir $payloadRoot
-if ($LASTEXITCODE -ne 0) {
-    throw "Manifest generation failed for Inno payload."
+$manifestPath = Join-Path $payloadRoot 'release-manifest.json'
+if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+    throw "Manifest generation failed for Inno payload: missing $manifestPath"
 }
 
 $isccPath = Resolve-Iscc

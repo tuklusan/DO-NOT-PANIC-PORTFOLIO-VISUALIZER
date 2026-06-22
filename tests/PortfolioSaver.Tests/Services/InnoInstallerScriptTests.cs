@@ -61,17 +61,32 @@ public sealed class InnoInstallerScriptTests
         string script = ReadRepoText("build", "publish-inno-installer.ps1");
 
         Assert.Contains("publish-safe-temp.ps1", script, StringComparison.Ordinal);
+        Assert.Contains("if (-not $?)", script, StringComparison.Ordinal);
+        Assert.Contains("exit code $LASTEXITCODE", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("publish-safe-temp.ps1 failed with exit code $LASTEXITCODE", script, StringComparison.Ordinal);
         Assert.Contains(@"$env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe'", script, StringComparison.Ordinal);
+        Assert.Contains("local-name()=\"PortfolioSaverVersion\"", script, StringComparison.Ordinal);
         Assert.Contains("PortfolioSaver.Desktop.exe", script, StringComparison.Ordinal);
         Assert.Contains("PortfolioSaver.Config.exe", script, StringComparison.Ordinal);
         Assert.Contains("PortfolioSaver.Screensaver.scr", script, StringComparison.Ordinal);
         Assert.Contains("THIRD-PARTY-LICENSES\\APACHE-2.0.txt", script, StringComparison.Ordinal);
+        Assert.Contains("$serverRoot = Join-Path $safeTempRoot 'server'", script, StringComparison.Ordinal);
+        Assert.Contains("Copy-DirectoryContents -Source $serverRoot -Destination (Join-Path $payloadRoot 'YFinanceServer')", script, StringComparison.Ordinal);
         Assert.Contains("YFinanceServer\\YFinance.NET.Server.dll", script, StringComparison.Ordinal);
         Assert.Contains("/DLicenseFile=$licensePath", script, StringComparison.Ordinal);
         Assert.Contains("Release manifest generator not found", script, StringComparison.Ordinal);
         Assert.Contains("Safe-temp publish directory missing", script, StringComparison.Ordinal);
+        Assert.Contains("release-manifest.json", script, StringComparison.Ordinal);
+        Assert.Contains("Manifest generation failed for Inno payload", script, StringComparison.Ordinal);
         Assert.Contains("'*.pdb','*.nupkg'", script, StringComparison.Ordinal);
         Assert.DoesNotContain("'*.xml'", script, StringComparison.Ordinal);
+
+        string safeTempScript = ReadRepoText("build", "publish-safe-temp.ps1");
+        Assert.Contains("The Inno installer pipeline packages this canonical server publish", safeTempScript, StringComparison.Ordinal);
+        Assert.Contains("$serverOut = Join-Path $publishRoot \"server\"", safeTempScript, StringComparison.Ordinal);
+        Assert.Contains("$serverProject = \".\\YFinance.net\\YFinance.NET.Server\\YFinance.NET.Server.csproj\"", safeTempScript, StringComparison.Ordinal);
+        Assert.Contains("Publishing YFinance server", safeTempScript, StringComparison.Ordinal);
+        Assert.Contains("@{ From = $serverTempPublish; To = $serverOut }", safeTempScript, StringComparison.Ordinal);
     }
 
     [Fact]
