@@ -160,7 +160,7 @@ Acceptance for the current YFinance.NET lane:
 
 ### Final Windows integration
 - Treat the Inno Setup package produced by `build\publish-inno-installer.ps1` as the primary public distribution method.
-- The installer requires administrative privileges, shows the root `LICENSE` as the required license-agreement page, and installs to `%ProgramFiles%\SANYALnet Labs\DoNotPanicPortfolioVisualizer`.
+- The installer requires administrative privileges, shows the root `LICENSE` as the required license-agreement page, and uses a fixed public install location at `%ProgramFiles%\SANYALnet Labs\DoNotPanicPortfolioVisualizer`.
 - The installer includes the desktop app, config app, legacy screensaver host, owned YFinance.NET server bundle, root `LICENSE`, `THIRD-PARTY-NOTICES.md`, and `THIRD-PARTY-LICENSES`.
 - Automated install/uninstall validation must run from an already elevated administrator context using `build\installer\Test-InnoInstallCycle.ps1`; Windows UAC prompts are not safely auto-accepted from a non-elevated process.
 

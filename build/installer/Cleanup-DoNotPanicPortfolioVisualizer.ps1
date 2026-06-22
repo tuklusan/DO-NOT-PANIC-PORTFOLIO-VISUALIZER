@@ -126,6 +126,103 @@ function Remove-OwnedLocalAppDataRoot {
     }
 }
 
+function Test-IsSafeProgramFilesInstallRoot {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    try {
+        $fullPath = [IO.Path]::GetFullPath($Path).TrimEnd('\', '/')
+        if (-not (Split-Path -Leaf $fullPath).Equals('DoNotPanicPortfolioVisualizer', [StringComparison]::OrdinalIgnoreCase)) {
+            return $false
+        }
+
+        $publisherRoot = Split-Path -Parent $fullPath
+        if ([string]::IsNullOrWhiteSpace($publisherRoot) -or
+            -not (Split-Path -Leaf $publisherRoot).Equals('SANYALnet Labs', [StringComparison]::OrdinalIgnoreCase)) {
+            return $false
+        }
+
+        $programFilesRoot = Split-Path -Parent $publisherRoot
+        if ([string]::IsNullOrWhiteSpace($programFilesRoot)) {
+            return $false
+        }
+
+        $allowedRoots = @($env:ProgramFiles, ${env:ProgramFiles(x86)}) |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            ForEach-Object { [IO.Path]::GetFullPath($_).TrimEnd('\', '/') }
+
+        return $allowedRoots -contains ([IO.Path]::GetFullPath($programFilesRoot).TrimEnd('\', '/'))
+    }
+    catch {
+        return $false
+    }
+}
+
+function Start-DelayedInstallRootCleanup {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not (Test-IsSafeProgramFilesInstallRoot -Path $Path)) {
+        Write-Warning "Skipping delayed install-root cleanup for unsafe path: $Path"
+        return
+    }
+
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    if ($null -ne $item -and ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        Write-Warning "Skipping delayed install-root cleanup for reparse point: $Path"
+        return
+    }
+
+    $expectedRoot = [IO.Path]::GetFullPath((Join-Path $env:ProgramFiles 'SANYALnet Labs\DoNotPanicPortfolioVisualizer')).TrimEnd('\', '/')
+    $installRootLiteral = ConvertTo-Json -InputObject $Path -Compress
+    $expectedRootLiteral = ConvertTo-Json -InputObject $expectedRoot -Compress
+    $cleanupScript = @'
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'SilentlyContinue'
+
+$InstallRoot = __INSTALL_ROOT__
+$ExpectedRoot = __EXPECTED_ROOT__
+
+Start-Sleep -Seconds 5
+try {
+    $normalizedInstallRoot = [IO.Path]::GetFullPath($InstallRoot).TrimEnd('\', '/')
+    $normalizedExpectedRoot = [IO.Path]::GetFullPath($ExpectedRoot).TrimEnd('\', '/')
+    if ($normalizedInstallRoot.Equals($normalizedExpectedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+        $item = Get-Item -LiteralPath $InstallRoot -Force -ErrorAction SilentlyContinue
+        if ($null -ne $item -and ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
+            $deadline = (Get-Date).AddSeconds(45)
+            do {
+                Remove-Item -LiteralPath $InstallRoot -Recurse -Force -ErrorAction SilentlyContinue
+                if (-not (Test-Path -LiteralPath $InstallRoot)) {
+                    break
+                }
+
+                Start-Sleep -Seconds 2
+            } while ((Get-Date) -lt $deadline)
+        }
+
+        $publisherRoot = Split-Path -Parent $InstallRoot
+        if ((Test-Path -LiteralPath $publisherRoot) -and -not (Get-ChildItem -LiteralPath $publisherRoot -Force -ErrorAction SilentlyContinue)) {
+            Remove-Item -LiteralPath $publisherRoot -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+'@
+    $cleanupScript = $cleanupScript.Replace('__INSTALL_ROOT__', $installRootLiteral).Replace('__EXPECTED_ROOT__', $expectedRootLiteral)
+    $encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cleanupScript))
+
+    try {
+        Start-Process -FilePath powershell.exe -WindowStyle Hidden -ArgumentList @(
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-EncodedCommand',
+            $encodedCommand
+        )
+    }
+    catch {
+        Write-Warning "Could not schedule delayed install-root cleanup: $($_.Exception.Message)"
+    }
+}
+
 function Get-ProductLocalAppDataRoots {
     $roots = New-Object System.Collections.Generic.HashSet[string] ([StringComparer]::OrdinalIgnoreCase)
 
@@ -167,5 +264,8 @@ Stop-ProductProcesses
 foreach ($root in Get-ProductLocalAppDataRoots) {
     Remove-OwnedLocalAppDataRoot -Path $root
 }
+
+$installRoot = Split-Path -Parent $PSScriptRoot
+Start-DelayedInstallRootCleanup -Path $installRoot
 
 Write-Host 'DO NOT PANIC PORTFOLIO VISUALIZER uninstall cleanup complete.'

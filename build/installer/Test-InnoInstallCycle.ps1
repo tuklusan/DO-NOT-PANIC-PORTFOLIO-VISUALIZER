@@ -88,6 +88,18 @@ function Get-InstalledInnoUninstallerPath {
     return ($uninstallString -split '\s+', 2)[0]
 }
 
+function Wait-InstallRootRemoved {
+    $installRoot = Join-Path $env:ProgramFiles 'SANYALnet Labs\DoNotPanicPortfolioVisualizer'
+    $deadline = (Get-Date).AddSeconds(90)
+    while ((Get-Date) -lt $deadline) {
+        if (-not (Test-Path -LiteralPath $installRoot)) {
+            return
+        }
+
+        Start-Sleep -Milliseconds 500
+    }
+}
+
 function Assert-InstalledState {
     param([bool]$ExpectedInstalled)
 
@@ -184,5 +196,6 @@ Invoke-LoggedProcess `
     -StdoutPath (Join-Path $resolvedLogRoot 'uninstall.stdout.log') `
     -StderrPath (Join-Path $resolvedLogRoot 'uninstall.stderr.log')
 
+Wait-InstallRootRemoved
 Assert-InstalledState -ExpectedInstalled $false
 Write-Output "INNO_INSTALL_CYCLE_OK=$resolvedLogRoot"

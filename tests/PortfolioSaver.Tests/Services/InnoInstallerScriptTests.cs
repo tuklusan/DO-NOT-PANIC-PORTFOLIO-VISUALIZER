@@ -40,6 +40,7 @@ public sealed class InnoInstallerScriptTests
         Assert.Contains(@"DefaultDirName={autopf}\{#AppPublisher}\{#AppFolderName}", script, StringComparison.Ordinal);
         Assert.Contains("#define AppPublisher \"SANYALnet Labs\"", script, StringComparison.Ordinal);
         Assert.Contains("ArchitecturesInstallIn64BitMode=x64compatible", script, StringComparison.Ordinal);
+        Assert.Contains("DisableDirPage=yes", script, StringComparison.Ordinal);
         Assert.Contains(@"Source: ""{#SourceRoot}\*""; DestDir: ""{app}""", script, StringComparison.Ordinal);
         Assert.Contains("Cleanup-DoNotPanicPortfolioVisualizer.ps1", script, StringComparison.Ordinal);
         Assert.Contains("-AllUsers", script, StringComparison.Ordinal);
@@ -53,11 +54,24 @@ public sealed class InnoInstallerScriptTests
         Assert.Contains(@"Type: dirifempty; Name: ""{autopf}\{#AppPublisher}""", script, StringComparison.Ordinal);
         Assert.Contains("DoNotPanicPortfolioVisualizer for local Windows user profiles", script, StringComparison.Ordinal);
 
+        string cleanupScript = ReadRepoText("build", "installer", "Cleanup-DoNotPanicPortfolioVisualizer.ps1");
+        Assert.Contains("function Test-IsSafeProgramFilesInstallRoot", cleanupScript, StringComparison.Ordinal);
+        Assert.Contains("function Start-DelayedInstallRootCleanup", cleanupScript, StringComparison.Ordinal);
+        Assert.Contains("ConvertTo-Json -InputObject $Path", cleanupScript, StringComparison.Ordinal);
+        Assert.Contains("-EncodedCommand", cleanupScript, StringComparison.Ordinal);
+        Assert.Contains("[IO.FileAttributes]::ReparsePoint", cleanupScript, StringComparison.Ordinal);
+        Assert.Contains("Start-Sleep -Seconds 5", cleanupScript, StringComparison.Ordinal);
+        Assert.Contains("AddSeconds(45)", cleanupScript, StringComparison.Ordinal);
+        Assert.Contains("Could not schedule delayed install-root cleanup", cleanupScript, StringComparison.Ordinal);
+        Assert.Contains("$normalizedInstallRoot.Equals($normalizedExpectedRoot", cleanupScript, StringComparison.Ordinal);
+
         string cycleScript = ReadRepoText("build", "installer", "Test-InnoInstallCycle.ps1");
         Assert.Contains("/SUPPRESSMSGBOXES", cycleScript, StringComparison.Ordinal);
         Assert.Contains("#requires -Version 7.0", cycleScript, StringComparison.Ordinal);
         Assert.Contains("ArgumentList.Add", cycleScript, StringComparison.Ordinal);
         Assert.Contains("function Get-InstalledInnoUninstallerPath", cycleScript, StringComparison.Ordinal);
+        Assert.Contains("function Wait-InstallRootRemoved", cycleScript, StringComparison.Ordinal);
+        Assert.Contains("AddSeconds(90)", cycleScript, StringComparison.Ordinal);
         Assert.Contains("UninstallString", cycleScript, StringComparison.Ordinal);
         Assert.Contains("Could not locate Inno uninstaller path from registry", cycleScript, StringComparison.Ordinal);
         Assert.DoesNotContain(@"Join-Path $uninstallRoot 'unins000.exe'", cycleScript, StringComparison.Ordinal);

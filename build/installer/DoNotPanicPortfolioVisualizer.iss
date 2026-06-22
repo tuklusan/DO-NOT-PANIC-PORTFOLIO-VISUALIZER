@@ -60,6 +60,8 @@ VersionInfoCopyright=Copyright (c) 2026 {#AppAuthor} of {#AppPublisher}. Proprie
 VersionInfoDescription={#AppName} Setup
 DefaultDirName={autopf}\{#AppPublisher}\{#AppFolderName}
 DefaultGroupName={#AppPublisher}\{#AppName}
+; Public installs are intentionally fixed under Program Files so elevated uninstall cleanup can be narrowly scoped and auditable.
+DisableDirPage=yes
 DisableProgramGroupPage=yes
 LicenseFile={#LicenseFile}
 PrivilegesRequired=admin
