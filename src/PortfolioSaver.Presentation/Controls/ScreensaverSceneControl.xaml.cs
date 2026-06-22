@@ -29,7 +29,9 @@ namespace PortfolioSaver.Screensaver.Controls;
 
 public partial class ScreensaverSceneControl : UserControl
 {
-    private const int RuntimeQuoteOfflineFailureThreshold = 10;
+    // User feedback should turn truthful quickly; transport resets stay conservative below.
+    private const int RuntimeQuoteOfflineDisplayFailureThreshold = 2;
+    private const int RuntimeQuoteTransportRecoveryFailureThreshold = 10;
     private static readonly bool EnableMarketCritters = false;
     private const string PinnedNycExchangeKey = "NewYorkNasdaq";
     private const int MaxVisibleGraphCards = 16;
@@ -122,7 +124,7 @@ public partial class ScreensaverSceneControl : UserControl
     private DateTimeOffset _lastRuntimeQuoteLoopHeartbeatUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastDisplayedTapeSampleTraceUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastFullTapeSyncUtc = DateTimeOffset.MinValue;
-    private readonly RuntimeQuoteRecoveryGate _runtimeQuoteRecoveryGate = new(RuntimeQuoteOfflineFailureThreshold, TimeSpan.FromSeconds(30));
+    private readonly RuntimeQuoteRecoveryGate _runtimeQuoteRecoveryGate = new(RuntimeQuoteTransportRecoveryFailureThreshold, TimeSpan.FromSeconds(30));
     private CancellationTokenSource? _newsRefreshCancellation;
     private Task? _newsRefreshTask;
     private int _newsRefreshInFlight;
@@ -4070,12 +4072,22 @@ public partial class ScreensaverSceneControl : UserControl
         if (_statusViewModel is null)
             return;
 
+        string? previousFreshnessText = _statusViewModel.DataFreshnessText;
         bool networkAvailable = StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(
             _networkAvailabilityService.IsNetworkAvailable(),
             ReadRuntimeQuoteFailureStreak(),
-            RuntimeQuoteOfflineFailureThreshold);
+            RuntimeQuoteOfflineDisplayFailureThreshold);
         _statusViewModel.DataFreshnessText = StartupCoordinator.ResolveDataFreshnessText(networkAvailable, _latestQuotes);
         _statusViewModel.DataFreshnessForeground = StartupCoordinator.ResolveDataFreshnessBrush(networkAvailable, _latestQuotes);
+        if (!string.Equals(previousFreshnessText, _statusViewModel.DataFreshnessText, StringComparison.Ordinal))
+        {
+            TraceSceneState(
+                "RuntimeDataFreshnessChanged",
+                new KeyValuePair<string, object?>("previous_text", previousFreshnessText),
+                new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel.DataFreshnessText),
+                new KeyValuePair<string, object?>("failure_streak", ReadRuntimeQuoteFailureStreak()),
+                new KeyValuePair<string, object?>("quote_count", _latestQuotes.Count));
+        }
     }
 
     private void ApplyCompletedRuntimeQuote(string symbol, Task<IReadOnlyList<QuoteSnapshot>> task)

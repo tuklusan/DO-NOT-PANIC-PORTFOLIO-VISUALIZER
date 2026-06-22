@@ -91,6 +91,29 @@ function Test-TraceAgeFieldFresh {
     return $age -le $MaximumAgeSeconds
 }
 
+function Get-TraceLineTimestampUtc {
+    param([Parameter(Mandatory = $true)][string]$Line)
+
+    $match = [regex]::Match($Line, '\btimestamp=(?<timestamp>\d{4}-\d{2}-\d{2}T[^\s|\]]+)')
+    if (-not $match.Success) {
+        $match = [regex]::Match($Line, '^\s*(?<timestamp>\d{4}-\d{2}-\d{2}T[^\s|\]]+)')
+    }
+    if (-not $match.Success) {
+        return $null
+    }
+
+    $timestamp = [DateTimeOffset]::MinValue
+    if ([DateTimeOffset]::TryParse(
+            $match.Groups['timestamp'].Value,
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            ([System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal),
+            [ref]$timestamp)) {
+        return $timestamp.ToUniversalTime()
+    }
+
+    return $null
+}
+
 function Measure-ImageBrightness {
     param([string]$Path)
     Add-Type -AssemblyName System.Drawing
@@ -235,6 +258,55 @@ foreach ($run in $runs) {
                 "Expected a trace line containing data_freshness_text=OFFLINE after offline fault injection."
             )
             [void]$findings.Add((New-Finding -Code 'offline-ux-state-unverified' -Title 'Offline fault run did not prove a user-visible offline data-freshness state' -Area 'degraded_mode_ux' -Severity 'High' -Evidence $offlineEvidence -Notes @('Offline/degraded validation must prove that stale/cached data is clearly surfaced to the user.')))
+        }
+
+        $faultActivatedAtUtc = $null
+        if ($faultActivationMatches.Count -gt 0) {
+            $faultActivatedAtUtc = Get-TraceLineTimestampUtc -Line (@($faultActivationMatches | Sort-Object LineNumber | Select-Object -First 1)[0].Line)
+        }
+
+        $offlineTransitionHits = @()
+        if (Test-Path -LiteralPath $combinedTrace) {
+            $offlineTransitionHits = @(Select-String -LiteralPath $combinedTrace -Pattern 'event=RuntimeDataFreshnessChanged.*data_freshness_text=OFFLINE' -ErrorAction SilentlyContinue |
+                Where-Object { $null -ne $_ })
+        }
+        if (Test-Path -LiteralPath $freshnessTrace) {
+            $offlineTransitionHits += @(Select-String -LiteralPath $freshnessTrace -Pattern 'latest_freshness=OFFLINE' -ErrorAction SilentlyContinue |
+                Where-Object { $null -ne $_ })
+        }
+
+        $timelyOfflineTransitionHit = $null
+        $offlineTransitionDelaySeconds = $null
+        if ($null -ne $faultActivatedAtUtc) {
+            foreach ($hit in @($offlineTransitionHits | Sort-Object @{ Expression = {
+                            $timestampUtc = Get-TraceLineTimestampUtc -Line $_.Line
+                            if ($null -eq $timestampUtc) { [DateTimeOffset]::MaxValue } else { $timestampUtc }
+                        } })) {
+                $hitTimestampUtc = Get-TraceLineTimestampUtc -Line $hit.Line
+                if ($null -eq $hitTimestampUtc -or $hitTimestampUtc -lt $faultActivatedAtUtc) {
+                    continue
+                }
+
+                $offlineTransitionDelaySeconds = [Math]::Round(($hitTimestampUtc - $faultActivatedAtUtc).TotalSeconds, 3)
+                if ($offlineTransitionDelaySeconds -le 2.5) {
+                    $timelyOfflineTransitionHit = $hit
+                }
+                break
+            }
+        }
+
+        if ($null -eq $timelyOfflineTransitionHit) {
+            $timingEvidence = @(
+                "Run ${runId} used FaultProfile=$faultProfile.",
+                "Fault activation timestamp: $(if ($null -eq $faultActivatedAtUtc) { 'unavailable' } else { $faultActivatedAtUtc.ToString('o') }).",
+                "Offline freshness transition hits: $($offlineTransitionHits.Count).",
+                "First offline transition delay seconds: $(if ($null -eq $offlineTransitionDelaySeconds) { 'unavailable' } else { $offlineTransitionDelaySeconds }).",
+                "Expected RuntimeDataFreshnessChanged to OFFLINE within 2.5 seconds of runtime offline fault activation."
+            )
+            foreach ($hit in @($offlineTransitionHits | Select-Object -First 5)) {
+                $timingEvidence += ("{0}:{1}: {2}" -f (Split-Path -Leaf $hit.Path), $hit.LineNumber, $hit.Line.Trim())
+            }
+            [void]$findings.Add((New-Finding -Code 'offline-ux-state-delay' -Title 'Offline fault run did not prove prompt visible offline feedback' -Area 'degraded_mode_ux' -Severity 'High' -Evidence $timingEvidence -Notes @('CR-086 requires degraded-state feedback to reach the user promptly; runtime offline status should transition within roughly two quote-cadence ticks.')))
         }
 
         if ($faultProfile -eq 'offline-then-recover-runtime') {

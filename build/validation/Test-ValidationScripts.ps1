@@ -67,7 +67,10 @@ try {
         Set-Content -LiteralPath (Join-Path $offlinePassRun 'ux-deep-summary.json') -Encoding UTF8
     '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=offline' |
         Set-Content -LiteralPath (Join-Path $offlinePassRun 'fault-injection-events.log') -Encoding UTF8
-    'event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values' |
+    @(
+        '2026-01-01T00:00:01Z | INFO | event=RuntimeDataFreshnessChanged / previous_text=LIVE quote feed / data_freshness_text=OFFLINE - showing last values / failure_streak=2 / quote_count=12',
+        '2026-01-01T00:00:02Z | INFO | event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values'
+    ) |
         Set-Content -LiteralPath (Join-Path $offlinePassRun 'combined-trace-tail.txt') -Encoding UTF8
     $offlinePassAnalysisPath = Join-Path $tempRoot 'offline-pass-analysis.json'
     $offlinePassOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $offlinePassRun -OutputPath $offlinePassAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
@@ -86,10 +89,35 @@ try {
         Set-Content -LiteralPath (Join-Path $offlineFailRun 'combined-trace-tail.txt') -Encoding UTF8
     $offlineFailAnalysisPath = Join-Path $tempRoot 'offline-fail-analysis.json'
     $offlineFailOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $offlineFailRun -OutputPath $offlineFailAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
-    if (-not ($offlineFailOutput -match 'ANALYSIS_FINDINGS=1')) { throw "Offline-fail analysis did not report exactly one finding. Output: $offlineFailOutput" }
+    if (-not ($offlineFailOutput -match 'ANALYSIS_REPORT=')) { throw 'Offline-fail analysis did not emit ANALYSIS_REPORT.' }
     $offlineFailReport = Get-Content -Raw -LiteralPath $offlineFailAnalysisPath | ConvertFrom-Json
     $offlineFinding = @($offlineFailReport.findings | Where-Object { $_.code -eq 'offline-ux-state-unverified' })
     if ($offlineFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag missing offline UX proof.' }
+    $offlineDelayFinding = @($offlineFailReport.findings | Where-Object { $_.code -eq 'offline-ux-state-delay' })
+    if ($offlineDelayFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag missing prompt offline UX transition proof.' }
+    $offlineTraceAnomalyFinding = @($offlineFailReport.findings | Where-Object { $_.code -eq 'trace-anomalies' })
+    if ($offlineTraceAnomalyFinding.Count -ne 0) { throw 'Offline-fail fixture produced unintended trace-anomaly findings.' }
+
+    $offlineDelayedRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000019'
+    New-Item -ItemType Directory -Force -Path $offlineDelayedRun | Out-Null
+    @{ ResultName = 'ux-deep-ssh-20990101-000019'; ConfigPhaseStatus = 'Completed'; DesktopPhaseStatus = 'Completed'; FullScreenToggleStatus = 'Completed'; FaultProfile = 'offline-during-runtime' } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $offlineDelayedRun 'ux-deep-summary.json') -Encoding UTF8
+    '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=offline' |
+        Set-Content -LiteralPath (Join-Path $offlineDelayedRun 'fault-injection-events.log') -Encoding UTF8
+    @(
+        '2026-01-01T00:00:04Z | INFO | event=RuntimeDataFreshnessChanged / previous_text=LIVE quote feed / data_freshness_text=OFFLINE - showing last values / failure_streak=2 / quote_count=12',
+        '2026-01-01T00:00:05Z | INFO | event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values'
+    ) |
+        Set-Content -LiteralPath (Join-Path $offlineDelayedRun 'combined-trace-tail.txt') -Encoding UTF8
+    $offlineDelayedAnalysisPath = Join-Path $tempRoot 'offline-delayed-analysis.json'
+    $offlineDelayedOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $offlineDelayedRun -OutputPath $offlineDelayedAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
+    if (-not ($offlineDelayedOutput -match 'ANALYSIS_REPORT=')) { throw 'Offline-delayed analysis did not emit ANALYSIS_REPORT.' }
+    $offlineDelayedReport = Get-Content -Raw -LiteralPath $offlineDelayedAnalysisPath | ConvertFrom-Json
+    $offlineDelayedFinding = @($offlineDelayedReport.findings | Where-Object { $_.code -eq 'offline-ux-state-delay' })
+    if ($offlineDelayedFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag delayed prompt offline UX transition proof.' }
+    $offlineDelayedUnexpectedFinding = @($offlineDelayedReport.findings | Where-Object { $_.code -ne 'offline-ux-state-delay' })
+    if ($offlineDelayedUnexpectedFinding.Count -ne 0) { throw 'Offline-delayed fixture produced unintended additional findings.' }
 
     $offlineRuntimeNoActivationRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000018'
     New-Item -ItemType Directory -Force -Path $offlineRuntimeNoActivationRun | Out-Null
@@ -102,7 +130,7 @@ try {
         Set-Content -LiteralPath (Join-Path $offlineRuntimeNoActivationRun 'combined-trace-tail.txt') -Encoding UTF8
     $offlineRuntimeNoActivationAnalysisPath = Join-Path $tempRoot 'offline-runtime-no-activation-analysis.json'
     $offlineRuntimeNoActivationOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $offlineRuntimeNoActivationRun -OutputPath $offlineRuntimeNoActivationAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
-    if (-not ($offlineRuntimeNoActivationOutput -match 'ANALYSIS_FINDINGS=1')) { throw "Offline-runtime-no-activation analysis did not report exactly one finding. Output: $offlineRuntimeNoActivationOutput" }
+    if (-not ($offlineRuntimeNoActivationOutput -match 'ANALYSIS_REPORT=')) { throw 'Offline-runtime-no-activation analysis did not emit ANALYSIS_REPORT.' }
     $offlineRuntimeNoActivationReport = Get-Content -Raw -LiteralPath $offlineRuntimeNoActivationAnalysisPath | ConvertFrom-Json
     $offlineRuntimeActivationFinding = @($offlineRuntimeNoActivationReport.findings | Where-Object { $_.code -eq 'offline-fault-injection-unverified' })
     if ($offlineRuntimeActivationFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag missing runtime offline fault activation.' }
@@ -148,8 +176,9 @@ try {
         '2026-01-01T00:05:00Z event=FaultProfileSet details=profile=none'
     ) | Set-Content -LiteralPath (Join-Path $recoveryPassRun 'fault-injection-events.log') -Encoding UTF8
     @(
-        'event=ApplySceneStateComplete / data_freshness_text=LIVE quote feed',
-        'event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values'
+        '2026-01-01T00:00:00Z | INFO | event=ApplySceneStateComplete / data_freshness_text=LIVE quote feed',
+        '2026-01-01T00:00:01Z | INFO | event=RuntimeDataFreshnessChanged / previous_text=LIVE quote feed / data_freshness_text=OFFLINE - showing last values / failure_streak=2 / quote_count=12',
+        '2026-01-01T00:00:02Z | INFO | event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values'
     ) | Set-Content -LiteralPath (Join-Path $recoveryPassRun 'combined-trace-tail.txt') -Encoding UTF8
     @(
         'timestamp=2026-01-01T00:02:00Z frame=1 phase=capture requested_fault_profile=offline-then-recover-runtime effective_fault_profile=offline latest_freshness=OFFLINE - showing last values latest_freshness_source=trace trace_age_seconds=20 ui_freshness=unavailable',
@@ -171,6 +200,10 @@ try {
         '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=offline',
         '2026-01-01T00:05:00Z event=FaultProfileSet details=profile=none'
     ) | Set-Content -LiteralPath (Join-Path $recoveryStaleTraceRun 'fault-injection-events.log') -Encoding UTF8
+    @(
+        '2026-01-01T00:00:01Z | INFO | event=RuntimeDataFreshnessChanged / previous_text=LIVE quote feed / data_freshness_text=OFFLINE - showing last values / failure_streak=2 / quote_count=12',
+        '2026-01-01T00:00:02Z | INFO | event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values'
+    ) | Set-Content -LiteralPath (Join-Path $recoveryStaleTraceRun 'combined-trace-tail.txt') -Encoding UTF8
     @(
         'timestamp=2026-01-01T00:02:00Z frame=1 phase=capture requested_fault_profile=offline-then-recover-runtime effective_fault_profile=offline latest_freshness=OFFLINE - showing last values latest_freshness_source=trace trace_age_seconds=20 ui_freshness=unavailable',
         'timestamp=2026-01-01T00:05:07Z frame=2 phase=after-recovery-clear requested_fault_profile=offline-then-recover-runtime effective_fault_profile=none latest_freshness=LIVE quote feed latest_freshness_source=ui-trace-stale trace_age_seconds=300 ui_freshness=LIVE quote feed',
@@ -194,8 +227,9 @@ try {
         '2026-01-01T00:05:00Z event=FaultProfileSet details=profile=none'
     ) | Set-Content -LiteralPath (Join-Path $recoveryCombinedOnlyRun 'fault-injection-events.log') -Encoding UTF8
     @(
-        'event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values',
-        'event=RuntimeQuoteApplied / data_freshness_text=LIVE quote feed'
+        '2026-01-01T00:00:01Z | INFO | event=RuntimeDataFreshnessChanged / previous_text=LIVE quote feed / data_freshness_text=OFFLINE - showing last values / failure_streak=2 / quote_count=12',
+        '2026-01-01T00:00:02Z | INFO | event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values',
+        '2026-01-01T00:05:07Z | INFO | event=RuntimeQuoteApplied / data_freshness_text=LIVE quote feed'
     ) | Set-Content -LiteralPath (Join-Path $recoveryCombinedOnlyRun 'combined-trace-tail.txt') -Encoding UTF8
     $recoveryCombinedOnlyAnalysisPath = Join-Path $tempRoot 'recovery-combined-only-analysis.json'
     $recoveryCombinedOnlyOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $recoveryCombinedOnlyRun -OutputPath $recoveryCombinedOnlyAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
@@ -215,8 +249,9 @@ try {
     ) |
         Set-Content -LiteralPath (Join-Path $recoveryFailRun 'fault-injection-events.log') -Encoding UTF8
     @(
-        'event=ApplySceneStateComplete / data_freshness_text=LIVE quote feed',
-        'event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values'
+        '2026-01-01T00:00:00Z | INFO | event=ApplySceneStateComplete / data_freshness_text=LIVE quote feed',
+        '2026-01-01T00:00:01Z | INFO | event=RuntimeDataFreshnessChanged / previous_text=LIVE quote feed / data_freshness_text=OFFLINE - showing last values / failure_streak=2 / quote_count=12',
+        '2026-01-01T00:00:02Z | INFO | event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values'
     ) | Set-Content -LiteralPath (Join-Path $recoveryFailRun 'combined-trace-tail.txt') -Encoding UTF8
     $recoveryFailAnalysisPath = Join-Path $tempRoot 'recovery-fail-analysis.json'
     $recoveryFailOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $recoveryFailRun -OutputPath $recoveryFailAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
@@ -233,6 +268,10 @@ try {
         '2026-01-01T00:00:00Z event=FaultProfileSet details=profile=offline',
         '2026-01-01T00:05:00Z event=FaultProfileSet details=profile=none'
     ) | Set-Content -LiteralPath (Join-Path $recoveryPartialFreshnessRun 'fault-injection-events.log') -Encoding UTF8
+    @(
+        '2026-01-01T00:00:01Z | INFO | event=RuntimeDataFreshnessChanged / previous_text=LIVE quote feed / data_freshness_text=OFFLINE - showing last values / failure_streak=2 / quote_count=12',
+        '2026-01-01T00:00:02Z | INFO | event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values'
+    ) | Set-Content -LiteralPath (Join-Path $recoveryPartialFreshnessRun 'combined-trace-tail.txt') -Encoding UTF8
     @(
         'timestamp=2026-01-01T00:02:00Z frame=1 phase=capture requested_fault_profile=offline-then-recover-runtime effective_fault_profile=offline latest_freshness=OFFLINE - showing last values',
         'timestamp=2026-01-01T00:05:07Z frame=2 phase=capture requested_fault_profile=offline-then-recover-runtime effective_fault_profile=none latest_freshness=OFFLINE - showing last values'
@@ -254,8 +293,9 @@ try {
         '2026-01-01T00:05:00Z event=FaultProfileSet details=profile=none'
     ) | Set-Content -LiteralPath (Join-Path $recoveryMixedSourceRun 'fault-injection-events.log') -Encoding UTF8
     @(
-        'event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values',
-        'event=RuntimeQuoteApplied / data_freshness_text=LIVE quote feed'
+        '2026-01-01T00:00:01Z | INFO | event=RuntimeDataFreshnessChanged / previous_text=LIVE quote feed / data_freshness_text=OFFLINE - showing last values / failure_streak=2 / quote_count=12',
+        '2026-01-01T00:00:02Z | INFO | event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values',
+        '2026-01-01T00:05:07Z | INFO | event=RuntimeQuoteApplied / data_freshness_text=LIVE quote feed'
     ) | Set-Content -LiteralPath (Join-Path $recoveryMixedSourceRun 'combined-trace-tail.txt') -Encoding UTF8
     'timestamp=2026-01-01T00:02:00Z frame=1 phase=capture requested_fault_profile=offline-then-recover-runtime effective_fault_profile=offline latest_freshness=OFFLINE - showing last values' |
         Set-Content -LiteralPath (Join-Path $recoveryMixedSourceRun 'runtime-freshness-events.log') -Encoding UTF8
@@ -292,8 +332,9 @@ try {
         '2026-01-01T00:05:00Z event=FaultProfileSet details=profile=none'
     ) | Set-Content -LiteralPath (Join-Path $recoveryInsufficientRun 'fault-injection-events.log') -Encoding UTF8
     @(
-        'event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values',
-        'event=RuntimeQuoteApplied / data_freshness_text=LIVE quote feed'
+        '2026-01-01T00:00:01Z | INFO | event=RuntimeDataFreshnessChanged / previous_text=LIVE quote feed / data_freshness_text=OFFLINE - showing last values / failure_streak=2 / quote_count=12',
+        '2026-01-01T00:00:02Z | INFO | event=RuntimeQuoteRequestFailed / data_freshness_text=OFFLINE - showing last values',
+        '2026-01-01T00:05:07Z | INFO | event=RuntimeQuoteApplied / data_freshness_text=LIVE quote feed'
     ) | Set-Content -LiteralPath (Join-Path $recoveryInsufficientRun 'combined-trace-tail.txt') -Encoding UTF8
     $recoveryInsufficientAnalysisPath = Join-Path $tempRoot 'recovery-insufficient-analysis.json'
     $recoveryInsufficientOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $recoveryInsufficientRun -OutputPath $recoveryInsufficientAnalysisPath -MinimumScreenshots 0 -SkipDeepSeekArtifactReview
@@ -486,3 +527,4 @@ finally {
 }
 
 Write-Output 'VALIDATION_SCRIPT_SMOKE_TEST=Passed'
+

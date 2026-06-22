@@ -1060,7 +1060,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("_statusViewModel.UpdatedTickerFieldText = StartupCoordinator.FormatUpdatedTickerField", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_statusViewModel.UpdatedTickerFieldForeground = StartupCoordinator.ResolveUpdatedTickerFieldBrush", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_statusViewModel.DataFreshnessText = StartupCoordinator.ResolveDataFreshnessText", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("RuntimeQuoteOfflineFailureThreshold = 10", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RuntimeQuoteOfflineDisplayFailureThreshold = 2", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RuntimeQuoteTransportRecoveryFailureThreshold = 10", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RuntimeDataFreshnessChanged", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ResolveEffectiveDataFreshnessNetworkState", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("failure_counted", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("UpdateDataFreshnessStatus();", sceneCodeBehind, StringComparison.Ordinal);

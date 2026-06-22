@@ -2,3 +2,5 @@
 Simulated network outage
 network_lost
 FaultProfileSet details=profile=offline
+RuntimeQuoteRequestFailed
+RuntimeDataFreshnessChanged

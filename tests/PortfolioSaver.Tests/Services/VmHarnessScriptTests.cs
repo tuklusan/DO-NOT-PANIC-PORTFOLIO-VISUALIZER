@@ -486,8 +486,12 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("offline-then-recover-runtime", script, StringComparison.Ordinal);
         Assert.Contains("offline-recovery-ux-state-unverified", script, StringComparison.Ordinal);
         Assert.Contains("offline-recovery-insufficient-captures", script, StringComparison.Ordinal);
+        Assert.Contains("offline-ux-state-delay", script, StringComparison.Ordinal);
+        Assert.Contains("RuntimeDataFreshnessChanged", script, StringComparison.Ordinal);
         Assert.Contains("recovery-no-activation-analysis.json", script, StringComparison.Ordinal);
         Assert.Contains("data_freshness_text=LIVE quote feed", script, StringComparison.Ordinal);
+        Assert.Contains("Get-TraceLineTimestampUtc", analyzer, StringComparison.Ordinal);
+        Assert.Contains("Expected RuntimeDataFreshnessChanged to OFFLINE within 2.5 seconds", analyzer, StringComparison.Ordinal);
         Assert.Contains("function Test-TraceAgeFieldFresh", analyzer, StringComparison.Ordinal);
         Assert.Contains("[double]::TryParse", analyzer, StringComparison.Ordinal);
         Assert.Contains("Minimum blocking completion ratio is 50 percent", analyzer, StringComparison.Ordinal);
