@@ -47,8 +47,11 @@ public sealed class ProjectLicenseServiceTests
         Assert.Contains("PackagePath=\"THIRD-PARTY-LICENSES\\%(RecursiveDir)\"", props, StringComparison.Ordinal);
         Assert.Contains("CopyPortfolioSaverThirdPartyFilesToBuildOutput", targets, StringComparison.Ordinal);
         Assert.Contains("CopyPortfolioSaverThirdPartyFilesToPublishOutput", targets, StringComparison.Ordinal);
-        Assert.Contains("<TargetPath>LICENSE</TargetPath>", targets, StringComparison.Ordinal);
-        Assert.Contains("DestinationFiles=\"@(PortfolioSaverThirdPartyDistributionFile->'$(PublishDir)%(TargetPath)')\"", targets, StringComparison.Ordinal);
+        Assert.Contains("'$(_IsPublishing)' != 'true'", targets, StringComparison.Ordinal);
+        Assert.Contains("DestinationFiles=\"@(PortfolioSaverDistributionRootFile->'$(TargetDir)%(Filename)%(Extension)')\"", targets, StringComparison.Ordinal);
+        Assert.Contains("DestinationFiles=\"@(PortfolioSaverDistributionLicenseFile->'$(TargetDir)THIRD-PARTY-LICENSES\\%(RecursiveDir)%(Filename)%(Extension)')\"", targets, StringComparison.Ordinal);
+        Assert.Contains("DestinationFiles=\"@(PortfolioSaverDistributionRootFile->'$(PublishDir)%(Filename)%(Extension)')\"", targets, StringComparison.Ordinal);
+        Assert.Contains("DestinationFiles=\"@(PortfolioSaverDistributionLicenseFile->'$(PublishDir)THIRD-PARTY-LICENSES\\%(RecursiveDir)%(Filename)%(Extension)')\"", targets, StringComparison.Ordinal);
         Assert.Contains("<EmbeddedResource Include=\"..\\..\\LICENSE\" LogicalName=\"PortfolioSaver.LICENSE\" />", sharedProject, StringComparison.Ordinal);
     }
 

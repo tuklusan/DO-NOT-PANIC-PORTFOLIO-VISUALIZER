@@ -26,24 +26,21 @@
 <Project>
   <Target Name="CopyPortfolioSaverThirdPartyFilesToBuildOutput"
           AfterTargets="Build"
-          Condition="'$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe'">
+          Condition="('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe') And '$(_IsPublishing)' != 'true'">
     <ItemGroup>
-      <PortfolioSaverThirdPartyDistributionFile Include="$(MSBuildThisFileDirectory)LICENSE"
-                                                Condition="Exists('$(MSBuildThisFileDirectory)LICENSE')">
-        <TargetPath>LICENSE</TargetPath>
-      </PortfolioSaverThirdPartyDistributionFile>
-      <PortfolioSaverThirdPartyDistributionFile Include="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md"
-                                                Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md')">
-        <TargetPath>THIRD-PARTY-NOTICES.md</TargetPath>
-      </PortfolioSaverThirdPartyDistributionFile>
-      <PortfolioSaverThirdPartyDistributionFile Include="$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES\**\*"
-                                                Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES')">
-        <TargetPath>THIRD-PARTY-LICENSES\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
-      </PortfolioSaverThirdPartyDistributionFile>
+      <PortfolioSaverDistributionRootFile Include="$(MSBuildThisFileDirectory)LICENSE"
+                                          Condition="Exists('$(MSBuildThisFileDirectory)LICENSE')" />
+      <PortfolioSaverDistributionRootFile Include="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md"
+                                          Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md')" />
+      <PortfolioSaverDistributionLicenseFile Include="$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES\**\*"
+                                             Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES')" />
     </ItemGroup>
 
-    <Copy SourceFiles="@(PortfolioSaverThirdPartyDistributionFile)"
-          DestinationFiles="@(PortfolioSaverThirdPartyDistributionFile->'$(TargetDir)%(TargetPath)')"
+    <Copy SourceFiles="@(PortfolioSaverDistributionRootFile)"
+          DestinationFiles="@(PortfolioSaverDistributionRootFile->'$(TargetDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(PortfolioSaverDistributionLicenseFile)"
+          DestinationFiles="@(PortfolioSaverDistributionLicenseFile->'$(TargetDir)THIRD-PARTY-LICENSES\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
 
@@ -51,22 +48,19 @@
           AfterTargets="Publish"
           Condition="('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe') And '$(PublishDir)' != ''">
     <ItemGroup>
-      <PortfolioSaverThirdPartyDistributionFile Include="$(MSBuildThisFileDirectory)LICENSE"
-                                                Condition="Exists('$(MSBuildThisFileDirectory)LICENSE')">
-        <TargetPath>LICENSE</TargetPath>
-      </PortfolioSaverThirdPartyDistributionFile>
-      <PortfolioSaverThirdPartyDistributionFile Include="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md"
-                                                Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md')">
-        <TargetPath>THIRD-PARTY-NOTICES.md</TargetPath>
-      </PortfolioSaverThirdPartyDistributionFile>
-      <PortfolioSaverThirdPartyDistributionFile Include="$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES\**\*"
-                                                Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES')">
-        <TargetPath>THIRD-PARTY-LICENSES\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
-      </PortfolioSaverThirdPartyDistributionFile>
+      <PortfolioSaverDistributionRootFile Include="$(MSBuildThisFileDirectory)LICENSE"
+                                          Condition="Exists('$(MSBuildThisFileDirectory)LICENSE')" />
+      <PortfolioSaverDistributionRootFile Include="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md"
+                                          Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md')" />
+      <PortfolioSaverDistributionLicenseFile Include="$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES\**\*"
+                                             Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES')" />
     </ItemGroup>
 
-    <Copy SourceFiles="@(PortfolioSaverThirdPartyDistributionFile)"
-          DestinationFiles="@(PortfolioSaverThirdPartyDistributionFile->'$(PublishDir)%(TargetPath)')"
+    <Copy SourceFiles="@(PortfolioSaverDistributionRootFile)"
+          DestinationFiles="@(PortfolioSaverDistributionRootFile->'$(PublishDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(PortfolioSaverDistributionLicenseFile)"
+          DestinationFiles="@(PortfolioSaverDistributionLicenseFile->'$(PublishDir)THIRD-PARTY-LICENSES\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
 </Project>
