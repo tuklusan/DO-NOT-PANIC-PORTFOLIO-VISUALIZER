@@ -1362,7 +1362,7 @@ public partial class ScreensaverSceneControl : UserControl
                 graph.VelocityY = NextVelocity();
                 graph.NominalVelocityX = graph.VelocityX;
                 graph.NominalVelocityY = graph.VelocityY;
-                graph.RefreshTravelTargetY = null;
+                ClearGraphRefreshTravelState(graph);
                 graph.BounceWithinViewport = _settings.EnableBouncingGraphCards;
                 graphIndex++;
             }
@@ -1398,6 +1398,10 @@ public partial class ScreensaverSceneControl : UserControl
 
         foreach (FloatingGraphViewModel graph in EnumerateVisibleGraphCards())
         {
+            string? invalidResetReason = ResetInvalidGraphRefreshImpulseIfNeeded(graph);
+            if (invalidResetReason is not null)
+                TraceScene($"GraphCardFlashStop symbol={graph.Symbol} reason={invalidResetReason} y={graph.Y:F1} velocity_y={graph.VelocityY:F1}");
+
             ApplyGraphRefreshImpulse(graph, bounds);
             _motionController.Step(graph, bounds, elapsedSeconds);
             string? resetReason = ResetGraphRefreshImpulseIfNeeded(graph, bounds);
@@ -2877,12 +2881,19 @@ public partial class ScreensaverSceneControl : UserControl
         {
             targetGraph.NominalVelocityX = sourceGraph.NominalVelocityX;
             targetGraph.NominalVelocityY = sourceGraph.NominalVelocityY;
-            targetGraph.RefreshTravelTargetY = sourceGraph.RefreshTravelTargetY;
             targetGraph.RawLastValue = sourceGraph.RawLastValue;
             targetGraph.QuoteUpdateToken = sourceGraph.QuoteUpdateToken;
             targetGraph.FlashBrush = sourceGraph.FlashBrush;
-            targetGraph.IsRefreshTravelFlashActive = sourceGraph.IsRefreshTravelFlashActive;
-            targetGraph.RefreshTravelFlashStartedUtc = sourceGraph.RefreshTravelFlashStartedUtc;
+            if (sourceGraph.RefreshTravelTargetY is double sourceTargetY)
+            {
+                targetGraph.RefreshTravelTargetY = sourceTargetY;
+                targetGraph.IsRefreshTravelFlashActive = sourceGraph.IsRefreshTravelFlashActive;
+                targetGraph.RefreshTravelFlashStartedUtc = sourceGraph.RefreshTravelFlashStartedUtc;
+            }
+            else
+            {
+                ClearGraphRefreshTravelState(targetGraph);
+            }
         }
     }
 
@@ -3499,8 +3510,7 @@ public partial class ScreensaverSceneControl : UserControl
             graph.RefreshTravelFlashStartedUtc > DateTimeOffset.MinValue &&
             DateTimeOffset.UtcNow - graph.RefreshTravelFlashStartedUtc >= GraphRefreshTravelFlashMaximumDuration)
         {
-            graph.IsRefreshTravelFlashActive = false;
-            graph.RefreshTravelTargetY = null;
+            ClearGraphRefreshTravelState(graph);
             graph.VelocityX = graph.NominalVelocityX == 0d ? graph.VelocityX : graph.NominalVelocityX;
             graph.VelocityY = graph.NominalVelocityY == 0d ? graph.VelocityY : graph.NominalVelocityY;
             return "timeout";
@@ -3512,8 +3522,7 @@ public partial class ScreensaverSceneControl : UserControl
         if (!hitBoundary)
             return null;
 
-        graph.RefreshTravelTargetY = null;
-        graph.IsRefreshTravelFlashActive = false;
+        ClearGraphRefreshTravelState(graph);
         graph.VelocityX = graph.NominalVelocityX == 0d ? graph.VelocityX : graph.NominalVelocityX;
         graph.VelocityY = graph.NominalVelocityY == 0d
             ? graph.VelocityY
@@ -3521,6 +3530,24 @@ public partial class ScreensaverSceneControl : UserControl
                 ? Math.Abs(graph.NominalVelocityY)
                 : -Math.Abs(graph.NominalVelocityY));
         return targetY <= bounds.Top + 1d ? "top-boundary" : "bottom-boundary";
+    }
+
+    private static string? ResetInvalidGraphRefreshImpulseIfNeeded(FloatingGraphViewModel graph)
+    {
+        if (!graph.IsRefreshTravelFlashActive || graph.RefreshTravelTargetY is not null)
+            return null;
+
+        ClearGraphRefreshTravelState(graph);
+        graph.VelocityX = graph.NominalVelocityX == 0d ? graph.VelocityX : graph.NominalVelocityX;
+        graph.VelocityY = graph.NominalVelocityY == 0d ? graph.VelocityY : graph.NominalVelocityY;
+        return "missing-target";
+    }
+
+    private static void ClearGraphRefreshTravelState(FloatingGraphViewModel graph)
+    {
+        graph.RefreshTravelTargetY = null;
+        graph.IsRefreshTravelFlashActive = false;
+        graph.RefreshTravelFlashStartedUtc = DateTimeOffset.MinValue;
     }
 
     private static void StopBackgroundAnimations(Image image)

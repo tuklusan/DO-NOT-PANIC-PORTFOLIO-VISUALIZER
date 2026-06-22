@@ -793,6 +793,110 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
+    public void CopyMotion_ClearsInvalidGraphFlashStateWhenTargetIsMissing()
+    {
+        FloatingGraphViewModel source = new()
+        {
+            RefreshTravelTargetY = null,
+            IsRefreshTravelFlashActive = true,
+            RefreshTravelFlashStartedUtc = DateTimeOffset.UtcNow,
+            RawLastValue = 456.78m,
+            QuoteUpdateToken = 99,
+            FlashBrush = Brushes.LimeGreen
+        };
+        FloatingGraphViewModel target = new()
+        {
+            RefreshTravelTargetY = 0,
+            IsRefreshTravelFlashActive = true,
+            RefreshTravelFlashStartedUtc = DateTimeOffset.UtcNow
+        };
+
+        MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+            "CopyMotion",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("CopyMotion method not found.");
+        method.Invoke(null, [source, target]);
+
+        Assert.Null(target.RefreshTravelTargetY);
+        Assert.False(target.IsRefreshTravelFlashActive);
+        Assert.Equal(DateTimeOffset.MinValue, target.RefreshTravelFlashStartedUtc);
+        Assert.Equal(source.RawLastValue, target.RawLastValue);
+        Assert.Equal(source.QuoteUpdateToken, target.QuoteUpdateToken);
+        Assert.Same(source.FlashBrush, target.FlashBrush);
+    }
+
+    [Fact]
+    public void SeedSpriteLayout_ClearsGraphFlashTravelStateWhenReseeding()
+    {
+        RunOnSta(() =>
+        {
+            ScreensaverSceneControl control = new();
+            control.ApplyTemplate();
+            control.Measure(new Size(1280, 720));
+            control.Arrange(new Rect(0, 0, 1280, 720));
+            control.UpdateLayout();
+
+            FloatingGraphViewModel graph = new()
+            {
+                Symbol = "VOO",
+                TapeName = "CORE",
+                Width = 140,
+                Height = 84,
+                IsVisible = true,
+                RefreshTravelTargetY = 0,
+                IsRefreshTravelFlashActive = true,
+                RefreshTravelFlashStartedUtc = DateTimeOffset.UtcNow
+            };
+
+            FieldInfo graphsField = typeof(ScreensaverSceneControl).GetField(
+                "_graphs",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_graphs field not found.");
+            System.Collections.IList graphs = (System.Collections.IList)(graphsField.GetValue(control)
+                ?? throw new InvalidOperationException("_graphs value not found."));
+            graphs.Add(graph);
+
+            MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+                "SeedSpriteLayout",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("SeedSpriteLayout method not found.");
+            method.Invoke(control, [false]);
+
+            Assert.Null(graph.RefreshTravelTargetY);
+            Assert.False(graph.IsRefreshTravelFlashActive);
+            Assert.Equal(DateTimeOffset.MinValue, graph.RefreshTravelFlashStartedUtc);
+        });
+    }
+
+    [Fact]
+    public void ResetInvalidGraphRefreshImpulseIfNeeded_ClearsMissingTargetFlashState()
+    {
+        FloatingGraphViewModel graph = new()
+        {
+            VelocityX = 260,
+            VelocityY = -260,
+            NominalVelocityX = 3,
+            NominalVelocityY = -4,
+            RefreshTravelTargetY = null,
+            IsRefreshTravelFlashActive = true,
+            RefreshTravelFlashStartedUtc = DateTimeOffset.UtcNow
+        };
+
+        MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+            "ResetInvalidGraphRefreshImpulseIfNeeded",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("ResetInvalidGraphRefreshImpulseIfNeeded method not found.");
+        object? reason = method.Invoke(null, [graph]);
+
+        Assert.Equal("missing-target", reason);
+        Assert.Null(graph.RefreshTravelTargetY);
+        Assert.False(graph.IsRefreshTravelFlashActive);
+        Assert.Equal(DateTimeOffset.MinValue, graph.RefreshTravelFlashStartedUtc);
+        Assert.Equal(3, graph.VelocityX);
+        Assert.Equal(-4, graph.VelocityY);
+    }
+
+    [Fact]
     public void FloatingGraphControl_DataContextChangeReconcilesSustainedFlashState()
     {
         RunOnSta(() =>
