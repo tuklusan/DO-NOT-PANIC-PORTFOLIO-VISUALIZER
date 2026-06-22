@@ -5443,17 +5443,24 @@
       "priority": 1,
       "area": "graph_cards",
       "title": "Critical regression: graph cards remain in sustained flash/travel state after raw-price updates",
-      "status": "open",
+      "status": "closed",
       "source": "user_vm_observation_2026_06_22_15min_graph_cart_validation",
       "severity": "Critical",
       "evidence": [
         "User observed during 15-minute VM run ux-deep-ssh-20260622-061700 that all graph carts are continuously flashing, which violates the required old behavior.",
         "Trace shows GraphCardFlash raw-price-change events burst at 2026-06-22T10:30:33Z through 10:31:14Z for many symbols, but no trace-visible GraphCardFlashStop/refresh-travel completion events.",
-        "Code inspection shows sustained card flash uses RepeatBehavior.Forever while IsRefreshTravelFlashActive is true, and refresh-travel velocity is only twice nominal graph velocity, making edge hit/stop unreliable and visually long-running."
+        "Code inspection shows sustained card flash uses RepeatBehavior.Forever while IsRefreshTravelFlashActive is true, and refresh-travel velocity is only twice nominal graph velocity, making edge hit/stop unreliable and visually long-running.",
+        "Implemented in commits 25f0cfe, c5a66fd, 4e15de1, and 1a7fc56: sustained visual flash is finite, refresh-travel state is cleared consistently, invalid active/no-target state is normalized, and structural validation/graph-warmup hydration suppresses graph-card flash/travel cues.",
+        "Focused local validation passed on 2026-06-22: ScreensaverRenderBehaviorTests 76/76 and validation script smoke passed.",
+        "VM validation ux-deep-ssh-20260622-084652 passed build/test/publish with 518/518 tests and completed config/desktop/fullscreen phases.",
+        "Trace proof for ux-deep-ssh-20260622-084652: GraphCardFlash starts=0, GraphCardFlashSuppressed=21 for structural-hydration, GraphCardFlashSkipped=0, proving the prior synchronized runaway flash burst no longer occurs during validation rebuild or graph warmup hydration.",
+        "Artifact analyzer report build/validation/artifacts/visual-validation-analysis-cr128-20260622-092006.json reported ANALYSIS_CLEAN=True with 0 findings; DeepSeek advisory build/validation/artifacts/deepseek-artifact-review-20260622-092012.md agreed the deterministic functional check passes, with only broader non-blocking harness coverage recommendations."
       ],
       "notes": [
         "Restore behavior: flash green/red only on actual raw price change, travel quickly to top for gain or bottom for loss, stop flashing when edge is reached or a short bounded fail-safe expires, then resume normal bounce motion.",
-        "Add trace-visible start/stop evidence and focused tests so future VM artifacts can prove the lifecycle."
+        "Add trace-visible start/stop evidence and focused tests so future VM artifacts can prove the lifecycle.",
+        "Final design distinction: structural hydration/rebuild/warmup updates values silently and logs GraphCardFlashSuppressed; normal runtime raw-price changes remain eligible for graph-card flash/travel behavior and are covered by focused render-behavior tests.",
+        "DeepSeek artifact advisory noted no screensaver-phase coverage in the SSH run, limited spot-check breadth, config validation EditorChangeIgnored volume, and single-resolution coverage. These are accepted as non-blocking for CR-128 because the defect was in the desktop graph-card runtime path and the final trace/screenshots prove the blanket continuous flashing regression is removed."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
