@@ -45,7 +45,8 @@ public sealed class InnoInstallerScriptTests
         Assert.Contains("-AllUsers", script, StringComparison.Ordinal);
         Assert.Contains("skipifdoesntexist", script, StringComparison.Ordinal);
         Assert.Contains("function InitializeUninstall(): Boolean;", script, StringComparison.Ordinal);
-        Assert.Contains("if not WizardSilent then", script, StringComparison.Ordinal);
+        Assert.Contains("if not UninstallSilent then", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("if not WizardSilent then", script, StringComparison.Ordinal);
         Assert.Contains("DoNotPanicPortfolioVisualizer for local Windows user profiles", script, StringComparison.Ordinal);
 
         string cycleScript = ReadRepoText("build", "installer", "Test-InnoInstallCycle.ps1");

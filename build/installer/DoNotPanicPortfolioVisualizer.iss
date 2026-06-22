@@ -101,7 +101,7 @@ Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile
 function InitializeUninstall(): Boolean;
 begin
   Result := True;
-  if not WizardSilent then
+  if not UninstallSilent then
   begin
     Result := MsgBox(
       'Uninstall will remove the application from Program Files and delete the app-owned Local AppData folder named DoNotPanicPortfolioVisualizer for local Windows user profiles. External folders selected by users are not removed. Continue?',
