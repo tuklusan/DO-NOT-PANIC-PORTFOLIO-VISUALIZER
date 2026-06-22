@@ -513,6 +513,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Get-LatestDisplayedTapeSample", script, StringComparison.Ordinal);
         Assert.Contains("function Get-PreferredDisplayedTapeSample", script, StringComparison.Ordinal);
         Assert.Contains("function Test-IsDisplayedSampleFullyLive", script, StringComparison.Ordinal);
+        Assert.Contains("$parsedSamples.Add([object]$items.ToArray())", script, StringComparison.Ordinal);
+        Assert.Contains("for ($sampleIndex = $parsedSamples.Count - 1; $sampleIndex -ge 0; $sampleIndex--)", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("Select-Object -Reverse", script, StringComparison.Ordinal);
         Assert.Contains("function Write-ReferenceSpotCheckComparison", script, StringComparison.Ordinal);
         Assert.Contains("YFinanceTrace", script, StringComparison.Ordinal);
         Assert.Contains("VmTraceQuoteEvidence.ps1", script, StringComparison.Ordinal);

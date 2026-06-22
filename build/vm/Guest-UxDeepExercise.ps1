@@ -2246,7 +2246,7 @@ function Get-PreferredDisplayedTapeSample {
         }
 
         if ($items.Count -gt 0) {
-            $parsedSamples.Add(@($items.ToArray()))
+            $parsedSamples.Add([object]$items.ToArray())
         }
     }
 
@@ -2254,7 +2254,8 @@ function Get-PreferredDisplayedTapeSample {
         return @()
     }
 
-    foreach ($sample in (@($parsedSamples) | Select-Object -Reverse)) {
+    for ($sampleIndex = $parsedSamples.Count - 1; $sampleIndex -ge 0; $sampleIndex--) {
+        $sample = @($parsedSamples[$sampleIndex])
         if (Test-IsDisplayedSampleFullyLive -DisplayedSample $sample) {
             return @($sample)
         }
