@@ -67,7 +67,8 @@ public sealed class YFinanceExchangeTimingService
     public ExchangeCalendarStatus ResolveStatus(ExchangeTradingCalendar calendar, DateTimeOffset utcNow)
     {
         CurrentTradingPeriods? periods = calendar.CurrentTradingPeriod;
-        if (periods is null)
+        if (periods is null ||
+            (periods.Regular is null && periods.Pre is null && periods.Post is null))
         {
             return new ExchangeCalendarStatus
             {
