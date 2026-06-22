@@ -79,6 +79,7 @@ function Assert-InstalledState {
     $desktopExe = Join-Path $installRoot 'PortfolioSaver.Desktop.exe'
     $license = Join-Path $installRoot 'LICENSE'
     $apache = Join-Path $installRoot 'THIRD-PARTY-LICENSES\APACHE-2.0.txt'
+    $uninstaller = Join-Path $installRoot 'unins000.exe'
     $uninstallKey = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{B0839D4C-1D29-4D9C-95E3-C88E4D8E37E5}_is1'
 
     if ($ExpectedInstalled) {
@@ -96,6 +97,16 @@ function Assert-InstalledState {
 
     if (Test-Path -LiteralPath $desktopExe) {
         throw "Desktop executable still present after uninstall: $desktopExe"
+    }
+
+    if (Test-Path -LiteralPath $uninstaller) {
+        throw "Inno uninstaller stub still present after uninstall: $uninstaller"
+    }
+
+    if (Test-Path -LiteralPath $installRoot) {
+        $remaining = @(Get-ChildItem -LiteralPath $installRoot -Force -ErrorAction SilentlyContinue |
+            ForEach-Object { $_.FullName })
+        throw "Install root still present after uninstall: $installRoot. Remaining: $($remaining -join '; ')"
     }
 
     if (Test-Path -LiteralPath $uninstallKey) {

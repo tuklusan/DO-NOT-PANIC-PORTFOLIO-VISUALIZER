@@ -47,6 +47,10 @@ public sealed class InnoInstallerScriptTests
         Assert.Contains("function InitializeUninstall(): Boolean;", script, StringComparison.Ordinal);
         Assert.Contains("if not UninstallSilent then", script, StringComparison.Ordinal);
         Assert.DoesNotContain("if not WizardSilent then", script, StringComparison.Ordinal);
+        Assert.Contains("[UninstallDelete]", script, StringComparison.Ordinal);
+        Assert.DoesNotContain(@"Type: files; Name: ""{app}\unins*.exe""", script, StringComparison.Ordinal);
+        Assert.Contains(@"Type: dirifempty; Name: ""{app}""", script, StringComparison.Ordinal);
+        Assert.Contains(@"Type: dirifempty; Name: ""{autopf}\{#AppPublisher}""", script, StringComparison.Ordinal);
         Assert.Contains("DoNotPanicPortfolioVisualizer for local Windows user profiles", script, StringComparison.Ordinal);
 
         string cycleScript = ReadRepoText("build", "installer", "Test-InnoInstallCycle.ps1");
@@ -54,6 +58,8 @@ public sealed class InnoInstallerScriptTests
         Assert.Contains("#requires -Version 7.0", cycleScript, StringComparison.Ordinal);
         Assert.Contains("ArgumentList.Add", cycleScript, StringComparison.Ordinal);
         Assert.Contains(@"HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{B0839D4C-1D29-4D9C-95E3-C88E4D8E37E5}_is1", cycleScript, StringComparison.Ordinal);
+        Assert.Contains("Inno uninstaller stub still present after uninstall", cycleScript, StringComparison.Ordinal);
+        Assert.Contains("Install root still present after uninstall", cycleScript, StringComparison.Ordinal);
         Assert.Contains("Join-Path $repoRoot 'build\\validation\\artifacts\\inno-install-cycle'", cycleScript, StringComparison.Ordinal);
     }
 

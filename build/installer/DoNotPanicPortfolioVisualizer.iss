@@ -97,6 +97,10 @@ Filename: "{app}\PortfolioSaver.Desktop.exe"; Description: "Launch DO NOT PANIC 
 [UninstallRun]
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Installer\Cleanup-DoNotPanicPortfolioVisualizer.ps1"" -AllUsers"; Flags: runhidden waituntilterminated skipifdoesntexist; RunOnceId: "DoNotPanicPortfolioVisualizerCleanup"
 
+[UninstallDelete]
+Type: dirifempty; Name: "{app}"
+Type: dirifempty; Name: "{autopf}\{#AppPublisher}"
+
 [Code]
 function InitializeUninstall(): Boolean;
 begin
