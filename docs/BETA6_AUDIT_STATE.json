@@ -3618,7 +3618,7 @@
       "priority": 2,
       "area": "world_markets_degradation",
       "title": "Validate World Markets ribbon degradation for quote, timing, weather, timezone, and partial exchange failures",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "Medium",
       "evidence": [
@@ -3627,7 +3627,11 @@
       ],
       "notes": [
         "Cover unavailable market timing, quote failure, weather failure, timezone conversion failure, and mixed open/closed/unknown states.",
-        "If market status change time is unavailable, top-left text should remain blank rather than show Timing unavailable."
+        "If market status change time is unavailable, top-left text should remain blank rather than show Timing unavailable.",
+        "Implementation evidence: commit c1e930b added a deterministic unavailable-timing regression test and commit 8258815 fixed the discovered defect by treating YFinance timing payloads with no pre/regular/post windows as MarketSession.Unknown rather than Closed.",
+        "Existing coverage retained for the independent World Markets lane via Nb051BehaviorTests.ScreensaverSceneControl_UsesIndependentWorldMarketsLane, staged macro/world/tape ordering via Nb058Nb060BehaviorTests.BuildOrderedRuntimeSymbols_StagesMacrosThenWorldMarketsThenTapeSymbols, blank top-left countdown via FormatPinnedStatusCountdown_ReturnsBlank_WhenCountdownUnavailable, and Global Markets rendering/layout behavior through ScreensaverRenderBehaviorTests.",
+        "Focused local validation after pushed commit 8258815 passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~YFinanceExchangeTimingServiceTests|FullyQualifiedName~FloatingClockBuilderTests|FullyQualifiedName~Nb051BehaviorTests|FullyQualifiedName~Nb058Nb060BehaviorTests|FullyQualifiedName~ScreensaverRenderBehaviorTests --nologo (83/83 passing).",
+        "Validation smoke passed after pushed commit 8258815: build/validation/Test-ValidationScripts.ps1 returned VALIDATION_SCRIPT_SMOKE_TEST=Passed."
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
@@ -3639,6 +3643,13 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "Each failed exchange/card degrades independently.",
         "Pinned NYC reuse remains consistent with the top-left status display."
+      ],
+      "closed_date": "2026-06-22",
+      "resolution": "World Markets degraded timing behavior is now validated and hardened. Empty or unavailable YFinance timing metadata resolves to Unknown with no countdown rather than a misleading Closed state, preserving the requirement that unavailable top-left timing stays blank. Existing lane and render tests continue to prove the World Markets ribbon remains independent, staged after macros, and stable under missing ancillary data.",
+      "validation": "DeepSeek review gate completed at build/deepseek-review/deepseek-review-20260622-005424.md; its null-safety advisory was reviewed and accepted as already covered by the existing null-safe IsActive guard plus the new failing-then-passing unavailable-timing regression. Focused local validation passed after pushed commit 8258815: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~YFinanceExchangeTimingServiceTests|FullyQualifiedName~FloatingClockBuilderTests|FullyQualifiedName~Nb051BehaviorTests|FullyQualifiedName~Nb058Nb060BehaviorTests|FullyQualifiedName~ScreensaverRenderBehaviorTests --nologo passed 83/83; build/validation/Test-ValidationScripts.ps1 passed.",
+      "commits": [
+        "c1e930b",
+        "8258815"
       ]
     },
     {

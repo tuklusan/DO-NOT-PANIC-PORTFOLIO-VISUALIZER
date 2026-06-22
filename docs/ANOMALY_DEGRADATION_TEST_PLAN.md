@@ -281,7 +281,8 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 2
 - Severity: Medium
 - Area: world_markets_degradation
-- Status: open
+- Status: closed
+- Closure evidence: commits `c1e930b` and `8258815` added and satisfied an unavailable exchange-timing regression test. The focused run initially exposed a real defect where an empty YFinance timing payload resolved as `Closed`; `8258815` now treats timing payloads with no pre/regular/post windows as `Unknown` with no countdown so top-left timing remains blank rather than misleading. Focused local validation passed 83/83 on 2026-06-22 for `YFinanceExchangeTimingServiceTests`, `FloatingClockBuilderTests`, `Nb051BehaviorTests`, `Nb058Nb060BehaviorTests`, and `ScreensaverRenderBehaviorTests`; validation-script smoke returned `VALIDATION_SCRIPT_SMOKE_TEST=Passed`.
 - Evidence / rationale:
   - The World Markets ribbon is now independent of the rest of the scene and may have multiple data dependencies.
   - Partial exchange failures must not collapse the whole ribbon or break pinned New York status reuse.
