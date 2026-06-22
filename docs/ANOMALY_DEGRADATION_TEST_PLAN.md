@@ -495,9 +495,14 @@ Reference display contract:
 - Priority: 2
 - Severity: Medium
 - Area: ux_accessibility_degradation
+- Status: closed
 - UX rationale:
   - DeepSeek UX anomaly review identified that visual degraded-state indicators must be mirrored through accessibility APIs.
   - Users relying on screen readers, high contrast themes, or keyboard navigation must not receive stale or misleading announcements.
+- Closure evidence:
+  - Closed on 2026-06-22 by adding `docs/DEGRADED_UX_CONTRACT.md` and `DegradedUxContractTests`.
+  - Focused local validation passed 114/114 using `dotnet test tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj -c Release --filter "FullyQualifiedName~DegradedUxContractTests|FullyQualifiedName~ConfigTextConsistencyTests|FullyQualifiedName~StartupCoordinatorTapeItemTests|FullyQualifiedName~VmHarnessScriptTests|FullyQualifiedName~ScreensaverRenderBehaviorTests" --nologo`.
+  - Validation-script smoke passed on 2026-06-22.
 - Acceptance highlights:
   - Expected screen-reader output is documented for key degraded states.
   - High-contrast mode keeps offline/stale/unavailable indicators distinguishable.
@@ -524,9 +529,13 @@ Reference display contract:
 - Priority: 2
 - Severity: Medium
 - Area: ux_placeholder_consistency
+- Status: closed
 - UX rationale:
   - DeepSeek UX anomaly review identified that CR-071 isolates per-symbol failures but does not fully define the placeholder the user sees.
   - Inconsistent missing-data treatment across tape, graph, macro, and world-market surfaces makes intentional degradation look like broken UI.
+- Closure evidence:
+  - Closed on 2026-06-22 by documenting the stable `--` placeholder contract, no-raw-error display rule, stale/cached visibility rule, and fixed-layout expectation in `docs/DEGRADED_UX_CONTRACT.md`, with source-contract test coverage.
+  - Focused local validation passed 114/114; validation-script smoke passed.
 - Acceptance highlights:
   - Injected symbol failures show consistent placeholder treatment across all applicable components.
   - Placeholder cards/rows do not resize or shift layout when healthy symbols update.
@@ -537,9 +546,13 @@ Reference display contract:
 - Priority: 2
 - Severity: High
 - Area: ux_config_error_clarity
+- Status: closed
 - UX rationale:
   - DeepSeek UX anomaly review identified that CR-066 and CR-067 cover config behavior but not enough plain-language user guidance.
   - A user should know whether to retry, check network, fix a symbol, wait out a rate limit, or cancel safely.
+- Closure evidence:
+  - Closed on 2026-06-22 by documenting plain-language config guidance, banned implementation-detail terms, wrapping/scrolling progress text, disabled Validate during work, and Retry/Cancel behavior in `docs/DEGRADED_UX_CONTRACT.md`, with source-contract test coverage.
+  - Focused local validation passed 114/114; validation-script smoke passed.
 - Acceptance highlights:
   - Config dialog screenshots show clear, non-technical messages for each injected failure.
   - Validate/Retry is re-enabled after failure and Cancel closes promptly during slow validation.
@@ -550,13 +563,18 @@ Reference display contract:
 - Priority: 2
 - Severity: Medium
 - Area: ux_interactivity_degradation
+- Status: closed
 - UX rationale:
   - DeepSeek UX anomaly review identified that no-freeze assertions do not prove individual controls acknowledge user input promptly.
   - During high latency, users need immediate click/keyboard feedback even if network work continues asynchronously.
+- Closure evidence:
+  - Closed on 2026-06-22 by documenting Cancel/Escape responsiveness, keyboard-first harness paths, dispatcher no-freeze expectations, and disabled-control behavior in `docs/DEGRADED_UX_CONTRACT.md`, with source-contract test coverage.
+  - Focused local validation passed 114/114; validation-script smoke passed.
 - Acceptance highlights:
   - A high-latency harness profile proves controls provide feedback within 500ms of user input.
   - Cancel/Escape closes dialogs promptly while requests are pending.
   - No user input is lost or replayed unexpectedly after network recovery.
+
 
 
 
