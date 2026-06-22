@@ -17,6 +17,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$script:referenceSpotCheckStep = $null
 . (Join-Path $PSScriptRoot 'VmTraceQuoteEvidence.ps1')
 if (-not (Test-YFinanceQuoteEvidenceParser)) {
     throw 'YFinance trace quote parser self-test failed.'
@@ -1680,6 +1681,7 @@ function Write-ReferenceSpotCheck {
         [Parameter(Mandatory = $true)][int]$CaptureIndex
     )
 
+    $script:referenceSpotCheckStep = 'read-displayed-sample'
     $displayedSample = @(Get-PreferredDisplayedTapeSample)
     if ($displayedSample.Count -eq 1 -and $displayedSample[0] -is [System.Array]) {
         $displayedSample = @($displayedSample[0])
@@ -1702,6 +1704,7 @@ function Write-ReferenceSpotCheck {
     $referenceStatus = 'unknown'
 
     try {
+        $script:referenceSpotCheckStep = 'get-reference-results'
         $reference = Get-ReferenceSpotCheckResults -Symbols $symbols
         if ($null -ne $reference -and -not [string]::IsNullOrWhiteSpace([string]$reference.Source)) {
             $referenceSource = [string]$reference.Source
@@ -1723,6 +1726,7 @@ function Write-ReferenceSpotCheck {
         $referenceError = $_.Exception.Message
     }
 
+    $script:referenceSpotCheckStep = 'write-spot-check-json'
     $payload = [pscustomobject]@{
         ComparisonSchemaVersion = $ReferenceComparisonSchemaVersion
         CapturedAt = (Get-Date).ToString('o')
@@ -1738,6 +1742,7 @@ function Write-ReferenceSpotCheck {
     }
 
     Add-Content -LiteralPath $OutputPath -Value ($payload | ConvertTo-Json -Compress) -Encoding UTF8
+    $script:referenceSpotCheckStep = 'write-spot-check-comparison'
     Write-ReferenceSpotCheckComparison -OutputPath $referenceComparisonPath -Payload $payload
 }
 
@@ -1755,7 +1760,7 @@ function Try-WriteReferenceSpotCheck {
         return $true
     }
     catch {
-        $message = "Reference spot-check failed during ${Context}: $($_.Exception.Message)"
+        $message = "Reference spot-check failed during ${Context}: step=$script:referenceSpotCheckStep; type=$($_.Exception.GetType().FullName); message=$($_.Exception.Message); script_stack=$($_.ScriptStackTrace)"
         Write-Warning $message
         try {
             $outputParent = Split-Path -Path ([System.IO.Path]::GetFullPath($OutputPath)) -Parent

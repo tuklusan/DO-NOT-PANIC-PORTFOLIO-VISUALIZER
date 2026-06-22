@@ -581,7 +581,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$postRecoverySpotCheckSucceeded = Try-WriteReferenceSpotCheck -OutputPath $referenceSpotCheckPath -CaptureIndex $i -Context 'after-recovery-clear'", script, StringComparison.Ordinal);
         Assert.Contains("if (-not $postRecoverySpotCheckSucceeded) {", script, StringComparison.Ordinal);
         Assert.Contains("Write-SummaryFiles", script, StringComparison.Ordinal);
-        Assert.Contains("Reference spot-check failed during ${Context}", script, StringComparison.Ordinal);
+        Assert.Contains("Reference spot-check failed during ${Context}:", script, StringComparison.Ordinal);
+        Assert.Contains("step=$script:referenceSpotCheckStep", script, StringComparison.Ordinal);
+        Assert.Contains("script_stack=$($_.ScriptStackTrace)", script, StringComparison.Ordinal);
         Assert.Contains("reference-spot-check-errors.log", script, StringComparison.Ordinal);
         Assert.Contains("Length -gt 10240", script, StringComparison.Ordinal);
         Assert.Contains("[System.IO.Path]::GetFullPath($OutputPath)", script, StringComparison.Ordinal);
