@@ -30,7 +30,10 @@ $scriptPaths = @(
     'build\validation\Analyze-VisualValidationArtifacts.ps1',
     'build\validation\Invoke-DeepSeekArtifactReview.ps1',
     'build\validation\Invoke-AutonomousVisualValidation.ps1',
-    'build\vm\Invoke-VmBuildTest.ps1'
+    'build\vm\Invoke-VmBuildTest.ps1',
+    'build\publish-inno-installer.ps1',
+    'build\installer\Cleanup-DoNotPanicPortfolioVisualizer.ps1',
+    'build\installer\Test-InnoInstallCycle.ps1'
 )
 
 foreach ($relativePath in $scriptPaths) {
@@ -75,6 +78,24 @@ foreach ($requiredSnippet in @(
     if ($publishSafeTempText -notmatch [regex]::Escape($requiredSnippet)) {
         throw "publish-safe-temp.ps1 is missing required safe-temp publish contract snippet: $requiredSnippet"
     }
+}
+
+$innoScript = Join-Path $repoRoot 'build\installer\DoNotPanicPortfolioVisualizer.iss'
+if (-not (Test-Path -LiteralPath $innoScript)) { throw 'Missing Inno installer script.' }
+$innoText = Get-Content -Raw -LiteralPath $innoScript
+foreach ($requiredInnoSnippet in @(
+    'PrivilegesRequired=admin',
+    'LicenseFile={#LicenseFile}',
+    'DefaultDirName={autopf}\{#AppPublisher}\{#AppFolderName}',
+    'Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"',
+    '-AllUsers'
+)) {
+    if ($innoText -notmatch [regex]::Escape($requiredInnoSnippet)) {
+        throw "DoNotPanicPortfolioVisualizer.iss is missing required installer contract snippet: $requiredInnoSnippet"
+    }
+}
+if ($innoText -match 'PrivilegesRequiredOverridesAllowed') {
+    throw 'Inno installer must not allow non-admin privilege override.'
 }
 
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ('dnppv-validation-smoke-' + [Guid]::NewGuid().ToString('N'))

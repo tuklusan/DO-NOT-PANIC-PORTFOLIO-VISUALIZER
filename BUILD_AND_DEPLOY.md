@@ -119,7 +119,7 @@ Preferred path:
 2. Use the scripts under `build\`:
    - `build\build-safe-temp.ps1`
    - `build\publish-safe-temp.ps1`
-   - `build\publish-standalone-installer.ps1`
+   - `build\publish-inno-installer.ps1`
 3. Publish `PortfolioSaver.Desktop` for `win-x64`.
 4. Publish `PortfolioSaver.Config` as a normal `.exe`.
 5. Publish `PortfolioSaver.Screensaver` only if legacy compatibility is still needed.
@@ -159,9 +159,10 @@ Acceptance for the current YFinance.NET lane:
 - Launch `PortfolioSaver.Desktop.exe` directly for primary testing.
 
 ### Final Windows integration
-- Treat the desktop app as the primary shipped experience.
-- Only copy the `.scr` to the Windows screensaver location if legacy support is explicitly required.
-- If legacy support is installed, verify Screen Saver Settings still lists `PortfolioSaver.Screensaver`.
+- Treat the Inno Setup package produced by `build\publish-inno-installer.ps1` as the primary public distribution method.
+- The installer requires administrative privileges, shows the root `LICENSE` as the required license-agreement page, and installs to `%ProgramFiles%\SANYALnet Labs\DoNotPanicPortfolioVisualizer`.
+- The installer includes the desktop app, config app, legacy screensaver host, owned YFinance.NET server bundle, root `LICENSE`, `THIRD-PARTY-NOTICES.md`, and `THIRD-PARTY-LICENSES`.
+- Automated install/uninstall validation must run from an already elevated administrator context using `build\installer\Test-InnoInstallCycle.ps1`; Windows UAC prompts are not safely auto-accepted from a non-elevated process.
 
 ## Remote validation policy
 
@@ -201,7 +202,25 @@ Only change the harness when:
 - the current path is broken, or
 - a concrete new validation requirement cannot be satisfied by the existing agent-based flow
 
-## Installer sandbox smoke test
+## Inno installer smoke test
+
+1. Build the Inno installer:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\build\publish-inno-installer.ps1 -Configuration Release
+```
+
+2. From an elevated administrator PowerShell session, run:
+
+```powershell
+$version = ([xml](Get-Content -Raw .\Directory.Build.props)).Project.PropertyGroup.PortfolioSaverVersion
+$setup = ".\build\artifacts\inno\output\DoNotPanicPortfolioVisualizerSetup-$version.exe"
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\build\installer\Test-InnoInstallCycle.ps1 -SetupPath $setup
+```
+
+3. The harness installs silently with `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`, verifies the Program Files payload and legal files, runs the Inno uninstaller silently, and verifies uninstall cleanup. Because this is an all-users Program Files installer, uninstall cleanup explicitly removes the app-owned `%LocalAppData%\DoNotPanicPortfolioVisualizer` root for local profiles; user-selected external background folders are never targeted.
+
+## Legacy installer sandbox smoke test
 
 1. Double-click `build\sandbox\PortfolioSaverInstallerTest.wsb`.
 2. In Windows Sandbox, open `C:\Users\WDAGUtilityAccount\Desktop\PortfolioSaverWorkspace\build\artifacts`.
