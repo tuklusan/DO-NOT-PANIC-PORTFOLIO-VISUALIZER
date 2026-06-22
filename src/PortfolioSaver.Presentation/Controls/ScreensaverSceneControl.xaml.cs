@@ -45,7 +45,9 @@ public partial class ScreensaverSceneControl : UserControl
     private static readonly TimeSpan RuntimeQuoteDispatchInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan RuntimeQuoteRequestTimeout = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan RuntimeTapeStructuralSyncInterval = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan GraphRefreshTravelFlashMaximumDuration = TimeSpan.FromSeconds(8);
+    private static readonly TimeSpan GraphRefreshTravelFlashMaximumDuration = TimeSpan.FromSeconds(4);
+    private static readonly TimeSpan GraphRefreshTravelTargetDuration = TimeSpan.FromSeconds(1.4);
+    private const double GraphRefreshTravelMinimumVelocity = 260d;
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly Dictionary<string, FloatingGraphControl> _graphControlsByKey = new(StringComparer.OrdinalIgnoreCase);
     private readonly ObservableCollection<MarketSpriteViewModel> _marketSprites = [];
@@ -1398,7 +1400,9 @@ public partial class ScreensaverSceneControl : UserControl
         {
             ApplyGraphRefreshImpulse(graph, bounds);
             _motionController.Step(graph, bounds, elapsedSeconds);
-            ResetGraphRefreshImpulseIfNeeded(graph, bounds);
+            string? resetReason = ResetGraphRefreshImpulseIfNeeded(graph, bounds);
+            if (resetReason is not null)
+                TraceScene($"GraphCardFlashStop symbol={graph.Symbol} reason={resetReason} y={graph.Y:F1} velocity_y={graph.VelocityY:F1}");
         }
 
         if (EnableMarketCritters)
@@ -3479,15 +3483,17 @@ public partial class ScreensaverSceneControl : UserControl
         graph.NominalVelocityX = nominalX;
         graph.NominalVelocityY = nominalY;
         graph.VelocityX = 0d;
-        graph.VelocityY = targetY <= bounds.Top + 1d
-            ? -Math.Max(12d, Math.Abs(nominalY) * 2d)
-            : Math.Max(12d, Math.Abs(nominalY) * 2d);
+        double distance = Math.Abs(targetY - graph.Y);
+        double targetVelocity = Math.Max(
+            GraphRefreshTravelMinimumVelocity,
+            distance / Math.Max(0.1d, GraphRefreshTravelTargetDuration.TotalSeconds));
+        graph.VelocityY = targetY <= bounds.Top + 1d ? -targetVelocity : targetVelocity;
     }
 
-    private static void ResetGraphRefreshImpulseIfNeeded(FloatingGraphViewModel graph, Rect bounds)
+    private static string? ResetGraphRefreshImpulseIfNeeded(FloatingGraphViewModel graph, Rect bounds)
     {
         if (graph.RefreshTravelTargetY is not double targetY)
-            return;
+            return null;
 
         if (graph.IsRefreshTravelFlashActive &&
             graph.RefreshTravelFlashStartedUtc > DateTimeOffset.MinValue &&
@@ -3497,14 +3503,14 @@ public partial class ScreensaverSceneControl : UserControl
             graph.RefreshTravelTargetY = null;
             graph.VelocityX = graph.NominalVelocityX == 0d ? graph.VelocityX : graph.NominalVelocityX;
             graph.VelocityY = graph.NominalVelocityY == 0d ? graph.VelocityY : graph.NominalVelocityY;
-            return;
+            return "timeout";
         }
 
         bool hitBoundary = targetY <= bounds.Top + 1d
             ? graph.Y <= bounds.Top + 1d
             : graph.Y >= Math.Max(bounds.Top, bounds.Bottom - Math.Max(1d, graph.Height)) - 1d;
         if (!hitBoundary)
-            return;
+            return null;
 
         graph.RefreshTravelTargetY = null;
         graph.IsRefreshTravelFlashActive = false;
@@ -3514,6 +3520,7 @@ public partial class ScreensaverSceneControl : UserControl
             : (targetY <= bounds.Top + 1d
                 ? Math.Abs(graph.NominalVelocityY)
                 : -Math.Abs(graph.NominalVelocityY));
+        return targetY <= bounds.Top + 1d ? "top-boundary" : "bottom-boundary";
     }
 
     private static void StopBackgroundAnimations(Image image)

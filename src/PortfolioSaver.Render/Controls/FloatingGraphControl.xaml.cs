@@ -10,6 +10,7 @@ namespace PortfolioSaver.Render.Controls;
 public partial class FloatingGraphControl : UserControl
 {
     private static readonly Color BaseCardColor = Color.FromArgb(0x7A, 0x0D, 0x13, 0x1B);
+    private static readonly TimeSpan SustainedFlashVisualMaximumDuration = TimeSpan.FromSeconds(4);
     private FloatingGraphViewModel? _graph;
 
     public FloatingGraphControl()
@@ -100,8 +101,9 @@ public partial class FloatingGraphControl : UserControl
             To = flashColor,
             Duration = TimeSpan.FromMilliseconds(220),
             AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever
+            RepeatBehavior = new RepeatBehavior(SustainedFlashVisualMaximumDuration)
         };
+        animation.Completed += (_, _) => EndSustainedCardFlash();
 
         baseBrush.BeginAnimation(SolidColorBrush.ColorProperty, animation);
     }

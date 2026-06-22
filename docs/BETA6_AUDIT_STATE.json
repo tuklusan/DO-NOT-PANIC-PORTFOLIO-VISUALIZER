@@ -5436,6 +5436,33 @@
         "Validation-script smoke passed on 2026-06-22 before CR-127 review/commit.",
         "VM validation was deferred until the next scheduled VM cycle because this harness enhancement is covered by deterministic source-contract tests and does not alter product runtime code."
       ]
+    },
+    {
+      "id": "CR-128",
+      "tracking_number": "CR-128",
+      "priority": 1,
+      "area": "graph_cards",
+      "title": "Critical regression: graph cards remain in sustained flash/travel state after raw-price updates",
+      "status": "open",
+      "source": "user_vm_observation_2026_06_22_15min_graph_cart_validation",
+      "severity": "Critical",
+      "evidence": [
+        "User observed during 15-minute VM run ux-deep-ssh-20260622-061700 that all graph carts are continuously flashing, which violates the required old behavior.",
+        "Trace shows GraphCardFlash raw-price-change events burst at 2026-06-22T10:30:33Z through 10:31:14Z for many symbols, but no trace-visible GraphCardFlashStop/refresh-travel completion events.",
+        "Code inspection shows sustained card flash uses RepeatBehavior.Forever while IsRefreshTravelFlashActive is true, and refresh-travel velocity is only twice nominal graph velocity, making edge hit/stop unreliable and visually long-running."
+      ],
+      "notes": [
+        "Restore behavior: flash green/red only on actual raw price change, travel quickly to top for gain or bottom for loss, stop flashing when edge is reached or a short bounded fail-safe expires, then resume normal bounce motion.",
+        "Add trace-visible start/stop evidence and focused tests so future VM artifacts can prove the lifecycle."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
@@ -6376,4 +6403,3 @@
     }
   ]
 }
-

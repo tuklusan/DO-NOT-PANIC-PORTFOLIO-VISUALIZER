@@ -63,6 +63,9 @@ public sealed class ScreensaverRenderBehaviorTests
 
         Assert.Equal(2, pulseCount);
         Assert.Contains("FlashSequence", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("SustainedFlashVisualMaximumDuration", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("new RepeatBehavior(SustainedFlashVisualMaximumDuration)", codeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("RepeatBehavior.Forever", codeBehind, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -850,11 +853,41 @@ public sealed class ScreensaverRenderBehaviorTests
                 BindingFlags.NonPublic | BindingFlags.Static)
                 ?? throw new InvalidOperationException("ResetGraphRefreshImpulseIfNeeded method not found.");
 
-            method.Invoke(null, [graph, new Rect(0, 0, 800, 500)]);
+            string? reason = Assert.IsType<string>(method.Invoke(null, [graph, new Rect(0, 0, 800, 500)]));
 
             Assert.Null(graph.RefreshTravelTargetY);
             Assert.False(graph.IsRefreshTravelFlashActive);
             Assert.Equal(7d, graph.VelocityY);
+            Assert.Equal("top-boundary", reason);
+        });
+    }
+
+    [Fact]
+    public void ApplyGraphRefreshImpulse_UsesFastEdgeSeekingVelocity()
+    {
+        RunOnSta(() =>
+        {
+            ScreensaverSceneControl control = new();
+            FloatingGraphViewModel graph = new()
+            {
+                Height = 84,
+                Y = 420,
+                VelocityY = 8,
+                NominalVelocityY = 8,
+                RefreshTravelTargetY = 0,
+                IsRefreshTravelFlashActive = true
+            };
+
+            MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+                "ApplyGraphRefreshImpulse",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("ApplyGraphRefreshImpulse method not found.");
+
+            method.Invoke(control, [graph, new Rect(0, 0, 800, 500)]);
+
+            Assert.Equal(0d, graph.VelocityX);
+            Assert.True(graph.VelocityY <= -260d);
+            Assert.Equal(8d, graph.NominalVelocityY);
         });
     }
 
@@ -879,11 +912,12 @@ public sealed class ScreensaverRenderBehaviorTests
                 BindingFlags.NonPublic | BindingFlags.Static)
                 ?? throw new InvalidOperationException("ResetGraphRefreshImpulseIfNeeded method not found.");
 
-            method.Invoke(null, [graph, new Rect(0, 0, 800, 500)]);
+            string? reason = Assert.IsType<string>(method.Invoke(null, [graph, new Rect(0, 0, 800, 500)]));
 
             Assert.Null(graph.RefreshTravelTargetY);
             Assert.False(graph.IsRefreshTravelFlashActive);
             Assert.Equal(-7d, graph.VelocityY);
+            Assert.Equal("timeout", reason);
         });
     }
 
@@ -1791,7 +1825,8 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.DoesNotContain("GraphCardSeparationGap", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("foreach (FloatingGraphViewModel graph in EnumerateVisibleGraphCards())", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ApplyGraphRefreshImpulse(graph, bounds);", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("ResetGraphRefreshImpulseIfNeeded(graph, bounds);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("string? resetReason = ResetGraphRefreshImpulseIfNeeded(graph, bounds);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("GraphCardFlashStop", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private static readonly TimeSpan GraphSelectionRefreshInterval = TimeSpan.FromMinutes(10);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RefreshGraphSelectionIfDue();", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("ApplyGraphMotionVariance(", sceneCodeBehind, StringComparison.Ordinal);
