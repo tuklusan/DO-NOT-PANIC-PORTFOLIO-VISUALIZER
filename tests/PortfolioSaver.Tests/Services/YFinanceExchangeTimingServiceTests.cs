@@ -77,6 +77,20 @@ public sealed class YFinanceExchangeTimingServiceTests
         Assert.Equal(TimeSpan.FromHours(1), status.Countdown);
     }
 
+    [Fact]
+    public void ResolveStatus_WhenTimingUnavailable_ReturnsUnknownWithoutCountdown()
+    {
+        ExchangeTradingCalendar calendar = CreateCalendar(regular: null, pre: null, post: null);
+
+        ExchangeCalendarStatus status = _service.ResolveStatus(calendar, DateTimeOffset.Parse("2026-05-20T15:00:00Z"));
+
+        Assert.Equal(MarketSession.Unknown, status.Session);
+        Assert.False(status.IsOpen);
+        Assert.False(status.HasCountdown);
+        Assert.Equal(ExchangeCountdownTarget.Unknown, status.CountdownTo);
+        Assert.Equal("--", _service.FormatCompactStatus(status));
+    }
+
     private static ExchangeTradingCalendar CreateCalendar(TradingPeriodWindow? regular, TradingPeriodWindow? pre, TradingPeriodWindow? post)
         => new()
         {
