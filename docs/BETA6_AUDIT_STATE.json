@@ -5353,7 +5353,7 @@
       "priority": 2,
       "area": "vm_harness_artifact_provenance",
       "title": "VM screenshots need capture-time provenance independent of export timestamps",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_artifact_review_20260621_112538",
       "severity": "medium",
       "evidence": [
@@ -5362,7 +5362,8 @@
       ],
       "notes": [
         "Add screenshot capture timestamps to filenames or a sidecar manifest generated when Capture-Screen succeeds.",
-        "Acceptance should preserve existing filenames or provide backward-compatible manifest lookup for analyzer scripts."
+        "Acceptance should preserve existing filenames or provide backward-compatible manifest lookup for analyzer scripts.",
+        "Closure adds a backward-compatible screen-captures.jsonl sidecar emitted by Capture-Screen without renaming existing screenshot files."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -5371,6 +5372,13 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "closed_date": "2026-06-22",
+      "resolution": "Closed by adding per-screenshot capture-time provenance to the VM guest harness. Each successful Capture-Screen call now appends a JSONL record containing CapturedAt with local UTC offset, absolute path, file name, and byte length to screen-captures.jsonl while preserving existing screenshot filenames.",
+      "validation": [
+        "Focused local validation passed 20/20 on 2026-06-22 for VmHarnessScriptTests.",
+        "Validation-script smoke passed on 2026-06-22 before CR-127 review/commit.",
+        "VM validation was deferred until the next scheduled VM cycle because this harness enhancement is covered by deterministic source-contract tests and does not alter product runtime code."
       ]
     }
   ],

@@ -466,6 +466,13 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("if ($isLongRunSoak) {\n                $summary.ScreensaverShots++\n            }", script.ReplaceLineEndings("\n"), StringComparison.Ordinal);
         Assert.True(script.Split("$summary.ScreensaverShots++", StringSplitOptions.None).Length - 1 >= 2);
         Assert.Contains("desktop-after-recovery-clear-{0:D3}.png", script, StringComparison.Ordinal);
+        Assert.Contains("$script:screenCaptureManifestPath = Join-Path $results 'screen-captures.jsonl'", script, StringComparison.Ordinal);
+        Assert.Contains("Set-Content -LiteralPath $script:screenCaptureManifestPath -Value '' -Encoding UTF8", script, StringComparison.Ordinal);
+        Assert.Contains("$capturedAt = (Get-Date).ToString('o')", script, StringComparison.Ordinal);
+        Assert.Contains("CapturedAt = $capturedAt", script, StringComparison.Ordinal);
+        Assert.Contains("FileName = $fileInfo.Name", script, StringComparison.Ordinal);
+        Assert.Contains("Length = $fileInfo.Length", script, StringComparison.Ordinal);
+        Assert.Contains("Add-Content -LiteralPath $script:screenCaptureManifestPath", script, StringComparison.Ordinal);
         Assert.Contains("Write-SummaryFiles", script, StringComparison.Ordinal);
         Assert.DoesNotContain("VBOXSVR", script, StringComparison.Ordinal);
     }

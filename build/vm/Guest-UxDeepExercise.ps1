@@ -215,9 +215,11 @@ $faultProfilePath = Join-Path $results 'yfinance-fault-profile.json'
 $faultTimelinePath = Join-Path $results 'fault-injection-events.log'
 
 $script:configWindowTracePath = Join-Path $results 'config-window-events.log'
+$script:screenCaptureManifestPath = Join-Path $results 'screen-captures.jsonl'
 $script:cachedDisplayModes = $null
 $script:cachedDisplayModesTimestamp = $null
 Set-Content -LiteralPath $script:configWindowTracePath -Value '' -Encoding UTF8
+Set-Content -LiteralPath $script:screenCaptureManifestPath -Value '' -Encoding UTF8
 Set-Content -LiteralPath $faultTimelinePath -Value '' -Encoding UTF8
 
 function Write-FaultInjectionTrace {
@@ -328,6 +330,7 @@ function Test-ConfigPhaseBudget {
 function Capture-Screen {
     param([Parameter(Mandatory=$true)][string]$Path)
 
+    $capturedAt = (Get-Date).ToString('o')
     $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
     $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
     $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
@@ -335,6 +338,21 @@ function Capture-Screen {
     $bitmap.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
     $graphics.Dispose()
     $bitmap.Dispose()
+
+    try {
+        $resolvedPath = [System.IO.Path]::GetFullPath($Path)
+        $fileInfo = Get-Item -LiteralPath $resolvedPath -ErrorAction Stop
+        $captureRecord = [ordered]@{
+            CapturedAt = $capturedAt
+            Path = $resolvedPath
+            FileName = $fileInfo.Name
+            Length = $fileInfo.Length
+        }
+        Add-Content -LiteralPath $script:screenCaptureManifestPath -Value ($captureRecord | ConvertTo-Json -Compress) -Encoding UTF8
+    }
+    catch {
+        Write-Warning ("Screen capture manifest append failed for '{0}': {1}" -f $Path, $_.Exception.Message)
+    }
 }
 
 function Apply-HarnessSettingsOverrides {
