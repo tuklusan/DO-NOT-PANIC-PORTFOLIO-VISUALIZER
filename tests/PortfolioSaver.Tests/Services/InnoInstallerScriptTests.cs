@@ -52,6 +52,7 @@ public sealed class InnoInstallerScriptTests
         Assert.Contains("/SUPPRESSMSGBOXES", cycleScript, StringComparison.Ordinal);
         Assert.Contains("#requires -Version 7.0", cycleScript, StringComparison.Ordinal);
         Assert.Contains("ArgumentList.Add", cycleScript, StringComparison.Ordinal);
+        Assert.Contains(@"HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{B0839D4C-1D29-4D9C-95E3-C88E4D8E37E5}_is1", cycleScript, StringComparison.Ordinal);
         Assert.Contains("Join-Path $repoRoot 'build\\validation\\artifacts\\inno-install-cycle'", cycleScript, StringComparison.Ordinal);
     }
 

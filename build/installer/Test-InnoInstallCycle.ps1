@@ -79,7 +79,7 @@ function Assert-InstalledState {
     $desktopExe = Join-Path $installRoot 'PortfolioSaver.Desktop.exe'
     $license = Join-Path $installRoot 'LICENSE'
     $apache = Join-Path $installRoot 'THIRD-PARTY-LICENSES\APACHE-2.0.txt'
-    $uninstallKey = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\B0839D4C-1D29-4D9C-95E3-C88E4D8E37E5_is1'
+    $uninstallKey = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{B0839D4C-1D29-4D9C-95E3-C88E4D8E37E5}_is1'
 
     if ($ExpectedInstalled) {
         foreach ($path in @($desktopExe, $license, $apache)) {
