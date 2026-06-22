@@ -749,6 +749,24 @@ public sealed class ScreensaverRenderBehaviorTests
             Assert.False(graph.IsRefreshTravelFlashActive);
             Assert.Equal(0, graph.FlashSequence);
             Assert.Equal(-7d, graph.VelocityY);
+
+            quotes["VOO"] = new QuoteSnapshot
+            {
+                Symbol = "VOO",
+                Last = 689m,
+                ChangePercent = 1.1m,
+                FetchTimestampUtc = DateTimeOffset.UtcNow.AddSeconds(1),
+                IsStale = false
+            };
+            suppressField.SetValue(control, false);
+
+            applyQuoteMethod.Invoke(control, [graph]);
+
+            Assert.Equal(689m, graph.RawLastValue);
+            Assert.True(graph.IsRefreshTravelFlashActive);
+            Assert.Equal(1, graph.FlashSequence);
+            Assert.NotNull(graph.RefreshTravelTargetY);
+            Assert.InRange(graph.RefreshTravelTargetY.Value, 0, Math.Max(0, control.ActualHeight - graph.Height));
         });
     }
 

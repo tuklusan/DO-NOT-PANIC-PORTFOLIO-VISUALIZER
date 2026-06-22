@@ -118,6 +118,7 @@ public partial class ScreensaverSceneControl : UserControl
     private DateTimeOffset _lastSceneHeartbeatUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastGraphSelectionRefreshUtc = DateTimeOffset.MinValue;
     private bool _isValidationPaused;
+    // Graph warmup awaits background work, so keep suppression reads/writes explicit across continuations.
     private volatile bool _suppressGraphRefreshMotionCues;
     private readonly RuntimeQuoteInFlightTracker<IReadOnlyList<QuoteSnapshot>> _inFlightQuoteRequests = new(StringComparer.OrdinalIgnoreCase);
     private List<string> _orderedRuntimeSymbols = [];
@@ -618,7 +619,16 @@ public partial class ScreensaverSceneControl : UserControl
                 }
 
                 TraceScene($"WarmGraphsAsync yielded {graph.Symbol} for {graph.TapeName}.");
-                ApplyOrUpdateGraph(graph, preserveLayout);
+                bool previousSuppression = _suppressGraphRefreshMotionCues;
+                _suppressGraphRefreshMotionCues = true;
+                try
+                {
+                    ApplyOrUpdateGraph(graph, preserveLayout);
+                }
+                finally
+                {
+                    _suppressGraphRefreshMotionCues = previousSuppression;
+                }
             }
 
             TraceScene("WarmGraphsAsync completed.");
@@ -4074,8 +4084,14 @@ public partial class ScreensaverSceneControl : UserControl
         graph.QuoteUpdateToken = quoteUpdateToken;
         graph.RawLastValue = last;
 
-        if (hadPriorSymbol && rawPriceChanged && !string.IsNullOrWhiteSpace(lastText) && !_suppressGraphRefreshMotionCues)
+        if (hadPriorSymbol && rawPriceChanged && !string.IsNullOrWhiteSpace(lastText))
         {
+            if (_suppressGraphRefreshMotionCues)
+            {
+                TraceScene($"GraphCardFlashSuppressed symbol={graph.Symbol} raw_last={(last?.ToString("0.####") ?? "--")} percent={(percent?.ToString("0.####") ?? "--")} reason=structural-hydration");
+                return;
+            }
+
             if (graph.IsRefreshTravelFlashActive)
             {
                 TraceScene($"GraphCardFlashSkipped symbol={graph.Symbol} raw_last={(last?.ToString("0.####") ?? "--")} percent={(percent?.ToString("0.####") ?? "--")} reason=refresh-travel-active");
