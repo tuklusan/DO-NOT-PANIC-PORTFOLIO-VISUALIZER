@@ -4,6 +4,8 @@ param(
     [ValidateRange(1, 100)][int]$RequiredConsecutiveCleanRuns = 2,
     [ValidateRange(1, 10080)][int]$GuestScreensaverDurationMinutes = 30,
     [ValidateRange(1, 3600)][int]$CaptureIntervalSeconds = 10,
+    [ValidateSet('none', 'offline-at-start', 'offline-during-config-validation', 'offline-during-runtime', 'offline-then-recover-runtime', 'high-latency-yfinance', 'upstream-throttled', 'timeout')]
+    [string[]]$FaultProfiles = @('none'),
     [string]$VmHost = $env:PORTFOLIOSAVER_VM_HOST,
     [int]$VmPort = $(if ($env:PORTFOLIOSAVER_VM_PORT) { [int]$env:PORTFOLIOSAVER_VM_PORT } else { 22 }),
     [string]$RootPath = 'C:\vmharness\portfolio-saver',
@@ -115,12 +117,32 @@ function Assert-VmTargetConfigured {
     if ([string]::IsNullOrWhiteSpace($VmHost)) { throw 'VM validation requested but no VM host is configured. Pass -VmHost or set PORTFOLIOSAVER_VM_HOST.' }
     $vmScriptPath = Join-Path $repoRoot 'build\vm\Invoke-VmBuildTest.ps1'
     if (-not (Test-Path -LiteralPath $vmScriptPath)) { throw "VM validation script is missing: $vmScriptPath" }
+    $parseErrors = $null
+    $tokens = $null
+    $vmScriptAst = [System.Management.Automation.Language.Parser]::ParseFile($vmScriptPath, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count -gt 0) { throw "VM validation script '$vmScriptPath' could not be parsed." }
+    $paramBlock = $vmScriptAst.ParamBlock
+    if ($null -eq $paramBlock) { throw "VM validation script '$vmScriptPath' has no param block; FaultProfile parameter is required." }
+    $hasFaultProfile = @($paramBlock.Parameters | ForEach-Object { $_.Name.VariablePath.UserPath } | Where-Object { $_ -ieq 'FaultProfile' }).Count -gt 0
+    if (-not $hasFaultProfile) {
+        throw "VM validation script '$vmScriptPath' must expose a FaultProfile parameter for degraded-mode matrix runs."
+    }
 }
 
 function Save-ValidationCycleSummary {
     param($Cycles,[int]$ConsecutiveClean)
     $cycleArray = if ($null -eq $Cycles) { @() } else { @(foreach ($cycle in $Cycles) { $cycle }) }
-    $summary = [ordered]@{ generatedAt=(Get-Date).ToString('o'); requiredConsecutiveCleanRuns=$RequiredConsecutiveCleanRuns; consecutiveCleanRuns=$ConsecutiveClean; vmCyclesRequested=$VmCycles; guestScreensaverDurationMinutes=$GuestScreensaverDurationMinutes; captureIntervalSeconds=$CaptureIntervalSeconds; completed=($ConsecutiveClean -ge $RequiredConsecutiveCleanRuns); cycles=$cycleArray }
+    $summary = [ordered]@{
+        generatedAt = (Get-Date).ToString('o')
+        requiredConsecutiveCleanRuns = $RequiredConsecutiveCleanRuns
+        consecutiveCleanRuns = $ConsecutiveClean
+        vmCyclesRequested = $VmCycles
+        guestScreensaverDurationMinutes = $GuestScreensaverDurationMinutes
+        captureIntervalSeconds = $CaptureIntervalSeconds
+        faultProfiles = @($FaultProfiles)
+        completed = ($ConsecutiveClean -ge $RequiredConsecutiveCleanRuns)
+        cycles = $cycleArray
+    }
     $path = Join-Path $artifactRoot ('autonomous-visual-validation-summary-{0}.json' -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
     $summary | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $path -Encoding UTF8
     Write-Output ("AUTONOMOUS_VALIDATION_SUMMARY=" + $path)
@@ -129,6 +151,8 @@ function Save-ValidationCycleSummary {
 Push-Location $repoRoot
 try {
     if ($RequiredConsecutiveCleanRuns -gt $VmCycles) { throw 'RequiredConsecutiveCleanRuns cannot exceed VmCycles.' }
+    # Keep this explicit so a future default-value edit cannot create an empty VM fault matrix.
+    if ($FaultProfiles.Count -eq 0) { throw 'FaultProfiles must contain at least one profile.' }
     Assert-VmTargetConfigured
     Invoke-DeepSeekGate
     Invoke-ValidationCheckpoint
@@ -139,9 +163,10 @@ try {
     $consecutiveClean = 0
     if ($SkipVm) { Save-ValidationCycleSummary -Cycles $cycles -ConsecutiveClean $consecutiveClean; return }
     for ($cycle = 1; $cycle -le $VmCycles -and $consecutiveClean -lt $RequiredConsecutiveCleanRuns; $cycle++) {
-        Write-Host "[$(Get-Date -Format o)] VM UX validation cycle $cycle of $VmCycles"
+        $cycleFaultProfile = $FaultProfiles[($cycle - 1) % $FaultProfiles.Count]
+        Write-Host "[$(Get-Date -Format o)] VM UX validation cycle $cycle of $VmCycles using FaultProfile=$cycleFaultProfile"
         $started = Get-Date
-        $vmOutput = & .\build\vm\Invoke-VmBuildTest.ps1 -VmHost $VmHost -VmPort $VmPort -RootPath $RootPath -PushWorkspace -RunUxDeep -GuestScreensaverDurationMinutes $GuestScreensaverDurationMinutes -CaptureIntervalSeconds $CaptureIntervalSeconds -UxTimeoutSeconds ([Math]::Max(2400, ($GuestScreensaverDurationMinutes * 60) + 1800))
+        $vmOutput = & .\build\vm\Invoke-VmBuildTest.ps1 -VmHost $VmHost -VmPort $VmPort -RootPath $RootPath -PushWorkspace -RunUxDeep -GuestScreensaverDurationMinutes $GuestScreensaverDurationMinutes -CaptureIntervalSeconds $CaptureIntervalSeconds -FaultProfile $cycleFaultProfile -UxTimeoutSeconds ([Math]::Max(2400, ($GuestScreensaverDurationMinutes * 60) + 1800))
         if ($LASTEXITCODE -ne 0) { throw "VM UX validation cycle $cycle failed with exit code $LASTEXITCODE." }
         $resultLine = [string[]]@($vmOutput | Where-Object { $_ -like 'LOCAL_RESULT_DIR=*' } | Select-Object -Last 1)
         if ($resultLine.Count -eq 0) { throw "VM UX validation cycle $cycle did not report LOCAL_RESULT_DIR." }
@@ -154,7 +179,7 @@ try {
         $cleanLine = [string[]]@($analysisOutput | Where-Object { $_ -like 'ANALYSIS_CLEAN=*' } | Select-Object -Last 1)
         $isClean = ($cleanLine.Count -gt 0 -and $cleanLine[0].Substring('ANALYSIS_CLEAN='.Length) -eq 'True')
         if ($isClean) { $consecutiveClean++ } else { $consecutiveClean = 0 }
-        [void]$cycles.Add([pscustomobject]@{ cycle=$cycle; startedAt=$started.ToString('o'); finishedAt=(Get-Date).ToString('o'); resultDir=$resultDir; analysisPath=$analysisPath; clean=$isClean; consecutiveCleanAfterCycle=$consecutiveClean })
+        [void]$cycles.Add([pscustomobject]@{ cycle=$cycle; faultProfile=$cycleFaultProfile; startedAt=$started.ToString('o'); finishedAt=(Get-Date).ToString('o'); resultDir=$resultDir; analysisPath=$analysisPath; clean=$isClean; consecutiveCleanAfterCycle=$consecutiveClean })
     }
     Save-ValidationCycleSummary -Cycles $cycles -ConsecutiveClean $consecutiveClean
     if ($consecutiveClean -lt $RequiredConsecutiveCleanRuns) { throw "Autonomous validation ended without $RequiredConsecutiveCleanRuns consecutive clean VM runs." }

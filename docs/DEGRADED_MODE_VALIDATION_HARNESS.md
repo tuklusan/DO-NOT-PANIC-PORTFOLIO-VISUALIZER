@@ -18,6 +18,7 @@ CR-064 establishes the deterministic fault-injection foundation for degraded-mod
 | `offline-at-start` | before desktop/config startup | market-data requests fail with `network_lost` |
 | `offline-during-config-validation` | immediately before config `Validate` | market-data requests fail with `network_lost` |
 | `offline-during-runtime` | immediately before fullscreen/runtime exercise | market-data requests fail with `network_lost` |
+| `offline-then-recover-runtime` | runtime fault, then recovery clear during the same run | market-data requests fail with `network_lost`, then resume normally |
 | `high-latency-yfinance` | whole run | market-data requests are delayed, then continue normally |
 | `upstream-throttled` | whole run | market-data requests fail with `upstream_throttled` |
 | `timeout` | whole run | market-data requests delay, then fail with `timeout` |
@@ -74,3 +75,32 @@ Recovery:
 ```powershell
 .\build\vm\Invoke-VmBuildTest.ps1 -RunUxDeep -GuestScreensaverDurationMinutes 30 -FaultProfile offline-during-runtime
 ```
+
+Autonomous matrix example:
+
+```powershell
+.\build\validation\Invoke-AutonomousVisualValidation.ps1 `
+  -VmCycles 7 `
+  -RequiredConsecutiveCleanRuns 7 `
+  -GuestScreensaverDurationMinutes 30 `
+  -FaultProfiles none,offline-at-start,offline-during-config-validation,offline-during-runtime,offline-then-recover-runtime,high-latency-yfinance,upstream-throttled `
+  -AcknowledgeExternalReviewSecretScan
+```
+
+The autonomous loop records the configured `faultProfiles` list and each cycle's selected `faultProfile` in `autonomous-visual-validation-summary-*.json`.
+
+## Autonomous Summary Schema
+
+`autonomous-visual-validation-summary-*.json` is intentionally append-only for compatibility. Consumers should ignore unknown fields.
+
+Current fields:
+
+- `generatedAt`: local timestamp for summary creation.
+- `requiredConsecutiveCleanRuns`: clean-run threshold requested by the caller.
+- `consecutiveCleanRuns`: clean-run streak achieved by the loop.
+- `vmCyclesRequested`: total VM cycles requested by the caller.
+- `guestScreensaverDurationMinutes`: requested guest runtime per VM cycle.
+- `captureIntervalSeconds`: screenshot capture cadence used by the VM harness.
+- `faultProfiles`: ordered list supplied to `-FaultProfiles`; cycles use this list by modulo rotation.
+- `completed`: `true` only when the clean-run threshold was reached.
+- `cycles`: per-cycle records; each record includes the selected `faultProfile`.

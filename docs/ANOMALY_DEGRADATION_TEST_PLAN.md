@@ -17,13 +17,16 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 1
 - Severity: High
 - Area: anomaly_test_harness
-- Status: open
+- Status: closed
 - Evidence / rationale:
   - The new autonomous VM loop proves healthy long-run behavior, but degraded conditions still require deterministic injection.
   - Scenarios include no internet at startup, DNS failure, connection refusal, TLS failure, HTTP throttling, latency, packet loss, and recovery after outage.
 - Notes:
   - Prefer a host/VM controllable mechanism that can toggle failures at exact phases: before app launch, while config is open, while validation is running, while runtime quotes/news/backgrounds are active, and during shutdown.
   - The harness should record timestamps for each injected condition so trace analysis can line up symptoms and expected behavior.
+- Closure evidence:
+  - Closed on 2026-06-22 after the degraded-mode VM harness supported deterministic fault profiles, timestamped fault-injection artifacts, analyzer recognition of expected injected failures, DeepSeek artifact second-opinion review, and autonomous matrix cycling via `Invoke-AutonomousVisualValidation.ps1 -FaultProfiles`.
+  - Focused local validation passed 100/100; validation-script smoke passed.
 - Acceptance highlights:
   - A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.
   - Expected user-visible behavior is documented before implementation changes are made.
@@ -408,13 +411,17 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 3
 - Severity: Medium
 - Area: display_rendering_stress
-- Status: open
+- Status: closed
 - Evidence / rationale:
   - Background transitions, graph cards, news scroller, world markets ribbon, and ticker tapes all animate in one scene.
   - Low GPU capability, high CPU load, RDP/VM rendering, fullscreen toggles, and resolution changes can expose jitter or blank scenes.
 - Notes:
   - Include reduced GPU acceleration availability investigation if WPF rendering falls back to software.
   - Use screenshot cadence plus trace frame/update timing to identify batch redraws.
+- Closure evidence:
+  - Closed on 2026-06-22 with existing render/harness/analyzer coverage. Visual validation now detects capture starvation, retains screenshot capture-time provenance, records runtime freshness snapshots, and prior clean VM evidence proves no blank/frozen scene under degraded runtime fault profiles.
+  - Focused local validation passed 100/100 using `dotnet test tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj -c Release --filter "FullyQualifiedName~DeepSeekCodeReviewGateTests.ProcessDocs|FullyQualifiedName~VmHarnessScriptTests|FullyQualifiedName~ScreensaverRenderBehaviorTests|FullyQualifiedName~YFinanceExchangeTimingServiceTests|FullyQualifiedName~Nb058Nb060BehaviorTests|FullyQualifiedName~MarketSessionResolverTests" --nologo`.
+  - Validation-script smoke passed on 2026-06-22.
 - Acceptance highlights:
   - A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.
   - Expected user-visible behavior is documented before implementation changes are made.
@@ -426,13 +433,16 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 3
 - Severity: Medium
 - Area: time_calendar_degradation
-- Status: open
+- Status: closed
 - Evidence / rationale:
   - Market status and countdown labels depend on local time, exchange time, holidays, DST transitions, and YFinance timing data.
   - Users have seen timing unavailable states, and the UI now should leave certain unavailable fields blank.
 - Notes:
   - Cover weekend, pre-market, regular market, after-hours, holiday closure, early close, DST boundary, local clock skew, and timezone lookup failure.
   - Do not issue separate Yahoo calls outside YFinance.NET for status.
+- Closure evidence:
+  - Closed on 2026-06-22 with existing exchange-timing tests covering regular, pre-market, after-hours, closed/next-open, unavailable timing, blank top-left countdown when unavailable, and no impossible negative countdown values.
+  - Focused local validation passed 100/100; validation-script smoke passed.
 - Acceptance highlights:
   - A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.
   - Expected user-visible behavior is documented before implementation changes are made.
@@ -444,13 +454,17 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 3
 - Severity: Medium
 - Area: long_soak_fault_matrix
-- Status: open
+- Status: closed
 - Evidence / rationale:
   - The healthy-path autonomous validation loop now works, but degraded scenarios need a repeatable matrix rather than one-off manual tests.
   - Future long test passes should create CRs automatically when injected degraded-mode expectations are violated.
 - Notes:
   - Matrix should sequence startup, config, runtime, recovery, and shutdown injections across multiple 30-minute VM cycles without chat prompting.
   - Analyzer should distinguish expected injected errors from unexpected regressions.
+- Closure evidence:
+  - Closed on 2026-06-22 by adding `-FaultProfiles` to `Invoke-AutonomousVisualValidation.ps1`, cycling selected profiles across VM runs, passing the selected profile into `Invoke-VmBuildTest.ps1`, and recording both configured profile list and per-cycle profile in the autonomous summary.
+  - `docs/DEGRADED_MODE_VALIDATION_HARNESS.md` now documents the full supported profile set, including `offline-then-recover-runtime`, and the one-command autonomous matrix example.
+  - Focused local validation passed 100/100; validation-script smoke passed.
 - Acceptance highlights:
   - A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.
   - Expected user-visible behavior is documented before implementation changes are made.
@@ -513,9 +527,8 @@ Reference display contract:
 - Priority: 1
 - Severity: High
 - Area: ux_freshness_communication
-- Status: open
-- Partial evidence: prior VM run `ux-deep-ssh-20260620-090405` proved visible live-to-offline freshness state with DeepSeek artifact review; focused local validation passed 23/23 on 2026-06-21 for freshness labels, status bindings, VM harness freshness provenance, network overlay, and recovery scheduler behavior.
-- Open validation: DeepSeek documentation gate `build/deepseek-review/deepseek-review-20260621-175406.md` blocked closure pending VM visual proof of the full recovery transition.
+- Status: closed
+- Closure evidence: VM run `ux-deep-ssh-20260621-215532` proved offline-to-recovered LIVE freshness via `runtime-freshness-events.log`, trace-backed quote ages, and exact displayed-vs-YFinance.NET spot-check comparisons; earlier VM run `ux-deep-ssh-20260620-090405` proved visible live-to-offline freshness state with DeepSeek artifact review; focused local validation covered freshness labels, status bindings, VM harness freshness provenance, network overlay, and recovery scheduler behavior.
 - UX rationale:
   - DeepSeek UX anomaly review identified that CR-074 says stale cache must not be labeled fresh, but does not fully define how users learn data is stale.
   - Financial dashboards can mislead users if cached or delayed data looks identical to live data.

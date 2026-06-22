@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -173,6 +174,26 @@ public sealed class DeepSeekCodeReviewGateTests
         Assert.Contains("DeepSeekWorkflowCommon.ps1", workflowGateScript, StringComparison.Ordinal);
         Assert.Contains("DEEPSEEK_WORKFLOW_GATE=Passed", workflowGateScript, StringComparison.Ordinal);
         Assert.Contains("Assert-CommandAvailable", validationScript, StringComparison.Ordinal);
+        AssertAutonomousValidationFaultProfileContract(validationScript);
+    }
+
+    private static void AssertAutonomousValidationFaultProfileContract(string validationScript)
+    {
+        const RegexOptions contractOptions = RegexOptions.Singleline;
+
+        AssertRegexMatches(validationScript, @"\[string\[\]\]\s*\$FaultProfiles\s*=\s*@\(\s*'none'\s*\)", contractOptions);
+        Assert.Contains("'offline-then-recover-runtime'", validationScript, StringComparison.Ordinal);
+        AssertRegexMatches(validationScript, @"if\s*\(\s*\$FaultProfiles\.Count\s*-eq\s*0\s*\)", contractOptions);
+        Assert.Contains("must expose a FaultProfile parameter", validationScript, StringComparison.Ordinal);
+        AssertRegexMatches(validationScript, @"\$cycleFaultProfile\s*=\s*\$FaultProfiles\[\s*\(\s*\$cycle\s*-\s*1\s*\)\s*%\s*\$FaultProfiles\.Count\s*\]", contractOptions);
+        AssertRegexMatches(validationScript, @"-FaultProfile\s+\$cycleFaultProfile", contractOptions);
+        AssertRegexMatches(validationScript, @"faultProfiles\s*=\s*@\(\s*\$FaultProfiles\s*\)", contractOptions);
+        AssertRegexMatches(validationScript, @"faultProfile\s*=\s*\$cycleFaultProfile", contractOptions);
+    }
+
+    private static void AssertRegexMatches(string value, string pattern, RegexOptions options)
+    {
+        Assert.True(Regex.IsMatch(value, pattern, options), $"Expected pattern not found: {pattern}");
     }
 
     [Fact]
