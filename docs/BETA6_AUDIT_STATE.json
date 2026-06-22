@@ -3575,7 +3575,7 @@
       "priority": 2,
       "area": "news_degradation",
       "title": "Validate Finance News degradation: no DeepSeek key, bad key, endpoint down, rate limit, slow response, malformed AI output, RSS-only fallback",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "Medium",
       "evidence": [
@@ -3584,7 +3584,15 @@
       ],
       "notes": [
         "Cover Adams/Vogon mode and classical Shakespeare mode prompts.",
-        "Ensure failures do not block UI and do not reset the scroller into strange repeated-line states."
+        "Ensure failures do not block UI and do not reset the scroller into strange repeated-line states.",
+        "Implementation evidence: commit b4fb1d4 adds an explicit RSS-only structured fallback for summarized-news mode when no DeepSeek API key is configured, while preserving the placeholder fallback if RSS itself is unavailable.",
+        "Deterministic coverage now includes no-key RSS fallback, no-key/no-RSS placeholder fallback, 401 bad-key behavior, 429 rate-limit behavior, 503 endpoint/server failure behavior, slow DeepSeek response budget fallback, malformed JSON retry, empty summary retry, structured local fallback caching, Adams/Vogon output, and classical Shakespeare prompt wording.",
+        "DeepSeek review gate: build/deepseek-review/deepseek-review-20260622-004326.md was reviewed; its high advisory about the no-key behavior change is explicitly accepted because RSS-only fallback is the intended CR-076 requirement and improves the user experience over a blank waiting state without adding DeepSeek calls or exposing secrets.",
+        "Concrete fallback tests include FinanceNewsServiceTests.GetHeadlinesAsync_SummarizedMode_WithoutApiKey_UsesRssBackedStructuredFallback, WithoutApiKeyAndRssUnavailable_UsesPlaceholderFallback, DeepSeekHttpFailureUsesStructuredFallback, SlowDeepSeekResponseUsesStructuredFallbackWithinBudget, RetriesOnceAfterMalformedDeepSeekJson, RetriesOnceAfterEmptySummaryResponse, CachesStructuredFallbackAfterDeepSeekFailure, and ShakespeareAppendsExactClosingQuotation.",
+        "Concrete scroller-liveness tests in the same focused run include ScreensaverRenderBehaviorTests.NewsFlasherControl_ScrollsAfterSecondLineAndDefersRefreshUntilAfterAdvance, CarriesPriorBottomLineWithoutRetypingIt, PausesAfterFinalSegmentBeforeNextHeadline, ResumesPlaybackWhenViewportBecomesReady, and ViewportRecoveryRestartsCurrentHeadline.",
+        "The off-UI-thread independent news lane remains covered by the previously closed NB-048 proof and Nb048BehaviorTests.ScreensaverSceneControl_UsesIndependentBackgroundNewsRefreshLane; CR-076 adds degraded content/fallback validation on top of that established non-blocking lane.",
+        "Focused local validation after pushed commit b4fb1d4 passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~FinanceNewsServiceTests|FullyQualifiedName~StartupCoordinatorNewsTests|FullyQualifiedName~ScreensaverRenderBehaviorTests --nologo (95/95 passing).",
+        "Validation smoke passed after pushed commit b4fb1d4: build/validation/Test-ValidationScripts.ps1 returned VALIDATION_SCRIPT_SMOKE_TEST=Passed."
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
@@ -3596,6 +3604,12 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "News content fetches off the UI thread and degraded paths keep the scroller alive.",
         "AI failures are traced and fall back to RSS-only or cached text according to documented policy."
+      ],
+      "closed_date": "2026-06-22",
+      "resolution": "Finance News degraded-mode behavior is now validated and hardened. Summarized-news mode no longer goes inert solely because DeepSeek is unavailable or unconfigured: no-key mode uses RSS-derived local structured fallback, RSS-unavailable mode preserves the existing waiting placeholder, DeepSeek HTTP failures and slow responses fall back without blocking, malformed/empty responses retry once, and existing teleprinter tests keep the scroller from regressing into repeated-line or reset behavior.",
+      "validation": "DeepSeek review gate completed at build/deepseek-review/deepseek-review-20260622-004326.md. Focused local validation passed after pushed commit b4fb1d4: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~FinanceNewsServiceTests|FullyQualifiedName~StartupCoordinatorNewsTests|FullyQualifiedName~ScreensaverRenderBehaviorTests --nologo passed 95/95; build/validation/Test-ValidationScripts.ps1 passed.",
+      "commits": [
+        "b4fb1d4"
       ]
     },
     {

@@ -260,7 +260,8 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 2
 - Severity: Medium
 - Area: news_degradation
-- Status: open
+- Status: closed
+- Closure evidence: commit `b4fb1d4` added explicit RSS-only structured fallback for summarized-news mode when no DeepSeek API key is configured and preserved the waiting placeholder when RSS is also unavailable; DeepSeek review `build/deepseek-review/deepseek-review-20260622-004326.md` was reviewed and its no-key behavior advisory was accepted as the intended RSS-only fallback requirement; focused local validation passed 95/95 on 2026-06-22 for `FinanceNewsServiceTests`, `StartupCoordinatorNewsTests`, and `ScreensaverRenderBehaviorTests` using `dotnet test tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj -c Release --filter "FullyQualifiedName~FinanceNewsServiceTests|FullyQualifiedName~StartupCoordinatorNewsTests|FullyQualifiedName~ScreensaverRenderBehaviorTests" --nologo`; validation-script smoke returned `VALIDATION_SCRIPT_SMOKE_TEST=Passed`. Concrete coverage includes `FinanceNewsServiceTests.GetHeadlinesAsync_SummarizedMode_WithoutApiKey_UsesRssBackedStructuredFallback`, `DeepSeekHttpFailureUsesStructuredFallback`, `SlowDeepSeekResponseUsesStructuredFallbackWithinBudget`, `RetriesOnceAfterMalformedDeepSeekJson`, and scroller-liveness tests such as `NewsFlasherControl_ScrollsAfterSecondLineAndDefersRefreshUntilAfterAdvance`, `CarriesPriorBottomLineWithoutRetypingIt`, and `PausesAfterFinalSegmentBeforeNextHeadline`. The off-UI-thread independent news lane remains covered by the previously closed NB-048 proof and `Nb048BehaviorTests.ScreensaverSceneControl_UsesIndependentBackgroundNewsRefreshLane`.
 - Evidence / rationale:
   - News scroller uses DeepSeek when configured and RSS-only fallback when unavailable.
   - We previously proved RSS-only fallback once, but not as a repeatable degraded-mode matrix.
@@ -272,6 +273,8 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
   - Expected user-visible behavior is documented before implementation changes are made.
   - Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.
   - The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.
+  - News content fetches off the UI thread and degraded paths keep the scroller alive.
+  - AI failures are traced and fall back to RSS-only or cached text according to documented policy.
 
 ### CR-077 - Validate World Markets ribbon degradation for quote, timing, weather, timezone, and partial exchange failures
 
