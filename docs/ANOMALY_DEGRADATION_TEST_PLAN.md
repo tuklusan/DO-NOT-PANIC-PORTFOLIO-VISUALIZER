@@ -363,13 +363,17 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Priority: 2
 - Severity: Medium
 - Area: configuration_change_runtime
-- Status: open
+- Status: closed
 - Evidence / rationale:
   - Successful config OK/Apply can regenerate ticker tapes, news scroller, and runtime symbol sets while background workers are active.
   - Configuration changes should not mutate server internals beyond documented control surfaces.
 - Notes:
   - Exercise Apply/OK and Cancel after successful validation, plus failed validation with no apply.
   - Cover symbol list changes, background folder changes, news mode changes, DeepSeek settings changes, and timing slider changes.
+- Closure evidence:
+  - Closed on 2026-06-22 with no product-code change required after audit. Existing behavioral coverage proves OK saves validated settings and publishes runtime quote seeds, Cancel closes without publishing validated quotes, validation transitions expose OK/Cancel only after success, and the desktop host pauses/resumes the scene around the modal settings dialog.
+  - Focused local validation passed 85/85 using `dotnet test tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj -c Release --filter "FullyQualifiedName~MainWindowViewModelValidationTests|FullyQualifiedName~DesktopShellMigrationTests|FullyQualifiedName~ConfigTextConsistencyTests|FullyQualifiedName~YFinanceClientServerProtocolTests" --nologo`.
+  - VM validation was not rerun for this closure because the CR was closed as a documentation/audit correction with no product-code or harness-code changes.
 - Acceptance highlights:
   - A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.
   - Expected user-visible behavior is documented before implementation changes are made.
@@ -447,7 +451,6 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
   - Expected user-visible behavior is documented before implementation changes are made.
   - Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.
   - The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.
-
 
 ## DeepSeek UX Review Additions
 
@@ -549,5 +552,6 @@ Reference display contract:
   - A high-latency harness profile proves controls provide feedback within 500ms of user input.
   - Cancel/Escape closes dialogs promptly while requests are pending.
   - No user input is lost or replayed unexpectedly after network recovery.
+
 
 

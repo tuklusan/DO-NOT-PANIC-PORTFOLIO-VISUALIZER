@@ -3768,7 +3768,7 @@
       "priority": 2,
       "area": "configuration_change_runtime",
       "title": "Validate applying configuration changes while runtime workers and YFinance server are active",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_13_anomaly_degradation_validation",
       "severity": "Medium",
       "evidence": [
@@ -3777,7 +3777,8 @@
       ],
       "notes": [
         "Exercise Apply/OK and Cancel after successful validation, plus failed validation with no apply.",
-        "Cover symbol list changes, background folder changes, news mode changes, DeepSeek settings changes, and timing slider changes."
+        "Cover symbol list changes, background folder changes, news mode changes, DeepSeek settings changes, and timing slider changes.",
+        "Closure proof covers OK/Cancel separation, runtime quote seed handoff, desktop scene pause/resume around configuration, saved-settings reload through the existing validation-pause refresh path, and no ordinary configuration mutation of YFinance.NET server internals."
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the degraded condition without depending on luck or live outages.",
@@ -3789,6 +3790,13 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
         "Cancel closes without applying pending config.",
         "Apply performs minimal necessary runtime regeneration without duplicate workers or stale subscriptions."
+      ],
+      "closed_date": "2026-06-22",
+      "resolution": "Closed with existing behavioral and static regression coverage: OK saves validated settings and publishes runtime quote seeds, Cancel closes without publishing, the desktop host pauses and resumes the scene around the modal settings dialog, scene resume rebuilds from saved settings through the existing validation-pause path, and YFinance.NET server internals remain constrained to documented client/server control surfaces.",
+      "validation": [
+        "Focused local validation passed 85/85 on 2026-06-22 for MainWindowViewModelValidationTests, DesktopShellMigrationTests, ConfigTextConsistencyTests, and YFinanceClientServerProtocolTests.",
+        "Validation-script smoke passed on 2026-06-22 before CR-081 review/commit.",
+        "VM validation was not rerun for this closure because the CR was closed as a documentation/audit correction with no product-code or harness-code changes."
       ]
     },
     {
