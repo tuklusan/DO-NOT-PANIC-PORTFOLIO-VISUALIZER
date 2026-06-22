@@ -528,10 +528,54 @@ public sealed class FinanceNewsServiceTests
     }
 
     [Fact]
-    public async Task GetHeadlinesAsync_SummarizedMode_WithoutApiKey_UsesSummaryFallback()
+    public async Task GetHeadlinesAsync_SummarizedMode_WithoutApiKey_UsesRssBackedStructuredFallback()
     {
         string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
-        using HttpClient client = new(new FakeHttpMessageHandler(_ => throw new InvalidOperationException("HTTP should not be used without an API key.")));
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    <rss><channel><item><title>Markets steady as policymakers weigh growth and inflation risks</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            throw new InvalidOperationException("DeepSeek HTTP should not be used without an API key.");
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
+            NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
+            NewsRefreshMinutes = 15,
+            DeepSeekApiKey = string.Empty
+        };
+
+        IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(
+            client,
+            settings,
+            networkAvailable: true);
+
+        Assert.Equal(2, headlines.Count);
+        Assert.Contains(Environment.NewLine, headlines[0], StringComparison.Ordinal);
+        Assert.Contains("Markets steady as", headlines[0], StringComparison.Ordinal);
+        Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", headlines[1]);
+    }
+
+    [Fact]
+    public async Task GetHeadlinesAsync_SummarizedMode_WithoutApiKeyAndRssUnavailable_UsesPlaceholderFallback()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        using HttpClient client = new(new FakeHttpMessageHandler(_ => throw new HttpRequestException("rss unavailable")));
         FinanceNewsService service = new(cachePath, () => string.Empty);
         AppSettings settings = new()
         {
@@ -548,6 +592,107 @@ public sealed class FinanceNewsServiceTests
             networkAvailable: true);
 
         Assert.Contains(headlines, headline => headline.Contains("Waiting for summarized financial news", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task GetHeadlinesAsync_SummarizedMode_DeepSeekHttpFailureUsesStructuredFallback(HttpStatusCode statusCode)
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        int deepSeekRequestCount = 0;
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    <rss><channel><item><title>Markets brace for a volatile week as oil and bonds diverge</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            deepSeekRequestCount++;
+            return new HttpResponseMessage(statusCode)
+            {
+                Content = new StringContent(statusCode.ToString(), Encoding.UTF8, "text/plain")
+            };
+        });
+
+        using HttpClient client = new(handler);
+        List<TimeSpan> requestedDelays = [];
+        FinanceNewsService service = new(cachePath, () => string.Empty, (delay, _) =>
+        {
+            requestedDelays.Add(delay);
+            return Task.CompletedTask;
+        });
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
+            NewsRefreshMinutes = 15,
+            DeepSeekApiKey = "test-deepseek-key"
+        };
+
+        IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+        Assert.Equal(2, deepSeekRequestCount);
+        Assert.Single(requestedDelays);
+        Assert.Equal(TimeSpan.FromMilliseconds(750), requestedDelays[0]);
+        Assert.Equal(2, headlines.Count);
+        Assert.Contains("Markets brace for a", headlines[0], StringComparison.Ordinal);
+        Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", headlines[1]);
+    }
+
+    [Fact]
+    public async Task GetHeadlinesAsync_SummarizedMode_SlowDeepSeekResponseUsesStructuredFallbackWithinBudget()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        int deepSeekRequestCount = 0;
+        FakeHttpMessageHandler handler = new(async (request, cancellationToken) =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    <rss><channel><item><title>Markets steady as policymakers weigh growth and inflation risks</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            deepSeekRequestCount++;
+            await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
+            throw new InvalidOperationException("The test budget should cancel before this response.");
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(
+            cachePath,
+            () => string.Empty,
+            summarizedNewsExternalCallBudget: TimeSpan.FromMilliseconds(250));
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
+            NewsRefreshMinutes = 15,
+            DeepSeekApiKey = "test-deepseek-key"
+        };
+
+        IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+        Assert.Equal(1, deepSeekRequestCount);
+        Assert.Equal(2, headlines.Count);
+        Assert.Contains("Markets steady as", headlines[0], StringComparison.Ordinal);
+        Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", headlines[1]);
     }
 
     [Fact]

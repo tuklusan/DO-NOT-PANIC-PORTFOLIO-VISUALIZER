@@ -223,7 +223,7 @@ public sealed class FinanceNewsService
     {
         string apiKey = ResolveDeepSeekApiKey(settings.DeepSeekApiKey);
         if (string.IsNullOrWhiteSpace(apiKey))
-            return new([], false);
+            return await FetchRssOnlyStructuredFallbackAsync(httpClient, settings, cancellationToken).ConfigureAwait(false);
 
         using CancellationTokenSource budgetCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         budgetCts.CancelAfter(_summarizedNewsExternalCallBudget);
@@ -417,6 +417,30 @@ public sealed class FinanceNewsService
         {
             return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "deepseek-request-failed");
         }
+    }
+
+    private async Task<NewsFetchResult> FetchRssOnlyStructuredFallbackAsync(
+        HttpClient httpClient,
+        AppSettings settings,
+        CancellationToken cancellationToken)
+    {
+        SummarizedNewsContext context;
+        try
+        {
+            context = await FetchSummarizedNewsContextAsync(httpClient, settings, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return new([], false);
+        }
+
+        return context.Headlines.Count == 0
+            ? new([], false)
+            : CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "deepseek-api-key-missing");
     }
 
     private async Task DelayBeforeSummaryRetryAsync(
