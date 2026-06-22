@@ -52,7 +52,7 @@
                    TextWrapping="Wrap"
                    Panel.ZIndex="90"
                    IsHitTestVisible="False"
-                   Text="&#169; Supratim Sanyal. MIT License." />
+                   Text="&#169; Supratim Sanyal. SANYALnet Labs Non-Commercial License." />
         <TextBlock HorizontalAlignment="Center"
                    VerticalAlignment="Bottom"
                    Margin="0,0,0,8"
@@ -213,4 +213,3 @@
         </Grid>
     </Grid>
 </UserControl>
-

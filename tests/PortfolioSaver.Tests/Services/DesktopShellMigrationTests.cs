@@ -142,7 +142,7 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("Author: {AppIdentity.AuthorName}", code, StringComparison.Ordinal);
         Assert.Contains("License: {AppIdentity.LicenseName}", code, StringComparison.Ordinal);
         Assert.Contains("FullLicenseText", code, StringComparison.Ordinal);
-        Assert.Contains("MIT License Text", xaml, StringComparison.Ordinal);
+        Assert.Contains("License Text", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding FullLicenseText}\"", xaml, StringComparison.Ordinal);
     }
 
@@ -161,4 +161,3 @@ public sealed class DesktopShellMigrationTests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 }
-

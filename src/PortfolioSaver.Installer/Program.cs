@@ -64,8 +64,8 @@ internal static class Program
 
     private static int RunInstall()
     {
-        string mitLicenseText = MitLicenseService.GetMitTextAsync().GetAwaiter().GetResult();
-        using (LicenseAgreementForm agreementForm = new(mitLicenseText))
+        string licenseText = ProjectLicenseService.GetLicenseText();
+        using (LicenseAgreementForm agreementForm = new(licenseText))
         {
             if (agreementForm.ShowDialog() != DialogResult.OK)
             {
@@ -222,13 +222,6 @@ internal static class Program
                 AutoSize = true
             };
 
-            LinkLabel officialLink = new()
-            {
-                AutoSize = true,
-                Text = $"Open official {AppIdentity.LicenseName} page: {AppIdentity.OfficialLicenseUrl}"
-            };
-            officialLink.LinkClicked += (_, _) => OpenOfficialLicense();
-
             _licenseTextBox = new RichTextBox
             {
                 Text = licenseText ?? string.Empty,
@@ -286,7 +279,6 @@ internal static class Program
 
             root.Controls.Add(heading, 0, 0);
             root.Controls.Add(metadata, 0, 1);
-            root.Controls.Add(officialLink, 0, 2);
             root.Controls.Add(_licenseTextBox, 0, 3);
             root.Controls.Add(_scrollStatusLabel, 0, 4);
             root.Controls.Add(_agreeCheckBox, 0, 5);
@@ -322,26 +314,6 @@ internal static class Program
         private void UpdateAcceptState()
         {
             _acceptButton.Enabled = _didReachBottom && _agreeCheckBox.Checked;
-        }
-
-        private void OpenOfficialLicense()
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = AppIdentity.OfficialLicenseUrl,
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    $"Unable to open link:{Environment.NewLine}{AppIdentity.OfficialLicenseUrl}{Environment.NewLine}{Environment.NewLine}{ex.Message}",
-                    InstallerTitle,
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-            }
         }
     }
 }

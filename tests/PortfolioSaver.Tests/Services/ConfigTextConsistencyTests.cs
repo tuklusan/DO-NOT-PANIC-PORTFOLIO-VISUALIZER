@@ -22,7 +22,7 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("BETA-7 baseline", aboutText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Publisher: SANYALnet Labs", aboutText, StringComparison.Ordinal);
         Assert.Contains("Author: Supratim Sanyal", aboutText, StringComparison.Ordinal);
-        Assert.Contains("License: MIT License", aboutText, StringComparison.Ordinal);
+        Assert.Contains("License: SANYALnet Labs Non-Commercial License", aboutText, StringComparison.Ordinal);
         Assert.Contains("retires the legacy portfolio/off-hours refresh sliders", aboutText, StringComparison.Ordinal);
         Assert.Contains("uses local background files only", aboutText, StringComparison.Ordinal);
     }
@@ -182,11 +182,10 @@ public sealed class ConfigTextConsistencyTests
         Assert.False(string.IsNullOrWhiteSpace(helpText));
         Assert.False(string.IsNullOrWhiteSpace(aboutText));
         Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER Help", helpText, StringComparison.Ordinal);
-        Assert.Contains("License: MIT License", aboutText, StringComparison.Ordinal);
+        Assert.Contains("License: SANYALnet Labs Non-Commercial License", aboutText, StringComparison.Ordinal);
         Assert.Contains("retires the legacy portfolio/off-hours refresh sliders", aboutText, StringComparison.Ordinal);
         Assert.Contains("uses local background files only", aboutText, StringComparison.Ordinal);
-        Assert.Contains("Official License URL: https://opensource.org/license/mit/", aboutText, StringComparison.Ordinal);
-        Assert.Contains("Review the bundled LICENSE file or the official MIT License page for the full license text.", helpText, StringComparison.Ordinal);
+        Assert.Contains("Review the bundled LICENSE file for the full license text.", helpText, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -254,7 +253,3 @@ public sealed class ConfigTextConsistencyTests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 }
-
-
-
-

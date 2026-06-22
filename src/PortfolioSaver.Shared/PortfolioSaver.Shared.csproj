@@ -7,5 +7,6 @@
   <ItemGroup>
     <Resource Include="Assets\Branding\dnppv-icon-rev-3.png" />
     <Resource Include="Assets\Branding\dnppv-icon-rev-3-splash.png" />
+    <EmbeddedResource Include="..\..\LICENSE" LogicalName="PortfolioSaver.LICENSE" />
   </ItemGroup>
 </Project>

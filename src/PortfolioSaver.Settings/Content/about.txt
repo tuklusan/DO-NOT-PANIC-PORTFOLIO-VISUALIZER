@@ -4,12 +4,9 @@ BETA-7 baseline.
 
 Publisher: SANYALnet Labs
 Author: Supratim Sanyal
-License: MIT License
-Official License URL: https://opensource.org/license/mit/
+License: SANYALnet Labs Non-Commercial License
 
 This build shows floating ticker tapes, finance headlines, exchange-photo backgrounds, and market-aware overlays.
 Beta 7 intentionally retires the legacy portfolio/off-hours refresh sliders; the UI now uses the one-symbol-at-a-time runtime cadence.
 Beta 7 also uses local background files only: built-in starter images are copied to Local AppData, optional Wikimedia images download into that cache, and custom folders are chosen through the Settings screen.
 Beta 7 raises the minimum background rotation interval to 120 seconds to keep scene updates calm during market rendering.
-
-

@@ -9,9 +9,18 @@
     <Product Condition="'$(Product)' == ''">DO NOT PANIC PORTFOLIO VISUALIZER</Product>
     <Company Condition="'$(Company)' == ''">SANYALnet Labs</Company>
     <Authors Condition="'$(Authors)' == ''">Supratim Sanyal</Authors>
-    <Copyright Condition="'$(Copyright)' == ''">Copyright (c) Supratim Sanyal</Copyright>
-    <PackageLicenseExpression Condition="'$(PackageLicenseExpression)' == ''">MIT</PackageLicenseExpression>
+    <Copyright Condition="'$(Copyright)' == ''">Copyright (c) 2026 Supratim Sanyal of SANYALnet Labs. All rights reserved.</Copyright>
+    <PackageLicenseFile Condition="'$(PackageLicenseFile)' == ''">LICENSE</PackageLicenseFile>
   </PropertyGroup>
+
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)LICENSE')">
+    <None Include="$(MSBuildThisFileDirectory)LICENSE"
+          Link="LICENSE"
+          Pack="true"
+          PackagePath=""
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 
   <PropertyGroup Condition="'$(PortfolioSaverInstallerBaseIntermediateRoot)' != ''">
     <BaseIntermediateOutputPath>$([MSBuild]::EnsureTrailingSlash('$(PortfolioSaverInstallerBaseIntermediateRoot)'))$(MSBuildProjectName)\</BaseIntermediateOutputPath>

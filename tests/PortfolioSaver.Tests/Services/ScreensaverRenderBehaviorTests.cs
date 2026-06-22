@@ -1816,7 +1816,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("x:Name=\"VersionWatermark\"", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("SANYALnet Labs DO NOT PANIC Portfolio Visualizer", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("FooterAttributionWatermark", sceneXaml, StringComparison.Ordinal);
-        Assert.Contains("&#169; Supratim Sanyal. MIT License.", sceneXaml, StringComparison.Ordinal);
+        Assert.Contains("&#169; Supratim Sanyal. SANYALnet Labs Non-Commercial License.", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("BackgroundAttributions", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("UpdateFooterAttribution(backgroundPath);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("QueueBackgroundCatalogRescan", sceneCodeBehind, StringComparison.Ordinal);
@@ -2823,11 +2823,3 @@ public sealed class ScreensaverRenderBehaviorTests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 }
-
-
-
-
-
-
-
-

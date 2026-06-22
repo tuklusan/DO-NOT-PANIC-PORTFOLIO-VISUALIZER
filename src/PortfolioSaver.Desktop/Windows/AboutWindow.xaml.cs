@@ -10,7 +10,7 @@ public partial class AboutWindow : Window
     public string PublisherText => $"Publisher: {AppIdentity.PublisherName}";
     public string AuthorText => $"Author: {AppIdentity.AuthorName}";
     public string LicenseText => $"License: {AppIdentity.LicenseName}";
-    public string FullLicenseText => MitLicenseService.GetFallbackMitText();
+    public string FullLicenseText => ProjectLicenseService.GetLicenseText();
 
     public AboutWindow()
     {

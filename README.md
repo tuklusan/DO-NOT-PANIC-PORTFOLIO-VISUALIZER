@@ -2,9 +2,9 @@
 
 Market-aware Windows desktop visualizer and configuration suite by **SANYALnet Labs**, written by **Supratim Sanyal**.
 
-**License: MIT LICENSE**
+**License: SANYALnet Labs Non-Commercial License**
 
-This repository ships with the full [LICENSE](LICENSE) text in-tree and is licensed under the **MIT LICENSE**, including the standard warranty and liability disclaimer.
+This repository ships with the full [LICENSE](LICENSE) text in-tree and is licensed under the **SANYALnet Labs Non-Commercial License**, including the standard warranty and liability disclaimer.
 
 ## Overview
 
@@ -40,14 +40,10 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
 
 - Standalone installer bootstrap (`PortfolioSaverScreensaverSetup`)
 - Elevation-aware installation flow (UAC)
-- MIT license agreement dialog before install:
-  - Full MIT text shown in a scroll box
+- SANYALnet Labs Non-Commercial License agreement dialog before install:
+  - Full SANYALnet Labs Non-Commercial License text shown in a scroll box
   - **Accept** enabled only after scrolling to the end and checking agreement
-  - Direct button to open the official MIT license page
 - Local fallback license text is bundled so license display still works without network access
-
-Official MIT reference:
-- [MIT License (Open Source Initiative)](https://opensource.org/license/mit/)
 
 ## Data, Caching, and Runtime Paths
 
@@ -186,9 +182,6 @@ This wrapper runs the mandatory DeepSeek review gate, local Release restore/buil
 Test-artifact analysis also has a mandatory DeepSeek second-opinion step. Obtaining the report is mandatory, while the report content is advisory: the analyzer remains responsible for final pass/fail and CR creation. DeepSeek reviews bounded trace/log/screenshot metadata and writes an ignored advisory report beside each analysis JSON. Traces/logs must remain credential-free before this step runs.
 
 ## License
-This project is licensed under the **MIT LICENSE**.
+This project is licensed under the **SANYALnet Labs Non-Commercial License**.
 
 - Bundled full text: [LICENSE](LICENSE)
-- Official text: [https://opensource.org/license/mit/](https://opensource.org/license/mit/)
-
-

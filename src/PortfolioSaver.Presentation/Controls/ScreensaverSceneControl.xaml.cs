@@ -35,7 +35,7 @@ public partial class ScreensaverSceneControl : UserControl
     private static readonly bool EnableMarketCritters = false;
     private const string PinnedNycExchangeKey = "NewYorkNasdaq";
     private const int MaxVisibleGraphCards = 16;
-    private const string FooterBaseText = "\u00A9 Supratim Sanyal. MIT License.";
+    private const string FooterBaseText = "\u00A9 Supratim Sanyal. SANYALnet Labs Non-Commercial License.";
     private static readonly TimeSpan GraphSelectionRefreshInterval = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan MacroLaneMinimumRefreshInterval = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan WorldMarketsLaneMinimumRefreshInterval = TimeSpan.FromSeconds(15);
@@ -4395,9 +4395,3 @@ public partial class ScreensaverSceneControl : UserControl
     }
 
 }
-
-
-
-
-
-
