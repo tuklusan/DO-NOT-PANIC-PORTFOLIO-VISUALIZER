@@ -100,23 +100,33 @@
       ]
     },
     "last_autonomous_validation": {
-      "date": "2026-06-20",
+      "date": "2026-06-21",
       "commits": [
         "c240296",
         "07e25aa",
         "bb94efe",
-        "4b64942"
+        "4b64942",
+        "7c8e623",
+        "26e37d2",
+        "60375ea",
+        "0b987d7"
       ],
       "local_tests": [
         "dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~StartupCoordinatorTapeItemTests|FullyQualifiedName~ScreensaverRenderBehaviorTests: 74/74 passing",
         "dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~VmHarnessScriptTests: 19/19 passing",
-        "build/validation/Test-ValidationScripts.ps1: passed"
+        "build/validation/Test-ValidationScripts.ps1: passed",
+        "dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~VmHarnessScriptTests --nologo: 20/20 passing after adding the reference spot-check collection-shape regression guard"
       ],
-      "vm_run": "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405",
-      "fault_profile": "offline-during-runtime",
-      "artifact_analysis": "build/validation/artifacts/visual-validation-analysis-20260620-095412.json",
-      "deepseek_artifact_review": "build/validation/artifacts/deepseek-artifact-review-20260620-095412.md",
-      "result": "clean; offline freshness proof present; screenshots manually spot-checked for visible OFFLINE state and no blank background"
+      "vm_run": "build/vm/artifacts/ssh-runs/ux-deep-ssh-20260621-215532",
+      "fault_profile": "offline-then-recover-runtime",
+      "artifact_analysis": "build/validation/artifacts/visual-validation-analysis-20260621-223813.json",
+      "deepseek_artifact_review": "build/validation/artifacts/deepseek-artifact-review-20260621-223813.md",
+      "result": "clean; preserves prior degraded-mode validation evidence and adds recovery proof from ux-deep-ssh-20260621-215532 with direct UI LIVE freshness, fresh trace ages, and reference spot-check errors eliminated by 0b987d7",
+      "commit_notes": [
+        "c240296, 07e25aa, bb94efe, and 4b64942 are retained as the prior autonomous degraded-mode validation baseline.",
+        "7c8e623, 26e37d2, and 60375ea hardened recovery proof instrumentation and diagnostics.",
+        "0b987d7 fixed the PowerShell collection-shape error in the VM reference spot-check harness and added a static regression guard."
+      ]
     }
   },
   "post_remote_recovery_replay": {
@@ -3927,7 +3937,7 @@
       "priority": 1,
       "area": "ux_freshness_communication",
       "title": "Validate clear data freshness indicators and live/stale/recovery transitions",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_ux_anomaly_review_2026_06_13",
       "severity": "High",
       "evidence": [
@@ -3952,7 +3962,10 @@
         "Current UX has no separate recovery toast/notification; recovery is represented by the persistent freshness/last-updated status returning to live data, so no transient recovery message can linger beyond the acceptance limit. Focused scheduler tests also prove no batch redraw requirement regression.",
         "DeepSeek documentation gate build/deepseek-review/deepseek-review-20260621-175406.md blocked closure pending VM visual proof of the full recovery transition.",
         "Partial validation retained from prior attempted closure: Prior VM degraded runtime run build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405 with DeepSeek artifact second opinion proved visible OFFLINE - showing last values during runtime outage. Focused local validation passed on 2026-06-21: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~StartupCoordinatorTapeItemTests.ResolveDataFreshnessText|FullyQualifiedName~ScreensaverRenderBehaviorTests.RuntimeQuoteScheduler|FullyQualifiedName~ScreensaverRenderBehaviorTests.NetworkWaitingOverlay|FullyQualifiedName~VmHarnessScriptTests\" --nologo passed 23/23. Post-test process check found no leftover YFinance.NET.Server, PortfolioSaver, or relevant dotnet child processes.",
-        "Partial evidence commits from prior attempted closure: 8e3f2fa"
+        "Partial evidence commits from prior attempted closure: 8e3f2fa",
+        "Closure proof: committed VM run build/vm/artifacts/ssh-runs/ux-deep-ssh-20260621-215532 used FaultProfile=offline-then-recover-runtime; ConfigPhaseStatus=Completed, DesktopPhaseStatus=Completed, FullScreenToggleStatus=Completed, deterministic analyzer build/validation/artifacts/visual-validation-analysis-20260621-223813.json reported ANALYSIS_CLEAN=True and 0 findings, and DeepSeek artifact review build/validation/artifacts/deepseek-artifact-review-20260621-223813.md was reviewed as advisory.",
+        "Freshness proof: runtime-freshness-events.log records post-clear effective_fault_profile=none with latest_freshness_source=ui, ui_freshness=LIVE quote feed, and trace_age_seconds typically under 2 seconds through the final capture sequence. Earlier VM evidence build/vm/artifacts/ssh-runs/ux-deep-ssh-20260620-090405 proved visible OFFLINE - showing last values during runtime outage.",
+        "Rendering proof: reference-spot-check-comparisons.jsonl from ux-deep-ssh-20260621-215532 captured latest-fully-live tape samples with displayed values matching YFinance.NET trace-backed reference values exactly for the sampled symbols, and no reference-spot-check-errors.log was produced."
       ],
       "acceptance": [
         "A deterministic local or VM harness path exists to reproduce the anomalous/degraded condition.",
@@ -3967,7 +3980,7 @@
         "The words stale, cached, delayed, offline, or an equivalent explicit indicator are visible when data is not live.",
         "Recovery indication must be noticeable, for example through the persistent freshness/last-updated status visibly returning to live data with distinct text/color; if a future transient recovery notice is added, it must not last longer than 3 seconds or cause batch redraw."
       ],
-      "resolution": "Reopened on 2026-06-21 after DeepSeek documentation gate blocked closure pending end-to-end VM proof of live/stale/recovery/fresh visual transitions. Local scheduler/status tests remain useful partial evidence but are not sufficient for closure."
+      "resolution": "Closed on 2026-06-21 after the pushed recovery-validation harness fix in 0b987d7 and clean 30-minute VM offline-then-recover-runtime run ux-deep-ssh-20260621-215532. The run proves user-visible OFFLINE-to-LIVE recovery through runtime-freshness-events.log with latest_freshness_source=ui and fresh trace ages, plus exact displayed-vs-YFinance.NET trace spot-check comparisons. Broader cross-component degraded-state display contract remains tracked separately under CR-086."
     },
     {
       "id": "CR-089",
@@ -5010,7 +5023,7 @@
       "priority": 1,
       "area": "runtime_tracing",
       "title": "Long offline recovery runs can outlive retained circular trace evidence",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_artifact_advisory_2026_06_20_210821",
       "severity": "High",
       "evidence": [
@@ -5023,7 +5036,11 @@
         "Tightened Analyze-VisualValidationArtifacts so ui-trace-stale cannot prove recovery; direct UI freshness must be paired with trace_age_seconds <= 180 or source-local combined trace LIVE evidence after OFFLINE.",
         "Updated DEGRADED_MODE_VALIDATION_HARNESS.md and validation-script fixtures.",
         "Recovery analyzer now rejects combined-trace-only proof; runtime-freshness-events.log with direct UI freshness and trace_age_seconds <= 180 is the required recovery evidence.",
-        "All ongoing validation pipelines must emit runtime-freshness-events.log with latest_freshness_source, ui_freshness, effective_fault_profile, and trace_age_seconds; archived runs without those fields are not sufficient for CR-119 closure."
+        "All ongoing validation pipelines must emit runtime-freshness-events.log with latest_freshness_source, ui_freshness, effective_fault_profile, and trace_age_seconds; archived runs without those fields are not sufficient for CR-119 closure.",
+        "Closure proof: after commits 7c8e623, 26e37d2, 60375ea, and 0b987d7, focused local VmHarnessScriptTests passed 20/20 and the committed VM run build/vm/artifacts/ssh-runs/ux-deep-ssh-20260621-215532 completed config, desktop, and fullscreen phases.",
+        "Analyzer proof: build/validation/artifacts/visual-validation-analysis-20260621-223813.json reported ANALYSIS_CLEAN=True and ANALYSIS_FINDINGS=0 for the recovery run; the analyzer now requires direct UI freshness with retained trace_age_seconds <= 180 for recovery proof.",
+        "Trace-retention proof: runtime-freshness-events.log from ux-deep-ssh-20260621-215532 retained post-recovery effective_fault_profile=none entries through the end of the run with latest_freshness_source=ui, ui_freshness=LIVE quote feed, and trace_age_seconds around 0.6-1.9 seconds; the final reference spot-check comparison matched displayed live tape values to YFinance.NET trace evidence exactly.",
+        "Harness hardening proof: the prior reference spot-check PowerShell collection-shape failure was fixed in 0b987d7; the closure run produced no reference-spot-check-errors.log."
       ],
       "acceptance": [
         "App and YFinance.NET traces retain enough evidence for 30-minute degraded-mode recovery runs under normal fault-injection churn.",
@@ -5033,7 +5050,7 @@
         "Local build/test validation passes.",
         "A VM recovery run proves post-clear recovery with retained trace evidence."
       ],
-      "resolution": "Implementation is complete locally, but CR-119 remains open until a fresh committed VM validation run proves post-recovery LIVE freshness using runtime-freshness-events.log with direct UI freshness and trace_age_seconds <= 180 under the enlarged circular trace cap."
+      "resolution": "Closed on 2026-06-21 after pushed commit 0b987d7 and clean 30-minute VM offline-then-recover-runtime validation ux-deep-ssh-20260621-215532. Retained runtime-freshness evidence now proves post-clear LIVE recovery with direct UI freshness and sub-2-second trace ages, and deterministic artifact analysis plus DeepSeek advisory review found no blocking recovery-proof gaps."
     },
     {
       "id": "CR-120",
