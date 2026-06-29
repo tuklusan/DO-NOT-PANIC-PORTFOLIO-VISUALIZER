@@ -5720,6 +5720,95 @@
         "Validation passed: stale phrase scan for old header markers returned no tracked-file matches, XML_PARSE_OK passed for XML-family artifacts, focused LegalHeaderPolicyTests passed, installer/license-adjacent tests passed, and DeepSeek code review 20260629-090903 reported no actionable findings."
       ],
       "closed": "2026-06-29"
+    },
+    {
+      "id": "CR-136",
+      "tracking_number": "CR-136",
+      "priority": 1,
+      "area": "installer_distribution",
+      "title": "Fix installer trust identity and license-screen formatting",
+      "status": "open",
+      "source": "user_manual_installer_review_2026_06_29",
+      "severity": "high",
+      "evidence": [
+        "Manual VM installer run shows Windows UAC prompt saying the app is from UNKNOWN PUBLISHER instead of SANYALnet Labs.",
+        "Manual installer license page #7 shows the LICENSE warranty paragraph wrapping badly: 'NO' appears at the left edge on one line and 'EVENT...' starts on the next line instead of preserving readable paragraph indentation."
+      ],
+      "notes": [
+        "Research and document the correct Windows/Inno path for changing the UAC publisher string; likely requires Authenticode code signing with a certificate whose subject/publisher is SANYALnet Labs, not just Inno metadata.",
+        "If real signing is not available locally, implement the best project-ready signing hook, build documentation, and test gate that detects unsigned installer state rather than pretending metadata can fix UAC publisher identity.",
+        "Inspect the installer license display after scrolling to the warranty section containing 'IN NO EVENT...' and capture a screenshot/artifact before and after the fix.",
+        "Fix the license text formatting for Inno display without changing the controlling root LICENSE legal text unless the root text itself requires an approved formatting-only adjustment."
+      ],
+      "acceptance": [
+        "The project documents exactly how SANYALnet Labs appears as publisher in UAC and what certificate/signing inputs are required.",
+        "Installer build pipeline has a signing-ready hook or verified signing implementation for setup EXE identity.",
+        "Unsigned builds are explicitly identified as unsigned and do not claim UAC publisher identity is fixed unless Authenticode signature verification proves it.",
+        "Installer license page renders the warranty section legibly; 'IN NO EVENT...' no longer splits with 'NO' stranded at the left edge.",
+        "A VM or installer artifact screenshot captures the corrected license section after scrolling down to it.",
+        "DeepSeek review and installer validation report no blocking findings."
+      ],
+      "resolution": []
+    },
+    {
+      "id": "CR-137",
+      "tracking_number": "CR-137",
+      "priority": 1,
+      "area": "runtime_visual_chrome",
+      "title": "Fix runtime footer branding text and true fullscreen menu-bar behavior",
+      "status": "open",
+      "source": "user_manual_runtime_review_2026_06_29",
+      "severity": "high",
+      "evidence": [
+        "Manual app run shows bottom-left footer still includes 'Non-Commercial License' after SANYALnet Labs, which the user wants removed.",
+        "Manual fullscreen run still leaves the top menu/menu-space visible; fullscreen must allocate that space to the scene."
+      ],
+      "notes": [
+        "Remove only the extra 'Non-Commercial License' wording after SANYALnet Labs at bottom left; preserve required attribution/license availability elsewhere such as About and installed LICENSE.",
+        "Audit desktop fullscreen transition logic so F11 enters true fullscreen with no top menu or reserved menu bar area.",
+        "ESC or F11 must exit fullscreen and restore normal windowed chrome/menu behavior.",
+        "Add automated or harness assertions where practical for fullscreen bounds and absence of menu chrome in fullscreen."
+      ],
+      "acceptance": [
+        "Bottom-left runtime footer no longer displays 'Non-Commercial License' after SANYALnet Labs.",
+        "F11 fullscreen hides/removes menu chrome and uses the full screen area for the scene.",
+        "ESC and F11 both exit fullscreen and restore the normal top menu in windowed mode.",
+        "VM visual validation captures fullscreen before/after evidence and confirms no top menu area remains in fullscreen.",
+        "DeepSeek review and local/VM validation report no blocking findings."
+      ],
+      "resolution": []
+    },
+    {
+      "id": "CR-138",
+      "tracking_number": "CR-138",
+      "priority": 1,
+      "area": "configuration_apply_semantics",
+      "title": "Apply configuration changes immediately after OK, including AI finance-news style default and changes",
+      "status": "open",
+      "source": "user_manual_config_review_2026_06_29",
+      "severity": "high",
+      "evidence": [
+        "Manual config run suggests changing AI-driven finance news from Shakespeare to Douglas Adams, validating, and clicking OK did not update the active news style; Shakespeare remained active.",
+        "User requested Douglas Adams as the default AI-driven finance news style.",
+        "User requested a broader follow-on config CR to ensure configuration changes in general take effect immediately on config-screen exit, while Cancel/no-change exits do not trigger unnecessary regeneration."
+      ],
+      "notes": [
+        "Set the default AI finance-news writing style to Douglas Adams.",
+        "Trace the full config workflow: Validate button disabled while validation runs; successful validation reveals OK/Cancel; OK saves, closes, and applies the changed configuration to the running desktop immediately; Cancel closes without applying unsaved changes.",
+        "Add change detection so the runtime can distinguish OK-with-changes from Cancel/no-change and only regenerate affected scene components when required.",
+        "AI finance news style changes must invalidate or refresh the active news worker/cache so the next rendered items use the newly selected style without requiring process restart.",
+        "Extend harness/reflection tests to exercise OK/Cancel, changed vs unchanged config, and immediate application of news-style changes."
+      ],
+      "acceptance": [
+        "Fresh/default configuration uses Douglas Adams for AI-driven finance news.",
+        "Changing finance-news style in config, validating, and clicking OK updates the active runtime style immediately after the config screen closes.",
+        "Cancel closes the config screen without saving or applying unsaved changes.",
+        "OK with no effective changes does not unnecessarily regenerate ticker tapes/news scroller/backgrounds.",
+        "OK with relevant changes regenerates or refreshes only the affected runtime components, including ticker tapes and news scroller when their settings change.",
+        "Harness/reflection/local tests and a VM visual/config run prove the behavior.",
+        "DeepSeek review reports no blocking findings."
+      ],
+      "resolution": []
     }
   ],
   "remaining_validation_gaps": [],
@@ -6627,6 +6716,76 @@
         "Concrete sub-ticket validation is recorded on CR-086 through CR-091.",
         "Focused local degraded UX contract validation passed 114/114 on 2026-06-22.",
         "Validation-script smoke passed on 2026-06-22 before umbrella closure."
+      ]
+    },
+    {
+      "id": "CR-136",
+      "tracking_number": "CR-136",
+      "priority": 1,
+      "area": "installer_distribution",
+      "title": "Fix installer trust identity and license-screen formatting",
+      "status": "open",
+      "source": "user_manual_installer_review_2026_06_29",
+      "notes": [
+        "Research and document the correct Windows/Inno path for changing the UAC publisher string; likely requires Authenticode code signing with a certificate whose subject/publisher is SANYALnet Labs, not just Inno metadata.",
+        "If real signing is not available locally, implement the best project-ready signing hook, build documentation, and test gate that detects unsigned installer state rather than pretending metadata can fix UAC publisher identity.",
+        "Inspect the installer license display after scrolling to the warranty section containing 'IN NO EVENT...' and capture a screenshot/artifact before and after the fix.",
+        "Fix the license text formatting for Inno display without changing the controlling root LICENSE legal text unless the root text itself requires an approved formatting-only adjustment."
+      ],
+      "acceptance": [
+        "The project documents exactly how SANYALnet Labs appears as publisher in UAC and what certificate/signing inputs are required.",
+        "Installer build pipeline has a signing-ready hook or verified signing implementation for setup EXE identity.",
+        "Unsigned builds are explicitly identified as unsigned and do not claim UAC publisher identity is fixed unless Authenticode signature verification proves it.",
+        "Installer license page renders the warranty section legibly; 'IN NO EVENT...' no longer splits with 'NO' stranded at the left edge.",
+        "A VM or installer artifact screenshot captures the corrected license section after scrolling down to it.",
+        "DeepSeek review and installer validation report no blocking findings."
+      ]
+    },
+    {
+      "id": "CR-137",
+      "tracking_number": "CR-137",
+      "priority": 1,
+      "area": "runtime_visual_chrome",
+      "title": "Fix runtime footer branding text and true fullscreen menu-bar behavior",
+      "status": "open",
+      "source": "user_manual_runtime_review_2026_06_29",
+      "notes": [
+        "Remove only the extra 'Non-Commercial License' wording after SANYALnet Labs at bottom left; preserve required attribution/license availability elsewhere such as About and installed LICENSE.",
+        "Audit desktop fullscreen transition logic so F11 enters true fullscreen with no top menu or reserved menu bar area.",
+        "ESC or F11 must exit fullscreen and restore normal windowed chrome/menu behavior.",
+        "Add automated or harness assertions where practical for fullscreen bounds and absence of menu chrome in fullscreen."
+      ],
+      "acceptance": [
+        "Bottom-left runtime footer no longer displays 'Non-Commercial License' after SANYALnet Labs.",
+        "F11 fullscreen hides/removes menu chrome and uses the full screen area for the scene.",
+        "ESC and F11 both exit fullscreen and restore the normal top menu in windowed mode.",
+        "VM visual validation captures fullscreen before/after evidence and confirms no top menu area remains in fullscreen.",
+        "DeepSeek review and local/VM validation report no blocking findings."
+      ]
+    },
+    {
+      "id": "CR-138",
+      "tracking_number": "CR-138",
+      "priority": 1,
+      "area": "configuration_apply_semantics",
+      "title": "Apply configuration changes immediately after OK, including AI finance-news style default and changes",
+      "status": "open",
+      "source": "user_manual_config_review_2026_06_29",
+      "notes": [
+        "Set the default AI finance-news writing style to Douglas Adams.",
+        "Trace the full config workflow: Validate button disabled while validation runs; successful validation reveals OK/Cancel; OK saves, closes, and applies the changed configuration to the running desktop immediately; Cancel closes without applying unsaved changes.",
+        "Add change detection so the runtime can distinguish OK-with-changes from Cancel/no-change and only regenerate affected scene components when required.",
+        "AI finance news style changes must invalidate or refresh the active news worker/cache so the next rendered items use the newly selected style without requiring process restart.",
+        "Extend harness/reflection tests to exercise OK/Cancel, changed vs unchanged config, and immediate application of news-style changes."
+      ],
+      "acceptance": [
+        "Fresh/default configuration uses Douglas Adams for AI-driven finance news.",
+        "Changing finance-news style in config, validating, and clicking OK updates the active runtime style immediately after the config screen closes.",
+        "Cancel closes the config screen without saving or applying unsaved changes.",
+        "OK with no effective changes does not unnecessarily regenerate ticker tapes/news scroller/backgrounds.",
+        "OK with relevant changes regenerates or refreshes only the affected runtime components, including ticker tapes and news scroller when their settings change.",
+        "Harness/reflection/local tests and a VM visual/config run prove the behavior.",
+        "DeepSeek review reports no blocking findings."
       ]
     }
   ],
