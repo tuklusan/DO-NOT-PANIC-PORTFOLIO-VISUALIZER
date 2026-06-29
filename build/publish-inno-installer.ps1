@@ -93,7 +93,7 @@ function New-InstallerLicenseDisplayFile {
     $displayText = Get-Content -Raw -LiteralPath $SourceLicensePath
     $displayText = $displayText -replace "`r`n", "`n"
 
-    $warrantyPattern = '(?s)THE SOFTWARE IS PROVIDED "AS IS".*?OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\s+SOFTWARE\.'
+    $warrantyPattern = '(?ms)^7\. No Warranty\.\s*(.*?)(?=\n\n(?:This license|8\.|\z))'
     $warrantyMatch = [regex]::Match($displayText, $warrantyPattern)
     if ($warrantyMatch.Success) {
         $displayText = [regex]::Replace(
@@ -101,7 +101,7 @@ function New-InstallerLicenseDisplayFile {
             $warrantyPattern,
             {
                 param($match)
-                (($match.Value -split "\n") | ForEach-Object { $_.Trim() } | Where-Object { $_.Length -gt 0 }) -join ' '
+                '7. No Warranty. ' + (([string]$match.Groups[1].Value -split "\n") | ForEach-Object { $_.Trim() } | Where-Object { $_.Length -gt 0 }) -join ' '
             },
             1)
     }

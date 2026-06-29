@@ -107,8 +107,9 @@ public sealed class InnoInstallerScriptTests
         Assert.Contains("/DLicenseFile=$installerLicensePath", script, StringComparison.Ordinal);
         Assert.Contains("LICENSE-INSTALLER-DISPLAY.txt", script, StringComparison.Ordinal);
         Assert.Contains("$warrantyPattern", script, StringComparison.Ordinal);
-        Assert.Contains("THE SOFTWARE IS PROVIDED", script, StringComparison.Ordinal);
-        Assert.Contains("OUT OF OR IN CONNECTION WITH THE SOFTWARE", script, StringComparison.Ordinal);
+        Assert.Contains("^7\\. No Warranty\\.", script, StringComparison.Ordinal);
+        Assert.Contains("'7. No Warranty. '", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("OUT OF OR IN CONNECTION WITH THE SOFTWARE", script, StringComparison.Ordinal);
         Assert.Contains("Installer license display workaround did not find the warranty paragraph", script, StringComparison.Ordinal);
         Assert.Contains("-Encoding UTF8BOM", script, StringComparison.Ordinal);
         Assert.Contains("https://timestamp.digicert.com", script, StringComparison.Ordinal);
