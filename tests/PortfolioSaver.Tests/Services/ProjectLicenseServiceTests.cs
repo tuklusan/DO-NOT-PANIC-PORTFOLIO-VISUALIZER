@@ -78,7 +78,7 @@ public sealed class ProjectLicenseServiceTests
             File.ReadAllText);
 
         Assert.Equal(expected, actual);
-        Assert.Contains("STRICTLY NON-COMMERCIAL", actual, StringComparison.Ordinal);
+        Assert.Contains("Non-Commercial Restriction", actual, StringComparison.Ordinal);
         Assert.Contains("State of Delaware", actual, StringComparison.Ordinal);
     }
 
@@ -96,7 +96,7 @@ public sealed class ProjectLicenseServiceTests
         string text = ProjectLicenseService.GetLicenseText();
 
         Assert.Contains("Copyright (c) 2026 Supratim Sanyal of SANYALnet Labs", text, StringComparison.Ordinal);
-        Assert.Contains("STRICTLY NON-COMMERCIAL", text, StringComparison.Ordinal);
+        Assert.Contains("Non-Commercial Restriction", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public sealed class ProjectLicenseServiceTests
             string text = ProjectLicenseService.GetLicenseText([missingRoot], File.ReadAllText);
 
             Assert.Contains("SANYALnet Labs. Proprietary rights reserved except as expressly licensed herein.", text, StringComparison.Ordinal);
-            Assert.Contains("STRICTLY NON-COMMERCIAL", text, StringComparison.Ordinal);
+            Assert.Contains("Non-Commercial Restriction", text, StringComparison.Ordinal);
         }
         finally
         {
@@ -128,7 +128,7 @@ public sealed class ProjectLicenseServiceTests
             _ => throw new IOException("simulated read failure"));
 
         Assert.Contains("SANYALnet Labs. Proprietary rights reserved except as expressly licensed herein.", text, StringComparison.Ordinal);
-        Assert.Contains("STRICTLY NON-COMMERCIAL", text, StringComparison.Ordinal);
+        Assert.Contains("Non-Commercial Restriction", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public sealed class ProjectLicenseServiceTests
         string text = ProjectLicenseService.GetLicenseText(["\0"], File.ReadAllText);
 
         Assert.Contains("SANYALnet Labs. Proprietary rights reserved except as expressly licensed herein.", text, StringComparison.Ordinal);
-        Assert.Contains("STRICTLY NON-COMMERCIAL", text, StringComparison.Ordinal);
+        Assert.Contains("Non-Commercial Restriction", text, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -5613,6 +5613,62 @@
         "Documented safe-temp publish as the canonical release proof path in README.md, including the apostrophe-path MSBuild transform hazard.",
         "Validation evidence: build/validation/Test-ValidationScripts.ps1 passes and publish-safe-temp.ps1 uses a temp workspace outside apostrophe-containing repository paths."
       ]
+    },
+    {
+      "id": "CR-133",
+      "tracking_number": "CR-133",
+      "priority": 2,
+      "area": "installer_distribution",
+      "title": "Verify installer creates and uninstaller removes standard Start Menu and Desktop shortcuts",
+      "status": "open",
+      "source": "user_request_2026_06_29_installer_shortcuts",
+      "severity": "medium",
+      "evidence": [
+        "User raised a possible CR that the installer/uninstaller must add and remove standard Start Menu and Desktop shortcuts if it is not already doing so.",
+        "Initial code inspection shows build/installer/DoNotPanicPortfolioVisualizer.iss has [Icons] entries for Start Menu shortcuts and a desktop shortcut gated by the desktopicon task, but the full install/uninstall validation must explicitly assert the shortcut lifecycle."
+      ],
+      "notes": [
+        "Decide whether the desktop shortcut should be created by default or remain optional; user wording implies standard desktop shortcut behavior should be validated, and may require changing the Inno desktopicon task default.",
+        "Extend the install/uninstall harness to verify Start Menu product, Settings, and License shortcuts after install and absence after uninstall.",
+        "Extend the harness to verify Desktop shortcut creation/removal according to the chosen installer policy."
+      ],
+      "acceptance": [
+        "Installer behavior for Start Menu and Desktop shortcuts is explicitly documented.",
+        "Automated install/uninstall validation asserts expected shortcut presence after install.",
+        "Automated install/uninstall validation asserts expected shortcut absence after uninstall.",
+        "DeepSeek code review gate reports no blocking findings for code/test changes.",
+        "A VM or equivalent Windows install/uninstall proof passes with no shortcut breadcrumbs left behind.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "resolution": []
+    },
+    {
+      "id": "CR-134",
+      "tracking_number": "CR-134",
+      "priority": 2,
+      "area": "branding_assets",
+      "title": "Make the application icon background truly transparent",
+      "status": "open",
+      "source": "user_request_2026_06_29_icon_transparency",
+      "severity": "medium",
+      "evidence": [
+        "User reported screenshots show the icon is not using a truly transparent background.",
+        "The current icon asset was previously accepted visually but must now be rechecked at Windows icon sizes and in screenshots for visible matte/background artifacts."
+      ],
+      "notes": [
+        "Inspect the source PNG/ICO alpha channel and generated icon frames for opaque or semi-opaque background pixels outside the badge silhouette.",
+        "Regenerate or repair the icon asset so the background is transparent while preserving edge quality at 16x16, 32x32, 48x48, and 256x256.",
+        "Update project resources, installer metadata, and any splash/about usage that consumes the icon asset."
+      ],
+      "acceptance": [
+        "Icon PNG and ICO frames have transparent outer background outside the intended badge silhouette.",
+        "Desktop, Config, Screensaver, installer, Start Menu, Desktop shortcut, and About/splash references use the corrected asset where applicable.",
+        "Automated or scripted image inspection verifies alpha/background transparency.",
+        "A VM screenshot or visual artifact confirms the icon no longer shows a rectangular/matte background.",
+        "DeepSeek code review gate reports no blocking findings for code/resource changes.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "resolution": []
     }
   ],
   "remaining_validation_gaps": [],
