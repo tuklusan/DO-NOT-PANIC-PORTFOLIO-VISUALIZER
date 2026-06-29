@@ -491,11 +491,8 @@ try {
 
     $auditFixture = Join-Path $tempRoot 'audit-state.json'
     @{
-        pending_next_build_issues = @(
+        change_requests = @(
             @{ id = 'CR-091'; tracking_number = 'CR-091'; status = 'open'; title = 'Existing CR' }
-        )
-        current_priority_backlog = @(
-            @{ id = 'CR-999'; tracking_number = 'CR-999'; status = 'open'; title = 'Unrelated umbrella must not affect allocation' }
         )
     } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $auditFixture -Encoding UTF8
     $crOutput = & (Join-Path $repoRoot 'build\validation\Add-AuditChangeRequest.ps1') `
@@ -508,8 +505,8 @@ try {
     $expectedCurrentSchemaId = 'CR-092'
     if (-not ($crOutput -match "CHANGE_REQUEST_ID=$expectedCurrentSchemaId")) { throw "Add-AuditChangeRequest did not allocate $expectedCurrentSchemaId from current audit schema. Output: $crOutput" }
     $auditAfter = Get-Content -Raw -LiteralPath $auditFixture | ConvertFrom-Json
-    $created = @($auditAfter.pending_next_build_issues | Where-Object { $_.id -eq $expectedCurrentSchemaId })
-    if ($created.Count -ne 1) { throw 'Add-AuditChangeRequest did not append exactly one pending_next_build_issues entry.' }
+    $created = @($auditAfter.change_requests | Where-Object { $_.id -eq $expectedCurrentSchemaId })
+    if ($created.Count -ne 1) { throw 'Add-AuditChangeRequest did not append exactly one change_requests entry.' }
 
     $legacyAuditFixture = Join-Path $tempRoot 'legacy-audit-state.json'
     @{
@@ -524,31 +521,63 @@ try {
         -Severity 'Medium' `
         -Priority 1 `
         -Evidence @('Synthetic evidence')
-    if (-not ($legacyCrOutput -match 'CHANGE_REQUEST_ID=CR-011')) { throw "Add-AuditChangeRequest did not preserve legacy change_requests schema. Output: $legacyCrOutput" }
+    if (-not ($legacyCrOutput -match 'CHANGE_REQUEST_ID=CR-011')) { throw "Add-AuditChangeRequest did not preserve current change_requests schema. Output: $legacyCrOutput" }
     $legacyAuditAfter = Get-Content -Raw -LiteralPath $legacyAuditFixture | ConvertFrom-Json
     $legacyCreated = @($legacyAuditAfter.change_requests | Where-Object { $_.id -eq 'CR-011' })
     if ($legacyCreated.Count -ne 1) { throw 'Add-AuditChangeRequest did not append exactly one legacy change_requests entry.' }
 
-    $dualAuditFixture = Join-Path $tempRoot 'dual-audit-state.json'
+    $legacyPendingFixture = Join-Path $tempRoot 'legacy-pending-audit-state.json'
     @{
-        pending_next_build_issues = $null
-        change_requests = @(
-            @{ id = 'CR-020'; tracking_number = 'CR-020'; status = 'open'; title = 'Legacy CR' }
+        pending_next_build_issues = @(
+            @{ id = 'CR-020'; tracking_number = 'CR-020'; status = 'open'; title = 'Legacy pending CR' }
         )
-    } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $dualAuditFixture -Encoding UTF8
-    $dualCrOutput = & (Join-Path $repoRoot 'build\validation\Add-AuditChangeRequest.ps1') `
-        -AuditPath $dualAuditFixture `
-        -Title 'Smoke-created current-preferred CR' `
+    } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $legacyPendingFixture -Encoding UTF8
+    $legacyPendingCrOutput = & (Join-Path $repoRoot 'build\validation\Add-AuditChangeRequest.ps1') `
+        -AuditPath $legacyPendingFixture `
+        -Title 'Smoke-created migrated CR' `
         -Area 'validation_smoke' `
         -Severity 'Medium' `
         -Priority 1 `
         -Evidence @('Synthetic evidence')
-    if (-not ($dualCrOutput -match 'CHANGE_REQUEST_ID=CR-021')) { throw "Add-AuditChangeRequest did not allocate CR-021 from dual schema. Output: $dualCrOutput" }
+    if (-not ($legacyPendingCrOutput -match 'CHANGE_REQUEST_ID=CR-021')) { throw "Add-AuditChangeRequest did not migrate legacy pending schema. Output: $legacyPendingCrOutput" }
+    $legacyPendingAfter = Get-Content -Raw -LiteralPath $legacyPendingFixture | ConvertFrom-Json
+    if ($null -ne $legacyPendingAfter.PSObject.Properties['pending_next_build_issues']) { throw 'Add-AuditChangeRequest did not remove legacy pending_next_build_issues after migration.' }
+    $legacyPendingCreated = @($legacyPendingAfter.change_requests | Where-Object { $_.id -eq 'CR-021' })
+    if ($legacyPendingCreated.Count -ne 1) { throw 'Add-AuditChangeRequest did not append migrated legacy pending CR to change_requests.' }
+    $legacyPendingPreserved = @($legacyPendingAfter.change_requests | Where-Object { $_.id -eq 'CR-020' })
+    if ($legacyPendingPreserved.Count -ne 1) { throw 'Add-AuditChangeRequest did not preserve existing legacy pending CR during migration.' }
+    if (@($legacyPendingAfter.change_requests).Count -ne 2) { throw 'Add-AuditChangeRequest legacy pending migration produced an unexpected entry count.' }
+
+    $dualAuditFixture = Join-Path $tempRoot 'dual-audit-state.json'
+    @{
+        change_requests = @(
+            @{ id = 'CR-030'; tracking_number = 'CR-030'; priority = 3; area = 'unspecified'; status = 'open'; source = 'schema_migration'; severity = 'unspecified'; title = 'Canonical CR'; evidence = @(); notes = @(); acceptance = @(); resolution = @(); validation = @() }
+        )
+        pending_next_build_issues = @(
+            @{ id = 'CR-030'; tracking_number = 'CR-030'; priority = 3; area = 'unspecified'; status = 'open'; source = 'schema_migration'; severity = 'unspecified'; title = 'Canonical CR'; evidence = @(); notes = @(); acceptance = @(); resolution = @(); validation = @() }
+            @{ id = 'CR-031'; tracking_number = 'CR-031'; status = 'open'; title = 'Legacy pending CR' }
+        )
+        current_priority_backlog = @(
+            @{ id = 'NB-001'; tracking_number = 'NB-001'; status = 'resolved'; title = 'Legacy priority backlog item' }
+        )
+    } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $dualAuditFixture -Encoding UTF8
+    $dualCrOutput = & (Join-Path $repoRoot 'build\validation\Add-AuditChangeRequest.ps1') `
+        -AuditPath $dualAuditFixture `
+        -Title 'Smoke-created merged CR' `
+        -Area 'validation_smoke' `
+        -Severity 'Medium' `
+        -Priority 1 `
+        -Evidence @('Synthetic evidence')
+    if (-not ($dualCrOutput -match 'CHANGE_REQUEST_ID=CR-032')) { throw "Add-AuditChangeRequest did not allocate CR-032 from merged schema. Output: $dualCrOutput" }
     $dualAuditAfter = Get-Content -Raw -LiteralPath $dualAuditFixture | ConvertFrom-Json
-    $dualCreated = @($dualAuditAfter.pending_next_build_issues | Where-Object { $_.id -eq 'CR-021' })
-    if ($dualCreated.Count -ne 1) { throw 'Add-AuditChangeRequest did not prefer pending_next_build_issues in a dual-schema audit file.' }
-    $legacyCount = @($dualAuditAfter.change_requests | Where-Object { $null -ne $_ }).Count
-    if ($legacyCount -ne 1) { throw 'Add-AuditChangeRequest unexpectedly modified legacy change_requests in a dual-schema audit file.' }
+    if ($null -ne $dualAuditAfter.PSObject.Properties['pending_next_build_issues']) { throw 'Add-AuditChangeRequest did not remove pending_next_build_issues after dual-schema migration.' }
+    if ($null -ne $dualAuditAfter.PSObject.Properties['current_priority_backlog']) { throw 'Add-AuditChangeRequest did not remove current_priority_backlog after dual-schema migration.' }
+    foreach ($expectedMergedId in @('CR-030', 'CR-031', 'CR-032', 'NB-001')) {
+        $expectedMerged = @($dualAuditAfter.change_requests | Where-Object { $_.id -ieq $expectedMergedId })
+        if ($expectedMerged.Count -ne 1) { throw "Add-AuditChangeRequest did not preserve merged ticket $expectedMergedId." }
+    }
+    $canonicalMerged = @($dualAuditAfter.change_requests | Where-Object { $_.id -ieq 'CR-030' }) | Select-Object -First 1
+    if ($canonicalMerged.title -ne 'Canonical CR') { throw 'Add-AuditChangeRequest did not preserve canonical duplicate content during migration.' }
 
     $invalidAuditFixture = Join-Path $tempRoot 'invalid-audit-state.json'
     @{ unrelated = @() } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $invalidAuditFixture -Encoding UTF8
@@ -563,7 +592,7 @@ try {
         $invalidSucceeded = $true
     }
     catch {
-        if ($_.Exception.Message -notmatch 'pending_next_build_issues or change_requests') {
+        if ($_.Exception.Message -notmatch 'change_requests') {
             throw
         }
     }
