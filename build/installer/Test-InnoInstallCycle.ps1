@@ -108,11 +108,26 @@ function Assert-InstalledState {
     $license = Join-Path $installRoot 'LICENSE'
     $apache = Join-Path $installRoot 'THIRD-PARTY-LICENSES\APACHE-2.0.txt'
     $uninstallKey = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{B0839D4C-1D29-4D9C-95E3-C88E4D8E37E5}_is1'
+    # CR-133 intentionally treats Start Menu and Desktop shortcuts as standard installer artifacts.
+    $startMenuRoot = Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'SANYALnet Labs\DO NOT PANIC PORTFOLIO VISUALIZER'
+    $desktopShortcut = Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'DO NOT PANIC PORTFOLIO VISUALIZER.lnk'
+    $shortcutPaths = @(
+        (Join-Path $startMenuRoot 'DO NOT PANIC PORTFOLIO VISUALIZER.lnk'),
+        (Join-Path $startMenuRoot 'Settings.lnk'),
+        (Join-Path $startMenuRoot 'License.lnk'),
+        $desktopShortcut
+    )
 
     if ($ExpectedInstalled) {
         foreach ($path in @($desktopExe, $license, $apache)) {
             if (-not (Test-Path -LiteralPath $path)) {
                 throw "Expected installed file missing: $path"
+            }
+        }
+
+        foreach ($shortcutPath in $shortcutPaths) {
+            if (-not (Test-Path -LiteralPath $shortcutPath -PathType Leaf)) {
+                throw "Expected installed shortcut missing: $shortcutPath"
             }
         }
 
@@ -144,6 +159,12 @@ function Assert-InstalledState {
 
     if (Test-Path -LiteralPath $uninstallKey) {
         throw "Inno uninstall key still present after uninstall: $uninstallKey"
+    }
+
+    foreach ($shortcutPath in $shortcutPaths) {
+        if (Test-Path -LiteralPath $shortcutPath) {
+            throw "Shortcut still present after uninstall: $shortcutPath"
+        }
     }
 }
 

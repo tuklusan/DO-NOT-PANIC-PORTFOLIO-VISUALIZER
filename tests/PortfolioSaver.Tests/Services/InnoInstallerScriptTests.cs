@@ -41,6 +41,7 @@ public sealed class InnoInstallerScriptTests
         Assert.Contains("#define AppPublisher \"SANYALnet Labs\"", script, StringComparison.Ordinal);
         Assert.Contains("ArchitecturesInstallIn64BitMode=x64compatible", script, StringComparison.Ordinal);
         Assert.Contains("DisableDirPage=yes", script, StringComparison.Ordinal);
+        Assert.Contains(@"DefaultGroupName={#AppPublisher}\{#AppName}", script, StringComparison.Ordinal);
         Assert.Contains(@"Source: ""{#SourceRoot}\*""; DestDir: ""{app}""", script, StringComparison.Ordinal);
         Assert.Contains("Cleanup-DoNotPanicPortfolioVisualizer.ps1", script, StringComparison.Ordinal);
         Assert.Contains("-AllUsers", script, StringComparison.Ordinal);
@@ -53,6 +54,13 @@ public sealed class InnoInstallerScriptTests
         Assert.Contains(@"Type: dirifempty; Name: ""{app}""", script, StringComparison.Ordinal);
         Assert.Contains(@"Type: dirifempty; Name: ""{autopf}\{#AppPublisher}""", script, StringComparison.Ordinal);
         Assert.Contains("DoNotPanicPortfolioVisualizer for local Windows user profiles", script, StringComparison.Ordinal);
+        Assert.Contains("CR-133: the public installer creates a standard all-users desktop shortcut by default.", script, StringComparison.Ordinal);
+        Assert.Contains(@"Name: ""desktopicon""; Description: ""Create a desktop shortcut""", script, StringComparison.Ordinal);
+        Assert.DoesNotContain(@"Name: ""desktopicon""; Description: ""Create a desktop shortcut""; GroupDescription: ""Additional shortcuts:""; Flags: unchecked", script, StringComparison.Ordinal);
+        Assert.Contains(@"Name: ""{group}\DO NOT PANIC PORTFOLIO VISUALIZER""; Filename: ""{app}\PortfolioSaver.Desktop.exe""", script, StringComparison.Ordinal);
+        Assert.Contains(@"Name: ""{group}\Settings""; Filename: ""{app}\PortfolioSaver.Config.exe""", script, StringComparison.Ordinal);
+        Assert.Contains(@"Name: ""{group}\License""; Filename: ""{app}\LICENSE""", script, StringComparison.Ordinal);
+        Assert.Contains(@"Name: ""{autodesktop}\DO NOT PANIC PORTFOLIO VISUALIZER""; Filename: ""{app}\PortfolioSaver.Desktop.exe""; WorkingDir: ""{app}""; Tasks: desktopicon", script, StringComparison.Ordinal);
 
         string cleanupScript = ReadRepoText("build", "installer", "Cleanup-DoNotPanicPortfolioVisualizer.ps1");
         Assert.Contains("function Test-IsSafeProgramFilesInstallRoot", cleanupScript, StringComparison.Ordinal);
@@ -79,6 +87,11 @@ public sealed class InnoInstallerScriptTests
         Assert.Contains("Inno uninstaller stub still present after uninstall", cycleScript, StringComparison.Ordinal);
         Assert.Contains("Install root still present after uninstall", cycleScript, StringComparison.Ordinal);
         Assert.Contains("Join-Path $repoRoot 'build\\validation\\artifacts\\inno-install-cycle'", cycleScript, StringComparison.Ordinal);
+        Assert.Contains("GetFolderPath('CommonPrograms')", cycleScript, StringComparison.Ordinal);
+        Assert.Contains("'SANYALnet Labs\\DO NOT PANIC PORTFOLIO VISUALIZER'", cycleScript, StringComparison.Ordinal);
+        Assert.Contains("GetFolderPath('CommonDesktopDirectory')", cycleScript, StringComparison.Ordinal);
+        Assert.Contains("Expected installed shortcut missing", cycleScript, StringComparison.Ordinal);
+        Assert.Contains("Shortcut still present after uninstall", cycleScript, StringComparison.Ordinal);
     }
 
     [Fact]
