@@ -7547,6 +7547,40 @@
         "Validation-script smoke passed on 2026-06-22 before umbrella closure."
       ],
       "closed_date": "2026-06-22"
+    },
+    {
+      "id": "CR-139",
+      "tracking_number": "CR-139",
+      "priority": 2,
+      "area": "YFinance.NET upstream sync",
+      "title": "Review yfinance 1.5.1 upstream drift against active YFinance.NET surface",
+      "status": "closed",
+      "source": "validation_advisory_2026_06_29",
+      "severity": "medium",
+      "evidence": [
+        "DeepSeek artifact advisory for the clean VM release-candidate run noted UpstreamYFinanceNewerThanReviewed because upstream ranaroussi/yfinance head 38c73ce33fb1ee77d37a0998c95c06e60356298e was newer than the CR-062/CR-063 baseline 125b12e058fe37971390e32333d2cf9edb2a8a50.",
+        "The project intentionally logs upstream drift in traces so end-user diagnostics can show whether the bundled YFinance.NET port has been reviewed against current upstream yfinance."
+      ],
+      "notes": [
+        "Compare the 1.4.1-to-1.5.1 upstream delta only against active product surfaces: anonymous cookie/crumb transport, v7 quotes, quoteSummary info normalization, v8 chart/history, market timing, and graph-card history bars.",
+        "Do not port upstream surfaces that the desktop product does not expose, such as login-cookie entitlement workflows, valuation-measure tables, or pandas price-repair machinery."
+      ],
+      "acceptance": [
+        "The current upstream commit, date, and version are identified.",
+        "Relevant upstream changes are mapped as already covered, not applicable, deferred, or implemented.",
+        "If no code change is needed, the reviewed upstream metadata is advanced so trace drift warnings are accurate.",
+        "Focused upstream-sync metadata tests pass.",
+        "Ticket is closed with evidence."
+      ],
+      "resolution": [
+        "Resolved on 2026-06-29 by reviewing upstream yfinance 1.5.1 commit 38c73ce33fb1ee77d37a0998c95c06e60356298e. Active-surface analysis found no required YFinance.NET runtime changes: quote-info null handling is already non-fatal, valuation measures are not exposed by the product, login-cookie entitlement preservation is outside the anonymous Yahoo session model, and pandas adjusted-close repair remains intentionally out of scope for compact graph/history rendering."
+      ],
+      "validation": [
+        "The review addendum was added to docs/YFINANCE_NET_UPSTREAM_SYNC_2026-06-12.md.",
+        "YFinanceUpstreamSyncMetadata and YFinance.net/upstream-sync.json were advanced to upstream yfinance 1.5.1 / commit 38c73ce33fb1ee77d37a0998c95c06e60356298e so future trace checks treat that commit as reviewed.",
+        "Focused YFinanceUpstreamSyncMonitor tests passed after the metadata update."
+      ],
+      "closed_date": "2026-06-29"
     }
   ],
   "remaining_validation_gaps": [],

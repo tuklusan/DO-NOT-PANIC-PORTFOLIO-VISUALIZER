@@ -120,3 +120,17 @@ Required closure evidence for CR-062:
 - focused local tests for locale and null chart behavior
 - full local Release test suite
 - practical live YFinance.NET validation because the change affects Yahoo request query parameters
+
+## Addendum: upstream yfinance 1.5.1 review on 2026-06-29
+
+Reviewed upstream `ranaroussi/yfinance` from the prior YFinance.NET baseline `125b12e058fe37971390e32333d2cf9edb2a8a50` (`1.4.1`, 2026-05-28) through current upstream head `38c73ce33fb1ee77d37a0998c95c06e60356298e` (`1.5.1`, 2026-06-28).
+
+Active-surface mapping:
+
+- `quote.py` `_fetch_info` now tolerates a missing/`None` quoteSummary/quoteResponse result before merging additional info. YFinance.NET already treats empty or absent `quoteSummary.result` as a non-fatal null summary and merges quote data independently in `TickerInfoService.Normalize`, so no code change is required.
+- `quote.py` moved valuation measures from HTML scraping to the Yahoo `fundamentals-timeseries` API and added frequency/period slicing. The desktop product does not currently expose valuation-measure retrieval from YFinance.NET; this is not an active runtime surface.
+- `data.py` added explicit login-cookie preservation and subscription/entitlement checks. YFinance.NET does not support user-supplied Yahoo login cookies or premium entitlements; anonymous cookie/crumb bootstrap remains the intended product surface.
+- `history.py` changes focus on pandas adjusted-close repair, dividend/split repair, and row-level price cleanup. YFinance.NET currently returns direct chart bars for compact graph-card/history use and intentionally does not port upstream pandas repair machinery; this remains outside the active product surface documented in `YFinance.net/PORTING_PLAN.md`.
+- Existing YFinance.NET chart null/malformed handling, locale parameters, cookie/crumb lifecycle, rate-limit classification, and market-timing parsing remain aligned with the active product requirements established by CR-062/CR-063.
+
+Conclusion: no YFinance.NET runtime code changes are required for the 1.5.1 upstream delta. The reviewed upstream baseline is advanced to `38c73ce33fb1ee77d37a0998c95c06e60356298e` so end-user traces reflect that this drift has been examined.
