@@ -36,7 +36,7 @@
         <vm:DesktopShellViewModel />
     </Window.DataContext>
     <DockPanel>
-        <Menu DockPanel.Dock="Top">
+        <Menu x:Name="MainMenu" DockPanel.Dock="Top">
             <MenuItem Header="_File">
                 <MenuItem Header="E_xit" Click="OnExitClick" />
             </MenuItem>

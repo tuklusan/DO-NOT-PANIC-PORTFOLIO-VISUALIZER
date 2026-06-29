@@ -585,6 +585,62 @@ public sealed class FinanceNewsServiceTests
     }
 
     [Fact]
+    public void GetCachedHeadlines_SummarizedMode_DoesNotReuseDifferentWritingStyleCache()
+    {
+        string cacheDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        string cachePath = Path.Combine(cacheDirectory, "finance-news-cache.json");
+        Directory.CreateDirectory(cacheDirectory);
+        File.WriteAllText(cachePath, JsonSerializer.Serialize(new NewsHeadlineCache
+        {
+            FetchTimestampUtc = DateTimeOffset.UtcNow,
+            FeedUrl = Defaults.DefaultNewsFeedUrl,
+            ModeKey = "summarized-financial-news:william-shakespeare",
+            Headlines =
+            [
+                "Attend these tidings: bonds did whatever bonds do.",
+                "[[CLOSING_QUOTE]] \"All that glisters is not gold.\""
+            ]
+        }, CacheJsonOptions));
+
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+
+        IReadOnlyList<string> douglasHeadlines = service.GetCachedHeadlines(
+            NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle.DouglasAdams);
+        IReadOnlyList<string> shakespeareHeadlines = service.GetCachedHeadlines(
+            NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle.WilliamShakespeare);
+
+        Assert.DoesNotContain(douglasHeadlines, headline => headline.Contains("glisters", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(douglasHeadlines, headline => headline.Contains("Waiting for summarized financial news", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(shakespeareHeadlines, headline => headline.Contains("glisters", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void GetCachedHeadlines_RssMode_IgnoresWritingStyle()
+    {
+        string cacheDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        string cachePath = Path.Combine(cacheDirectory, "finance-news-cache.json");
+        Directory.CreateDirectory(cacheDirectory);
+        File.WriteAllText(cachePath, JsonSerializer.Serialize(new NewsHeadlineCache
+        {
+            FetchTimestampUtc = DateTimeOffset.UtcNow,
+            FeedUrl = Defaults.DefaultNewsFeedUrl,
+            ModeKey = "rss",
+            Headlines = ["RSS markets headline"]
+        }, CacheJsonOptions));
+
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+
+        Assert.Contains(
+            service.GetCachedHeadlines(NewsScrollerMode.RssFeed, DeepSeekWritingStyle.DouglasAdams),
+            headline => string.Equals(headline, "RSS markets headline", StringComparison.Ordinal));
+        Assert.Contains(
+            service.GetCachedHeadlines(NewsScrollerMode.RssFeed, DeepSeekWritingStyle.WilliamShakespeare),
+            headline => string.Equals(headline, "RSS markets headline", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task GetHeadlinesAsync_SummarizedMode_WithoutApiKeyAndRssUnavailable_UsesPlaceholderFallback()
     {
         string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");

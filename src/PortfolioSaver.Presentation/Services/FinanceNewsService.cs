@@ -75,11 +75,13 @@ public sealed class FinanceNewsService
         CancellationToken cancellationToken = default)
     {
         NewsScrollerMode mode = settings.NewsScrollerMode;
+        DeepSeekWritingStyle writingStyle = settings.DeepSeekWritingStyle;
         string requestUrl = NormalizeFeedUrl(settings.NewsFeedUrl);
         TimeSpan refreshInterval = GetRefreshInterval(mode, settings.NewsRefreshMinutes);
+        string modeKey = GetModeKey(mode, writingStyle);
         NewsHeadlineCache cache = await LoadCacheAsync(cancellationToken);
         IReadOnlyList<string> matchingCachedHeadlines =
-            string.Equals(cache.ModeKey, GetModeKey(mode), StringComparison.OrdinalIgnoreCase)
+            string.Equals(cache.ModeKey, modeKey, StringComparison.OrdinalIgnoreCase)
                 ? cache.Headlines
                 : [];
 
@@ -101,7 +103,7 @@ public sealed class FinanceNewsService
         }
 
         if (cache.FetchTimestampUtc != DateTimeOffset.MinValue &&
-            string.Equals(cache.ModeKey, GetModeKey(mode), StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(cache.ModeKey, modeKey, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(cache.FeedUrl, requestUrl, StringComparison.OrdinalIgnoreCase) &&
             DateTimeOffset.UtcNow - cache.FetchTimestampUtc < refreshInterval &&
             cache.Headlines.Count > 0)
@@ -163,7 +165,7 @@ public sealed class FinanceNewsService
             {
                 FetchTimestampUtc = DateTimeOffset.UtcNow,
                 FeedUrl = requestUrl,
-                ModeKey = GetModeKey(mode),
+                ModeKey = modeKey,
                 Headlines = fetchResult.Headlines.ToList(),
                 UsedFallback = fetchResult.UsedFallback
             };
@@ -190,7 +192,11 @@ public sealed class FinanceNewsService
         }
     }
 
+    [Obsolete("Use GetCachedHeadlines(mode, writingStyle) so summarized financial news cache lookup respects the configured writing style.", true)]
     public IReadOnlyList<string> GetCachedHeadlines(NewsScrollerMode mode)
+        => throw new NotSupportedException("Call GetCachedHeadlines(mode, writingStyle) so summarized financial news cache lookup respects the configured writing style.");
+
+    public IReadOnlyList<string> GetCachedHeadlines(NewsScrollerMode mode, DeepSeekWritingStyle writingStyle)
     {
         if (!File.Exists(_cachePath))
             return GetFallbackHeadlines(mode, []);
@@ -199,9 +205,10 @@ public sealed class FinanceNewsService
         {
             string json = File.ReadAllText(_cachePath);
             NewsHeadlineCache? cache = JsonSerializer.Deserialize<NewsHeadlineCache>(json, JsonOptions);
+            string modeKey = GetModeKey(mode, writingStyle);
             IReadOnlyList<string> matchingHeadlines =
                 cache is not null &&
-                string.Equals(cache.ModeKey, GetModeKey(mode), StringComparison.OrdinalIgnoreCase)
+                string.Equals(cache.ModeKey, modeKey, StringComparison.OrdinalIgnoreCase)
                     ? cache.Headlines
                     : [];
             return GetFallbackHeadlines(mode, matchingHeadlines);
@@ -935,11 +942,15 @@ public sealed class FinanceNewsService
         return DefaultFeedUrl;
     }
 
-    private static string GetModeKey(NewsScrollerMode mode)
+    private static string GetModeKey(NewsScrollerMode mode, DeepSeekWritingStyle writingStyle)
         => mode switch
         {
             NewsScrollerMode.RssFeed => "rss",
-            _ => "summarized-financial-news"
+            _ => writingStyle switch
+            {
+                DeepSeekWritingStyle.WilliamShakespeare => "summarized-financial-news:william-shakespeare",
+                _ => "summarized-financial-news:douglas-adams"
+            }
         };
 
     private static void TraceNewsState(string eventName, params KeyValuePair<string, object?>[] fields)

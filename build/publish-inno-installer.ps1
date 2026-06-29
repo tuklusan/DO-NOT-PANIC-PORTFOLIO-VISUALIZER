@@ -18,7 +18,11 @@ param(
     [int]$PublishTimeoutSeconds = 1200,
     [switch]$SkipPublish,
     [switch]$SkipCompile,
-    [switch]$RequireIscc
+    [switch]$RequireIscc,
+    [string]$CodeSigningCertificateThumbprint = $env:DNPPV_CODESIGN_THUMBPRINT,
+    [string]$CodeSigningTimestampUrl = $(if ([string]::IsNullOrWhiteSpace($env:DNPPV_CODESIGN_TIMESTAMP_URL)) { 'https://timestamp.digicert.com' } else { $env:DNPPV_CODESIGN_TIMESTAMP_URL }),
+    [string]$CodeSigningExpectedCommonName = $(if ([string]::IsNullOrWhiteSpace($env:DNPPV_CODESIGN_EXPECTED_CN)) { 'SANYALnet Labs' } else { $env:DNPPV_CODESIGN_EXPECTED_CN }),
+    [switch]$RequireCodeSigning
 )
 
 Set-StrictMode -Version Latest
@@ -46,6 +50,145 @@ function Resolve-Iscc {
     }
 
     return $null
+}
+
+function Resolve-SignTool {
+    $command = Get-Command signtool.exe -ErrorAction SilentlyContinue
+    if ($null -ne $command) {
+        return $command.Source
+    }
+
+    $sdkBinRoots = @(
+        (Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'),
+        (Join-Path $env:ProgramFiles 'Windows Kits\10\bin')
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_) }
+
+    foreach ($sdkBinRoot in $sdkBinRoots) {
+        foreach ($versionDirectory in Get-ChildItem -LiteralPath $sdkBinRoot -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending) {
+            foreach ($architecture in @('x64', 'x86')) {
+                $candidate = Join-Path $versionDirectory.FullName "$architecture\signtool.exe"
+                if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                    return $candidate
+                }
+            }
+        }
+    }
+
+    return $null
+}
+
+function New-InstallerLicenseDisplayFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$SourceLicensePath,
+        [Parameter(Mandatory = $true)][string]$DestinationLicensePath
+    )
+
+    # The canonical root LICENSE is copied unchanged into the payload. This
+    # installer-display copy only joins the warranty paragraph so Inno RichEdit
+    # does not render fragments such as "IN" / "NO EVENT" on separate lines.
+    if (-not (Test-Path -LiteralPath $SourceLicensePath -PathType Leaf)) {
+        throw "Required license file not found: $SourceLicensePath"
+    }
+
+    $displayText = Get-Content -Raw -LiteralPath $SourceLicensePath
+    $displayText = $displayText -replace "`r`n", "`n"
+
+    $warrantyPattern = '(?s)THE SOFTWARE IS PROVIDED "AS IS".*?OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\s+SOFTWARE\.'
+    $warrantyMatch = [regex]::Match($displayText, $warrantyPattern)
+    if ($warrantyMatch.Success) {
+        $displayText = [regex]::Replace(
+            $displayText,
+            $warrantyPattern,
+            {
+                param($match)
+                (($match.Value -split "\n") | ForEach-Object { $_.Trim() } | Where-Object { $_.Length -gt 0 }) -join ' '
+            },
+            1)
+    }
+    else {
+        Write-Warning 'Installer license display workaround did not find the warranty paragraph; using the root LICENSE text unchanged.'
+    }
+
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $DestinationLicensePath) | Out-Null
+    Set-Content -LiteralPath $DestinationLicensePath -Value ($displayText -replace "`n", "`r`n") -Encoding UTF8BOM
+}
+
+function Get-CertificateSubjectCommonName {
+    param([string]$Subject)
+
+    foreach ($part in $Subject -split ',') {
+        $trimmed = $part.Trim()
+        if ($trimmed.StartsWith('CN=', [StringComparison]::OrdinalIgnoreCase)) {
+            return $trimmed.Substring(3).Trim()
+        }
+    }
+
+    return ''
+}
+
+function Invoke-InstallerCodeSigning {
+    param(
+        [Parameter(Mandatory = $true)][string]$SetupPath,
+        [string]$CertificateThumbprint,
+        [string]$TimestampUrl,
+        [string]$ExpectedCommonName,
+        [switch]$RequireSigning
+    )
+
+    if ([string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
+        $message = 'INNO_SETUP_UNSIGNED reason=no-code-signing-thumbprint; set DNPPV_CODESIGN_THUMBPRINT or pass -CodeSigningCertificateThumbprint to produce a trusted SANYALnet Labs publisher prompt.'
+        if ($RequireSigning) {
+            throw $message
+        }
+
+        Write-Warning $message
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($TimestampUrl)) {
+        throw 'Code-signing timestamp URL must be absolute HTTPS and must not be empty.'
+    }
+
+    [Uri]$timestampUri = [Uri]'https://timestamp.invalid'
+    if (-not [Uri]::TryCreate($TimestampUrl, [UriKind]::Absolute, [ref]$timestampUri) -or
+        $timestampUri.Scheme -ne [Uri]::UriSchemeHttps) {
+        throw "Code-signing timestamp URL must be absolute HTTPS: $TimestampUrl"
+    }
+
+    $signTool = Resolve-SignTool
+    if ([string]::IsNullOrWhiteSpace($signTool)) {
+        $message = 'INNO_SETUP_UNSIGNED reason=signtool-not-found; install Windows SDK SignTool or rerun without signing requirement.'
+        if ($RequireSigning) {
+            throw $message
+        }
+
+        Write-Warning $message
+        return
+    }
+
+    Write-Step "Signing Inno setup with Authenticode certificate thumbprint $CertificateThumbprint"
+    & $signTool sign /fd SHA256 /tr $TimestampUrl /td SHA256 /sha1 $CertificateThumbprint "$SetupPath"
+    if ($LASTEXITCODE -ne 0) {
+        throw "SignTool failed with exit code $LASTEXITCODE"
+    }
+
+    $signature = Get-AuthenticodeSignature -LiteralPath $SetupPath
+    if ($signature.Status -ne 'Valid') {
+        throw "Signed setup did not verify as valid. Status=$($signature.Status); Signer=$($signature.SignerCertificate.Subject)"
+    }
+    $normalizedExpectedThumbprint = ($CertificateThumbprint -replace '\s', '').ToUpperInvariant()
+    $normalizedActualThumbprint = ($signature.SignerCertificate.Thumbprint -replace '\s', '').ToUpperInvariant()
+    if (-not [string]::Equals($normalizedActualThumbprint, $normalizedExpectedThumbprint, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Signed setup thumbprint did not match requested signing certificate. Expected=$normalizedExpectedThumbprint; Actual=$normalizedActualThumbprint"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedCommonName)) {
+        $actualCommonName = Get-CertificateSubjectCommonName -Subject $signature.SignerCertificate.Subject
+        if (-not [string]::Equals($actualCommonName, $ExpectedCommonName, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Signed setup signer common name did not match expected common name '$ExpectedCommonName'. Actual signer=$($signature.SignerCertificate.Subject)"
+        }
+    }
+
+    Write-Step "INNO_SETUP_SIGNED signer=$($signature.SignerCertificate.Subject)"
 }
 
 function Copy-DirectoryContents {
@@ -104,6 +247,7 @@ $scriptPath = Join-Path $repoRoot 'build\installer\DoNotPanicPortfolioVisualizer
 $cleanupScript = Join-Path $repoRoot 'build\installer\Cleanup-DoNotPanicPortfolioVisualizer.ps1'
 $manifestScript = Join-Path $repoRoot 'build\generate-release-manifest.ps1'
 $licensePath = Join-Path $repoRoot 'LICENSE'
+$installerLicensePath = Join-Path $innoRoot 'LICENSE-INSTALLER-DISPLAY.txt'
 $iconPath = Join-Path $repoRoot 'src\PortfolioSaver.Shared\Assets\Branding\dnppv-icon-rev-3.ico'
 $version = Get-PortfolioSaverVersion -DirectoryBuildPropsPath (Join-Path $repoRoot 'Directory.Build.props')
 if (-not (Test-Path -LiteralPath $manifestScript -PathType Leaf)) {
@@ -136,6 +280,7 @@ foreach ($requiredSafeTempRoot in @($desktopRoot, $configRoot, $screensaverRoot,
 
 Remove-Item -LiteralPath $innoRoot -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $payloadRoot,$outputRoot | Out-Null
+New-InstallerLicenseDisplayFile -SourceLicensePath $licensePath -DestinationLicensePath $installerLicensePath
 
 Write-Step 'Assembling Inno Program Files payload'
 Copy-DirectoryContents -Source $desktopRoot -Destination $payloadRoot
@@ -190,7 +335,7 @@ Write-Step "Compiling Inno setup with $isccPath"
 $isccArgs = @(
     "/DSourceRoot=$payloadRoot",
     "/DOutputRoot=$outputRoot",
-    "/DLicenseFile=$licensePath",
+    "/DLicenseFile=$installerLicensePath",
     "/DAppVersion=$version"
 )
 if (Test-Path -LiteralPath $iconPath) {
@@ -207,5 +352,12 @@ $setupPath = Join-Path $outputRoot "DoNotPanicPortfolioVisualizerSetup-$version.
 if (-not (Test-Path -LiteralPath $setupPath)) {
     throw "Expected Inno setup output was not created: $setupPath"
 }
+
+Invoke-InstallerCodeSigning `
+    -SetupPath $setupPath `
+    -CertificateThumbprint $CodeSigningCertificateThumbprint `
+    -TimestampUrl $CodeSigningTimestampUrl `
+    -ExpectedCommonName $CodeSigningExpectedCommonName `
+    -RequireSigning:$RequireCodeSigning
 
 Write-Step "INNO_SETUP_CREATED setup=$setupPath"

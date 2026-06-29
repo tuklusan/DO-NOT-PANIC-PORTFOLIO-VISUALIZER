@@ -85,7 +85,7 @@ public sealed class StartupCoordinator
             pair => pair.Key,
             pair => CloneQuote(pair.Value),
             StringComparer.OrdinalIgnoreCase);
-        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode);
+        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode, settings.DeepSeekWritingStyle);
         DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
         bool showNetworkWaitingOverlay = !networkAvailable;
 
@@ -196,7 +196,7 @@ public sealed class StartupCoordinator
             httpClient,
             networkAvailable,
             cancellationToken);
-        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode);
+        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode, settings.DeepSeekWritingStyle);
 
         await Task.WhenAll(quotesTask, backgroundsTask);
 
@@ -231,7 +231,7 @@ public sealed class StartupCoordinator
             cancellationToken);
 
         IReadOnlyList<string> backgroundPaths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
-        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode);
+        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode, settings.DeepSeekWritingStyle);
 
         return BuildSceneState(settings, quotes, backgroundPaths, headlines, networkAvailable);
     }

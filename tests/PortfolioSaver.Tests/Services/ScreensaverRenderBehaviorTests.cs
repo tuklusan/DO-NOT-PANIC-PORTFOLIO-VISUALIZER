@@ -1829,7 +1829,10 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("x:Name=\"VersionWatermark\"", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("SANYALnet Labs DO NOT PANIC Portfolio Visualizer", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("FooterAttributionWatermark", sceneXaml, StringComparison.Ordinal);
-        Assert.Contains("&#169; Supratim Sanyal. SANYALnet Labs Non-Commercial License.", sceneXaml, StringComparison.Ordinal);
+        Assert.Contains("&#169; Supratim Sanyal. SANYALnet Labs.", sceneXaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Text=\"&#169; Supratim Sanyal. SANYALnet Labs Non-Commercial License.\"", sceneXaml, StringComparison.Ordinal);
+        Assert.Contains("private const string FooterBaseText = \"\\u00A9 Supratim Sanyal. SANYALnet Labs.\";", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("FooterBaseText = \"\\u00A9 Supratim Sanyal. SANYALnet Labs Non-Commercial License.", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundAttributions", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("UpdateFooterAttribution(backgroundPath);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("QueueBackgroundCatalogRescan", sceneCodeBehind, StringComparison.Ordinal);

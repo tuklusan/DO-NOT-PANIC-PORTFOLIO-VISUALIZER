@@ -22,7 +22,7 @@ public sealed class Nb048BehaviorTests
     {
         string source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Presentation", "Services", "StartupCoordinator.cs"));
 
-        Assert.Contains("IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode);", source, StringComparison.Ordinal);
+        Assert.Contains("IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode, settings.DeepSeekWritingStyle);", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Task<IReadOnlyList<string>> headlinesTask = _financeNewsService.GetHeadlinesAsync(", source, StringComparison.Ordinal);
         Assert.DoesNotContain("await Task.WhenAll(quotesTask, backgroundsTask, headlinesTask);", source, StringComparison.Ordinal);
     }

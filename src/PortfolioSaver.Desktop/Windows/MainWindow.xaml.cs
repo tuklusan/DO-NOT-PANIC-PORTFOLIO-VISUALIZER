@@ -111,6 +111,10 @@ public partial class MainWindow : Window
             _suppressWindowConstraint = false;
         }
 
+        // MainMenu is intentionally not data-bound; keep this manual state paired with ExitFullScreen.
+        if (MainMenu is not null)
+            MainMenu.Visibility = Visibility.Collapsed;
+
         Dispatcher.BeginInvoke(
             DispatcherPriority.ApplicationIdle,
             new Action(ApplyFullScreenBounds));
@@ -126,6 +130,8 @@ public partial class MainWindow : Window
         Topmost = _previousTopmost;
         ResizeMode = _previousResizeMode;
         WindowStyle = _previousWindowStyle;
+        if (MainMenu is not null)
+            MainMenu.Visibility = Visibility.Visible;
         Left = _previousLeft;
         Top = _previousTop;
         WindowState = _previousWindowState;

@@ -47,6 +47,7 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("Header=\"E_xit\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"_View\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"_Full Screen\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("<Menu x:Name=\"MainMenu\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"_Options\"", xaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.AutomationId=\"OptionsMenuRoot\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"_Settings\"", xaml, StringComparison.Ordinal);
@@ -86,6 +87,8 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("MaxHeight = double.PositiveInfinity;", code, StringComparison.Ordinal);
         Assert.Contains("MaxWidth = SystemParameters.WorkArea.Width;", code, StringComparison.Ordinal);
         Assert.Contains("MaxHeight = SystemParameters.WorkArea.Height;", code, StringComparison.Ordinal);
+        Assert.Contains("MainMenu.Visibility = Visibility.Collapsed;", code, StringComparison.Ordinal);
+        Assert.Contains("MainMenu.Visibility = Visibility.Visible;", code, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetAutomationId(this, \"DesktopMainWindow\")", code, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetHelpText(this, PortfolioVersion.SemanticVersion)", code, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(OptionsMenuItem, \"Options\")", code, StringComparison.Ordinal);
