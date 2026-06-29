@@ -5620,7 +5620,7 @@
       "priority": 2,
       "area": "installer_distribution",
       "title": "Verify installer creates and uninstaller removes standard Start Menu and Desktop shortcuts",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_29_installer_shortcuts",
       "severity": "medium",
       "evidence": [
@@ -5640,7 +5640,16 @@
         "A VM or equivalent Windows install/uninstall proof passes with no shortcut breadcrumbs left behind.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ],
-      "resolution": []
+      "resolution": [
+        "Changed build/installer/DoNotPanicPortfolioVisualizer.iss so the desktopicon task is selected by default, making the Public Desktop shortcut a standard installer artifact alongside the Start Menu group shortcuts.",
+        "Extended build/installer/Test-InnoInstallCycle.ps1 to assert Start Menu product, Settings, License, and Public Desktop shortcuts exist after install and are absent after uninstall.",
+        "Extended tests/PortfolioSaver.Tests/Services/InnoInstallerScriptTests.cs to lock the Inno shortcut contract and the install-cycle shortcut assertions.",
+        "DeepSeek code review build/deepseek-review/deepseek-review-20260629-083230.md reported no correctness blocker after the Start Menu path fix; the desktop shortcut default was confirmed intentional and documented inline.",
+        "Focused local validation passed on 2026-06-29: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --filter \"FullyQualifiedName~InnoInstallerScriptTests|FullyQualifiedName~ProjectLicenseServiceTests\" --nologo passed 12/12; Test-InnoInstallCycle.ps1 parser check returned PARSE_OK.",
+        "Fresh Inno build passed on 2026-06-29 and produced build/artifacts/inno/output/DoNotPanicPortfolioVisualizerSetup-0.9.0-beta7.exe.",
+        "VM install/human-simulation/uninstall proof passed without VirtualBox tooling in build/validation/artifacts/full-install-shortcut-human-uninstall-20260629-084452: after install the Program Files payload, Start Menu shortcuts, and Public Desktop shortcut existed; Desktop and Config launched; after uninstall the install root, uninstall key, shortcuts, Local AppData roots, product processes, and VM staging directory were absent.",
+        "DeepSeek artifact second opinion build/validation/artifacts/deepseek-artifact-review-installer-shortcuts-20260629-084755.md accepted the deterministic pass but advised future richer visual proof/screenshots and broader recursive artifact checks; those are advisory and not blockers for the CR-133 shortcut lifecycle requirement."
+      ]
     },
     {
       "id": "CR-134",
