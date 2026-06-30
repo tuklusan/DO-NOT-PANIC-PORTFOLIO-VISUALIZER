@@ -370,7 +370,7 @@ public sealed class FinanceNewsService
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
                     AddOpenRouterAttributionHeaders(request, endpointUrl);
                     request.Content = new StringContent(
-                        JsonSerializer.Serialize(CreateSummarizedNewsPayload(modelId, userPrompt, requestStrictJsonResponseFormat)),
+                        JsonSerializer.Serialize(CreateSummarizedNewsPayload(modelId, userPrompt, requestStrictJsonResponseFormat, endpointUrl)),
                         Encoding.UTF8,
                         "application/json");
 
@@ -572,7 +572,8 @@ public sealed class FinanceNewsService
     private static Dictionary<string, object?> CreateSummarizedNewsPayload(
         string modelId,
         string userPrompt,
-        bool requestStrictJsonResponseFormat)
+        bool requestStrictJsonResponseFormat,
+        string endpointUrl)
     {
         Dictionary<string, object?> payload = new(StringComparer.Ordinal)
         {
@@ -596,6 +597,9 @@ public sealed class FinanceNewsService
 
         if (requestStrictJsonResponseFormat)
             payload["response_format"] = new { type = "json_object" };
+
+        if (IsOpenRouterEndpoint(endpointUrl))
+            payload["provider"] = new { sort = "latency" };
 
         return payload;
     }
@@ -1215,9 +1219,7 @@ public sealed class FinanceNewsService
 
     private static void AddOpenRouterAttributionHeaders(HttpRequestMessage request, string endpointUrl)
     {
-        if (!Uri.TryCreate(endpointUrl, UriKind.Absolute, out Uri? endpoint) ||
-            (!string.Equals(endpoint.Host, "openrouter.ai", StringComparison.OrdinalIgnoreCase) &&
-             !endpoint.Host.EndsWith(".openrouter.ai", StringComparison.OrdinalIgnoreCase)))
+        if (!IsOpenRouterEndpoint(endpointUrl))
         {
             return;
         }
@@ -1225,6 +1227,11 @@ public sealed class FinanceNewsService
         request.Headers.TryAddWithoutValidation("HTTP-Referer", OpenRouterAttributionReferer);
         request.Headers.TryAddWithoutValidation("X-OpenRouter-Title", OpenRouterAttributionTitle);
     }
+
+    private static bool IsOpenRouterEndpoint(string endpointUrl)
+        => Uri.TryCreate(endpointUrl, UriKind.Absolute, out Uri? endpoint) &&
+           (string.Equals(endpoint.Host, "openrouter.ai", StringComparison.OrdinalIgnoreCase) ||
+            endpoint.Host.EndsWith(".openrouter.ai", StringComparison.OrdinalIgnoreCase));
 
     private static IReadOnlyList<string> GetFallbackHeadlines(NewsScrollerMode mode, IReadOnlyList<string> cached)
         => cached.Count > 0

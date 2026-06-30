@@ -180,6 +180,7 @@ public sealed class FinanceNewsServiceTests
         Assert.Contains("You are a dependable fiduciary and are presenting current financial news highlights to your customers.", userPrompt, StringComparison.Ordinal);
         Assert.Contains("You write in the style of Douglas Adams.", userPrompt, StringComparison.Ordinal);
         Assert.Equal("json_object", requestDocument.RootElement.GetProperty("response_format").GetProperty("type").GetString());
+        Assert.Equal("latency", requestDocument.RootElement.GetProperty("provider").GetProperty("sort").GetString());
         Assert.Equal(2000, requestDocument.RootElement.GetProperty("max_tokens").GetInt32());
         Assert.Contains("Schema: { \"items\": [ { \"lines\":", userPrompt, StringComparison.Ordinal);
         Assert.DoesNotContain("[[ITEM]]", userPrompt, StringComparison.Ordinal);
@@ -291,6 +292,7 @@ public sealed class FinanceNewsServiceTests
         Assert.Equal(2, headlines.Count);
         Assert.Equal("https://localhost:11434/v1/chat/completions", capturedRequestUrl);
         Assert.Contains("\"model\":\"llama3\"", capturedBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"provider\"", capturedBody, StringComparison.Ordinal);
     }
 
     [Fact]

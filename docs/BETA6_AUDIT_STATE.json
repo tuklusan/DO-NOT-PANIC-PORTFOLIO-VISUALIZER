@@ -7919,6 +7919,37 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-150",
+      "tracking_number": "CR-150",
+      "priority": 1,
+      "area": "AI summarized news",
+      "title": "OpenRouter free model structured news summaries time out or produce empty items in VM",
+      "status": "open",
+      "source": "vm_validation_2026_06_30",
+      "severity": "high",
+      "evidence": [
+        "VM UX run ux-deep-ssh-20260630-110713 showed OpenRouter startup health check succeeded for endpoint https://openrouter.ai/api/v1 and model openrouter/free.",
+        "The same run showed repeated NewsSummaryLocalFallbackUsed events with reason=deepseek-request-timeout at approximately 15:18, 15:29, and 15:40 UTC.",
+        "First summary attempt also logged NewsParseComplete item_count=0 before retry, indicating OpenRouter free structured output may be empty or incompatible with the current strict JSON request.",
+        "DeepSeek artifact second-opinion review agreed this is a real UX-impacting anomaly concentrated in the news summarization feature."
+      ],
+      "notes": [
+        "Acceptance: Summarized Financial News with the OpenRouter default path should produce non-empty AI summary items in VM when the configured key works, or clearly classify/provider-fallback without repeated 60-second stalls.",
+        "Acceptance: Request shape should be checked against current OpenRouter docs and model behavior, especially response_format/json mode and free-router latency.",
+        "Acceptance: Local and VM traces should show NewsSummaryAccessCheckSucceeded followed by at least one successful NewsFetchComplete with used_fallback=false during a validation run, unless OpenRouter itself is unavailable and the fallback is explicitly classified.",
+        "Acceptance: The UI should not freeze or show blank/repetitive news while external AI summary is slow or malformed.",
+        "Acceptance: Tests cover timeout/malformed/empty OpenRouter responses and the selected mitigation."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
