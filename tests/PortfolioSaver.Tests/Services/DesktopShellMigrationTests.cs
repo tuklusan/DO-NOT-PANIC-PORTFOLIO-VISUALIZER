@@ -135,7 +135,16 @@ public sealed class DesktopShellMigrationTests
         string appCode = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Desktop", "App.xaml.cs"));
 
         Assert.Contains("CheckConfiguredAiNewsAccessAsync", appCode, StringComparison.Ordinal);
+        Assert.Contains("QueueConfiguredAiNewsAccessCheck", appCode, StringComparison.Ordinal);
+        Assert.Contains("AiNewsStartupProbeTimeout = TimeSpan.FromSeconds(15)", appCode, StringComparison.Ordinal);
         Assert.Contains("summarized news will retry on the normal refresh cadence", appCode, StringComparison.Ordinal);
+        int showIndex = appCode.IndexOf("window.Show();", StringComparison.Ordinal);
+        int probeIndex = appCode.IndexOf("QueueConfiguredAiNewsAccessCheck();", StringComparison.Ordinal);
+        Assert.NotEqual(-1, showIndex);
+        Assert.NotEqual(-1, probeIndex);
+        Assert.True(
+            showIndex < probeIndex,
+            "AI availability probing must be queued only after the main window is visible.");
         Assert.DoesNotContain("ForceRssNewsForCurrentSession", appCode, StringComparison.Ordinal);
         Assert.DoesNotContain("AI summarized financial news is not available right now", appCode, StringComparison.Ordinal);
         Assert.DoesNotContain("AI summarized financial news could not be verified", appCode, StringComparison.Ordinal);

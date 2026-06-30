@@ -29,6 +29,8 @@ namespace PortfolioSaver.Desktop;
 public partial class App : Application
 {
     private const string SingleInstanceMutexName = "Local\\DoNotPanicPortfolioVisualizer.Desktop";
+    // OpenRouter free models can take longer than a fast LAN probe; run this after the window is visible.
+    private static readonly TimeSpan AiNewsStartupProbeTimeout = TimeSpan.FromSeconds(15);
     private static Mutex? singleInstanceMutex;
     private static bool ownsSingleInstance;
 
@@ -64,8 +66,6 @@ public partial class App : Application
             return;
         }
 
-        await CheckConfiguredAiNewsAccessAsync();
-
         bool startFullScreen = e.Args.Any(arg => string.Equals(arg, "--fullscreen", StringComparison.OrdinalIgnoreCase));
         base.OnStartup(e);
 
@@ -83,7 +83,18 @@ public partial class App : Application
         MainWindow = window;
         window.Show();
 
+        QueueConfiguredAiNewsAccessCheck();
         QueueReleaseIntegrityValidation();
+    }
+
+    private static void QueueConfiguredAiNewsAccessCheck()
+    {
+        Task probeTask = Task.Run(CheckConfiguredAiNewsAccessAsync);
+        _ = probeTask.ContinueWith(
+            faulted => TraceLog.Error("Desktop.App", "AI summarized news startup probe task faulted before internal handling.", faulted.Exception),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
     }
 
     private void QueueReleaseIntegrityValidation()
@@ -171,8 +182,9 @@ public partial class App : Application
 
         try
         {
-            using HttpClient httpClient = new() { Timeout = TimeSpan.FromSeconds(4) };
-            using CancellationTokenSource cts = new(TimeSpan.FromSeconds(4));
+            // Keep the startup probe bounded as a whole; ordinary refreshes still retry AI independently.
+            using CancellationTokenSource cts = new(AiNewsStartupProbeTimeout);
+            using HttpClient httpClient = new();
             FinanceNewsService service = new();
             FinanceNewsService.AiNewsAccessCheckResult result =
                 await service.CheckSummarizedNewsAccessAsync(httpClient, settings, cts.Token);
