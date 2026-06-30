@@ -19,7 +19,16 @@ using YFinance.NET.Protocol.Dtos;
 
 namespace PortfolioSaver.Config.Services;
 
-public sealed class YahooSymbolValidationService
+public interface IYahooSymbolValidationService
+{
+    Task<YahooSymbolValidationResult> ValidateAsync(
+        IEnumerable<string> symbols,
+        int timeoutSeconds,
+        IProgress<YahooSymbolValidationProgress>? progress = null,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed class YahooSymbolValidationService : IYahooSymbolValidationService
 {
     private const int MaxBatchSymbols = 25;
     private readonly Func<IReadOnlyCollection<string>, int, CancellationToken, Task<IReadOnlyDictionary<string, QuoteDto>>>? _quoteLookupAsync;

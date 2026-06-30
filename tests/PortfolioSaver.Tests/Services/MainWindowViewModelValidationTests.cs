@@ -13,13 +13,17 @@
 // ============================================================================
 using System.ComponentModel;
 using System.IO;
+using System.Net;
+using System.Net.Http;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using PortfolioSaver.Config.Services;
 using PortfolioSaver.Config.ViewModels;
 using PortfolioSaver.Core.Constants;
+using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Data.Services;
 using Xunit;
@@ -640,7 +644,10 @@ public sealed class MainWindowViewModelValidationTests
                 }
             ]);
 
-            MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));
+            FailIfCalledYahooSymbolValidationService networkValidation = new();
+            MainWindowViewModel vm = CreateIsolatedViewModel(
+                new FakeConnectivityService(initiallyAvailable: true),
+                yahooSymbolValidationService: networkValidation);
             TickerGroupEditorViewModel group = new();
             group.Tickers.Clear();
             group.Tickers.Add(new TickerItemEditorViewModel(new TickerItem
@@ -655,12 +662,13 @@ public sealed class MainWindowViewModelValidationTests
             YahooSymbolValidationResult result = await InvokePrivate<Task<YahooSymbolValidationResult>>(
                 vm,
                 "ValidateSymbolsAgainstSourcesAsync",
-                [vm.Settings, (IReadOnlyList<string>)["AAPL"]]);
+                [vm.Settings, (IReadOnlyList<string>)["AAPL"], CancellationToken.None]);
 
             YahooSymbolValidationEntry entry = Assert.Single(result.Entries.Values);
             Assert.True(entry.IsValid);
             Assert.Empty(result.InvalidSymbols);
             Assert.Empty(result.DeferredSymbols);
+            Assert.Equal(0, networkValidation.CallCount);
         }
         finally
         {
@@ -690,6 +698,376 @@ public sealed class MainWindowViewModelValidationTests
         Assert.Contains("public bool ShowValidateButton => !IsValidated;", source, StringComparison.Ordinal);
         Assert.Contains("public bool ShowValidatedActionButtons => IsValidated && !_isApplying;", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Saving and closing now.", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ValidateConfigurationAsync_SummarizedMode_ValidatesAiAccessBeforeTickerValidation()
+    {
+        string localDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(localDataRoot);
+        string? originalLocalDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", localDataRoot);
+
+        try
+        {
+            FakeAiNewsAccessValidationService aiValidation = new(AiNewsAccessValidationResult.Success());
+            CountingYahooSymbolValidationService tickerValidation = new();
+            MainWindowViewModel vm = CreateIsolatedViewModel(
+                new FakeConnectivityService(initiallyAvailable: true),
+                aiValidation,
+                tickerValidation);
+            vm.Groups.Clear();
+            vm.Groups.Add(new TickerGroupEditorViewModel(new TickerGroup
+            {
+                Name = "Test",
+                Enabled = true,
+                Tickers = [new TickerItem { Symbol = "DNPT", Enabled = true }]
+            }));
+            vm.Settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+            vm.Settings.DeepSeekApiKey = "test-key";
+
+            Task validationTask = InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
+            await validationTask;
+
+            Assert.Equal(1, aiValidation.CallCount);
+            Assert.Equal(1, tickerValidation.CallCount);
+            Assert.False(vm.IsApplying);
+            int aiIndex = vm.ValidationLogText.IndexOf("AI NEWS ACCESS OK", StringComparison.Ordinal);
+            int tickerIndex = vm.ValidationLogText.IndexOf("TICKER VALIDATION", StringComparison.Ordinal);
+            Assert.NotEqual(-1, aiIndex);
+            Assert.NotEqual(-1, tickerIndex);
+            Assert.True(aiIndex < tickerIndex);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", originalLocalDataRoot);
+            try
+            {
+                if (Directory.Exists(localDataRoot))
+                    Directory.Delete(localDataRoot, recursive: true);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ValidateConfigurationAsync_SummarizedMode_FailedAiAccessStopsBeforeTickerValidation()
+    {
+        FakeAiNewsAccessValidationService aiValidation = new(
+            AiNewsAccessValidationResult.Failed("AI probe failed for test."));
+        FakeConfigDialogService dialogs = new();
+        CountingYahooSymbolValidationService tickerValidation = new();
+        MainWindowViewModel vm = CreateIsolatedViewModel(
+            new FakeConnectivityService(initiallyAvailable: true),
+            aiValidation,
+            tickerValidation,
+            dialogs);
+        vm.Groups.Clear();
+        vm.Groups.Add(new TickerGroupEditorViewModel(new TickerGroup
+        {
+            Name = "Test",
+            Enabled = true,
+            Tickers = [new TickerItem { Symbol = "AAPL", Enabled = true }]
+        }));
+        vm.Settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+        vm.Settings.DeepSeekApiKey = "test-key";
+        SetPrivateField(vm, "_isValidated", true);
+
+        await InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
+
+        Assert.Equal(1, aiValidation.CallCount);
+        Assert.Equal(0, tickerValidation.CallCount);
+        Assert.False(vm.IsApplying);
+        Assert.False(vm.IsValidated);
+        Assert.True(vm.IsValidationActionEnabled);
+        Assert.True(vm.ShowValidateButton);
+        Assert.False(vm.ShowValidatedActionButtons);
+        Assert.Contains("AI NEWS ACCESS FAILED", vm.ValidationLogText, StringComparison.Ordinal);
+        Assert.DoesNotContain("TICKER VALIDATION", vm.ValidationLogText, StringComparison.Ordinal);
+        Assert.Equal("AI News Access Required", dialogs.LastCaption);
+        Assert.Equal("AI probe failed for test.", dialogs.LastMessage);
+    }
+
+    [Fact]
+    public async Task ValidateConfigurationAsync_RssMode_DoesNotCallAiValidation()
+    {
+        string localDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(localDataRoot);
+        string? originalLocalDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", localDataRoot);
+
+        try
+        {
+            FakeAiNewsAccessValidationService aiValidation = new(AiNewsAccessValidationResult.Failed("AI should not be called for RSS mode."));
+            CountingYahooSymbolValidationService tickerValidation = new();
+            MainWindowViewModel vm = CreateIsolatedViewModel(
+                new FakeConnectivityService(initiallyAvailable: false),
+                aiValidation,
+                tickerValidation);
+            vm.Groups.Clear();
+            vm.Groups.Add(new TickerGroupEditorViewModel(new TickerGroup
+            {
+                Name = "Test",
+                Enabled = true,
+                Tickers = [new TickerItem { Symbol = "RSSX", Enabled = true }]
+            }));
+            vm.Settings.NewsScrollerMode = NewsScrollerMode.RssFeed;
+
+            await InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
+
+            Assert.Equal(0, aiValidation.CallCount);
+            Assert.Equal(1, tickerValidation.CallCount);
+            Assert.Contains("RSS FEED CHECK SKIPPED", vm.ValidationLogText, StringComparison.Ordinal);
+            Assert.Contains("VALIDATION PASSED", vm.ValidationLogText, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", originalLocalDataRoot);
+            try
+            {
+                if (Directory.Exists(localDataRoot))
+                    Directory.Delete(localDataRoot, recursive: true);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ValidateConfigurationAsync_CancelledValidationDoesNotShowUnexpectedErrorDialog()
+    {
+        CancelAwareAiNewsAccessValidationService aiValidation = new();
+        FakeConfigDialogService dialogs = new();
+        MainWindowViewModel vm = CreateIsolatedViewModel(
+            new FakeConnectivityService(initiallyAvailable: true),
+            aiValidation,
+            new CountingYahooSymbolValidationService(),
+            dialogs);
+        vm.Settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+        vm.Settings.DeepSeekApiKey = "test-key";
+
+        Task validationTask = InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
+        await aiValidation.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.False(vm.CanCloseWindow());
+        await validationTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.False(vm.IsApplying);
+        Assert.Equal("Validation cancelled.", vm.StatusMessage);
+        Assert.Contains("VALIDATION CANCELLED", vm.ValidationLogText, StringComparison.Ordinal);
+        Assert.Equal(string.Empty, dialogs.LastCaption);
+        Assert.Equal(string.Empty, dialogs.LastMessage);
+    }
+
+    [Fact]
+    public async Task AiNewsAccessValidationService_SummarizedMode_RequiresApiKey()
+    {
+        Dictionary<string, string?> previousValues = Defaults.AiApiKeyEnvironmentVariableNames
+            .ToDictionary(name => name, Environment.GetEnvironmentVariable);
+
+        try
+        {
+            foreach (string name in Defaults.AiApiKeyEnvironmentVariableNames)
+                Environment.SetEnvironmentVariable(name, null);
+
+            AiNewsAccessValidationService service = new(_ => throw new InvalidOperationException("HTTP should not be used without an API key."));
+            AppSettings settings = Defaults.CreateSettings();
+            settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+            settings.DeepSeekApiKey = string.Empty;
+
+            AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
+
+            Assert.False(result.IsValid);
+            Assert.Contains("API key", result.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            foreach ((string name, string? value) in previousValues)
+                Environment.SetEnvironmentVariable(name, value);
+        }
+    }
+
+    [Fact]
+    public async Task AiNewsAccessValidationService_SummarizedMode_UsesOpenAiCompatibleChatCompletionsProbe()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        AiNewsAccessValidationService service = new(_ => new HttpClient(new FakeHttpMessageHandler(request =>
+        {
+            capturedRequest = request;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    """{"choices":[{"message":{"content":"OK"}}]}""",
+                    Encoding.UTF8,
+                    "application/json")
+            };
+        })));
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+        settings.DeepSeekApiKey = "test-key";
+        settings.DeepSeekEndpointUrl = "https://openrouter.ai/api/v1";
+        settings.DeepSeekModelId = Defaults.DefaultDeepSeekModelId;
+
+        AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
+
+        Assert.True(result.IsValid);
+        Assert.NotNull(capturedRequest);
+        Assert.Equal("https://openrouter.ai/api/v1/chat/completions", capturedRequest!.RequestUri?.ToString());
+        Assert.Equal("Bearer", capturedRequest.Headers.Authorization?.Scheme);
+        Assert.Equal("test-key", capturedRequest.Headers.Authorization?.Parameter);
+        Assert.True(capturedRequest.Headers.Contains("HTTP-Referer"));
+        Assert.True(capturedRequest.Headers.Contains("X-OpenRouter-Title"));
+    }
+
+    [Fact]
+    public async Task AiNewsAccessValidationService_SummarizedMode_FailsWhenNetworkUnavailable()
+    {
+        AiNewsAccessValidationService service = new(_ => throw new InvalidOperationException("HTTP should not be used without network."));
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+        settings.DeepSeekApiKey = "test-key";
+
+        AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: false);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("internet", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task NewsFeedValidationService_PropagatesCancellation()
+    {
+        NewsFeedValidationService service = new();
+        using CancellationTokenSource cancellation = new();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => service.ValidateAsync(
+                Defaults.DefaultNewsFeedUrl,
+                timeoutSeconds: 3,
+                networkAvailable: true,
+                cancellation.Token));
+    }
+
+    [Fact]
+    public async Task AiNewsAccessValidationService_SkipsWhenSummarizedNewsIsNotSelected()
+    {
+        AiNewsAccessValidationService service = new(_ => throw new InvalidOperationException("HTTP should not be used when AI mode is disabled."));
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.RssFeed;
+
+        AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
+
+        Assert.True(result.IsValid);
+        Assert.True(result.ValidationSkipped);
+    }
+
+    [Fact]
+    public async Task AiNewsAccessValidationService_SummarizedMode_ReportsTimeout()
+    {
+        AiNewsAccessValidationService service = new(_ => new HttpClient(new FakeHttpMessageHandler(_ =>
+            throw new TaskCanceledException("simulated timeout"))));
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+        settings.DeepSeekApiKey = "test-key";
+
+        AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("timed out", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AiNewsAccessValidationService_SummarizedMode_ReportsCancelledTokenWithoutHttp()
+    {
+        AiNewsAccessValidationService service = new(_ => throw new InvalidOperationException("HTTP should not be used when token is already cancelled."));
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+        settings.DeepSeekApiKey = "test-key";
+        using CancellationTokenSource cancellation = new();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => service.ValidateAsync(settings, networkAvailable: true, cancellation.Token));
+    }
+
+    [Fact]
+    public async Task AiNewsAccessValidationService_SummarizedMode_RejectsMalformedEndpointWithoutHttp()
+    {
+        AiNewsAccessValidationService service = new(_ => throw new InvalidOperationException("HTTP should not be used with malformed endpoint URL."));
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+        settings.DeepSeekApiKey = "test-key";
+        settings.DeepSeekEndpointUrl = "not-a-url";
+
+        AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("endpoint URL", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AiNewsAccessValidationService_SummarizedMode_UsesDefaultModelWhenModelIdBlank()
+    {
+        string capturedBody = string.Empty;
+        AiNewsAccessValidationService service = new(_ => new HttpClient(new FakeHttpMessageHandler(request =>
+        {
+            capturedBody = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult() ?? string.Empty;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"choices":[{"message":{"content":"OK"}}]}""", Encoding.UTF8, "application/json")
+            };
+        })));
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+        settings.DeepSeekApiKey = "test-key";
+        settings.DeepSeekEndpointUrl = "https://example.invalid/v1";
+        settings.DeepSeekModelId = string.Empty;
+
+        AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
+
+        Assert.True(result.IsValid);
+        Assert.Contains(Defaults.DefaultDeepSeekModelId, capturedBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AiNewsAccessValidationService_SummarizedMode_UsesEnvironmentApiKeyWhenConfigKeyBlank()
+    {
+        Dictionary<string, string?> previousValues = Defaults.AiApiKeyEnvironmentVariableNames
+            .ToDictionary(name => name, Environment.GetEnvironmentVariable);
+        HttpRequestMessage? capturedRequest = null;
+
+        try
+        {
+            foreach (string name in Defaults.AiApiKeyEnvironmentVariableNames)
+                Environment.SetEnvironmentVariable(name, null);
+
+            Assert.Contains("OPENROUTER_AI_API_KEY", Defaults.AiApiKeyEnvironmentVariableNames);
+            Environment.SetEnvironmentVariable("OPENROUTER_AI_API_KEY", "env-test-key");
+            AiNewsAccessValidationService service = new(_ => new HttpClient(new FakeHttpMessageHandler(request =>
+            {
+                capturedRequest = request;
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""{"choices":[{"message":{"content":"OK"}}]}""", Encoding.UTF8, "application/json")
+                };
+            })));
+            AppSettings settings = Defaults.CreateSettings();
+            settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+            settings.DeepSeekApiKey = string.Empty;
+
+            AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
+
+            Assert.True(result.IsValid);
+            Assert.Equal("env-test-key", capturedRequest?.Headers.Authorization?.Parameter);
+        }
+        finally
+        {
+            foreach ((string name, string? value) in previousValues)
+                Environment.SetEnvironmentVariable(name, value);
+        }
     }
 
     [Fact]
@@ -768,9 +1146,18 @@ public sealed class MainWindowViewModelValidationTests
         Assert.Empty(RuntimeQuoteSeedStore.ConsumeAll());
     }
 
-    private static MainWindowViewModel CreateIsolatedViewModel(IConnectivityService? connectivity = null)
+    private static MainWindowViewModel CreateIsolatedViewModel(
+        IConnectivityService? connectivity = null,
+        IAiNewsAccessValidationService? aiNewsAccessValidationService = null,
+        IYahooSymbolValidationService? yahooSymbolValidationService = null,
+        IConfigDialogService? dialogService = null)
     {
-        MainWindowViewModel vm = new(connectivity);
+        // Keep ViewModel tests hermetic: never let a unit test spawn YFinance.NET or a modal dialog by default.
+        MainWindowViewModel vm = new(
+            connectivity,
+            aiNewsAccessValidationService,
+            yahooSymbolValidationService ?? new FakeYahooSymbolValidationService(),
+            dialogService ?? new FakeConfigDialogService());
         DispatcherTimer timer = GetPrivateField<DispatcherTimer>(vm, "_stateTimer");
         timer.Stop();
         return vm;
@@ -855,5 +1242,120 @@ public sealed class MainWindowViewModelValidationTests
         }
 
         public void SetAvailable(bool available) => _available = available;
+    }
+
+    private sealed class FakeAiNewsAccessValidationService(AiNewsAccessValidationResult result) : IAiNewsAccessValidationService
+    {
+        public int CallCount { get; private set; }
+
+        public Task<AiNewsAccessValidationResult> ValidateAsync(
+            AppSettings settings,
+            bool networkAvailable,
+            CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            return Task.FromResult(result);
+        }
+    }
+
+    private sealed class CancelAwareAiNewsAccessValidationService : IAiNewsAccessValidationService
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task<AiNewsAccessValidationResult> ValidateAsync(
+            AppSettings settings,
+            bool networkAvailable,
+            CancellationToken cancellationToken = default)
+        {
+            Started.TrySetResult();
+            await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
+            return AiNewsAccessValidationResult.Success();
+        }
+    }
+
+    private sealed class FakeYahooSymbolValidationService : IYahooSymbolValidationService
+    {
+        public Task<YahooSymbolValidationResult> ValidateAsync(
+            IEnumerable<string> symbols,
+            int timeoutSeconds,
+            IProgress<YahooSymbolValidationProgress>? progress = null,
+            CancellationToken cancellationToken = default)
+        {
+            YahooSymbolValidationResult result = new(symbols);
+            foreach (string symbol in result.Entries.Keys.ToArray())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                result.MarkValid(symbol, symbol, symbol);
+                result.RecordQuote(symbol, new QuoteSnapshot
+                {
+                    Symbol = symbol,
+                    Last = 100m,
+                    PreviousClose = 99m,
+                    Change = 1m,
+                    ChangePercent = 1.0101m,
+                    Currency = "USD",
+                    FetchTimestampUtc = DateTimeOffset.UtcNow
+                });
+                progress?.Report(new YahooSymbolValidationProgress(symbol, true, symbol, "Validated by test seam"));
+            }
+
+            return Task.FromResult(result);
+        }
+    }
+
+    private sealed class CountingYahooSymbolValidationService : IYahooSymbolValidationService
+    {
+        public int CallCount { get; private set; }
+
+        public Task<YahooSymbolValidationResult> ValidateAsync(
+            IEnumerable<string> symbols,
+            int timeoutSeconds,
+            IProgress<YahooSymbolValidationProgress>? progress = null,
+            CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            YahooSymbolValidationResult result = new(symbols);
+            foreach (string symbol in result.Entries.Keys.ToArray())
+                result.MarkValid(symbol, symbol, symbol);
+
+            return Task.FromResult(result);
+        }
+    }
+
+    private sealed class FailIfCalledYahooSymbolValidationService : IYahooSymbolValidationService
+    {
+        public int CallCount { get; private set; }
+
+        public Task<YahooSymbolValidationResult> ValidateAsync(
+            IEnumerable<string> symbols,
+            int timeoutSeconds,
+            IProgress<YahooSymbolValidationProgress>? progress = null,
+            CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            throw new InvalidOperationException("Cached symbol-profile trust test should not call network validation.");
+        }
+    }
+
+    private sealed class FakeConfigDialogService : IConfigDialogService
+    {
+        public string LastMessage { get; private set; } = string.Empty;
+        public string LastCaption { get; private set; } = string.Empty;
+
+        public void Show(
+            string message,
+            string caption,
+            System.Windows.MessageBoxButton button,
+            System.Windows.MessageBoxImage image)
+        {
+            LastMessage = message;
+            LastCaption = caption;
+        }
+    }
+
+    private sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => Task.FromResult(responder(request));
     }
 }

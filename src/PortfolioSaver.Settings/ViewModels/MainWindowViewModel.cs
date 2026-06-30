@@ -17,7 +17,6 @@ using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
-using WpfMessageBox = System.Windows.MessageBox;
 using Forms = System.Windows.Forms;
 using System.Windows.Threading;
 using PortfolioSaver.Config.Commands;
@@ -40,8 +39,10 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly SettingsFileService _settingsFileService;
     private readonly SettingsValidator _settingsValidator;
     private readonly NewsFeedValidationService _newsFeedValidationService;
+    private readonly IAiNewsAccessValidationService _aiNewsAccessValidationService;
+    private readonly IConfigDialogService _dialogService;
     private readonly IConnectivityService _connectivityService;
-    private readonly YahooSymbolValidationService _yahooSymbolValidationService;
+    private readonly IYahooSymbolValidationService _yahooSymbolValidationService;
     private readonly SymbolProfileStore _symbolProfileStore;
     private readonly DispatcherTimer _stateTimer;
     private readonly Dispatcher _uiDispatcher;
@@ -49,6 +50,7 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly HashSet<TickerGroupEditorViewModel> _trackedGroups = [];
     private readonly HashSet<TickerItemEditorViewModel> _trackedTickers = [];
     private readonly Dictionary<TickerGroupEditorViewModel, HashSet<TickerItemEditorViewModel>> _trackedTickersByGroup = [];
+    private CancellationTokenSource? _validationCancellation;
 
     private AppSettings _settings;
     private string _statusMessage = $"{PortfolioVersion.DisplayName} ready";
@@ -66,17 +68,28 @@ public sealed class MainWindowViewModel : BindableBase
     private static readonly TimeSpan CachedProfileTrustWindow = TimeSpan.FromMinutes(10);
 
     public MainWindowViewModel()
-        : this(connectivityService: null)
+        : this(connectivityService: null, aiNewsAccessValidationService: null, yahooSymbolValidationService: null, dialogService: null)
     {
     }
 
     public MainWindowViewModel(IConnectivityService? connectivityService)
+        : this(connectivityService, aiNewsAccessValidationService: null, yahooSymbolValidationService: null, dialogService: null)
+    {
+    }
+
+    public MainWindowViewModel(
+        IConnectivityService? connectivityService,
+        IAiNewsAccessValidationService? aiNewsAccessValidationService = null,
+        IYahooSymbolValidationService? yahooSymbolValidationService = null,
+        IConfigDialogService? dialogService = null)
     {
         _settingsFileService = new SettingsFileService();
         _settingsValidator = new SettingsValidator();
         _newsFeedValidationService = new NewsFeedValidationService();
+        _aiNewsAccessValidationService = aiNewsAccessValidationService ?? new AiNewsAccessValidationService();
+        _dialogService = dialogService ?? new WpfConfigDialogService();
         _connectivityService = connectivityService ?? new ConfigConnectivityService();
-        _yahooSymbolValidationService = new YahooSymbolValidationService();
+        _yahooSymbolValidationService = yahooSymbolValidationService ?? new YahooSymbolValidationService();
         _symbolProfileStore = new SymbolProfileStore(Path.Combine(PathHelper.GetLocalDataDirectory(), "symbol-profiles.json"));
         _uiDispatcher = Dispatcher.CurrentDispatcher;
 
@@ -249,11 +262,8 @@ public sealed class MainWindowViewModel : BindableBase
 
         if (_isApplying)
         {
-            WpfMessageBox.Show(
-                "Validation is still running. Wait for the validation loop to finish.",
-                "Validation In Progress",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            CancelActiveValidation();
+            StatusMessage = "Close requested; cancelling validation. Try closing again shortly.";
             return false;
         }
 
@@ -265,7 +275,7 @@ public sealed class MainWindowViewModel : BindableBase
         if (Groups.Count >= Defaults.MaxTapeCount)
         {
             StatusMessage = $"Only {Defaults.MaxTapeCount} tapes can be configured.";
-            WpfMessageBox.Show(
+            _dialogService.Show(
                 $"You can configure up to {Defaults.MaxTapeCount} tapes.",
                 "Tape Limit Reached",
                 MessageBoxButton.OK,
@@ -290,7 +300,7 @@ public sealed class MainWindowViewModel : BindableBase
         if (!await EnsureValidationConnectivityAsync())
         {
             StatusMessage = "Internet connection is required before validation can run.";
-            WpfMessageBox.Show(
+            _dialogService.Show(
                 "Internet connection is required to validate tickers and refresh the news-source checks.",
                 "Internet Required",
                 MessageBoxButton.OK,
@@ -304,6 +314,8 @@ public sealed class MainWindowViewModel : BindableBase
     private async Task ValidateConfigurationAsync()
     {
         BeginValidationRun();
+        CancellationToken validationCancellationToken = _validationCancellation?.Token ?? CancellationToken.None;
+        IsValidated = false;
         bool completedValidatedState = false;
         try
         {
@@ -317,11 +329,13 @@ public sealed class MainWindowViewModel : BindableBase
                 NewsFeedValidationResult feedValidation = await _newsFeedValidationService.ValidateAsync(
                     candidate.NewsFeedUrl,
                     candidate.HttpTimeoutSeconds,
-                    IsNetworkAvailable);
+                    IsNetworkAvailable,
+                    validationCancellationToken);
+                validationCancellationToken.ThrowIfCancellationRequested();
                 if (feedValidation.WasResetToDefault)
                 {
                     candidate.NewsFeedUrl = feedValidation.ResolvedFeedUrl;
-                    WpfMessageBox.Show(
+                    _dialogService.Show(
                         feedValidation.Message,
                         "News Feed Reset",
                         MessageBoxButton.OK,
@@ -334,6 +348,32 @@ public sealed class MainWindowViewModel : BindableBase
                     AppendValidationLog(feedValidation.ValidationSkipped ? "RSS FEED CHECK SKIPPED" : "RSS FEED OK");
                 }
             }
+            else
+            {
+                AppendValidationLog("AI NEWS ACCESS CHECK...");
+                AiNewsAccessValidationResult aiValidation = await _aiNewsAccessValidationService.ValidateAsync(
+                    candidate,
+                    IsNetworkAvailable,
+                    validationCancellationToken);
+                validationCancellationToken.ThrowIfCancellationRequested();
+                if (!aiValidation.IsValid)
+                {
+                    StatusMessage = "AI news access validation failed. Correct AI settings or switch Finance News to RSS Feed.";
+                    AppendValidationLog($"AI NEWS ACCESS FAILED: {aiValidation.Message}");
+                    TraceValidation("AiNewsAccessValidationFailed", ("message", aiValidation.Message));
+                    EndValidationRun();
+                    completedValidatedState = true;
+                    _dialogService.Show(
+                        aiValidation.Message,
+                        "AI News Access Required",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                AppendValidationLog(aiValidation.ValidationSkipped ? "AI NEWS ACCESS CHECK SKIPPED" : "AI NEWS ACCESS OK");
+                TraceValidation(aiValidation.ValidationSkipped ? "AiNewsAccessValidationSkipped" : "AiNewsAccessValidationSucceeded");
+            }
 
             IReadOnlyList<string> configErrors = _settingsValidator.Validate(candidate);
             if (configErrors.Count > 0)
@@ -341,7 +381,7 @@ public sealed class MainWindowViewModel : BindableBase
                 StatusMessage = configErrors[0];
                 foreach (string configError in configErrors)
                     AppendValidationLog($"SETTINGS: {configError}");
-                WpfMessageBox.Show(
+                _dialogService.Show(
                     string.Join(Environment.NewLine, configErrors),
                     "Settings Need Attention",
                     MessageBoxButton.OK,
@@ -351,7 +391,8 @@ public sealed class MainWindowViewModel : BindableBase
 
             List<string> enabledSymbols = GetEnabledSymbols(candidate).ToList();
             AppendValidationLog($"TICKER VALIDATION: {enabledSymbols.Count} SYMBOL(S)");
-            YahooSymbolValidationResult symbolValidation = await ValidateSymbolsAgainstSourcesAsync(candidate, enabledSymbols);
+            YahooSymbolValidationResult symbolValidation = await ValidateSymbolsAgainstSourcesAsync(candidate, enabledSymbols, validationCancellationToken);
+            validationCancellationToken.ThrowIfCancellationRequested();
             int autoNamedCount = ApplyResolvedDisplayNames(symbolValidation);
             candidate = BuildCandidateSettings();
             Settings = candidate;
@@ -383,7 +424,7 @@ public sealed class MainWindowViewModel : BindableBase
                     ("invalid_count", symbolValidation.InvalidSymbols.Count));
                 EndValidationRun();
                 completedValidatedState = true;
-                WpfMessageBox.Show(
+                _dialogService.Show(
                     dialogLead + Environment.NewLine + Environment.NewLine +
                     "No ticker entries were disabled during this pass." + Environment.NewLine +
                     retryInstruction +
@@ -403,7 +444,7 @@ public sealed class MainWindowViewModel : BindableBase
                     ("disabled_count", disabledCount));
                 EndValidationRun();
                 completedValidatedState = true;
-                WpfMessageBox.Show(
+                _dialogService.Show(
                     "These symbols are invalid on YFinance.NET:" + Environment.NewLine + Environment.NewLine +
                     string.Join(Environment.NewLine, symbolValidation.InvalidSymbols.Select(symbol => $"- {symbol}")) +
                     Environment.NewLine + Environment.NewLine +
@@ -434,12 +475,18 @@ public sealed class MainWindowViewModel : BindableBase
             completedValidatedState = true;
             UpdateValidatedCloseStatus(autoNamedCount);
         }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Validation cancelled.";
+            AppendValidationLog("VALIDATION CANCELLED");
+            TraceValidation("ValidationCancelled");
+        }
         catch (Exception ex)
         {
             StatusMessage = "Validation stopped unexpectedly. Review the details and try again.";
             AppendValidationLog($"VALIDATION ERROR: {ex.Message}");
             TraceLog.Error("Config.Validation", "ValidateConfigurationAsync", ex);
-            WpfMessageBox.Show(
+            _dialogService.Show(
                 $"Validation stopped unexpectedly:{Environment.NewLine}{Environment.NewLine}{ex.Message}",
                 "Validation Error",
                 MessageBoxButton.OK,
@@ -477,7 +524,10 @@ public sealed class MainWindowViewModel : BindableBase
         InvalidateValidationState("Configuration changed. Click Validate.");
     }
 
-    private async Task<YahooSymbolValidationResult> ValidateSymbolsAgainstSourcesAsync(AppSettings settings, IReadOnlyList<string> enabledSymbols)
+    private async Task<YahooSymbolValidationResult> ValidateSymbolsAgainstSourcesAsync(
+        AppSettings settings,
+        IReadOnlyList<string> enabledSymbols,
+        CancellationToken cancellationToken = default)
     {
         YahooSymbolValidationResult aggregate = new(enabledSymbols);
         List<TrustedValidationEvidence> trustedEvidence = GetTrustedValidationEvidence(enabledSymbols);
@@ -523,7 +573,8 @@ public sealed class MainWindowViewModel : BindableBase
             YahooSymbolValidationResult networkResult = await _yahooSymbolValidationService.ValidateAsync(
                 networkSymbols,
                 settings.HttpTimeoutSeconds,
-                new Progress<YahooSymbolValidationProgress>(ReportSymbolValidationProgress));
+                new Progress<YahooSymbolValidationProgress>(ReportSymbolValidationProgress),
+                cancellationToken);
             aggregate.MergeFrom(networkResult);
         }
         else
@@ -1275,13 +1326,29 @@ public sealed class MainWindowViewModel : BindableBase
 
     private void BeginValidationRun()
     {
+        CancelActiveValidation();
+        _validationCancellation?.Dispose();
+        _validationCancellation = new CancellationTokenSource();
         ValidationLogText = string.Empty;
         SetApplying(true);
     }
 
     private void EndValidationRun()
     {
+        _validationCancellation?.Dispose();
+        _validationCancellation = null;
         SetApplying(false);
+    }
+
+    private void CancelActiveValidation()
+    {
+        try
+        {
+            _validationCancellation?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
     }
 
     private void AppendValidationLog(string line)
@@ -1320,3 +1387,4 @@ public sealed class MainWindowViewModel : BindableBase
         string Message,
         string SourceTag);
 }
+

@@ -7950,6 +7950,77 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-151",
+      "tracking_number": "CR-151",
+      "priority": 1,
+      "area": "Config screen AI validation",
+      "title": "Enforce validated AI API access before saving AI summarized news configuration",
+      "status": "closed",
+      "source": "user_request_2026_06_30",
+      "severity": "high",
+      "evidence": [
+        "Config app previously validated RSS feed URLs but did not sanity-check AI endpoint/key/model access before allowing summarized-financial-news settings to be saved.",
+        "User asked whether config-time validation enforces validated API access when AI summarized financial news is selected, then requested a CR and autonomous closure."
+      ],
+      "notes": [
+        "Validation must use the same OpenAI-compatible /chat/completions style as runtime OpenRouter/DeepSeek access and must not leak API keys to trace.",
+        "If AI summarized financial news is selected and AI access fails, validation must fail and keep the Validate path available instead of enabling OK/save.",
+        "Implemented IAiNewsAccessValidationService with OpenAI-compatible chat-completions probe, OpenRouter attribution headers, configured/default/environment API-key resolution, sanitized endpoint/model trace fields, operation_id correlation, configured timeout use, and cancellation propagation.",
+        "MainWindowViewModel now runs AI access validation before ticker validation when summarized financial news is selected; failed AI access resets stale validated state, re-enables Validate, avoids OK/Cancel passed state, and uses an injectable dialog service for testability.",
+        "Validation close attempts during active validation request cancellation without a blocking modal; cancellation completes through a quiet ValidationCancelled path."
+      ],
+      "closure_evidence": [
+        "Focused local tests passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter FullyQualifiedName~MainWindowViewModelValidationTests|FullyQualifiedName~YahooSymbolValidationServiceTests, cr151-cr152-config-validation-focused-15.trx, 52/52.",
+        "Full local test suite passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release, cr151-cr152-full.trx, 587/587.",
+        "DeepSeek review gate was run repeatedly during implementation; final advisory found no critical security/privacy/data-loss issues and confirmed API keys are not logged, cancellation propagates, and tests cover hermetic execution.",
+        "Automated tests cover missing AI key, malformed endpoint, network unavailable, timeout, pre-cancelled token, environment key fallback, default model fallback, OpenRouter request shape, RSS-mode skip, and ViewModel AI-success/AI-failure ordering."
+      ],
+      "acceptance": [
+        "When Finance News is RSS Feed, existing RSS validation behavior remains intact.",
+        "When Finance News is AI summarized news, config validation requires non-empty API key, endpoint URL, and model ID using configured values/defaults/environment fallback as applicable.",
+        "A bounded AI access probe succeeds before ticker validation and before the configuration can be saved.",
+        "If AI access fails, the config app reports a clear error, re-enables Validate, does not show OK/Cancel as a passed-validation state, and does not save the invalid AI configuration.",
+        "Trace logs record start/success/failure endpoint/model/reason without API key leakage.",
+        "Automated tests cover missing key and OpenAI-compatible OpenRouter request shape.",
+        "Ticket is marked closed with DeepSeek review and local validation evidence."
+      ]
+    },
+    {
+      "id": "CR-152",
+      "tracking_number": "CR-152",
+      "priority": 1,
+      "area": "Config validation test isolation",
+      "title": "Prevent local testhost from invoking live YFinance.NET ticker validation and showing modal warnings",
+      "status": "closed",
+      "source": "local_pc_screenshot_2026_06_30",
+      "severity": "high",
+      "evidence": [
+        "Local PC screenshot showed a Ticker Validation Unavailable modal with deferred symbols while tests were running.",
+        "Trace correlation showed program=testhost, not the installed desktop/config app, and the root failure was Could not locate YFinance.NET.Server executable or DLL from the testhost base directory.",
+        "The affected path attempted to validate all 32 default tickers through the real YFinance.NET runtime client from a ViewModel workflow test."
+      ],
+      "notes": [
+        "Unit tests for config ViewModel behavior should be hermetic and must not reach live YFinance.NET unless the test explicitly targets the symbol-validation service or protocol/server layer.",
+        "Production behavior must continue to use the real YFinance.NET validation service.",
+        "Root-cause trace for the local-PC screenshot showed program=testhost, not the installed app. The testhost attempted config ViewModel ticker validation through the real YFinance.NET path and failed because the YFinance.NET.Server bundle was not present under the testhost base directory.",
+        "Implemented IYahooSymbolValidationService and IConfigDialogService seams. Production defaults still construct YFinance.NET-backed validation and WPF dialogs; ViewModel tests inject fake services by default.",
+        "Cached trusted-symbol-profile regression test now injects a fail-if-called ticker validator so it proves the cache-trust path does not reach the network."
+      ],
+      "closure_evidence": [
+        "Focused local tests passed: cr151-cr152-config-validation-focused-15.trx, 52/52.",
+        "Full local test suite passed: cr151-cr152-full.trx, 587/587.",
+        "Post-test process check found no lingering PortfolioSaver, YFinance, or testhost processes during the implementation cycle.",
+        "Dedicated YahooSymbolValidationService tests remain in the focused suite so the real validator behavior still has targeted coverage outside ViewModel workflow tests."
+      ],
+      "acceptance": [
+        "MainWindowViewModel has an injectable ticker validation seam while production default still constructs the real YFinance.NET-backed validator.",
+        "MainWindowViewModelValidationTests use a fake ticker validator by default, preventing local modal warnings and accidental server-bundle lookups from UI workflow tests.",
+        "Dedicated YahooSymbolValidationService tests continue to exercise the real validator behavior.",
+        "Focused tests pass and no local testhost modal is produced.",
+        "Ticket is marked closed with trace root cause and local validation evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

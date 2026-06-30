@@ -11,23 +11,26 @@
 // SANYALnet Labs." See LICENSE for full terms, warranty disclaimer, termination,
 // patent, trademark, and governing-law provisions.
 // ============================================================================
-namespace PortfolioSaver.Data.Services;
+using System.Windows;
+using WpfMessageBox = System.Windows.MessageBox;
 
-public static class HttpClientFactory
+namespace PortfolioSaver.Config.Services;
+
+public interface IConfigDialogService
 {
-    // Shared immutable handler avoids socket churn; do not mutate it for per-call proxy/certificate behavior.
-    private static readonly SocketsHttpHandler SharedHandler = new()
-    {
-        MaxConnectionsPerServer = 10,
-        PooledConnectionLifetime = TimeSpan.FromMinutes(10),
-        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2)
-    };
+    void Show(
+        string message,
+        string caption,
+        MessageBoxButton button,
+        MessageBoxImage image);
+}
 
-    public static HttpClient Create(TimeSpan timeout)
-    {
-        HttpClient client = new(SharedHandler, disposeHandler: false);
-        client.Timeout = timeout;
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("PortfolioScreensaver/1.0");
-        return client;
-    }
+public sealed class WpfConfigDialogService : IConfigDialogService
+{
+    public void Show(
+        string message,
+        string caption,
+        MessageBoxButton button,
+        MessageBoxImage image)
+        => WpfMessageBox.Show(message, caption, button, image);
 }

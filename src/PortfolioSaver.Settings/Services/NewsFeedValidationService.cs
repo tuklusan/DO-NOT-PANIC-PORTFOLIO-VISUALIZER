@@ -75,6 +75,10 @@ public sealed class NewsFeedValidationService
                 ResolvedFeedUrl = uri.ToString()
             };
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch
         {
             return NewsFeedValidationResult.ResetToDefault(
