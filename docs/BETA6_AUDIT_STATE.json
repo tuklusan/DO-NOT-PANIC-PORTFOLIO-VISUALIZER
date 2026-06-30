@@ -7741,6 +7741,33 @@
         "VM validation proves the user-visible popup/exit behavior when launched against an already-running installed desktop app.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
       ]
+    },
+    {
+      "id": "CR-144",
+      "tracking_number": "CR-144",
+      "priority": 3,
+      "area": "Config screen news settings",
+      "title": "Raise News Scroller headline refresh slider minimum to 10 minutes",
+      "status": "open",
+      "source": "user_request_2026_06_30",
+      "severity": "low",
+      "evidence": [
+        "Config screen News Scroller Headline Refresh currently permits a 5-minute minimum on the slider.",
+        "User requested the minimum selectable refresh interval to be 10 minutes while retaining the default value of 15 minutes."
+      ],
+      "notes": [
+        "Update the config UI slider minimum, any associated validation/clamping logic, labels, test defaults, harness expectations, and documentation if they encode the old 5-minute minimum.",
+        "The default News Scroller Headline Refresh value must remain 15 minutes."
+      ],
+      "acceptance": [
+        "Config screen News Scroller Headline Refresh slider minimum is 10 minutes, not 5 minutes.",
+        "The default News Scroller Headline Refresh value remains 15 minutes for fresh/default configuration.",
+        "Any config load, save, validation, or clamping path rejects or upgrades values below 10 minutes safely without destabilizing existing settings.",
+        "The config UI label/value presentation cannot show or persist a selectable 5-minute headline refresh value.",
+        "Automated tests cover the 10-minute minimum and 15-minute default behavior where practical.",
+        "VM or harness validation captures/proves the config screen exposes the updated minimum/default behavior.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
