@@ -7661,8 +7661,15 @@
         "DeepSeek review gate: build/deepseek-review/deepseek-review-20260630-000054.md; initial findings addressed.",
         "DeepSeek review gate: build/deepseek-review/deepseek-review-20260630-000631.md; high finding addressed with headline filtering and tests.",
         "DeepSeek review gate: build/deepseek-review/deepseek-review-20260630-001024.md; no high-severity findings remained; medium advisories covered with tests.",
-        "Focused FinanceNewsService tests: 38 passed, 0 failed.",
-        "Full PortfolioSaver.Tests: 553 passed, 0 failed."
+        "Focused FinanceNewsService tests after the initial CR fix: 38 passed, 0 failed.",
+        "Full PortfolioSaver.Tests after the initial CR fix: 553 passed, 0 failed.",
+        "First installed-runtime VM proof bundle build/vm/artifacts/ssh-runs/cr141-cr142-installed-news-20260630-003149 proved the timeout/cache-key path reached DeepSeek, but artifact review identified malformed raw JSON-like text cached as a headline with usedFallback=false.",
+        "Follow-up fix a60e7a0 rejects JSON-looking responses that fail structured parsing instead of loose-parsing the raw JSON text as a headline.",
+        "Focused FinanceNewsService tests after malformed-JSON rejection: 45 passed, 0 failed.",
+        "Full PortfolioSaver.Tests after malformed-JSON rejection: 560 passed, 0 failed.",
+        "Final installed-runtime VM proof bundle build/vm/artifacts/ssh-runs/cr141-cr142-installed-news-20260630-004734 recorded InstallExitCode=0, DesktopStarted=true, DeepSeekSuccess=true, CacheModeKey=summarized-financial-news:v2:douglas-adams, UsedFallback=false, HeadlineCount=7, FirstHeadlineLooksRendered=true, SawOldCacheIgnoredTrace=true, SawStrictJsonRequestTrace=true, SawFallbackTrace=false, and Errors=[].",
+        "Final cache artifact build/vm/artifacts/ssh-runs/cr141-cr142-installed-news-20260630-004734/cr141-cr142-installed-news-20260630-004734/finance-news-cache.json contains multiline rendered Douglas Adams news entries rather than raw JSON.",
+        "DeepSeek artifact second-opinion review build/deepseek-review/artifact-review-cr141-cr142-installed-news-20260630-004734.md accepted the run as functionally successful and noted only residual UX screenshot/headline-count advisories outside the deterministic CR-141 runtime-path proof."
       ],
       "closed_date": "2026-06-30"
     },
@@ -7698,8 +7705,12 @@
       "validation": [
         "GetCachedHeadlines_SummarizedMode_DoesNotReusePreJsonContractCache verifies old unversioned Douglas Adams cache content is not displayed.",
         "GetCachedHeadlines_SummarizedMode_DoesNotReuseDifferentWritingStyleCache covers current v2 style-specific cache reuse behavior.",
-        "Focused FinanceNewsService tests: 38 passed, 0 failed.",
-        "Full PortfolioSaver.Tests: 553 passed, 0 failed."
+        "Focused FinanceNewsService tests after the initial CR fix: 38 passed, 0 failed.",
+        "Full PortfolioSaver.Tests after the initial CR fix: 553 passed, 0 failed.",
+        "Final installed-runtime VM proof bundle build/vm/artifacts/ssh-runs/cr141-cr142-installed-news-20260630-004734 seeded an obsolete unversioned summarized-news cache, recorded SawOldCacheIgnoredTrace=true, and then wrote a fresh summarized-financial-news:v2:douglas-adams cache with UsedFallback=false.",
+        "Focused FinanceNewsService tests after malformed-JSON rejection and cache-version verification: 45 passed, 0 failed.",
+        "Full PortfolioSaver.Tests after malformed-JSON rejection and cache-version verification: 560 passed, 0 failed.",
+        "DeepSeek artifact second-opinion review build/deepseek-review/artifact-review-cr141-cr142-installed-news-20260630-004734.md found the deterministic cache invalidation and DeepSeek path functionally successful; its screenshot evidence advisory is tracked as validation-evidence risk, not a CR-142 cache-version blocker."
       ],
       "closed_date": "2026-06-30"
     }
