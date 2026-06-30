@@ -176,6 +176,7 @@ public sealed class FinanceNewsServiceTests
         Assert.Contains("You are a dependable fiduciary and are presenting current financial news highlights to your customers.", userPrompt, StringComparison.Ordinal);
         Assert.Contains("You write in the style of Douglas Adams.", userPrompt, StringComparison.Ordinal);
         Assert.Equal("json_object", requestDocument.RootElement.GetProperty("response_format").GetProperty("type").GetString());
+        Assert.Equal(2000, requestDocument.RootElement.GetProperty("max_tokens").GetInt32());
         Assert.Contains("Schema: { \"items\": [ { \"lines\":", userPrompt, StringComparison.Ordinal);
         Assert.DoesNotContain("[[ITEM]]", userPrompt, StringComparison.Ordinal);
         Assert.Contains("The haiku may sound bleak, officious, or absurdly bureaucratic in a Vogon-adjacent way", userPrompt, StringComparison.Ordinal);
@@ -773,6 +774,42 @@ public sealed class FinanceNewsServiceTests
 
         Assert.Single(items);
         Assert.Contains("Markets form a queue.", items[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ParseSummarizedNewsItems_DoesNotAcceptMalformedJsonAsLooseText()
+    {
+        MethodInfo parseMethod = typeof(FinanceNewsService).GetMethod(
+            "ParseSummarizedNewsItems",
+            BindingFlags.Static | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("FinanceNewsService.ParseSummarizedNewsItems not found.");
+
+        List<string> items = Assert.IsType<List<string>>(parseMethod.Invoke(null, ["""
+        {
+          "items": [
+            {
+              "lines": [
+                "Markets form a queue.",
+                "Policy fog occupies desks.",
+                "Tea files an appeal.",
+                "Markets steadied as traders weighed growth
+        """]));
+
+        Assert.Empty(items);
+    }
+
+    [Theory]
+    [InlineData("   { \"items\": [] }", true)]
+    [InlineData("```json\r\n{ \"items\": [] }\r\n```", true)]
+    [InlineData("```\r\n{ \"items\": [] }\r\n```", true)]
+    [InlineData("{Hello world", true)]
+    [InlineData("[{\"items\":[]}]", false)]
+    [InlineData("Markets form a queue.", false)]
+    public void LooksLikeJsonObject_IdentifiesJsonObjectCandidatesForStrictParsing(
+        string candidate,
+        bool expected)
+    {
+        Assert.Equal(expected, FinanceNewsService.LooksLikeJsonObject(candidate));
     }
 
     [Fact]

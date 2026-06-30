@@ -507,7 +507,7 @@ public sealed class FinanceNewsService
         {
             ["model"] = modelId,
             ["temperature"] = 0.2,
-            ["max_tokens"] = 900,
+            ["max_tokens"] = 2000,
             ["messages"] = new object[]
             {
                 new
@@ -672,6 +672,9 @@ public sealed class FinanceNewsService
         if (items.Count > 0)
             return items;
 
+        if (LooksLikeJsonObject(candidate))
+            return [];
+
         foreach (Match match in matches)
         {
             string block = match.Groups[1].Value;
@@ -684,6 +687,21 @@ public sealed class FinanceNewsService
             items.AddRange(ParseLooseSummarizedNewsItems(candidate));
 
         return items;
+    }
+
+    internal static bool LooksLikeJsonObject(string candidate)
+    {
+        string trimmed = candidate.TrimStart();
+        if (trimmed.StartsWith("```", StringComparison.Ordinal))
+        {
+            trimmed = Regex.Replace(
+                trimmed,
+                @"^```(?:json)?\s*",
+                string.Empty,
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant).TrimStart();
+        }
+
+        return trimmed.StartsWith("{", StringComparison.Ordinal);
     }
 
     private static IEnumerable<string> ParseJsonSummarizedNewsItems(string candidate)
