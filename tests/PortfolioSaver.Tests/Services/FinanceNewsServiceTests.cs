@@ -177,6 +177,7 @@ public sealed class FinanceNewsServiceTests
         Assert.Equal(1, requestCount);
         string userPrompt = ExtractUserPromptFromRequestBody(capturedBody);
         using JsonDocument requestDocument = JsonDocument.Parse(capturedBody ?? string.Empty);
+        Assert.Equal("nvidia/nemotron-3-super-120b-a12b:free", requestDocument.RootElement.GetProperty("model").GetString());
         Assert.Contains("You are a dependable fiduciary and are presenting current financial news highlights to your customers.", userPrompt, StringComparison.Ordinal);
         Assert.Contains("You write in the style of Douglas Adams.", userPrompt, StringComparison.Ordinal);
         Assert.Equal("json_object", requestDocument.RootElement.GetProperty("response_format").GetProperty("type").GetString());
@@ -292,7 +293,67 @@ public sealed class FinanceNewsServiceTests
         Assert.Equal(2, headlines.Count);
         Assert.Equal("https://localhost:11434/v1/chat/completions", capturedRequestUrl);
         Assert.Contains("\"model\":\"llama3\"", capturedBody, StringComparison.Ordinal);
+        using JsonDocument requestDocument = JsonDocument.Parse(capturedBody ?? string.Empty);
+        Assert.Equal("llama3", requestDocument.RootElement.GetProperty("model").GetString());
         Assert.DoesNotContain("\"provider\"", capturedBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetHeadlinesAsync_SummarizedMode_OpenRouterExplicitModel_IsNotOverridden()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        string? capturedBody = null;
+        FakeHttpMessageHandler handler = new(async (request, cancellationToken) =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    <rss><channel><item><title>European shares edge higher as traders await central-bank signals</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            capturedBody = request.Content is null
+                ? string.Empty
+                : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "content": "[[ITEM]]\nMarkets file forms.\nCentral bankers clear throats.\nEurope waits politely.\n---\nEuropean shares edged higher while traders waited for central-bank signals.\n[[/ITEM]]"
+                      }
+                    }
+                  ]
+                }
+                """, Encoding.UTF8, "application/json")
+            };
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
+            NewsRefreshMinutes = 15,
+            DeepSeekApiKey = "test-deepseek-key",
+            DeepSeekEndpointUrl = Defaults.DefaultDeepSeekEndpointUrl,
+            DeepSeekModelId = "custom-openrouter-model"
+        };
+
+        IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+        Assert.Equal(2, headlines.Count);
+        using JsonDocument requestDocument = JsonDocument.Parse(capturedBody ?? string.Empty);
+        Assert.Equal("custom-openrouter-model", requestDocument.RootElement.GetProperty("model").GetString());
     }
 
     [Fact]
@@ -1560,7 +1621,39 @@ public sealed class FinanceNewsServiceTests
         Assert.True(result.WasChecked);
         Assert.True(result.Succeeded);
         Assert.Equal("https://openrouter.ai/api/v1/chat/completions", capturedUrl);
-        Assert.Contains("\"model\":\"openrouter/free\"", capturedBody, StringComparison.Ordinal);
+        Assert.Contains("\"model\":\"nvidia/nemotron-3-super-120b-a12b:free\"", capturedBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CheckSummarizedNewsAccessAsync_OpenRouterDefault_FallsBackToConfiguredRouterAlias()
+    {
+        Queue<HttpStatusCode> statuses = new([HttpStatusCode.TooManyRequests, HttpStatusCode.OK]);
+        List<string> requestedModels = [];
+        using HttpClient client = new(new FakeHttpMessageHandler(async (request, cancellationToken) =>
+        {
+            string body = request.Content is null
+                ? string.Empty
+                : await request.Content.ReadAsStringAsync(cancellationToken);
+            using JsonDocument requestDocument = JsonDocument.Parse(body);
+            requestedModels.Add(requestDocument.RootElement.GetProperty("model").GetString() ?? string.Empty);
+            HttpStatusCode status = statuses.Dequeue();
+            return new HttpResponseMessage(status)
+            {
+                Content = new StringContent("""{"choices":[{"message":{"content":"OK"}}]}""", Encoding.UTF8, "application/json")
+            };
+        }));
+        FinanceNewsService service = new();
+        AppSettings settings = Defaults.CreateSettings();
+        settings.DeepSeekApiKey = "test-key";
+
+        FinanceNewsService.AiNewsAccessCheckResult result =
+            await service.CheckSummarizedNewsAccessAsync(client, settings);
+
+        Assert.True(result.WasChecked);
+        Assert.True(result.Succeeded);
+        Assert.Equal(
+            ["nvidia/nemotron-3-super-120b-a12b:free", "openrouter/free"],
+            requestedModels);
     }
 
     [Fact]

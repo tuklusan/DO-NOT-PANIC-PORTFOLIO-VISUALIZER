@@ -41,6 +41,8 @@ public sealed class FinanceNewsService
     private const string NytEconomyFeedUrl = "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml";
     private const string OpenRouterAttributionReferer = "https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER";
     private const string OpenRouterAttributionTitle = "DO NOT PANIC PORTFOLIO VISUALIZER";
+    // Selected on 2026-06-30 after live OpenRouter probes showed the router alias timing out for the structured news contract.
+    private const string OpenRouterFreeStructuredNewsModelId = "nvidia/nemotron-3-super-120b-a12b:free";
     private const int MaxDeepSeekSummaryAttempts = 2;
     private const int SummaryRetryBaseDelayMilliseconds = 750;
     private static readonly TimeSpan DefaultSummarizedNewsExternalCallBudget = TimeSpan.FromSeconds(60);
@@ -248,59 +250,72 @@ public sealed class FinanceNewsService
             return AiNewsAccessCheckResult.Skipped("api-key-not-configured");
 
         string endpointUrl = ResolveDeepSeekEndpointUrl(settings.DeepSeekEndpointUrl);
-        string modelId = ResolveDeepSeekModelId(settings.DeepSeekModelId);
+        string configuredModelId = ResolveDeepSeekModelId(settings.DeepSeekModelId);
+        IReadOnlyList<string> modelCandidates = ResolveDeepSeekModelCandidates(endpointUrl, configuredModelId);
+        string lastFailureReason = "no-model-candidates";
 
-        TraceNewsState(
-            "NewsSummaryAccessCheckStart",
-            new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-            new KeyValuePair<string, object?>("model_id", modelId));
-
-        try
+        foreach (string modelId in modelCandidates)
         {
-            using HttpRequestMessage request = new(HttpMethod.Post, BuildDeepSeekChatCompletionsUri(endpointUrl));
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-            AddOpenRouterAttributionHeaders(request, endpointUrl);
-            request.Content = new StringContent(
-                JsonSerializer.Serialize(CreateAiAccessCheckPayload(modelId)),
-                Encoding.UTF8,
-                "application/json");
+            TraceNewsState(
+                "NewsSummaryAccessCheckStart",
+                new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                new KeyValuePair<string, object?>("model_id", modelId),
+                new KeyValuePair<string, object?>("configured_model_id", configuredModelId));
 
-            using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                string reason = $"http-{(int)response.StatusCode}";
+                using HttpRequestMessage request = new(HttpMethod.Post, BuildDeepSeekChatCompletionsUri(endpointUrl));
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+                AddOpenRouterAttributionHeaders(request, endpointUrl);
+                request.Content = new StringContent(
+                    JsonSerializer.Serialize(CreateAiAccessCheckPayload(modelId)),
+                    Encoding.UTF8,
+                    "application/json");
+
+                using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
+                if (!response.IsSuccessStatusCode)
+                {
+                    lastFailureReason = $"http-{(int)response.StatusCode}";
+                    TraceNewsState(
+                        "NewsSummaryAccessCheckFailed",
+                        new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                        new KeyValuePair<string, object?>("model_id", modelId),
+                        new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
+                        new KeyValuePair<string, object?>("reason", lastFailureReason));
+                    continue;
+                }
+
+                TraceNewsState(
+                    "NewsSummaryAccessCheckSucceeded",
+                    new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                    new KeyValuePair<string, object?>("model_id", modelId),
+                    new KeyValuePair<string, object?>("configured_model_id", configuredModelId));
+                return AiNewsAccessCheckResult.Success();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                lastFailureReason = "timeout-or-cancelled";
                 TraceNewsState(
                     "NewsSummaryAccessCheckFailed",
                     new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
                     new KeyValuePair<string, object?>("model_id", modelId),
-                    new KeyValuePair<string, object?>("reason", reason));
-                return AiNewsAccessCheckResult.Failed(reason);
+                    new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
+                    new KeyValuePair<string, object?>("reason", lastFailureReason));
+                return AiNewsAccessCheckResult.Failed(lastFailureReason);
             }
+            catch (Exception ex)
+            {
+                lastFailureReason = ex.GetType().Name;
+                TraceNewsState(
+                    "NewsSummaryAccessCheckFailed",
+                    new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                    new KeyValuePair<string, object?>("model_id", modelId),
+                    new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
+                    new KeyValuePair<string, object?>("reason", lastFailureReason));
+            }
+        }
 
-            TraceNewsState(
-                "NewsSummaryAccessCheckSucceeded",
-                new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                new KeyValuePair<string, object?>("model_id", modelId));
-            return AiNewsAccessCheckResult.Success();
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            TraceNewsState(
-                "NewsSummaryAccessCheckFailed",
-                new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                new KeyValuePair<string, object?>("model_id", modelId),
-                new KeyValuePair<string, object?>("reason", "timeout-or-cancelled"));
-            return AiNewsAccessCheckResult.Failed("timeout-or-cancelled");
-        }
-        catch (Exception ex)
-        {
-            TraceNewsState(
-                "NewsSummaryAccessCheckFailed",
-                new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                new KeyValuePair<string, object?>("model_id", modelId),
-                new KeyValuePair<string, object?>("reason", ex.GetType().Name));
-            return AiNewsAccessCheckResult.Failed(ex.GetType().Name);
-        }
+        return AiNewsAccessCheckResult.Failed(lastFailureReason);
     }
 
     private static async Task<List<string>> FetchRssHeadlinesAsync(
@@ -357,12 +372,14 @@ public sealed class FinanceNewsService
         try
         {
             string endpointUrl = ResolveDeepSeekEndpointUrl(settings.DeepSeekEndpointUrl);
-            string modelId = ResolveDeepSeekModelId(settings.DeepSeekModelId);
+            string configuredModelId = ResolveDeepSeekModelId(settings.DeepSeekModelId);
+            IReadOnlyList<string> modelCandidates = ResolveDeepSeekModelCandidates(endpointUrl, configuredModelId);
             string? retryReason = null;
             bool requestStrictJsonResponseFormat = true;
             string userPrompt = BuildSummarizedNewsPrompt(settings.DeepSeekWritingStyle, context);
             for (int attempt = 1; attempt <= MaxDeepSeekSummaryAttempts; attempt++)
             {
+                string modelId = modelCandidates[Math.Min(attempt - 1, modelCandidates.Count - 1)];
                 JsonDocument document;
                 try
                 {
@@ -378,6 +395,7 @@ public sealed class FinanceNewsService
                         "NewsSummaryRequestStart",
                         new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
                         new KeyValuePair<string, object?>("model_id", modelId),
+                        new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
                         new KeyValuePair<string, object?>("attempt", attempt),
                         new KeyValuePair<string, object?>("strict_json_response_format", requestStrictJsonResponseFormat),
                         new KeyValuePair<string, object?>("http_timeout_seconds", httpClient.Timeout.TotalSeconds),
@@ -425,7 +443,8 @@ public sealed class FinanceNewsService
                         "NewsSummaryStrictJsonResponseFormatRejected",
                         new KeyValuePair<string, object?>("attempt", attempt),
                         new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                        new KeyValuePair<string, object?>("model_id", modelId));
+                        new KeyValuePair<string, object?>("model_id", modelId),
+                        new KeyValuePair<string, object?>("configured_model_id", configuredModelId));
                     continue;
                 }
                 catch (Exception ex) when (IsRetryableSummaryException(ex) && attempt < MaxDeepSeekSummaryAttempts)
@@ -475,6 +494,7 @@ public sealed class FinanceNewsService
                         new KeyValuePair<string, object?>("writing_style", settings.DeepSeekWritingStyle),
                         new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
                         new KeyValuePair<string, object?>("model_id", modelId),
+                        new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
                         new KeyValuePair<string, object?>("attempt", attempt));
                     if (summarizedItems.Count == 0)
                     {
@@ -1212,6 +1232,17 @@ public sealed class FinanceNewsService
         return string.IsNullOrWhiteSpace(candidate)
             ? Defaults.DefaultDeepSeekModelId
             : candidate;
+    }
+
+    private static IReadOnlyList<string> ResolveDeepSeekModelCandidates(string endpointUrl, string configuredModelId)
+    {
+        if (IsOpenRouterEndpoint(endpointUrl) &&
+            string.Equals(configuredModelId, Defaults.DefaultDeepSeekModelId, StringComparison.OrdinalIgnoreCase))
+        {
+            return [OpenRouterFreeStructuredNewsModelId, configuredModelId];
+        }
+
+        return [configuredModelId];
     }
 
     private static Uri BuildDeepSeekChatCompletionsUri(string endpointUrl)
