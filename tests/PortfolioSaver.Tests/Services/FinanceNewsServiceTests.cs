@@ -236,52 +236,6 @@ public sealed class FinanceNewsServiceTests
     }
 
     [Fact]
-    public async Task GetHeadlinesAsync_RssMode_WhenForcedByAiFallback_AddsVisibleNotice()
-    {
-        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
-        FakeHttpMessageHandler handler = new(request =>
-        {
-            Assert.Equal("https://finance.yahoo.com/news/rss", request.RequestUri?.ToString());
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent("""
-                <rss><channel>
-                  <item><title>Stocks rise as investors weigh earnings</title></item>
-                  <item><title>Bond yields ease after inflation report</title></item>
-                </channel></rss>
-                """, Encoding.UTF8, "application/xml")
-            };
-        });
-
-        using HttpClient client = new(handler);
-        FinanceNewsService service = new(cachePath, () => string.Empty);
-        AppSettings settings = new()
-        {
-            NewsScrollerMode = NewsScrollerMode.RssFeed,
-            NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
-            NewsRefreshMinutes = 15
-        };
-
-        ScreensaverSettingsService.ClearForcedRssNewsForCurrentSession();
-        try
-        {
-            IReadOnlyList<string> normalHeadlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
-
-            ScreensaverSettingsService.ForceRssNewsForCurrentSession();
-            IReadOnlyList<string> forcedHeadlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
-
-            Assert.Equal("Stocks rise as investors weigh earnings", normalHeadlines[0]);
-            Assert.Equal(3, forcedHeadlines.Count);
-            Assert.Equal("AI summaries unavailable right now. Showing RSS financial news.", forcedHeadlines[0]);
-            Assert.Equal("Stocks rise as investors weigh earnings", forcedHeadlines[1]);
-        }
-        finally
-        {
-            ScreensaverSettingsService.ClearForcedRssNewsForCurrentSession();
-        }
-    }
-
-    [Fact]
     public async Task GetHeadlinesAsync_SummarizedMode_UsesConfiguredEndpointAndModel()
     {
         string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
@@ -1436,6 +1390,77 @@ public sealed class FinanceNewsServiceTests
         NewsHeadlineCache refreshedCache = JsonSerializer.Deserialize<NewsHeadlineCache>(await File.ReadAllTextAsync(cachePath), CacheJsonOptions)
             ?? throw new InvalidOperationException("Refreshed news payload was not written.");
         Assert.True(refreshedCache.FetchTimestampUtc > cache.FetchTimestampUtc);
+    }
+
+    [Fact]
+    public async Task GetHeadlinesAsync_SummarizedMode_RetriesAiOnNextRefreshAfterFallback()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        bool failDeepSeek = true;
+        int deepSeekRequestCount = 0;
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    <rss><channel><item><title>Markets steady as investors monitor earnings and policy signals</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            deepSeekRequestCount++;
+            if (failDeepSeek)
+                return new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "content": "[[ITEM]]\nLedgers hum at dawn.\nPolicy clouds politely drift.\nMarkets keep their towel.\n---\nMarkets steadied as investors watched earnings and policy signals with the sort of calm usually reserved for misplaced planets.\n[[/ITEM]]"
+                      }
+                    }
+                  ]
+                }
+                """, Encoding.UTF8, "application/json")
+            };
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
+            NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
+            NewsRefreshMinutes = 15,
+            DeepSeekApiKey = "test-openrouter-key",
+            DeepSeekEndpointUrl = Defaults.DefaultDeepSeekEndpointUrl,
+            DeepSeekModelId = Defaults.DefaultDeepSeekModelId
+        };
+
+        IReadOnlyList<string> fallbackHeadlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+        NewsHeadlineCache cache = JsonSerializer.Deserialize<NewsHeadlineCache>(await File.ReadAllTextAsync(cachePath), CacheJsonOptions)
+            ?? throw new InvalidOperationException("Fallback cache payload was not written.");
+        cache.FetchTimestampUtc = DateTimeOffset.UtcNow.AddMinutes(-20);
+        await File.WriteAllTextAsync(cachePath, JsonSerializer.Serialize(cache, CacheJsonOptions));
+
+        failDeepSeek = false;
+        IReadOnlyList<string> recoveredHeadlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+        Assert.Equal(3, deepSeekRequestCount);
+        Assert.Contains("Markets steady as investors monitor earnings", fallbackHeadlines[0], StringComparison.Ordinal);
+        Assert.DoesNotContain("AI summaries unavailable", fallbackHeadlines[0], StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Ledgers hum at dawn.", recoveredHeadlines[0], StringComparison.Ordinal);
+        Assert.Contains("misplaced planets", recoveredHeadlines[0], StringComparison.Ordinal);
+        Assert.NotEqual(fallbackHeadlines[0], recoveredHeadlines[0]);
     }
 
     [Fact]

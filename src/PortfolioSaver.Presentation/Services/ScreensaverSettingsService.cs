@@ -30,8 +30,6 @@ public sealed class ScreensaverSettingsService
     };
 
     private readonly ProviderSecretStoreService _providerSecretStoreService = new();
-    private static int forceRssNewsForSession;
-
     public string SettingsPath => Path.Combine(PathHelper.GetAppDataDirectory(), "settings.json");
 
     public AppSettings Load()
@@ -51,18 +49,6 @@ public sealed class ScreensaverSettingsService
 
         _providerSecretStoreService.OverlaySecrets(settings);
         AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
-        if (Volatile.Read(ref forceRssNewsForSession) == 1)
-            normalized.NewsScrollerMode = NewsScrollerMode.RssFeed;
-
         return normalized;
     }
-
-    public static void ForceRssNewsForCurrentSession()
-        => Volatile.Write(ref forceRssNewsForSession, 1);
-
-    public static void ClearForcedRssNewsForCurrentSession()
-        => Volatile.Write(ref forceRssNewsForSession, 0);
-
-    public static bool IsRssNewsForcedForCurrentSession()
-        => Volatile.Read(ref forceRssNewsForSession) == 1;
 }

@@ -191,7 +191,6 @@ public partial class MainWindow : Window
         finally
         {
             window.ValidationActivityChanged -= OnValidationActivityChanged;
-            ScreensaverSettingsService.ClearForcedRssNewsForCurrentSession();
             SceneHost?.SetValidationPause(false);
             TraceLog.InfoState("Desktop.Config", "ConfigDialogClosed", []);
         }

@@ -43,7 +43,6 @@ public sealed class FinanceNewsService
     private const string OpenRouterAttributionTitle = "DO NOT PANIC PORTFOLIO VISUALIZER";
     // Selected on 2026-06-30 after live OpenRouter probes showed the router alias timing out for the structured news contract.
     private const string OpenRouterFreeStructuredNewsModelId = "nvidia/nemotron-3-super-120b-a12b:free";
-    private const string AiUnavailableRssFallbackNotice = "AI summaries unavailable right now. Showing RSS financial news.";
     private const int MaxDeepSeekSummaryAttempts = 2;
     private const int SummaryRetryBaseDelayMilliseconds = 750;
     private static readonly TimeSpan DefaultSummarizedNewsExternalCallBudget = TimeSpan.FromSeconds(60);
@@ -83,12 +82,10 @@ public sealed class FinanceNewsService
         CancellationToken cancellationToken = default)
     {
         NewsScrollerMode mode = settings.NewsScrollerMode;
-        bool forcedRssFallback = mode == NewsScrollerMode.RssFeed &&
-            ScreensaverSettingsService.IsRssNewsForcedForCurrentSession();
         DeepSeekWritingStyle writingStyle = settings.DeepSeekWritingStyle;
         string requestUrl = NormalizeFeedUrl(settings.NewsFeedUrl);
         TimeSpan refreshInterval = GetRefreshInterval(mode, settings.NewsRefreshMinutes);
-        string modeKey = GetModeKey(mode, writingStyle, forcedRssFallback);
+        string modeKey = GetModeKey(mode, writingStyle);
         NewsHeadlineCache cache = await LoadCacheAsync(cancellationToken);
         IReadOnlyList<string> matchingCachedHeadlines =
             string.Equals(cache.ModeKey, modeKey, StringComparison.OrdinalIgnoreCase)
@@ -147,9 +144,7 @@ public sealed class FinanceNewsService
         {
             NewsFetchResult fetchResult = mode switch
             {
-                NewsScrollerMode.RssFeed => new(ApplyRssFallbackNoticeIfNeeded(
-                    await FetchRssHeadlinesAsync(httpClient, requestUrl, cancellationToken),
-                    forcedRssFallback), false),
+                NewsScrollerMode.RssFeed => new(await FetchRssHeadlinesAsync(httpClient, requestUrl, cancellationToken), false),
                 _ => await FetchSummarizedFinancialNewsAsync(httpClient, settings, cancellationToken)
             };
 
@@ -228,10 +223,7 @@ public sealed class FinanceNewsService
         {
             string json = File.ReadAllText(_cachePath);
             NewsHeadlineCache? cache = JsonSerializer.Deserialize<NewsHeadlineCache>(json, JsonOptions);
-            string modeKey = GetModeKey(
-                mode,
-                writingStyle,
-                mode == NewsScrollerMode.RssFeed && ScreensaverSettingsService.IsRssNewsForcedForCurrentSession());
+            string modeKey = GetModeKey(mode, writingStyle);
             IReadOnlyList<string> matchingHeadlines =
                 cache is not null &&
                 string.Equals(cache.ModeKey, modeKey, StringComparison.OrdinalIgnoreCase)
@@ -1331,31 +1323,16 @@ public sealed class FinanceNewsService
         return DefaultFeedUrl;
     }
 
-    private static string GetModeKey(
-        NewsScrollerMode mode,
-        DeepSeekWritingStyle writingStyle,
-        bool forcedRssFallback = false)
+    private static string GetModeKey(NewsScrollerMode mode, DeepSeekWritingStyle writingStyle)
         => mode switch
         {
-            NewsScrollerMode.RssFeed => forcedRssFallback ? "rss:ai-unavailable-session-fallback" : "rss",
+            NewsScrollerMode.RssFeed => "rss",
             _ => writingStyle switch
             {
                 DeepSeekWritingStyle.WilliamShakespeare => $"summarized-financial-news:{SummarizedNewsCacheFormatVersion}:william-shakespeare",
                 _ => $"summarized-financial-news:{SummarizedNewsCacheFormatVersion}:douglas-adams"
             }
         };
-
-    private static IReadOnlyList<string> ApplyRssFallbackNoticeIfNeeded(
-        IReadOnlyList<string> headlines,
-        bool forcedRssFallback)
-    {
-        if (!forcedRssFallback || headlines.Count == 0)
-            return headlines;
-
-        List<string> withNotice = new(headlines.Count + 1) { AiUnavailableRssFallbackNotice };
-        withNotice.AddRange(headlines);
-        return withNotice;
-    }
 
     private static void TraceNewsState(string eventName, params KeyValuePair<string, object?>[] fields)
     {

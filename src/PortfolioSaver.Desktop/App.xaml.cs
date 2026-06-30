@@ -179,13 +179,12 @@ public partial class App : Application
             if (!result.WasChecked || result.Succeeded)
                 return;
 
-            TraceLog.Warn("Desktop.App", $"AI summarized news access failed at startup; using RSS fallback for this session without modal interruption. reason={result.Reason}");
-            ScreensaverSettingsService.ForceRssNewsForCurrentSession();
+            // Startup probe only: ordinary feed refreshes keep retrying AI and fall back locally per refresh.
+            TraceLog.Warn("Desktop.App", $"AI summarized news access failed at startup; summarized news will retry on the normal refresh cadence. reason={result.Reason}");
         }
         catch (Exception ex)
         {
-            TraceLog.Error("Desktop.App", "AI summarized news startup check failed unexpectedly; using RSS fallback for this session without modal interruption.", ex);
-            ScreensaverSettingsService.ForceRssNewsForCurrentSession();
+            TraceLog.Error("Desktop.App", "AI summarized news startup check failed unexpectedly; summarized news will retry on the normal refresh cadence.", ex);
         }
     }
 

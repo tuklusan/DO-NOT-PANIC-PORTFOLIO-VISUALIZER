@@ -130,14 +130,13 @@ public sealed class DesktopShellMigrationTests
     }
 
     [Fact]
-    public void DesktopApp_AiNewsStartupCheck_UsesNonModalSessionRssFallback()
+    public void DesktopApp_AiNewsStartupCheck_IsNonModalAndAllowsRefreshRetries()
     {
         string appCode = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Desktop", "App.xaml.cs"));
 
         Assert.Contains("CheckConfiguredAiNewsAccessAsync", appCode, StringComparison.Ordinal);
-        Assert.Contains("RSS fallback", appCode, StringComparison.Ordinal);
-        Assert.Contains("without modal interruption", appCode, StringComparison.Ordinal);
-        Assert.Contains("ForceRssNewsForCurrentSession", appCode, StringComparison.Ordinal);
+        Assert.Contains("summarized news will retry on the normal refresh cadence", appCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("ForceRssNewsForCurrentSession", appCode, StringComparison.Ordinal);
         Assert.DoesNotContain("AI summarized financial news is not available right now", appCode, StringComparison.Ordinal);
         Assert.DoesNotContain("AI summarized financial news could not be verified", appCode, StringComparison.Ordinal);
     }
