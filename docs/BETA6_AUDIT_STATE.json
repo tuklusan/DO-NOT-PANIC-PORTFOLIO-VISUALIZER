@@ -7796,6 +7796,35 @@
         "VM or config harness validation proves the Config screen exposes the requested default values on a fresh/default configuration.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
       ]
+    },
+    {
+      "id": "CR-146",
+      "tracking_number": "CR-146",
+      "priority": 3,
+      "area": "Config screen help UX",
+      "title": "Add useful balloon help text to Config screen question-mark icons",
+      "status": "open",
+      "source": "user_request_2026_06_30",
+      "severity": "low",
+      "evidence": [
+        "The configuration applet shows small blue circular help icons with white question marks, but they do not currently provide useful help text.",
+        "User requested brief appropriate balloon help text for the configuration help bubbles, with the News Scroller help bubble summarizing free personal non-commercial OpenRouter API key setup."
+      ],
+      "notes": [
+        "Inventory all visible question-mark help bubbles in the General and Advanced tabs and attach concise, user-facing balloon/tool-tip text to each one.",
+        "News Scroller help text should summarize: go to openrouter.ai, sign up for a free account, choose Individual, obtain an API key, paste it into the app, and optionally adjust endpoint/model ID for another AI engine."
+      ],
+      "acceptance": [
+        "Every visible blue question-mark help icon in the configuration applet has concise, relevant balloon/tool-tip help text.",
+        "Help text is user-facing and avoids unnecessary implementation jargon while explaining what each nearby section/control affects.",
+        "Help bubbles work consistently on General and Advanced tabs through the intended hover/click interaction supported by the existing UI framework.",
+        "News Scroller help text briefly explains free personal non-commercial API key setup: visit openrouter.ai, create a free account, choose Individual, obtain an API key, and paste it into the app.",
+        "News Scroller help text also mentions that endpoint URL and model ID can be adjusted for a preferred AI engine.",
+        "Help text is readable within the available balloon/tool-tip area and does not overlap or obscure critical controls for normal use.",
+        "Automated tests or config harness checks verify that help text strings are present for all question-mark icons where practical.",
+        "VM or config harness validation captures/proves the help bubble behavior for at least representative General, Advanced, and News Scroller help icons.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
