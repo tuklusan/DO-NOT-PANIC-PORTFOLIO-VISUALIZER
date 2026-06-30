@@ -7825,6 +7825,39 @@
         "VM or config harness validation captures/proves the help bubble behavior for at least representative General, Advanced, and News Scroller help icons.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
       ]
+    },
+    {
+      "id": "CR-147",
+      "tracking_number": "CR-147",
+      "priority": 2,
+      "area": "Installer AI configuration UX",
+      "title": "Add optional AI API setup section to installer final screen",
+      "status": "open",
+      "source": "user_request_2026_06_30",
+      "severity": "medium",
+      "evidence": [
+        "The installer final screen does not currently offer an optional AI API setup section equivalent to the configuration app Advanced tab.",
+        "User requested optional installer entry for AI API key, endpoint URL, and model ID using the same OpenRouter guidance and defaults as the Config screen CRs.",
+        "Validation requirement: if any one of AI API key, endpoint URL, or model ID is filled in, all three must be non-empty before installer completion."
+      ],
+      "notes": [
+        "Add optional AI API setup controls to the installer last screen, matching the Advanced tab configuration concepts for key, endpoint URL, and model ID.",
+        "Use the same brief OpenRouter instructions from CR-146 and the same endpoint/model defaults from CR-145: https://openrouter.ai/api/v1 and openrouter/free.",
+        "Persist installer-provided AI settings into the same application configuration storage path used by the Config app, without requiring users to open configuration immediately after installation."
+      ],
+      "acceptance": [
+        "Installer last screen includes an optional AI API information section with fields equivalent to the Config app Advanced tab: API key, endpoint URL, and model ID.",
+        "Installer AI endpoint URL default is https://openrouter.ai/api/v1.",
+        "Installer AI model ID default is openrouter/free.",
+        "Installer AI API key field is optional when all AI API fields are left blank or at untouched defaults according to the selected installer UX design.",
+        "Installer enforces all-or-none validation: if any one of API key, endpoint URL, or model ID is intentionally filled in/changed for AI setup, all three values must be non-empty before installation can complete.",
+        "Installer help/instructions summarize the CR-146 News Scroller guidance: visit openrouter.ai, create a free account, choose Individual, obtain an API key, paste it here, and optionally adjust endpoint/model ID for another AI engine.",
+        "Installer-provided AI settings are written to the same effective application configuration consumed by the desktop app and Config app Advanced tab.",
+        "Existing installed/user-customized AI settings are not silently overwritten during upgrade unless the user explicitly provides new installer values or chooses the installer setup option.",
+        "Automated installer-script or harness tests cover default values, blank/skip behavior, all-or-none validation failures, and successful persistence.",
+        "VM installer validation proves the final-screen AI setup section is visible, accepts valid values, rejects partial values, and leaves the installed app/config app reading the expected settings.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
