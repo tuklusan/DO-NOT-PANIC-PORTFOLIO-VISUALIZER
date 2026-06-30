@@ -17,6 +17,7 @@ using System.Windows.Automation;
 using System.Windows.Threading;
 using PortfolioSaver.Shared;
 using PortfolioSaver.Shared.Diagnostics;
+using PortfolioSaver.Screensaver.Services;
 using SettingsWindow = PortfolioSaver.Config.Windows.MainWindow;
 
 namespace PortfolioSaver.Desktop.Windows;
@@ -190,6 +191,7 @@ public partial class MainWindow : Window
         finally
         {
             window.ValidationActivityChanged -= OnValidationActivityChanged;
+            ScreensaverSettingsService.ClearForcedRssNewsForCurrentSession();
             SceneHost?.SetValidationPause(false);
             TraceLog.InfoState("Desktop.Config", "ConfigDialogClosed", []);
         }

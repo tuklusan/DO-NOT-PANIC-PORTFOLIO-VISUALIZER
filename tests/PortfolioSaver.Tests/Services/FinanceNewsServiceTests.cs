@@ -76,7 +76,7 @@ public sealed class FinanceNewsServiceTests
     }
 
     [Fact]
-    public async Task GetHeadlinesAsync_SummarizedMode_UsesRestylingOnlyPrompt_AndCachesAtFifteenMinuteFloor()
+    public async Task GetHeadlinesAsync_SummarizedMode_UsesRestylingOnlyPrompt_AndCachesAtCurrentMinimumFloor()
     {
         string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
         int requestCount = 0;
@@ -126,7 +126,7 @@ public sealed class FinanceNewsServiceTests
             capturedBody = request.Content is null
                 ? string.Empty
                 : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            Assert.Equal("https://api.deepseek.com/chat/completions", requestUrl);
+            Assert.Equal("https://openrouter.ai/api/v1/chat/completions", requestUrl);
             Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
             Assert.Equal("test-deepseek-key", request.Headers.Authorization?.Parameter);
             return new HttpResponseMessage(HttpStatusCode.OK)
@@ -152,7 +152,7 @@ public sealed class FinanceNewsServiceTests
             NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
             DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
             NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
-            NewsRefreshMinutes = 5,
+            NewsRefreshMinutes = 10,
             DeepSeekApiKey = "test-deepseek-key",
             DeepSeekEndpointUrl = Defaults.DefaultDeepSeekEndpointUrl,
             DeepSeekModelId = Defaults.DefaultDeepSeekModelId
@@ -1522,6 +1522,67 @@ public sealed class FinanceNewsServiceTests
         Assert.Single(requestedDelays);
         Assert.Contains(Environment.NewLine, headlines[0], StringComparison.Ordinal);
         Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", headlines[^1]);
+    }
+
+    [Fact]
+    public async Task CheckSummarizedNewsAccessAsync_WithValidResponse_ReturnsSuccess()
+    {
+        string? capturedUrl = null;
+        string? capturedBody = null;
+        using HttpClient client = new(new FakeHttpMessageHandler(async (request, cancellationToken) =>
+        {
+            capturedUrl = request.RequestUri?.ToString();
+            capturedBody = request.Content is null
+                ? string.Empty
+                : await request.Content.ReadAsStringAsync(cancellationToken);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"choices":[{"message":{"content":"OK"}}]}""", Encoding.UTF8, "application/json")
+            };
+        }));
+        FinanceNewsService service = new();
+        AppSettings settings = Defaults.CreateSettings();
+        settings.DeepSeekApiKey = "test-key";
+
+        FinanceNewsService.AiNewsAccessCheckResult result =
+            await service.CheckSummarizedNewsAccessAsync(client, settings);
+
+        Assert.True(result.WasChecked);
+        Assert.True(result.Succeeded);
+        Assert.Equal("https://openrouter.ai/api/v1/chat/completions", capturedUrl);
+        Assert.Contains("\"model\":\"openrouter/free\"", capturedBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CheckSummarizedNewsAccessAsync_WithHttpFailure_ReturnsFailureWithoutThrowing()
+    {
+        using HttpClient client = new(new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized)));
+        FinanceNewsService service = new();
+        AppSettings settings = Defaults.CreateSettings();
+        settings.DeepSeekApiKey = "bad-key";
+
+        FinanceNewsService.AiNewsAccessCheckResult result =
+            await service.CheckSummarizedNewsAccessAsync(client, settings);
+
+        Assert.True(result.WasChecked);
+        Assert.False(result.Succeeded);
+        Assert.Equal("http-401", result.Reason);
+    }
+
+    [Fact]
+    public async Task CheckSummarizedNewsAccessAsync_WithoutApiKey_SkipsCheck()
+    {
+        using HttpClient client = new(new FakeHttpMessageHandler(_ => throw new InvalidOperationException("Network should not be used.")));
+        FinanceNewsService service = new();
+        AppSettings settings = Defaults.CreateSettings();
+        settings.DeepSeekApiKey = string.Empty;
+
+        FinanceNewsService.AiNewsAccessCheckResult result =
+            await service.CheckSummarizedNewsAccessAsync(client, settings);
+
+        Assert.False(result.WasChecked);
+        Assert.True(result.Succeeded);
+        Assert.Equal("api-key-not-configured", result.Reason);
     }
 
     private sealed class FakeHttpMessageHandler : HttpMessageHandler

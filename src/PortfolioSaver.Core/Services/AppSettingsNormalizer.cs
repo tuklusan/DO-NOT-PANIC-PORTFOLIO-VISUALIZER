@@ -21,6 +21,8 @@ namespace PortfolioSaver.Core.Services;
 
 public static class AppSettingsNormalizer
 {
+    private const string LegacyDefaultDeepSeekEndpointUrl = "https://api.deepseek.com";
+    private const string LegacyDefaultDeepSeekModelId = "deepseek-v4-flash";
     public static AppSettings Normalize(AppSettings? settings)
     {
         AppSettings normalized = settings ?? Defaults.CreateSettings();
@@ -270,6 +272,9 @@ public static class AppSettingsNormalizer
             if (normalized.EndsWith(chatPath, StringComparison.OrdinalIgnoreCase))
                 normalized = normalized[..^chatPath.Length];
 
+            if (string.Equals(normalized, LegacyDefaultDeepSeekEndpointUrl, StringComparison.OrdinalIgnoreCase))
+                return Defaults.DefaultDeepSeekEndpointUrl;
+
             return normalized;
         }
 
@@ -279,6 +284,9 @@ public static class AppSettingsNormalizer
     private static string NormalizeDeepSeekModelId(string currentValue)
     {
         string candidate = (currentValue ?? string.Empty).Trim();
+        if (string.Equals(candidate, LegacyDefaultDeepSeekModelId, StringComparison.OrdinalIgnoreCase))
+            return Defaults.DefaultDeepSeekModelId;
+
         return string.IsNullOrWhiteSpace(candidate)
             ? Defaults.DefaultDeepSeekModelId
             : candidate;

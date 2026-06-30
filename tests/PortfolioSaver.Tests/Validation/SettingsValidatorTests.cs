@@ -77,4 +77,16 @@ public sealed class SettingsValidatorTests
 
         Assert.Contains(errors, error => error.Contains("News feed URL", StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public void Validate_NewsRefreshBelowTenMinutes_ReturnsError()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsRefreshMinutes = 9;
+
+        SettingsValidator validator = new();
+        IReadOnlyList<string> errors = validator.Validate(settings);
+
+        Assert.Contains(errors, error => error.Contains("between 10 minutes and 4 hours", StringComparison.OrdinalIgnoreCase));
+    }
 }

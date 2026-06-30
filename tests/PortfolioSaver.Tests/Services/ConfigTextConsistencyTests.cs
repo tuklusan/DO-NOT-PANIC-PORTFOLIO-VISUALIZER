@@ -181,9 +181,10 @@ public sealed class ConfigTextConsistencyTests
         Assert.Equal(4, helpBadgeCount);
         Assert.True(tooltipCount >= 4, "Expected every visible help badge to carry a tooltip.");
         Assert.Contains("Choose your own image folder", xaml, StringComparison.Ordinal);
-        Assert.Contains("Choose summarized financial news or a plain RSS feed.", xaml, StringComparison.Ordinal);
+        Assert.Contains("go to openrouter.ai", xaml, StringComparison.Ordinal);
         Assert.Contains("Ticker names fill in during Validate when available.", xaml, StringComparison.Ordinal);
-        Assert.Contains("Optional AI summarization requires an API key.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Summarized mode can use a personal non-commercial OpenRouter API key", xaml, StringComparison.Ordinal);
+        Assert.Contains("Minimum=\"10\"", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -245,7 +246,7 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("IsEnabled=\"{Binding IsSummarizedFinancialNewsSelected}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("IsEnabled=\"{Binding IsRssFeedSelected}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("AI API key:", xaml, StringComparison.Ordinal);
-        Assert.Contains("Summarized mode requires an API key.", xaml, StringComparison.Ordinal);
+        Assert.Contains("Summarized mode uses your API key when available", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("teleprinter-style", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("style-only rewriting", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("default endpoint ships", xaml, StringComparison.Ordinal);

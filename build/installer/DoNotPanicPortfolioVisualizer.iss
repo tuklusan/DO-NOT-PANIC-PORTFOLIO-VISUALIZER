@@ -96,6 +96,232 @@ Type: dirifempty; Name: "{app}"
 Type: dirifempty; Name: "{autopf}\{#AppPublisher}"
 
 [Code]
+var
+  AiSetupPage: TWizardPage;
+  AiSetupCheckBox: TNewCheckBox;
+  AiInstructionsLabel: TNewStaticText;
+  AiApiKeyLabel: TNewStaticText;
+  AiEndpointLabel: TNewStaticText;
+  AiModelLabel: TNewStaticText;
+  AiApiKeyEdit: TPasswordEdit;
+  AiEndpointEdit: TNewEdit;
+  AiModelEdit: TNewEdit;
+
+function JsonEscape(Value: String): String;
+var
+  I: Integer;
+  Sanitized: String;
+begin
+  Sanitized := '';
+  for I := 1 to Length(Value) do
+  begin
+    if Ord(Value[I]) >= 32 then
+      Sanitized := Sanitized + Value[I];
+  end;
+  Value := Sanitized;
+  StringChangeEx(Value, '\', '\\', True);
+  StringChangeEx(Value, '"', '\"', True);
+  Result := Value;
+end;
+
+procedure SetAiControlsEnabled(Enabled: Boolean);
+begin
+  AiApiKeyLabel.Enabled := Enabled;
+  AiEndpointLabel.Enabled := Enabled;
+  AiModelLabel.Enabled := Enabled;
+  AiApiKeyEdit.Enabled := Enabled;
+  AiEndpointEdit.Enabled := Enabled;
+  AiModelEdit.Enabled := Enabled;
+end;
+
+procedure AiSetupCheckBoxClick(Sender: TObject);
+begin
+  SetAiControlsEnabled(AiSetupCheckBox.Checked);
+end;
+
+procedure InitializeWizard();
+begin
+  AiSetupPage := CreateCustomPage(
+    wpSelectTasks,
+    'Optional AI News Setup',
+    'Configure optional AI-summarized financial news.');
+
+  AiSetupCheckBox := TNewCheckBox.Create(AiSetupPage);
+  AiSetupCheckBox.Parent := AiSetupPage.Surface;
+  AiSetupCheckBox.Left := 0;
+  AiSetupCheckBox.Top := 0;
+  AiSetupCheckBox.Width := AiSetupPage.SurfaceWidth;
+  AiSetupCheckBox.Caption := 'Configure AI-summarized financial news now';
+  AiSetupCheckBox.OnClick := @AiSetupCheckBoxClick;
+
+  AiInstructionsLabel := TNewStaticText.Create(AiSetupPage);
+  AiInstructionsLabel.Parent := AiSetupPage.Surface;
+  AiInstructionsLabel.Left := 0;
+  AiInstructionsLabel.Top := AiSetupCheckBox.Top + 28;
+  AiInstructionsLabel.Width := AiSetupPage.SurfaceWidth;
+  AiInstructionsLabel.Height := 58;
+  AiInstructionsLabel.WordWrap := True;
+  AiInstructionsLabel.Caption :=
+    'Example free personal setup: go to openrouter.ai, sign up for a free account, choose Individual, create an API key, and paste it here. You may also adjust endpoint and model ID for another compatible AI engine.';
+
+  AiApiKeyLabel := TNewStaticText.Create(AiSetupPage);
+  AiApiKeyLabel.Parent := AiSetupPage.Surface;
+  AiApiKeyLabel.Left := 0;
+  AiApiKeyLabel.Top := AiInstructionsLabel.Top + 70;
+  AiApiKeyLabel.Width := 110;
+  AiApiKeyLabel.Caption := 'AI API key:';
+
+  AiApiKeyEdit := TPasswordEdit.Create(AiSetupPage);
+  AiApiKeyEdit.Parent := AiSetupPage.Surface;
+  AiApiKeyEdit.Left := 120;
+  AiApiKeyEdit.Top := AiApiKeyLabel.Top - 3;
+  AiApiKeyEdit.Width := AiSetupPage.SurfaceWidth - 120;
+
+  AiEndpointLabel := TNewStaticText.Create(AiSetupPage);
+  AiEndpointLabel.Parent := AiSetupPage.Surface;
+  AiEndpointLabel.Left := 0;
+  AiEndpointLabel.Top := AiApiKeyLabel.Top + 34;
+  AiEndpointLabel.Width := 110;
+  AiEndpointLabel.Caption := 'Endpoint URL:';
+
+  AiEndpointEdit := TNewEdit.Create(AiSetupPage);
+  AiEndpointEdit.Parent := AiSetupPage.Surface;
+  AiEndpointEdit.Left := 120;
+  AiEndpointEdit.Top := AiEndpointLabel.Top - 3;
+  AiEndpointEdit.Width := AiSetupPage.SurfaceWidth - 120;
+  AiEndpointEdit.Text := 'https://openrouter.ai/api/v1';
+
+  AiModelLabel := TNewStaticText.Create(AiSetupPage);
+  AiModelLabel.Parent := AiSetupPage.Surface;
+  AiModelLabel.Left := 0;
+  AiModelLabel.Top := AiEndpointLabel.Top + 34;
+  AiModelLabel.Width := 110;
+  AiModelLabel.Caption := 'Model ID:';
+
+  AiModelEdit := TNewEdit.Create(AiSetupPage);
+  AiModelEdit.Parent := AiSetupPage.Surface;
+  AiModelEdit.Left := 120;
+  AiModelEdit.Top := AiModelLabel.Top - 3;
+  AiModelEdit.Width := AiSetupPage.SurfaceWidth - 120;
+  AiModelEdit.Text := 'openrouter/free';
+
+  SetAiControlsEnabled(False);
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+  if CurPageID = AiSetupPage.ID then
+  begin
+    if AiSetupCheckBox.Checked then
+    begin
+      if (Trim(AiApiKeyEdit.Text) = '') or
+         (Trim(AiEndpointEdit.Text) = '') or
+         (Trim(AiModelEdit.Text) = '') then
+      begin
+        MsgBox('Enter AI API key, endpoint URL, and model ID, or clear the checkbox to skip AI setup.', mbError, MB_OK);
+        Result := False;
+      end;
+    end;
+  end;
+end;
+
+procedure SaveOptionalAiSettings();
+var
+  SettingsDir: String;
+  ImportPath: String;
+  MergeScriptPath: String;
+  Json: String;
+  MergeScript: String;
+  ResultCode: Integer;
+begin
+  if not AiSetupCheckBox.Checked then
+    Exit;
+
+  SettingsDir := ExpandConstant('{localappdata}\DoNotPanicPortfolioVisualizer');
+  ForceDirectories(SettingsDir);
+  ImportPath := AddBackslash(ExpandConstant('{tmp}')) + 'installer-ai-settings.json';
+  MergeScriptPath := AddBackslash(ExpandConstant('{tmp}')) + 'Merge-DoNotPanicAiSettings.ps1';
+  Json :=
+    '{'#13#10 +
+    '  "NewsScrollerMode": 0,'#13#10 +
+    '  "DeepSeekApiKey": "' + JsonEscape(Trim(AiApiKeyEdit.Text)) + '",'#13#10 +
+    '  "DeepSeekEndpointUrl": "' + JsonEscape(Trim(AiEndpointEdit.Text)) + '",'#13#10 +
+    '  "DeepSeekModelId": "' + JsonEscape(Trim(AiModelEdit.Text)) + '",'#13#10 +
+    '  "NewsRefreshMinutes": 15'#13#10 +
+    '}'#13#10;
+  SaveStringToFile(ImportPath, Json, False);
+
+  MergeScript :=
+    '$ErrorActionPreference = ''Stop'''#13#10 +
+    '$root = Join-Path $env:LOCALAPPDATA ''DoNotPanicPortfolioVisualizer'''#13#10 +
+    '$settingsPath = Join-Path $root ''settings.json'''#13#10 +
+    '$secretsPath = Join-Path $root ''provider-secrets.json'''#13#10 +
+    '$importPath = ''' + ImportPath + ''''#13#10 +
+    '$incoming = Get-Content -Raw -LiteralPath $importPath | ConvertFrom-Json'#13#10 +
+    'if (Test-Path -LiteralPath $settingsPath) {'#13#10 +
+    '  try { $settings = Get-Content -Raw -LiteralPath $settingsPath | ConvertFrom-Json } catch { $settings = [pscustomobject]@{} }'#13#10 +
+    '} else {'#13#10 +
+    '  $settings = [pscustomobject]@{}'#13#10 +
+    '}'#13#10 +
+    'function Set-SettingValue([string]$Name, $Value) {'#13#10 +
+    '  if ($settings.PSObject.Properties[$Name]) { $settings.$Name = $Value } else { Add-Member -InputObject $settings -NotePropertyName $Name -NotePropertyValue $Value }'#13#10 +
+    '}'#13#10 +
+    'function Get-SettingValue([string]$Name) {'#13#10 +
+    '  if ($settings.PSObject.Properties[$Name]) { return [string]$settings.$Name }'#13#10 +
+    '  return '''''#13#10 +
+    '}'#13#10 +
+    'Set-SettingValue ''NewsScrollerMode'' $incoming.NewsScrollerMode'#13#10 +
+    'Set-SettingValue ''NewsRefreshMinutes'' $incoming.NewsRefreshMinutes'#13#10 +
+    'Set-SettingValue ''DeepSeekApiKey'' '''''#13#10 +
+    '$defaultEndpoint = ''https://openrouter.ai/api/v1'''#13#10 +
+    '$existingEndpoint = Get-SettingValue ''DeepSeekEndpointUrl'''#13#10 +
+    'if ([string]::IsNullOrWhiteSpace($existingEndpoint) -or [string]::Equals($existingEndpoint, $defaultEndpoint, [StringComparison]::OrdinalIgnoreCase) -or -not [string]::Equals([string]$incoming.DeepSeekEndpointUrl, $defaultEndpoint, [StringComparison]::OrdinalIgnoreCase)) {'#13#10 +
+    '  Set-SettingValue ''DeepSeekEndpointUrl'' $incoming.DeepSeekEndpointUrl'#13#10 +
+    '}'#13#10 +
+    '$defaultModel = ''openrouter/free'''#13#10 +
+    '$existingModel = Get-SettingValue ''DeepSeekModelId'''#13#10 +
+    'if ([string]::IsNullOrWhiteSpace($existingModel) -or [string]::Equals($existingModel, $defaultModel, [StringComparison]::OrdinalIgnoreCase) -or -not [string]::Equals([string]$incoming.DeepSeekModelId, $defaultModel, [StringComparison]::OrdinalIgnoreCase)) {'#13#10 +
+    '  Set-SettingValue ''DeepSeekModelId'' $incoming.DeepSeekModelId'#13#10 +
+    '}'#13#10 +
+    '$settings | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $settingsPath -Encoding UTF8'#13#10 +
+    'if (-not [string]::IsNullOrWhiteSpace([string]$incoming.DeepSeekApiKey)) {'#13#10 +
+    '  if (Test-Path -LiteralPath $secretsPath) {'#13#10 +
+    '    try { $secrets = Get-Content -Raw -LiteralPath $secretsPath | ConvertFrom-Json } catch { $secrets = [pscustomobject]@{} }'#13#10 +
+    '  } else {'#13#10 +
+    '    $secrets = [pscustomobject]@{}'#13#10 +
+    '  }'#13#10 +
+    '  Add-Type -AssemblyName System.Security'#13#10 +
+    '  $plainBytes = [Text.Encoding]::UTF8.GetBytes([string]$incoming.DeepSeekApiKey)'#13#10 +
+    '  $protectedBytes = [Security.Cryptography.ProtectedData]::Protect($plainBytes, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)'#13#10 +
+    '  $protectedValue = [Convert]::ToBase64String($protectedBytes)'#13#10 +
+    '  if ($secrets.PSObject.Properties[''DeepSeekApiKey'']) { $secrets.DeepSeekApiKey = $protectedValue } else { Add-Member -InputObject $secrets -NotePropertyName ''DeepSeekApiKey'' -NotePropertyValue $protectedValue }'#13#10 +
+    '  $secrets | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $secretsPath -Encoding UTF8'#13#10 +
+    '}'#13#10 +
+    'Remove-Item -LiteralPath $importPath -Force -ErrorAction SilentlyContinue'#13#10;
+  SaveStringToFile(MergeScriptPath, MergeScript, False);
+
+  if (not Exec(
+    ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    '-NoProfile -ExecutionPolicy Bypass -File "' + MergeScriptPath + '"',
+    '',
+    SW_HIDE,
+    ewWaitUntilTerminated,
+    ResultCode)) or (ResultCode <> 0) then
+  begin
+    MsgBox('The installer could not save optional AI settings. The application was installed successfully; AI settings can still be configured later from Settings.', mbInformation, MB_OK);
+  end;
+
+  DeleteFile(ImportPath);
+  DeleteFile(MergeScriptPath);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    SaveOptionalAiSettings();
+end;
+
 function InitializeUninstall(): Boolean;
 begin
   Result := True;

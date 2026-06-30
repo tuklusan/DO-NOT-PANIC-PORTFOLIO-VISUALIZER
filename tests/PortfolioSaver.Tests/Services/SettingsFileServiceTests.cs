@@ -182,6 +182,39 @@ public sealed class SettingsFileServiceTests
     }
 
     [Fact]
+    public void RuntimeLoad_ForceRssNewsForCurrentSession_PersistsUntilCleared()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
+        ScreensaverSettingsService.ClearForcedRssNewsForCurrentSession();
+
+        try
+        {
+            SettingsFileService fileService = new();
+            AppSettings settings = Defaults.CreateSettings();
+            settings.NewsScrollerMode = PortfolioSaver.Core.Enums.NewsScrollerMode.SummarizedFinancialNews;
+            fileService.Save(settings);
+
+            ScreensaverSettingsService.ForceRssNewsForCurrentSession();
+            ScreensaverSettingsService runtimeService = new();
+
+            Assert.Equal(PortfolioSaver.Core.Enums.NewsScrollerMode.RssFeed, runtimeService.Load().NewsScrollerMode);
+            Assert.Equal(PortfolioSaver.Core.Enums.NewsScrollerMode.RssFeed, runtimeService.Load().NewsScrollerMode);
+
+            ScreensaverSettingsService.ClearForcedRssNewsForCurrentSession();
+            Assert.Equal(PortfolioSaver.Core.Enums.NewsScrollerMode.SummarizedFinancialNews, runtimeService.Load().NewsScrollerMode);
+        }
+        finally
+        {
+            ScreensaverSettingsService.ClearForcedRssNewsForCurrentSession();
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
+            if (Directory.Exists(tempRoot))
+                DeleteDirectoryWithRetry(tempRoot);
+        }
+    }
+
+    [Fact]
     public void Save_AndLoad_HonorExplicitSettingsPathOverride()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));

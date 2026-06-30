@@ -233,6 +233,73 @@ public sealed class FinanceNewsService
         }
     }
 
+    public async Task<AiNewsAccessCheckResult> CheckSummarizedNewsAccessAsync(
+        HttpClient httpClient,
+        AppSettings settings,
+        CancellationToken cancellationToken = default)
+    {
+        if (settings.NewsScrollerMode != NewsScrollerMode.SummarizedFinancialNews)
+            return AiNewsAccessCheckResult.Skipped("rss-mode");
+
+        string apiKey = ResolveDeepSeekApiKey(settings.DeepSeekApiKey);
+        if (string.IsNullOrWhiteSpace(apiKey))
+            return AiNewsAccessCheckResult.Skipped("api-key-not-configured");
+
+        string endpointUrl = ResolveDeepSeekEndpointUrl(settings.DeepSeekEndpointUrl);
+        string modelId = ResolveDeepSeekModelId(settings.DeepSeekModelId);
+
+        TraceNewsState(
+            "NewsSummaryAccessCheckStart",
+            new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+            new KeyValuePair<string, object?>("model_id", modelId));
+
+        try
+        {
+            using HttpRequestMessage request = new(HttpMethod.Post, BuildDeepSeekChatCompletionsUri(endpointUrl));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            request.Content = new StringContent(
+                JsonSerializer.Serialize(CreateAiAccessCheckPayload(modelId)),
+                Encoding.UTF8,
+                "application/json");
+
+            using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                string reason = $"http-{(int)response.StatusCode}";
+                TraceNewsState(
+                    "NewsSummaryAccessCheckFailed",
+                    new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                    new KeyValuePair<string, object?>("model_id", modelId),
+                    new KeyValuePair<string, object?>("reason", reason));
+                return AiNewsAccessCheckResult.Failed(reason);
+            }
+
+            TraceNewsState(
+                "NewsSummaryAccessCheckSucceeded",
+                new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                new KeyValuePair<string, object?>("model_id", modelId));
+            return AiNewsAccessCheckResult.Success();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            TraceNewsState(
+                "NewsSummaryAccessCheckFailed",
+                new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                new KeyValuePair<string, object?>("model_id", modelId),
+                new KeyValuePair<string, object?>("reason", "timeout-or-cancelled"));
+            return AiNewsAccessCheckResult.Failed("timeout-or-cancelled");
+        }
+        catch (Exception ex)
+        {
+            TraceNewsState(
+                "NewsSummaryAccessCheckFailed",
+                new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                new KeyValuePair<string, object?>("model_id", modelId),
+                new KeyValuePair<string, object?>("reason", ex.GetType().Name));
+            return AiNewsAccessCheckResult.Failed(ex.GetType().Name);
+        }
+    }
+
     private static async Task<List<string>> FetchRssHeadlinesAsync(
         HttpClient httpClient,
         string requestUrl,
@@ -528,6 +595,22 @@ public sealed class FinanceNewsService
 
         return payload;
     }
+
+    private static object CreateAiAccessCheckPayload(string modelId)
+        => new
+        {
+            model = modelId,
+            temperature = 0,
+            max_tokens = 8,
+            messages = new object[]
+            {
+                new
+                {
+                    role = "user",
+                    content = "Reply with the single word OK."
+                }
+            }
+        };
 
     private static async Task<SummarizedNewsContext> FetchSummarizedNewsContextAsync(
         HttpClient httpClient,
@@ -1209,6 +1292,21 @@ public sealed class FinanceNewsService
         IReadOnlyList<string> Headlines,
         bool UsedFallback,
         bool PreserveCachedStyle = false);
+
+    public sealed record AiNewsAccessCheckResult(
+        bool WasChecked,
+        bool Succeeded,
+        string Reason)
+    {
+        public static AiNewsAccessCheckResult Success()
+            => new(true, true, "ok");
+
+        public static AiNewsAccessCheckResult Skipped(string reason)
+            => new(false, true, reason);
+
+        public static AiNewsAccessCheckResult Failed(string reason)
+            => new(true, false, reason);
+    }
 
     private static NewsFetchResult CreateSummarizedFallbackResult(
         IReadOnlyList<string> sourceHeadlines,

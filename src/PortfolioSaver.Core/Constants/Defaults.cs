@@ -22,15 +22,15 @@ namespace PortfolioSaver.Core.Constants;
 public static class Defaults
 {
     public const string DefaultNewsFeedUrl = "https://finance.yahoo.com/news/rss";
-    public const string DefaultDeepSeekEndpointUrl = "https://api.deepseek.com";
-    public const string DefaultDeepSeekModelId = "deepseek-v4-flash";
+    public const string DefaultDeepSeekEndpointUrl = "https://openrouter.ai/api/v1";
+    public const string DefaultDeepSeekModelId = "openrouter/free";
     public const int MinRefreshSeconds = 5;
     public const int MaxRefreshSeconds = 4 * 60 * 60;
     public const int MinBackgroundChangeSeconds = 120;
     public const int DefaultDesktopRefreshSeconds = 300;
     public const int LegacySteadyStateRefreshSeconds = 1200;
-    public const int MinimumSummarizedNewsRefreshMinutes = 15;
-    public const int MinNewsRefreshMinutes = 5;
+    public const int MinimumSummarizedNewsRefreshMinutes = 10;
+    public const int MinNewsRefreshMinutes = 10;
     public const int MaxNewsRefreshMinutes = 4 * 60;
     public const int MaxTapeCount = 4;
     public const int MaxTickersPerTape = 8;

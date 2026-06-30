@@ -23,7 +23,7 @@ public sealed class SettingsValidator
         List<string> errors = [];
 
         if (settings.NewsRefreshMinutes is < Defaults.MinNewsRefreshMinutes or > Defaults.MaxNewsRefreshMinutes)
-            errors.Add("News refresh interval must be between 5 minutes and 4 hours.");
+            errors.Add("News refresh interval must be between 10 minutes and 4 hours.");
         if (settings.BackgroundChangeSeconds is < Defaults.MinBackgroundChangeSeconds or > Defaults.MaxRefreshSeconds)
             errors.Add("Background change interval must be between 2 minutes and 4 hours.");
         if (settings.HttpTimeoutSeconds < 3)

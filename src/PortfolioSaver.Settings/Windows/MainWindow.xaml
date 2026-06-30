@@ -364,7 +364,7 @@
                         <DockPanel Margin="0,0,0,20">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Advanced News Settings" Foreground="White" FontSize="28" FontWeight="Bold" />
-                                <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Optional AI summarization requires an API key. RSS mode uses the feed URL below.">
+                                <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Configure financial news behavior. Summarized mode can use a personal non-commercial OpenRouter API key; RSS mode reads the feed URL directly.">
                                     <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
                                 </Border>
                             </StackPanel>
@@ -374,7 +374,7 @@
                                 <DockPanel Margin="0,0,0,10">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="News Scroller" Foreground="White" FontSize="20" />
-                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Choose summarized financial news or a plain RSS feed.">
+                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="For free personal API access: go to openrouter.ai, sign up, choose Individual, create an API key, and paste it below. You may also adjust endpoint and model ID for another compatible AI engine.">
                                             <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
                                         </Border>
                                     </StackPanel>
@@ -432,7 +432,7 @@
                                     <TextBlock Text="Headline refresh:" Style="{StaticResource FieldLabelStyle}" />
                                     <Slider x:Name="NewsRefreshSlider"
                                             Grid.Column="1"
-                                            Minimum="5"
+                                            Minimum="10"
                                             Maximum="240"
                                             SmallChange="5"
                                             LargeChange="15"
@@ -473,7 +473,7 @@
                                              IsEnabled="{Binding IsSummarizedFinancialNewsSelected}"
                                              Text="{Binding Settings.DeepSeekModelId, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
-                                <TextBlock Text="Summarized mode requires an API key. RSS mode uses the feed URL above." Style="{StaticResource SectionNoteStyle}" />
+                                <TextBlock Text="Summarized mode uses your API key when available; otherwise the app falls back to RSS financial news." Style="{StaticResource SectionNoteStyle}" />
                             </StackPanel>
                         </Border>
                     </Grid>

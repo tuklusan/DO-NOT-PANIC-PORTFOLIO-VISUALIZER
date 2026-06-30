@@ -257,6 +257,30 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
+    public void Normalize_MigratesLegacyDeepSeekDefaultsToOpenRouterDefaults()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.DeepSeekEndpointUrl = "https://api.deepseek.com/chat/completions";
+        settings.DeepSeekModelId = "deepseek-v4-flash";
+
+        AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+        Assert.Equal(Defaults.DefaultDeepSeekEndpointUrl, normalized.DeepSeekEndpointUrl);
+        Assert.Equal(Defaults.DefaultDeepSeekModelId, normalized.DeepSeekModelId);
+    }
+
+    [Fact]
+    public void Normalize_MigratesLegacyFiveMinuteNewsRefreshToCurrentMinimum()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsRefreshMinutes = 5;
+
+        AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+        Assert.Equal(Defaults.MinNewsRefreshMinutes, normalized.NewsRefreshMinutes);
+    }
+
+    [Fact]
     public void Normalize_CanonicalizesDeepSeekChatCompletionsEndpointToBaseUrl()
     {
         AppSettings settings = Defaults.CreateSettings();
