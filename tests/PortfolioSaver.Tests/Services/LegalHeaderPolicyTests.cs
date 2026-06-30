@@ -80,6 +80,7 @@ public sealed class LegalHeaderPolicyTests
             "build/artifacts/",
             "build/deepseek-review/",
             "build/validation/artifacts/",
+            "build/validation/artifact-reviews/",
             "build/vm/artifacts/",
             "src/PortfolioSaver.Render/Assets/",
             "THIRD-PARTY-LICENSES/",
