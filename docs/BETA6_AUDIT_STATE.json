@@ -7581,6 +7581,47 @@
         "Focused YFinanceUpstreamSyncMonitor tests passed after the metadata update."
       ],
       "closed_date": "2026-06-29"
+    },
+    {
+      "id": "CR-140",
+      "tracking_number": "CR-140",
+      "priority": 1,
+      "area": "Finance news scroller",
+      "title": "Finance-news fallback and DeepSeek prompt must produce complete varied Adams/Vogon prose",
+      "status": "closed",
+      "source": "installed_release_vm_soak_2026_06_29",
+      "severity": "high",
+      "evidence": [
+        "The 2-hour installed v0.9.0-beta7 VM soak captured in build/vm/artifacts/ssh-runs/release-v0.9.0-beta7-installed-soak showed the app in summarized-financial-news:douglas-adams mode but finance-news-cache.json recorded usedFallback=true.",
+        "Trace evidence recorded NewsSummaryLocalFallbackUsed with reason=deepseek-request-canceled after a TaskCanceledException, proving the visible content came from the RSS/local structured fallback rather than live DeepSeek synthesis.",
+        "The cached fallback item for Volkswagen produced chopped poetry ending with the incomplete phrase \"and close four German\".",
+        "UI Automation snapshots repeatedly showed the static phrase \"IN A DEVELOPMENT FILED UNDER COSMIC MARKET PAPERWORK\", confirming weak Adams-style variation.",
+        "DeepSeek artifact review build/deepseek-review/artifact-review-release-v0.9.0-beta7-installed-soak.json independently classified the fallback content as a critical user-visible grammar/truncation defect and high repetition defect."
+      ],
+      "notes": [
+        "This is a degraded-mode quality defect, not a style preference: API cancellation or outage must still leave finance-news text readable and polished.",
+        "The external DeepSeek prompt also needs explicit guardrails so successful synthesis does not emit mechanically chopped haiku lines or repeated Adams prose frames."
+      ],
+      "acceptance": [
+        "DeepSeek summarized-news prompt explicitly requires each haiku line to be a complete readable phrase and forbids dangling line endings.",
+        "DeepSeek summarized-news prompt requires varied Adams-style prose frames across items.",
+        "Local RSS structured fallback no longer builds poetry by mechanically chunking headline words.",
+        "Local RSS structured fallback produces complete three-line Vogon-style text plus varied Adams-style prose when DeepSeek is missing, canceled, or unavailable.",
+        "Regression tests cover chopped-line prevention and prose variation using representative real-world headlines from the VM finding.",
+        "Ticket is closed only after focused local validation and reviewer/advisory evidence are recorded."
+      ],
+      "resolution": [
+        "Resolved on 2026-06-29 by strengthening the DeepSeek summarized-news prompt so every haiku line must be a complete readable phrase, dangling line endings are forbidden, Adams-style prose frames must vary, and each item remains readable in line-by-line teleprinter playback.",
+        "Replaced the local RSS structured fallback word-chunking algorithm with phrase-safe fact extraction plus deterministic Adams/Vogon and Shakespeare template pools so degraded-mode content remains readable when DeepSeek is missing, canceled, or unavailable.",
+        "Removed the repeated fallback boilerplate phrase \"In a development filed under cosmic market paperwork\" from the local Adams fallback path."
+      ],
+      "validation": [
+        "DeepSeek artifact second opinion build/deepseek-review/artifact-review-release-v0.9.0-beta7-installed-soak.json confirmed the installed-release VM artifacts support this CR and classified the chopped fallback text as a user-visible grammar/truncation defect.",
+        "Targeted DeepSeek code review build/deepseek-review/deepseek-targeted-review-cr-140-20260629.md returned no blocking findings; the only minor advisory was pre-existing temp-cache cleanup style in tests.",
+        "Focused local validation passed 24/24 on 2026-06-29 using dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~FinanceNewsServiceTests\" --nologo.",
+        "Regression coverage now includes GetHeadlinesAsync_SummarizedMode_LocalFallbackAvoidsChoppedVogonLinesAndRepeatingProse, which uses representative headlines from the VM defect and asserts complete poetry lines plus varied prose prefixes."
+      ],
+      "closed_date": "2026-06-29"
     }
   ],
   "remaining_validation_gaps": [],

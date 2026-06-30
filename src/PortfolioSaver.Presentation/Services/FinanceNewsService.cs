@@ -12,6 +12,7 @@
 // patent, trademark, and governing-law provisions.
 // ============================================================================
 using System.IO;
+using System.Globalization;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -539,6 +540,10 @@ public sealed class FinanceNewsService
         builder.AppendLine("For each item, write three short haiku-style lines first, then one compact Adams-style prose line using only the supplied facts.");
         builder.AppendLine("The haiku may sound bleak, officious, or absurdly bureaucratic in a Vogon-adjacent way, but it must still reflect the supplied facts.");
         builder.AppendLine("The prose line must remain recognizably Douglas Adams in tone and also use only the supplied facts.");
+        builder.AppendLine("Every haiku line must be a complete readable phrase, not a mechanically chopped headline fragment.");
+        builder.AppendLine("Do not end a haiku line with an article, preposition, conjunction, dangling adjective, or any word that clearly expects the next word.");
+        builder.AppendLine("Vary the Adams-style prose frame across items; never reuse the same opening phrase or sentence skeleton.");
+        builder.AppendLine("Each item must remain readable when displayed line by line in a slow teleprinter scroller.");
         builder.AppendLine("Only restyle the supplied facts. Do not add, remove, alter, correct, or infer factual content.");
         builder.AppendLine("Never include investment recommendations, stock-picking language, or advice about whether an asset is a buy, sell, or hold.");
         builder.AppendLine("Do not include any specific numerical values, prices, percentages, dates, or times unless the source headline itself makes the number essential to the item's meaning.");
@@ -1002,8 +1007,8 @@ public sealed class FinanceNewsService
             if (string.IsNullOrWhiteSpace(normalizedHeadline))
                 continue;
 
-            string[] poeticLines = BuildFallbackPoeticLines(normalizedHeadline);
-            string prose = BuildFallbackProseLine(normalizedHeadline, writingStyle);
+            string[] poeticLines = BuildFallbackPoeticLines(normalizedHeadline, writingStyle, items.Count);
+            string prose = BuildFallbackProseLine(normalizedHeadline, writingStyle, items.Count);
             items.Add(string.Join(Environment.NewLine, poeticLines.Append(prose)));
         }
 
@@ -1013,46 +1018,164 @@ public sealed class FinanceNewsService
         return items;
     }
 
-    private static string[] BuildFallbackPoeticLines(string headline)
+    private static string[] BuildFallbackPoeticLines(
+        string headline,
+        DeepSeekWritingStyle writingStyle,
+        int itemIndex)
     {
-        string[] words = headline
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(NormalizeSummaryLine)
-            .Where(word => !string.IsNullOrWhiteSpace(word))
-            .ToArray();
-
-        if (words.Length == 0)
-            return ["Markets mutter low.", "Paperwork stalks the tape.", "Clerks await the bell."];
-
-        List<string> lines = [];
-        int index = 0;
-        for (int lineIndex = 0; lineIndex < 3; lineIndex++)
-        {
-            int remainingWords = words.Length - index;
-            if (remainingWords <= 0)
-                break;
-
-            int remainingLines = 3 - lineIndex;
-            int takeCount = Math.Max(1, (int)Math.Ceiling(remainingWords / (double)remainingLines));
-            takeCount = Math.Min(4, takeCount);
-            lines.Add(string.Join(' ', words.Skip(index).Take(takeCount)));
-            index += takeCount;
-        }
-
-        while (lines.Count < 3)
-        {
-            lines.Add(lines[^1]);
-        }
-
-        return lines.Take(3).ToArray();
+        string factLine = BuildFallbackFactLine(headline);
+        string[][] templates = writingStyle == DeepSeekWritingStyle.WilliamShakespeare
+            ? ShakespeareFallbackPoeticLines
+            : DouglasFallbackPoeticLines;
+        string[] selected = templates[Math.Abs(itemIndex) % templates.Length];
+        return [factLine, selected[0], selected[1]];
     }
 
-    private static string BuildFallbackProseLine(string headline, DeepSeekWritingStyle writingStyle)
+    private static string BuildFallbackFactLine(string headline)
+    {
+        string subject = ExtractFallbackSubject(headline);
+        if (string.IsNullOrWhiteSpace(subject))
+            return "Markets mutter low.";
+
+        return EnsureTerminalPunctuation(subject);
+    }
+
+    private static string ExtractFallbackSubject(string headline)
+    {
+        string normalized = NormalizeSummaryLine(headline);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return string.Empty;
+
+        string[] separators = [" — ", " – ", " - ", ": ", "; "];
+        foreach (string separator in separators)
+        {
+            int separatorIndex = normalized.IndexOf(separator, StringComparison.Ordinal);
+            if (separatorIndex <= 0 || separatorIndex + separator.Length >= normalized.Length)
+                continue;
+
+            string after = normalized[(separatorIndex + separator.Length)..].Trim();
+            if (after.Length >= 20)
+                return TrimToReadablePhrase(after, 64);
+        }
+
+        return TrimToReadablePhrase(normalized, 64);
+    }
+
+    private static string TrimToReadablePhrase(string text, int maxCharacters)
+    {
+        string normalized = NormalizeSummaryLine(text);
+        if (normalized.Length > maxCharacters)
+        {
+            int cutIndex = normalized.LastIndexOf(' ', maxCharacters);
+            if (cutIndex < 24)
+                cutIndex = maxCharacters;
+            normalized = normalized[..cutIndex].Trim();
+        }
+
+        normalized = normalized.TrimEnd(',', ';', ':', '-', '–', '—', '.', '!', '?').Trim();
+        string[] words = normalized
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToArray();
+        while (words.Length > 1 && DanglingFallbackLineEndings.Contains(words[^1].Trim('\'', '"', ',', ';', ':', '.', '!', '?')))
+        {
+            words = words[..^1];
+        }
+
+        return string.Join(' ', words);
+    }
+
+    private static string EnsureTerminalPunctuation(string text)
+    {
+        string trimmed = text.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+            return string.Empty;
+
+        char last = trimmed[^1];
+        return last is '.' or '!' or '?' ? trimmed : trimmed + ".";
+    }
+
+    private static string BuildFallbackProseLine(
+        string headline,
+        DeepSeekWritingStyle writingStyle,
+        int itemIndex)
         => writingStyle switch
         {
-            DeepSeekWritingStyle.WilliamShakespeare => $"Attend these tidings: {headline}",
-            _ => $"In a development filed under cosmic market paperwork, {headline}"
+            DeepSeekWritingStyle.WilliamShakespeare => string.Format(
+                CultureInfo.InvariantCulture,
+                ShakespeareFallbackProseTemplates[Math.Abs(itemIndex) % ShakespeareFallbackProseTemplates.Length],
+                headline),
+            _ => string.Format(
+                CultureInfo.InvariantCulture,
+                DouglasFallbackProseTemplates[Math.Abs(itemIndex) % DouglasFallbackProseTemplates.Length],
+                headline)
         };
+
+    private static readonly HashSet<string> DanglingFallbackLineEndings = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "a",
+        "an",
+        "and",
+        "as",
+        "at",
+        "by",
+        "for",
+        "from",
+        "in",
+        "into",
+        "of",
+        "on",
+        "or",
+        "over",
+        "the",
+        "to",
+        "under",
+        "with",
+        "without",
+        "after",
+        "before",
+        "during",
+        "following",
+        "fresh",
+        "new",
+        "four",
+        "german"
+    };
+
+    private static readonly string[][] DouglasFallbackPoeticLines =
+    [
+        ["Markets file a complaint.", "The towel remains useful."],
+        ["Bureaucrats stamp the void.", "Investors blink twice."],
+        ["Spreadsheets sigh softly.", "Remain mostly calm."],
+        ["The ticker clears its throat.", "Panic waits in queue."],
+        ["Risk wears a small hat.", "The forms hum badly."],
+        ["Numbers tap the glass.", "Tea would help matters."]
+    ];
+
+    private static readonly string[][] ShakespeareFallbackPoeticLines =
+    [
+        ["Markets bend their brows.", "The ledger keeps its watch."],
+        ["Fortune shakes her purse.", "The counting-house grows still."],
+        ["Brokers mark the hour.", "The moon audits the books."],
+        ["Trade winds change their tune.", "Soft bells trouble the floor."]
+    ];
+
+    private static readonly string[] DouglasFallbackProseTemplates =
+    [
+        "The market, finding this inconvenient, has placed the matter in a drawer marked mostly alarming: {0}",
+        "Somewhere in the finance department of the galaxy, a form is now trembling about this: {0}",
+        "Investors are advised, by no one sensible, to keep their towels near the terminal: {0}",
+        "The universe has produced another memo, and regrettably it concerns money: {0}",
+        "A small committee of panic has requested extra stationery after reading this: {0}",
+        "The tape has cleared its throat and submitted the following for bureaucratic dismay: {0}"
+    ];
+
+    private static readonly string[] ShakespeareFallbackProseTemplates =
+    [
+        "Attend these tidings, for the market's brow is newly furrowed: {0}",
+        "So speaks the ledger, in sober ink and troubled measure: {0}",
+        "Mark well this turn of trade, where fortune changes costume: {0}",
+        "The counting-house hath found another cause for watchfulness: {0}"
+    ];
 }
 
 public sealed class NewsHeadlineCache
