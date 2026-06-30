@@ -11,7 +11,9 @@
 // SANYALnet Labs." See LICENSE for full terms, warranty disclaimer, termination,
 // patent, trademark, and governing-law provisions.
 // ============================================================================
+using System.Net.Http;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
 using PortfolioSaver.Config.Services;
 using PortfolioSaver.Core.Enums;
