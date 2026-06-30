@@ -236,6 +236,52 @@ public sealed class FinanceNewsServiceTests
     }
 
     [Fact]
+    public async Task GetHeadlinesAsync_RssMode_WhenForcedByAiFallback_AddsVisibleNotice()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            Assert.Equal("https://finance.yahoo.com/news/rss", request.RequestUri?.ToString());
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                <rss><channel>
+                  <item><title>Stocks rise as investors weigh earnings</title></item>
+                  <item><title>Bond yields ease after inflation report</title></item>
+                </channel></rss>
+                """, Encoding.UTF8, "application/xml")
+            };
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.RssFeed,
+            NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
+            NewsRefreshMinutes = 15
+        };
+
+        ScreensaverSettingsService.ClearForcedRssNewsForCurrentSession();
+        try
+        {
+            IReadOnlyList<string> normalHeadlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+            ScreensaverSettingsService.ForceRssNewsForCurrentSession();
+            IReadOnlyList<string> forcedHeadlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+            Assert.Equal("Stocks rise as investors weigh earnings", normalHeadlines[0]);
+            Assert.Equal(3, forcedHeadlines.Count);
+            Assert.Equal("AI summaries unavailable right now. Showing RSS financial news.", forcedHeadlines[0]);
+            Assert.Equal("Stocks rise as investors weigh earnings", forcedHeadlines[1]);
+        }
+        finally
+        {
+            ScreensaverSettingsService.ClearForcedRssNewsForCurrentSession();
+        }
+    }
+
+    [Fact]
     public async Task GetHeadlinesAsync_SummarizedMode_UsesConfiguredEndpointAndModel()
     {
         string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");

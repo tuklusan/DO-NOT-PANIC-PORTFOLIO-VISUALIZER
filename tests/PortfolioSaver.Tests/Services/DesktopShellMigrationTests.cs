@@ -130,6 +130,19 @@ public sealed class DesktopShellMigrationTests
     }
 
     [Fact]
+    public void DesktopApp_AiNewsStartupCheck_UsesNonModalSessionRssFallback()
+    {
+        string appCode = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Desktop", "App.xaml.cs"));
+
+        Assert.Contains("CheckConfiguredAiNewsAccessAsync", appCode, StringComparison.Ordinal);
+        Assert.Contains("RSS fallback", appCode, StringComparison.Ordinal);
+        Assert.Contains("without modal interruption", appCode, StringComparison.Ordinal);
+        Assert.Contains("ForceRssNewsForCurrentSession", appCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("AI summarized financial news is not available right now", appCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("AI summarized financial news could not be verified", appCode, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void LegacyScreensaverHost_UsesPresentationAssembly()
     {
         string fullScreenXaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Screensaver", "Windows", "FullScreenHostWindow.xaml"));

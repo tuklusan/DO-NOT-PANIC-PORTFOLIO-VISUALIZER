@@ -64,7 +64,7 @@ public partial class App : Application
             return;
         }
 
-        string? aiFallbackWarning = await CheckConfiguredAiNewsAccessAsync();
+        await CheckConfiguredAiNewsAccessAsync();
 
         bool startFullScreen = e.Args.Any(arg => string.Equals(arg, "--fullscreen", StringComparison.OrdinalIgnoreCase));
         base.OnStartup(e);
@@ -82,17 +82,6 @@ public partial class App : Application
 
         MainWindow = window;
         window.Show();
-        if (!string.IsNullOrWhiteSpace(aiFallbackWarning))
-        {
-            Dispatcher.BeginInvoke(
-                DispatcherPriority.ApplicationIdle,
-                new Action(() => MessageBox.Show(
-                    window,
-                    aiFallbackWarning,
-                    "DO NOT PANIC PORTFOLIO VISUALIZER",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning)));
-        }
 
         QueueReleaseIntegrityValidation();
     }
@@ -170,14 +159,14 @@ public partial class App : Application
         window.ShowDialog();
     }
 
-    private static async Task<string?> CheckConfiguredAiNewsAccessAsync()
+    private static async Task CheckConfiguredAiNewsAccessAsync()
     {
         SettingsFileService settingsFileService = new();
         AppSettings settings = settingsFileService.Load();
         if (settings.NewsScrollerMode != NewsScrollerMode.SummarizedFinancialNews ||
             string.IsNullOrWhiteSpace(settings.DeepSeekApiKey))
         {
-            return null;
+            return;
         }
 
         try
@@ -188,17 +177,15 @@ public partial class App : Application
             FinanceNewsService.AiNewsAccessCheckResult result =
                 await service.CheckSummarizedNewsAccessAsync(httpClient, settings, cts.Token);
             if (!result.WasChecked || result.Succeeded)
-                return null;
+                return;
 
-            TraceLog.Warn("Desktop.App", $"AI summarized news access failed at startup; falling back to RSS. reason={result.Reason}");
+            TraceLog.Warn("Desktop.App", $"AI summarized news access failed at startup; using RSS fallback for this session without modal interruption. reason={result.Reason}");
             ScreensaverSettingsService.ForceRssNewsForCurrentSession();
-            return "AI summarized financial news is not available right now. DO NOT PANIC will use RSS financial news instead.";
         }
         catch (Exception ex)
         {
-            TraceLog.Error("Desktop.App", "AI summarized news startup check failed unexpectedly; falling back to RSS.", ex);
+            TraceLog.Error("Desktop.App", "AI summarized news startup check failed unexpectedly; using RSS fallback for this session without modal interruption.", ex);
             ScreensaverSettingsService.ForceRssNewsForCurrentSession();
-            return "AI summarized financial news could not be verified. DO NOT PANIC will use RSS financial news instead.";
         }
     }
 

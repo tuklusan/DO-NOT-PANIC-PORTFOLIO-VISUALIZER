@@ -62,4 +62,7 @@ public sealed class ScreensaverSettingsService
 
     public static void ClearForcedRssNewsForCurrentSession()
         => Volatile.Write(ref forceRssNewsForSession, 0);
+
+    public static bool IsRssNewsForcedForCurrentSession()
+        => Volatile.Read(ref forceRssNewsForSession) == 1;
 }
