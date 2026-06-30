@@ -7858,6 +7858,37 @@
         "VM installer validation proves the final-screen AI setup section is visible, accepts valid values, rejects partial values, and leaves the installed app/config app reading the expected settings.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
       ]
+    },
+    {
+      "id": "CR-148",
+      "tracking_number": "CR-148",
+      "priority": 2,
+      "area": "Finance news startup resilience",
+      "title": "Warn and fall back to RSS when configured AI news access fails at startup",
+      "status": "open",
+      "source": "user_request_2026_06_30",
+      "severity": "medium",
+      "evidence": [
+        "If an API key is configured and AI-summarized financial news is enabled, startup currently may proceed into AI summary mode even when AI API access is not actually working.",
+        "User requested a startup AI API access check that warns the user when AI access fails, force-disables AI summary for that runtime/config path, and falls back to RSS."
+      ],
+      "notes": [
+        "The startup check should be lightweight and bounded so it does not materially delay or freeze the app launch.",
+        "Warning UX should be clear that AI summarized news is unavailable and the app is continuing with RSS financial news.",
+        "Fallback should avoid repeated warning spam during the same startup/session while preserving diagnostics in trace logs."
+      ],
+      "acceptance": [
+        "At startup, when an AI API key is configured and AI-summarized financial news is enabled, the app performs a bounded AI API access health check before relying on AI summaries.",
+        "If AI API access succeeds, AI-summarized financial news remains enabled and startup proceeds normally.",
+        "If AI API access fails because of invalid key, endpoint/model error, network/API rejection, timeout, or malformed response, the app shows a clear warning pop-up explaining that AI summarized news is unavailable and RSS financial news will be used instead.",
+        "After a failed startup AI access check, AI summary is force-disabled for the effective runtime path and the Finance News scroller falls back to RSS without blocking the rest of the app.",
+        "The warning pop-up is shown at most once per startup/session for the same failure condition and does not spam the user during refresh retries.",
+        "Trace logs record the AI access check start, success/failure reason, endpoint/model identity without leaking the API key, warning display, and RSS fallback activation.",
+        "If no API key is configured or AI-summarized financial news is disabled, startup does not perform the AI access check and continues through the existing RSS/no-AI path.",
+        "Automated tests cover success, failure, no-key, disabled-AI, timeout, and no-key-leak trace behavior where practical.",
+        "VM or harness validation proves a bad configured AI key/endpoint produces the warning and RSS fallback while the app remains usable.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
