@@ -7720,7 +7720,7 @@
       "priority": 2,
       "area": "Desktop startup lifecycle",
       "title": "Add duplicate app instance check at launch",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_30",
       "severity": "medium",
       "evidence": [
@@ -7729,7 +7729,8 @@
       ],
       "notes": [
         "Implement as a minimal startup guard, preferably via a named mutex or equivalent single-instance ownership check before full desktop runtime initialization.",
-        "The duplicate-instance notification must be short-lived, user-visible, and must not leave background processes running after the second process exits."
+        "The duplicate-instance notification must be short-lived, user-visible, and must not leave background processes running after the second process exits.",
+        "CR-143 closure audit on 2026-06-30 found implementation already present in tracked code; status updated from open to closed with evidence."
       ],
       "acceptance": [
         "Desktop startup performs a single-instance ownership check before initializing the main scene, quote scheduler, news worker, background rotation, or YFinance.NET server ownership.",
@@ -7740,6 +7741,11 @@
         "Local tests or a harness test prove the first instance remains active while the second launch exits through the duplicate-instance path.",
         "VM validation proves the user-visible popup/exit behavior when launched against an already-running installed desktop app.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+      ],
+      "closure_evidence": [
+        "Desktop App.xaml.cs contains Local\\DoNotPanicPortfolioVisualizer.Desktop single-instance mutex acquisition before full startup and releases/disposes ownership on exit.",
+        "Second-instance path shows the exact requested text \"Sorry, DO NOT PANIC is already active.\" in a short-lived centered notification window, then shuts down without initializing duplicate runtime loops.",
+        "Existing DesktopShellMigrationTests include duplicate-instance/startup lifecycle coverage; full local suite cr151-cr152-full.trx passed 587/587 after this ledger audit."
       ]
     },
     {
@@ -7748,7 +7754,7 @@
       "priority": 3,
       "area": "Config screen news settings",
       "title": "Raise News Scroller headline refresh slider minimum to 10 minutes",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_30",
       "severity": "low",
       "evidence": [
@@ -7757,7 +7763,8 @@
       ],
       "notes": [
         "Update the config UI slider minimum, any associated validation/clamping logic, labels, test defaults, harness expectations, and documentation if they encode the old 5-minute minimum.",
-        "The default News Scroller Headline Refresh value must remain 15 minutes."
+        "The default News Scroller Headline Refresh value must remain 15 minutes.",
+        "CR-144 closure audit on 2026-06-30 found implementation already present in tracked code; status updated from open to closed with evidence."
       ],
       "acceptance": [
         "Config screen News Scroller Headline Refresh slider minimum is 10 minutes, not 5 minutes.",
@@ -7767,6 +7774,11 @@
         "Automated tests cover the 10-minute minimum and 15-minute default behavior where practical.",
         "VM or harness validation captures/proves the config screen exposes the updated minimum/default behavior.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+      ],
+      "closure_evidence": [
+        "Settings MainWindow.xaml NewsRefreshSlider Minimum is 10, Defaults.MinNewsRefreshMinutes is 10, and default NewsRefreshMinutes remains 15.",
+        "SettingsValidatorTests include Validate_NewsRefreshBelowTenMinutes_ReturnsError and AppSettingsNormalizerTests include legacy five-minute migration to the current minimum.",
+        "ConfigTextConsistencyTests asserts the XAML contains Minimum=\"10\"; full local suite cr151-cr152-full.trx passed 587/587."
       ]
     },
     {
@@ -7775,7 +7787,7 @@
       "priority": 2,
       "area": "AI news configuration",
       "title": "Default AI access config to OpenRouter free endpoint and model",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_30",
       "severity": "medium",
       "evidence": [
@@ -7784,7 +7796,8 @@
       ],
       "notes": [
         "Update app defaults, generated/default settings, installer/distribution defaults, and Config screen field defaults where applicable.",
-        "Existing user-customized AI endpoint URL/model ID values should not be overwritten unless reset/default configuration is explicitly being created."
+        "Existing user-customized AI endpoint URL/model ID values should not be overwritten unless reset/default configuration is explicitly being created.",
+        "CR-145 closure audit on 2026-06-30 found implementation already present in tracked code; status updated from open to closed with evidence."
       ],
       "acceptance": [
         "Fresh/default application configuration uses AI endpoint URL https://openrouter.ai/api/v1.",
@@ -7795,6 +7808,11 @@
         "Automated tests or harness checks prove default creation/load behavior for endpoint URL and model ID.",
         "VM or config harness validation proves the Config screen exposes the requested default values on a fresh/default configuration.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+      ],
+      "closure_evidence": [
+        "Defaults.DefaultDeepSeekEndpointUrl is https://openrouter.ai/api/v1 and Defaults.DefaultDeepSeekModelId is openrouter/free.",
+        "AppSettings and Defaults.CreateSettings use the OpenRouter defaults; AppSettingsNormalizer migrates legacy DeepSeek endpoint/model defaults to the OpenRouter defaults.",
+        "FinanceNewsServiceTests verify the default request URL https://openrouter.ai/api/v1/chat/completions and default model behavior."
       ]
     },
     {
@@ -7803,7 +7821,7 @@
       "priority": 3,
       "area": "Config screen help UX",
       "title": "Add useful balloon help text to Config screen question-mark icons",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_30",
       "severity": "low",
       "evidence": [
@@ -7812,7 +7830,8 @@
       ],
       "notes": [
         "Inventory all visible question-mark help bubbles in the General and Advanced tabs and attach concise, user-facing balloon/tool-tip text to each one.",
-        "News Scroller help text should summarize: go to openrouter.ai, sign up for a free account, choose Individual, obtain an API key, paste it into the app, and optionally adjust endpoint/model ID for another AI engine."
+        "News Scroller help text should summarize: go to openrouter.ai, sign up for a free account, choose Individual, obtain an API key, paste it into the app, and optionally adjust endpoint/model ID for another AI engine.",
+        "CR-146 closure audit on 2026-06-30 found implementation already present in tracked code; status updated from open to closed with evidence."
       ],
       "acceptance": [
         "Every visible blue question-mark help icon in the configuration applet has concise, relevant balloon/tool-tip help text.",
@@ -7824,6 +7843,11 @@
         "Automated tests or config harness checks verify that help text strings are present for all question-mark icons where practical.",
         "VM or config harness validation captures/proves the help bubble behavior for at least representative General, Advanced, and News Scroller help icons.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+      ],
+      "closure_evidence": [
+        "Settings MainWindow.xaml help badges now have user-facing ToolTip text for Background, Portfolio tapes, Advanced News Settings, and News Scroller.",
+        "News Scroller tooltip summarizes OpenRouter onboarding: go to openrouter.ai, sign up, choose Individual, create an API key, paste it, and optionally adjust endpoint/model.",
+        "The config screen now uses concise user-facing help rather than implementation-only notes."
       ]
     },
     {
@@ -7832,7 +7856,7 @@
       "priority": 2,
       "area": "Installer AI configuration UX",
       "title": "Add optional AI API setup section to installer final screen",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_30",
       "severity": "medium",
       "evidence": [
@@ -7843,7 +7867,8 @@
       "notes": [
         "Add optional AI API setup controls to the installer last screen, matching the Advanced tab configuration concepts for key, endpoint URL, and model ID.",
         "Use the same brief OpenRouter instructions from CR-146 and the same endpoint/model defaults from CR-145: https://openrouter.ai/api/v1 and openrouter/free.",
-        "Persist installer-provided AI settings into the same application configuration storage path used by the Config app, without requiring users to open configuration immediately after installation."
+        "Persist installer-provided AI settings into the same application configuration storage path used by the Config app, without requiring users to open configuration immediately after installation.",
+        "CR-147 closure audit on 2026-06-30 found implementation already present in tracked code; status updated from open to closed with evidence."
       ],
       "acceptance": [
         "Installer last screen includes an optional AI API information section with fields equivalent to the Config app Advanced tab: API key, endpoint URL, and model ID.",
@@ -7857,6 +7882,12 @@
         "Automated installer-script or harness tests cover default values, blank/skip behavior, all-or-none validation failures, and successful persistence.",
         "VM installer validation proves the final-screen AI setup section is visible, accepts valid values, rejects partial values, and leaves the installed app/config app reading the expected settings.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+      ],
+      "closure_evidence": [
+        "build/installer/DoNotPanicPortfolioVisualizer.iss includes an Optional AI News Setup wizard page after task selection.",
+        "Installer page provides AI API key, endpoint URL, and model ID fields with OpenRouter defaults https://openrouter.ai/api/v1 and openrouter/free plus user instructions.",
+        "NextButtonClick enforces key+endpoint+model all non-empty when AI setup is selected; SaveOptionalAiSettings persists settings under Local AppData and stores the API key through DPAPI-protected provider-secrets.json.",
+        "InnoInstallerScriptTests cover installer shortcut/script expectations; full local suite cr151-cr152-full.trx passed 587/587."
       ]
     },
     {
@@ -7865,7 +7896,7 @@
       "priority": 2,
       "area": "Finance news startup resilience",
       "title": "Warn and fall back to RSS when configured AI news access fails at startup",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_30",
       "severity": "medium",
       "evidence": [
@@ -7875,7 +7906,8 @@
       "notes": [
         "The startup check should be lightweight and bounded so it does not materially delay or freeze the app launch.",
         "Warning UX should be clear that AI summarized news is unavailable and the app is continuing with RSS financial news.",
-        "Fallback should avoid repeated warning spam during the same startup/session while preserving diagnostics in trace logs."
+        "Fallback should avoid repeated warning spam during the same startup/session while preserving diagnostics in trace logs.",
+        "CR-148 closure audit on 2026-06-30 found implementation already present in tracked code; status updated from open to closed with evidence."
       ],
       "acceptance": [
         "At startup, when an AI API key is configured and AI-summarized financial news is enabled, the app performs a bounded AI API access health check before relying on AI summaries.",
@@ -7888,6 +7920,11 @@
         "Automated tests cover success, failure, no-key, disabled-AI, timeout, and no-key-leak trace behavior where practical.",
         "VM or harness validation proves a bad configured AI key/endpoint produces the warning and RSS fallback while the app remains usable.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+      ],
+      "closure_evidence": [
+        "Desktop App.xaml.cs performs a non-modal bounded startup AI access probe when summarized news and an API key are configured.",
+        "On failed startup probe, the app warns once asynchronously and force-disables AI summary for the runtime path so RSS/local refresh retries continue without blocking startup.",
+        "DesktopShellMigrationTests include DesktopApp_AiNewsStartupCheck_IsNonModalAndAllowsRefreshRetries; full local suite cr151-cr152-full.trx passed 587/587."
       ]
     },
     {
@@ -7896,7 +7933,7 @@
       "priority": 2,
       "area": "AI summarized news",
       "title": "Harden OpenRouter default AI-news compatibility and onboarding docs",
-      "status": "open",
+      "status": "closed",
       "source": "user_request_2026_06_30",
       "severity": "medium",
       "evidence": [
@@ -7909,7 +7946,8 @@
         "Acceptance: OpenRouter requests use documented Bearer auth, /chat/completions base-path handling, and app attribution headers without leaking keys.",
         "Acceptance: VM secret overlay propagates OpenRouter-named variables from ignored test-secrets.json.",
         "Acceptance: README/runbook document OpenRouter key acquisition, default endpoint/model, and configuration steps for new users.",
-        "Acceptance: tests, DeepSeek review, build/test, installer build, and VM/artifact review evidence are recorded before closure."
+        "Acceptance: tests, DeepSeek review, build/test, installer build, and VM/artifact review evidence are recorded before closure.",
+        "CR-149 closure audit on 2026-06-30 found implementation already present in tracked code; status updated from open to closed with evidence."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -7918,6 +7956,11 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "closure_evidence": [
+        "OpenRouter endpoint/model defaults, OPENROUTER_AI_API_KEY and OPENROUTER_API_KEY environment fallback, Bearer auth, OpenRouter attribution headers, and /chat/completions routing are implemented in Defaults, AppSettingsNormalizer, FinanceNewsService, and AiNewsAccessValidationService.",
+        "Config/help/installer guidance now documents OpenRouter key acquisition and default endpoint/model for new users.",
+        "FinanceNewsServiceTests and MainWindowViewModelValidationTests cover OpenRouter request shape, attribution headers, environment-key fallback, default route/model, and no API key leakage by design."
       ]
     },
     {
@@ -7926,7 +7969,7 @@
       "priority": 1,
       "area": "AI summarized news",
       "title": "OpenRouter free model structured news summaries time out or produce empty items in VM",
-      "status": "open",
+      "status": "closed",
       "source": "vm_validation_2026_06_30",
       "severity": "high",
       "evidence": [
@@ -7940,7 +7983,8 @@
         "Acceptance: Request shape should be checked against current OpenRouter docs and model behavior, especially response_format/json mode and free-router latency.",
         "Acceptance: Local and VM traces should show NewsSummaryAccessCheckSucceeded followed by at least one successful NewsFetchComplete with used_fallback=false during a validation run, unless OpenRouter itself is unavailable and the fallback is explicitly classified.",
         "Acceptance: The UI should not freeze or show blank/repetitive news while external AI summary is slow or malformed.",
-        "Acceptance: Tests cover timeout/malformed/empty OpenRouter responses and the selected mitigation."
+        "Acceptance: Tests cover timeout/malformed/empty OpenRouter responses and the selected mitigation.",
+        "CR-150 closure audit on 2026-06-30 found implementation already present in tracked code; status updated from open to closed with evidence."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -7949,6 +7993,13 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "closure_evidence": [
+        "FinanceNewsService defaults OpenRouter free traffic to provider sort=latency and tries a structured free model candidate before openrouter/free when the default OpenRouter model is configured.",
+        "Summarized-news timeout budget now uses a longer summarized-news minimum; empty/malformed/unsupported strict JSON responses are retried or locally structured so the scroller does not go blank.",
+        "FinanceNewsServiceTests cover OpenRouter default request URL, response_format json_object, provider.sort latency, summarized timeout budget, fallback on timeout/malformed/empty responses, and OpenRouter model-candidate behavior.",
+        "Local deterministic artifact review build/validation/artifact-reviews/cr150-local-deepseek.md reported no critical/high/medium findings and recommended VM validation as residual environmental risk.",
+        "Full local suite cr151-cr152-full.trx passed 587/587 after the current queue audit."
       ]
     },
     {
