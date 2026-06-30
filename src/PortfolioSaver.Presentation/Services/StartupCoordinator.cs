@@ -247,7 +247,7 @@ public sealed class StartupCoordinator
         bool networkAvailable,
         CancellationToken cancellationToken = default)
     {
-        using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
+        using HttpClient httpClient = HttpClientFactory.Create(FinanceNewsService.GetHttpClientTimeout(settings));
         IReadOnlyList<string> headlines = await _financeNewsService.GetHeadlinesAsync(
             httpClient,
             settings,
