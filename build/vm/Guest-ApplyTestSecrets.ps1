@@ -43,6 +43,8 @@ $report = [ordered]@{
     SecretsPath = $SecretsPath
     Applied = $false
     Keys = [ordered]@{
+        OPENROUTER_AI_API_KEY = $false
+        OPENROUTER_API_KEY = $false
         DEEPSEEK_API_KEY = $false
         PORTFOLIOSAVER_DEEPSEEK_API_KEY = $false
     }
@@ -52,12 +54,21 @@ if (Test-Path $SecretsPath) {
     $secrets = Get-Content -LiteralPath $SecretsPath -Raw | ConvertFrom-Json
 
     $deepSeekValue = [string]$secrets.DeepSeekApiKey
+    $openRouterValue = $deepSeekValue
+    if ($null -ne $secrets.PSObject.Properties['OpenRouterApiKey'] -and -not [string]::IsNullOrWhiteSpace([string]$secrets.OpenRouterApiKey)) {
+        $openRouterValue = [string]$secrets.OpenRouterApiKey
+    }
+
+    $report.Keys.OPENROUTER_AI_API_KEY = Set-UserEnvironmentValue 'OPENROUTER_AI_API_KEY' $openRouterValue
+    $report.Keys.OPENROUTER_API_KEY = Set-UserEnvironmentValue 'OPENROUTER_API_KEY' $openRouterValue
     $report.Keys.DEEPSEEK_API_KEY = Set-UserEnvironmentValue 'DEEPSEEK_API_KEY' $deepSeekValue
     $report.Keys.PORTFOLIOSAVER_DEEPSEEK_API_KEY = Set-UserEnvironmentValue 'PORTFOLIOSAVER_DEEPSEEK_API_KEY' $deepSeekValue
     $report.Applied = $true
 }
 else {
     foreach ($name in @(
+        'OPENROUTER_AI_API_KEY',
+        'OPENROUTER_API_KEY',
         'DEEPSEEK_API_KEY',
         'PORTFOLIOSAVER_DEEPSEEK_API_KEY'))
     {

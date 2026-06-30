@@ -34,8 +34,8 @@ public sealed class AppSettings
     public double DimOpacity { get; set; } = 0.55;
     public LayoutPreset LayoutPreset { get; set; } = LayoutPreset.UltrawideDefault;
 
-    // DeepSeek remains user-configurable for summarized news and can still be overlaid from
-    // protected local storage or environment variables.
+    // Summarized news uses an OpenAI-compatible AI endpoint. The property names remain
+    // DeepSeek-prefixed for config compatibility, but defaults now target OpenRouter.
     public string DeepSeekApiKey { get; set; } = string.Empty;
     public string DeepSeekEndpointUrl { get; set; } = Defaults.DefaultDeepSeekEndpointUrl;
     public string DeepSeekModelId { get; set; } = Defaults.DefaultDeepSeekModelId;

@@ -7889,6 +7889,36 @@
         "VM or harness validation proves a bad configured AI key/endpoint produces the warning and RSS fallback while the app remains usable.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
       ]
+    },
+    {
+      "id": "CR-149",
+      "tracking_number": "CR-149",
+      "priority": 2,
+      "area": "AI summarized news",
+      "title": "Harden OpenRouter default AI-news compatibility and onboarding docs",
+      "status": "open",
+      "source": "user_request_2026_06_30",
+      "severity": "medium",
+      "evidence": [
+        "Default AI finance-news backend changed to OpenRouter, so implementation must be checked against current OpenRouter documentation and traces.",
+        "Latest VM trace showed OpenRouter health check failing with http-401 and falling back to RSS when no valid key was visible in the VM environment.",
+        "User supplied OPENROUTER_AI_API_KEY as the local/VM test environment variable and requested user documentation for obtaining and configuring an OpenRouter key."
+      ],
+      "notes": [
+        "Acceptance: app accepts OPENROUTER_AI_API_KEY and OPENROUTER_API_KEY while retaining legacy DeepSeek-named environment variables.",
+        "Acceptance: OpenRouter requests use documented Bearer auth, /chat/completions base-path handling, and app attribution headers without leaking keys.",
+        "Acceptance: VM secret overlay propagates OpenRouter-named variables from ignored test-secrets.json.",
+        "Acceptance: README/runbook document OpenRouter key acquisition, default endpoint/model, and configuration steps for new users.",
+        "Acceptance: tests, DeepSeek review, build/test, installer build, and VM/artifact review evidence are recorded before closure."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

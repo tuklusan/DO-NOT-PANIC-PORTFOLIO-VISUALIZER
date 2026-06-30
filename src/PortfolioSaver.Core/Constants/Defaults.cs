@@ -24,6 +24,14 @@ public static class Defaults
     public const string DefaultNewsFeedUrl = "https://finance.yahoo.com/news/rss";
     public const string DefaultDeepSeekEndpointUrl = "https://openrouter.ai/api/v1";
     public const string DefaultDeepSeekModelId = "openrouter/free";
+    public static IReadOnlyList<string> AiApiKeyEnvironmentVariableNames { get; } =
+    [
+        "OPENROUTER_AI_API_KEY",
+        "OPENROUTER_API_KEY",
+        "DEEPSEEK_API_KEY",
+        "PORTFOLIOSAVER_DEEPSEEK_API_KEY"
+    ];
+
     public const int MinRefreshSeconds = 5;
     public const int MaxRefreshSeconds = 4 * 60 * 60;
     public const int MinBackgroundChangeSeconds = 120;

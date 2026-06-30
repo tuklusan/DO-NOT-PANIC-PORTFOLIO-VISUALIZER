@@ -135,11 +135,11 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
-    public void Normalize_DeepSeekApiKey_PrefersEnvironmentVariable_OverPersistedValue()
+    public void Normalize_AiApiKey_PrefersOpenRouterEnvironmentVariable_OverPersistedValue()
     {
-        const string environmentName = "DEEPSEEK_API_KEY";
+        const string environmentName = "OPENROUTER_AI_API_KEY";
         string? previous = Environment.GetEnvironmentVariable(environmentName);
-        Environment.SetEnvironmentVariable(environmentName, "test-env-deepseek-key");
+        Environment.SetEnvironmentVariable(environmentName, "test-env-openrouter-key");
 
         try
         {
@@ -148,7 +148,7 @@ public sealed class AppSettingsNormalizerTests
 
             AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
-            Assert.Equal("test-env-deepseek-key", normalized.DeepSeekApiKey);
+            Assert.Equal("test-env-openrouter-key", normalized.DeepSeekApiKey);
         }
         finally
         {
@@ -157,14 +157,10 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
-    public void Normalize_DeepSeekPlaceholder_DoNotBlockEnvironmentVariableUsage()
+    public void Normalize_AiApiKey_WhenNoEnvironmentVariablesSet_ClearsPlaceholder()
     {
-        const string primaryEnvironmentName = "DEEPSEEK_API_KEY";
-        const string secondaryEnvironmentName = "PORTFOLIOSAVER_DEEPSEEK_API_KEY";
-        string? previousPrimary = Environment.GetEnvironmentVariable(primaryEnvironmentName);
-        string? previousSecondary = Environment.GetEnvironmentVariable(secondaryEnvironmentName);
-        Environment.SetEnvironmentVariable(primaryEnvironmentName, null);
-        Environment.SetEnvironmentVariable(secondaryEnvironmentName, null);
+        Dictionary<string, string?> previous = CaptureEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
+        ClearEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
 
         try
         {
@@ -177,9 +173,72 @@ public sealed class AppSettingsNormalizerTests
         }
         finally
         {
-            Environment.SetEnvironmentVariable(primaryEnvironmentName, previousPrimary);
-            Environment.SetEnvironmentVariable(secondaryEnvironmentName, previousSecondary);
+            RestoreEnvironmentVariables(previous);
         }
+    }
+
+    [Fact]
+    public void Normalize_AiApiKey_PrefersEnvironmentVariable_OverPlaceholder()
+    {
+        Dictionary<string, string?> previous = CaptureEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
+        ClearEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
+
+        try
+        {
+            Environment.SetEnvironmentVariable(Defaults.AiApiKeyEnvironmentVariableNames[0], "env-key");
+            AppSettings settings = Defaults.CreateSettings();
+            settings.DeepSeekApiKey = "REPLACE_WITH_DEEPSEEK_API_KEY";
+
+            AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+            Assert.Equal("env-key", normalized.DeepSeekApiKey);
+        }
+        finally
+        {
+            RestoreEnvironmentVariables(previous);
+        }
+    }
+
+    [Fact]
+    public void Normalize_AiApiKey_UsesDocumentedEnvironmentVariablePrecedence()
+    {
+        IReadOnlyList<string> names = Defaults.AiApiKeyEnvironmentVariableNames;
+        Dictionary<string, string?> previous = CaptureEnvironmentVariables(names);
+
+        try
+        {
+            for (int index = 0; index < names.Count; index++)
+                Environment.SetEnvironmentVariable(names[index], $"key-{index}");
+
+            AppSettings settings = Defaults.CreateSettings();
+            settings.DeepSeekApiKey = "persisted-key";
+
+            AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+            Assert.Equal("key-0", normalized.DeepSeekApiKey);
+        }
+        finally
+        {
+            RestoreEnvironmentVariables(previous);
+        }
+    }
+
+    private static Dictionary<string, string?> CaptureEnvironmentVariables(IEnumerable<string> names)
+        => names.ToDictionary(
+            static name => name,
+            static name => Environment.GetEnvironmentVariable(name),
+            StringComparer.Ordinal);
+
+    private static void ClearEnvironmentVariables(IEnumerable<string> names)
+    {
+        foreach (string name in names)
+            Environment.SetEnvironmentVariable(name, null);
+    }
+
+    private static void RestoreEnvironmentVariables(IReadOnlyDictionary<string, string?> previous)
+    {
+        foreach ((string name, string? value) in previous)
+            Environment.SetEnvironmentVariable(name, value);
     }
 
     [Fact]

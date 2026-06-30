@@ -39,6 +39,8 @@ public sealed class FinanceNewsService
     private const string CnbcWorldFeedUrl = "https://www.cnbc.com/id/19832390/device/rss/rss.html";
     private const string BbcBusinessFeedUrl = "https://feeds.bbci.co.uk/news/business/rss.xml";
     private const string NytEconomyFeedUrl = "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml";
+    private const string OpenRouterAttributionReferer = "https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER";
+    private const string OpenRouterAttributionTitle = "DO NOT PANIC PORTFOLIO VISUALIZER";
     private const int MaxDeepSeekSummaryAttempts = 2;
     private const int SummaryRetryBaseDelayMilliseconds = 750;
     private static readonly TimeSpan DefaultSummarizedNewsExternalCallBudget = TimeSpan.FromSeconds(60);
@@ -257,6 +259,7 @@ public sealed class FinanceNewsService
         {
             using HttpRequestMessage request = new(HttpMethod.Post, BuildDeepSeekChatCompletionsUri(endpointUrl));
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            AddOpenRouterAttributionHeaders(request, endpointUrl);
             request.Content = new StringContent(
                 JsonSerializer.Serialize(CreateAiAccessCheckPayload(modelId)),
                 Encoding.UTF8,
@@ -365,6 +368,7 @@ public sealed class FinanceNewsService
                 {
                     using HttpRequestMessage request = new(HttpMethod.Post, BuildDeepSeekChatCompletionsUri(endpointUrl));
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+                    AddOpenRouterAttributionHeaders(request, endpointUrl);
                     request.Content = new StringContent(
                         JsonSerializer.Serialize(CreateSummarizedNewsPayload(modelId, userPrompt, requestStrictJsonResponseFormat)),
                         Encoding.UTF8,
@@ -1208,6 +1212,19 @@ public sealed class FinanceNewsService
 
     private static Uri BuildDeepSeekChatCompletionsUri(string endpointUrl)
         => new(new Uri($"{endpointUrl.TrimEnd('/')}/", UriKind.Absolute), "chat/completions");
+
+    private static void AddOpenRouterAttributionHeaders(HttpRequestMessage request, string endpointUrl)
+    {
+        if (!Uri.TryCreate(endpointUrl, UriKind.Absolute, out Uri? endpoint) ||
+            (!string.Equals(endpoint.Host, "openrouter.ai", StringComparison.OrdinalIgnoreCase) &&
+             !endpoint.Host.EndsWith(".openrouter.ai", StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        request.Headers.TryAddWithoutValidation("HTTP-Referer", OpenRouterAttributionReferer);
+        request.Headers.TryAddWithoutValidation("X-OpenRouter-Title", OpenRouterAttributionTitle);
+    }
 
     private static IReadOnlyList<string> GetFallbackHeadlines(NewsScrollerMode mode, IReadOnlyList<string> cached)
         => cached.Count > 0

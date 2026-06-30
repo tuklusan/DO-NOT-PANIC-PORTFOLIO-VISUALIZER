@@ -129,6 +129,10 @@ public sealed class FinanceNewsServiceTests
             Assert.Equal("https://openrouter.ai/api/v1/chat/completions", requestUrl);
             Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
             Assert.Equal("test-deepseek-key", request.Headers.Authorization?.Parameter);
+            Assert.True(request.Headers.TryGetValues("HTTP-Referer", out IEnumerable<string>? refererValues));
+            Assert.Contains("https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER", refererValues);
+            Assert.True(request.Headers.TryGetValues("X-OpenRouter-Title", out IEnumerable<string>? titleValues));
+            Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER", titleValues);
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent("""
@@ -1532,6 +1536,10 @@ public sealed class FinanceNewsServiceTests
         using HttpClient client = new(new FakeHttpMessageHandler(async (request, cancellationToken) =>
         {
             capturedUrl = request.RequestUri?.ToString();
+            Assert.True(request.Headers.TryGetValues("HTTP-Referer", out IEnumerable<string>? refererValues));
+            Assert.Contains("https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER", refererValues);
+            Assert.True(request.Headers.TryGetValues("X-OpenRouter-Title", out IEnumerable<string>? titleValues));
+            Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER", titleValues);
             capturedBody = request.Content is null
                 ? string.Empty
                 : await request.Content.ReadAsStringAsync(cancellationToken);
@@ -1551,6 +1559,32 @@ public sealed class FinanceNewsServiceTests
         Assert.True(result.Succeeded);
         Assert.Equal("https://openrouter.ai/api/v1/chat/completions", capturedUrl);
         Assert.Contains("\"model\":\"openrouter/free\"", capturedBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CheckSummarizedNewsAccessAsync_CustomEndpoint_DoesNotSendOpenRouterAttributionHeaders()
+    {
+        using HttpClient client = new(new FakeHttpMessageHandler(request =>
+        {
+            Assert.Equal("https://ai.example.test/v1/chat/completions", request.RequestUri?.ToString());
+            Assert.False(request.Headers.Contains("HTTP-Referer"));
+            Assert.False(request.Headers.Contains("X-OpenRouter-Title"));
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"choices":[{"message":{"content":"OK"}}]}""", Encoding.UTF8, "application/json")
+            };
+        }));
+        FinanceNewsService service = new();
+        AppSettings settings = Defaults.CreateSettings();
+        settings.DeepSeekApiKey = "test-key";
+        settings.DeepSeekEndpointUrl = "https://ai.example.test/v1";
+        settings.DeepSeekModelId = "local-model";
+
+        FinanceNewsService.AiNewsAccessCheckResult result =
+            await service.CheckSummarizedNewsAccessAsync(client, settings);
+
+        Assert.True(result.WasChecked);
+        Assert.True(result.Succeeded);
     }
 
     [Fact]

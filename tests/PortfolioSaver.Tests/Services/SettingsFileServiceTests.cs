@@ -80,11 +80,9 @@ public sealed class SettingsFileServiceTests
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
         string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
-        string? previousDeepSeek = Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY");
-        string? previousPortfolioSaverDeepSeek = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY");
+        Dictionary<string, string?> previousAiKeyVariables = CaptureEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
-        Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", null);
-        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY", null);
+        ClearEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
 
         try
         {
@@ -97,8 +95,7 @@ public sealed class SettingsFileServiceTests
         finally
         {
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
-            Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", previousDeepSeek);
-            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY", previousPortfolioSaverDeepSeek);
+            RestoreEnvironmentVariables(previousAiKeyVariables);
             if (Directory.Exists(tempRoot))
                 DeleteDirectoryWithRetry(tempRoot);
         }
@@ -109,11 +106,9 @@ public sealed class SettingsFileServiceTests
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
         string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
-        string? previousDeepSeek = Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY");
-        string? previousPortfolioSaverDeepSeek = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY");
+        Dictionary<string, string?> previousAiKeyVariables = CaptureEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
-        Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", null);
-        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY", null);
+        ClearEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
 
         try
         {
@@ -141,8 +136,7 @@ public sealed class SettingsFileServiceTests
         finally
         {
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
-            Environment.SetEnvironmentVariable("DEEPSEEK_API_KEY", previousDeepSeek);
-            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY", previousPortfolioSaverDeepSeek);
+            RestoreEnvironmentVariables(previousAiKeyVariables);
             if (Directory.Exists(tempRoot))
                 DeleteDirectoryWithRetry(tempRoot);
         }
@@ -296,5 +290,23 @@ public sealed class SettingsFileServiceTests
             if (Directory.Exists(tempRoot))
                 DeleteDirectoryWithRetry(tempRoot);
         }
+    }
+
+    private static Dictionary<string, string?> CaptureEnvironmentVariables(IEnumerable<string> names)
+        => names.ToDictionary(
+            static name => name,
+            static name => Environment.GetEnvironmentVariable(name),
+            StringComparer.Ordinal);
+
+    private static void ClearEnvironmentVariables(IEnumerable<string> names)
+    {
+        foreach (string name in names)
+            Environment.SetEnvironmentVariable(name, null);
+    }
+
+    private static void RestoreEnvironmentVariables(IReadOnlyDictionary<string, string?> previous)
+    {
+        foreach ((string name, string? value) in previous)
+            Environment.SetEnvironmentVariable(name, value);
     }
 }

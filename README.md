@@ -35,7 +35,7 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
 - UTC-pinned top-right status clock plus exchange-local times in the Global Markets lane
 - Direction-colored graph rendering: green for rising segments, red for falling segments
 - Slow, continuous free-roaming motion for graph cards and other floating overlay elements
-- News headline scroller with configurable RSS mode or DeepSeek-based summarized-financial-news mode
+- News headline scroller with configurable RSS mode or OpenAI-compatible AI summarized-financial-news mode
 - Dynamic background image system with managed exchange photos or user custom folders
 - YFinance.NET-backed Yahoo retrieval with 1-second one-by-one pacing, batch quote refreshes, and observable rate-limit controls
 - Offline-aware UI behavior and network gating for validation workflows
@@ -44,7 +44,7 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
 
 - Rich settings UI for:
   - YFinance.NET runtime status and refresh controls
-  - DeepSeek API key, endpoint URL, and model ID for summarized financial news
+  - AI API key, endpoint URL, and model ID for summarized financial news
   - Ticker tapes and graph overlays
   - Refresh intervals (portfolio, off-hours, news, backgrounds)
 - Real-time and apply-time symbol validation flow
@@ -73,6 +73,30 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
   - No separate app-level quote cache is maintained; quote reuse comes from YFinance.NET
   - Per-symbol JSON history files
   - Automatic purge of history files older than 14 days
+
+## Optional AI-Summarized Finance News
+
+The app works without an AI key by using RSS financial headlines. For stylized AI summaries, the default endpoint is OpenRouter:
+
+- Endpoint URL: `https://openrouter.ai/api/v1`
+- Model ID: `openrouter/free`
+- Supported runtime key environment variables: `OPENROUTER_AI_API_KEY`, `OPENROUTER_API_KEY`, `DEEPSEEK_API_KEY`, or `PORTFOLIOSAVER_DEEPSEEK_API_KEY`
+
+To obtain a free OpenRouter API key for personal non-commercial use:
+
+1. Visit [openrouter.ai](https://openrouter.ai/) and sign up or sign in.
+2. Open the API Keys area for an individual account.
+3. Create an API key.
+4. In **Settings -> Advanced -> News Scroller**, choose **Summarized Financial News**.
+5. Paste the key into **AI API key**.
+6. Leave **AI endpoint URL** as `https://openrouter.ai/api/v1` and **AI model ID** as `openrouter/free`, unless you intentionally want a different OpenAI-compatible provider/model.
+7. Validate and choose **OK** so the new configuration is saved and applied.
+
+At startup, if summarized news is enabled and the configured AI access check fails, the app warns once and falls back to RSS mode for the session.
+
+When using the OpenRouter endpoint, requests include OpenRouter's optional app-attribution headers: `HTTP-Referer` points to the public GitHub repository and `X-OpenRouter-Title` identifies the app name.
+
+Upgrade note: the default AI endpoint is now OpenRouter. Existing users who only configured `DEEPSEEK_API_KEY` should either create an OpenRouter key and use `OPENROUTER_AI_API_KEY`, or explicitly set **AI endpoint URL** and **AI model ID** to their preferred DeepSeek/OpenAI-compatible provider values.
 
 ## Desktop App Modes
 
@@ -124,7 +148,7 @@ Project workflow hard stop: DeepSeek API access is mandatory before commit, push
 .\build\Test-DeepSeekWorkflowGate.ps1
 ```
 
-If the gate cannot find a key or cannot reach DeepSeek, stop until access is restored. The key may come from `DEEPSEEK_API_KEY`, `PORTFOLIOSAVER_DEEPSEEK_API_KEY`, or ignored local `build\vm\test-secrets.json`.
+If the gate cannot find a key or cannot reach DeepSeek, stop until access is restored. The developer workflow key may come from `DEEPSEEK_API_KEY`, `PORTFOLIOSAVER_DEEPSEEK_API_KEY`, or ignored local `build\vm\test-secrets.json`.
 Missing-key waivers and skip-review switches are intentionally unsupported; the live gate makes one minimal DeepSeek API probe before the normal review step.
 
 ## Installer Build Path

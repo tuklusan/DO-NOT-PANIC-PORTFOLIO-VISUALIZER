@@ -141,10 +141,13 @@ If you want the remote Windows target to use live API credentials during validat
 Supported fields:
 
 - `DeepSeekApiKey`
+- `OpenRouterApiKey` (optional; falls back to `DeepSeekApiKey` when omitted)
 
 The VM harness no longer expects separate market-data provider credentials because the runtime is now YFinance.NET-only.
-The harness applies them to the remote user environment before the remote build/UX cycle starts. DeepSeek is written to both:
+The harness applies them to the remote user environment before the remote build/UX cycle starts. The ignored `DeepSeekApiKey` supports the developer DeepSeek gate, while optional `OpenRouterApiKey` supports the app's OpenRouter-default AI news path. If `OpenRouterApiKey` is omitted, `DeepSeekApiKey` is reused for backward-compatible one-key test setups. Values are written to:
 
+- `OPENROUTER_AI_API_KEY`
+- `OPENROUTER_API_KEY`
 - `DEEPSEEK_API_KEY`
 - `PORTFOLIOSAVER_DEEPSEEK_API_KEY`
 

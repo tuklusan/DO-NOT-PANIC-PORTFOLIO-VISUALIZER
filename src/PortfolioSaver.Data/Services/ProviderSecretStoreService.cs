@@ -12,6 +12,7 @@
 // patent, trademark, and governing-law provisions.
 // ============================================================================
 using System.Text.Json;
+using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Data.Interfaces;
 using PortfolioSaver.Shared.Helpers;
@@ -45,7 +46,10 @@ public sealed class ProviderSecretStoreService
     {
         ProviderSecretsDto dto = LoadSecretsDto();
 
-        dto.DeepSeekApiKey = ResolvePersistedProtectedValue(settings.DeepSeekApiKey, new[] { "DEEPSEEK_API_KEY", "PORTFOLIOSAVER_DEEPSEEK_API_KEY" }, dto.DeepSeekApiKey);
+        dto.DeepSeekApiKey = ResolvePersistedProtectedValue(
+            settings.DeepSeekApiKey,
+            Defaults.AiApiKeyEnvironmentVariableNames,
+            dto.DeepSeekApiKey);
 
         if (!dto.HasAnySecrets())
         {
@@ -77,9 +81,6 @@ public sealed class ProviderSecretStoreService
             setter(settings, unprotected);
     }
 
-    private string ResolvePersistedProtectedValue(string currentValue, string environmentVariableName, string existingProtectedValue)
-        => ResolvePersistedProtectedValue(currentValue, new[] { environmentVariableName }, existingProtectedValue);
-
     private string ResolvePersistedProtectedValue(string currentValue, IEnumerable<string> environmentVariableNames, string existingProtectedValue)
     {
         string trimmed = (currentValue ?? string.Empty).Trim();
@@ -91,6 +92,7 @@ public sealed class ProviderSecretStoreService
             return existingProtectedValue ?? string.Empty;
         }
 
+        // Environment-sourced keys are intentionally not persisted; the normalizer reapplies them on load.
         if (string.IsNullOrWhiteSpace(trimmed))
             return string.Empty;
 

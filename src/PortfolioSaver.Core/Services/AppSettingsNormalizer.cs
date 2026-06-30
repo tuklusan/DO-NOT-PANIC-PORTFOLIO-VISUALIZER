@@ -57,8 +57,7 @@ public static class AppSettingsNormalizer
 
         normalized.DeepSeekApiKey = NormalizeApiKey(
             normalized.DeepSeekApiKey,
-            "DEEPSEEK_API_KEY",
-            "PORTFOLIOSAVER_DEEPSEEK_API_KEY");
+            Defaults.AiApiKeyEnvironmentVariableNames);
         normalized.DeepSeekEndpointUrl = NormalizeDeepSeekEndpointUrl(normalized.DeepSeekEndpointUrl);
         normalized.DeepSeekModelId = NormalizeDeepSeekModelId(normalized.DeepSeekModelId);
 
@@ -207,7 +206,7 @@ public static class AppSettingsNormalizer
             StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string NormalizeApiKey(string currentValue, params string[] environmentVariableNames)
+    private static string NormalizeApiKey(string currentValue, IEnumerable<string> environmentVariableNames)
     {
         string environmentValue = GetFirstEnvironmentVariableValue(environmentVariableNames);
         if (!string.IsNullOrWhiteSpace(environmentValue))
