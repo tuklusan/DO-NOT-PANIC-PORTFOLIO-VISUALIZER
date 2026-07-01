@@ -8410,7 +8410,7 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ],
-      "closed_at_utc": "2026-07-01T12:52:05.9112460Z"
+      "closed_at_utc": "2026-07-01T12:52:05.911246Z"
     },
     {
       "id": "CR-163",
@@ -8447,6 +8447,35 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ],
       "closed_at_utc": "2026-07-01T12:52:05.9161606Z"
+    },
+    {
+      "id": "CR-164",
+      "tracking_number": "CR-164",
+      "priority": 1,
+      "area": "Configuration",
+      "title": "Disable inactive news-source fields on Advanced config tab",
+      "status": "open",
+      "source": "manual_user_report",
+      "severity": "Medium",
+      "evidence": [
+        "User screenshot on 2026-07-01 shows RSS Feed selected while AI API key remains editable and validation passes after checking only RSS.",
+        "Current XAML disables RSS URL unless RSS mode is selected and disables AI endpoint/model unless summarized mode is selected, but AI API key remains editable regardless of selected news mode.",
+        "This makes users reasonably expect a garbage AI key to be validated even though RSS mode is active."
+      ],
+      "notes": [
+        "Acceptance: AI API key, endpoint URL, model ID, and writing-style controls are disabled whenever RSS Feed is selected.",
+        "Acceptance: RSS feed URL remains disabled whenever Summarized Financial News is selected.",
+        "Acceptance: Validate behavior remains mode-specific, but inactive fields are visibly non-editable so the user understands what is being validated.",
+        "Acceptance: add source-level config test coverage so AI key cannot regress to always-editable."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

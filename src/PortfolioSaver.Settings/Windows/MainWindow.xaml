@@ -460,6 +460,7 @@
                                     <TextBlock Text="AI API key:" Style="{StaticResource FieldLabelStyle}" />
                                     <TextBox Grid.Column="1"
                                              MinWidth="128"
+                                             IsEnabled="{Binding IsSummarizedFinancialNewsSelected}"
                                              ToolTip="This API key is intentionally shown as plain text; avoid exposing it in screenshots or screen sharing."
                                              Text="{Binding Settings.AiApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>

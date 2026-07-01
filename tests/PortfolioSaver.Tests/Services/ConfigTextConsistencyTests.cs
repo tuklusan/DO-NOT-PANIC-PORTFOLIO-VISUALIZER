@@ -248,7 +248,10 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("Text=\"Writing style:\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"AI endpoint URL:\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"AI model ID:\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("IsEnabled=\"{Binding IsSummarizedFinancialNewsSelected}\"", xaml, StringComparison.Ordinal);
+        const int summarizedNewsOnlyControlCount = 4; // Writing style, AI key, AI endpoint URL, AI model ID.
+        Assert.True(
+            xaml.Split("IsEnabled=\"{Binding IsSummarizedFinancialNewsSelected}\"", StringSplitOptions.None).Length - 1 >= summarizedNewsOnlyControlCount,
+            "Writing style, AI key, AI endpoint, and AI model controls should all be disabled while RSS mode is selected.");
         Assert.Contains("IsEnabled=\"{Binding IsRssFeedSelected}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("AI API key:", xaml, StringComparison.Ordinal);
         Assert.Contains("Summarized mode uses your API key when available", xaml, StringComparison.Ordinal);
