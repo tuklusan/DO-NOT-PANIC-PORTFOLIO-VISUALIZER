@@ -51,8 +51,8 @@ public sealed class VirusTotalReleaseReportScriptTests
         string script = ReadRepoText("build", "release", "Publish-VirusTotalReleaseReport.ps1");
 
         Assert.Contains("[ValidateRange(20, 3600)]", script, StringComparison.Ordinal);
-        Assert.Contains("$PollIntervalSeconds * $MaxPollAttempts -gt 600", script, StringComparison.Ordinal);
-        Assert.Contains("VirusTotal polling window must not exceed 10 minutes", script, StringComparison.Ordinal);
+        Assert.Contains("$PollIntervalSeconds * $MaxPollAttempts -gt 1800", script, StringComparison.Ordinal);
+        Assert.Contains("VirusTotal polling window must not exceed 30 minutes", script, StringComparison.Ordinal);
         Assert.Contains("[regex]::Match($digest", script, StringComparison.Ordinal);
         Assert.Contains("sha256:([a-f0-9]{64})", script, StringComparison.Ordinal);
     }

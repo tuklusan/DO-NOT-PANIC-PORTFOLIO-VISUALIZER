@@ -21,7 +21,7 @@ param(
     [string]$OutputDirectory,
     [ValidateRange(20, 3600)]
     [int]$PollIntervalSeconds = 20,
-    [ValidateRange(1, 30)]
+    [ValidateRange(1, 90)]
     [int]$MaxPollAttempts = 12,
     [ValidateRange(5, 300)]
     [int]$RequestTimeoutSeconds = 60,
@@ -200,8 +200,8 @@ if ($resolvedOutputDirectory -ne $releaseRoot -and -not $resolvedOutputDirectory
     throw "OutputDirectory must resolve under the repository releases directory: $releaseRoot"
 }
 
-if ($PollIntervalSeconds * $MaxPollAttempts -gt 600) {
-    throw 'VirusTotal polling window must not exceed 10 minutes. Increase deliberately in a separate reviewed change if needed.'
+if ($PollIntervalSeconds * $MaxPollAttempts -gt 1800) {
+    throw 'VirusTotal polling window must not exceed 30 minutes. Increase deliberately in a separate reviewed change if needed.'
 }
 
 $VirusTotalBaseUri = $VirusTotalBaseUri.TrimEnd('/')
