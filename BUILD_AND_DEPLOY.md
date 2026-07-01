@@ -87,9 +87,10 @@ For legacy parser/config routing checks:
 - Quotes load from the current YFinance.NET-backed Yahoo runtime lane.
 - One-by-one YFinance.NET work respects the 1-second pacing floor, and live caches/metadata should not stay older than 10 minutes.
 - History fetch does not run on every live quote refresh.
-- `%LocalAppData%\PortfolioSaver\settings.json` exists for the installed app settings root.
-- `%LocalAppData%\PortfolioSaver\provider-secrets.json` exists only when protected provider secrets have been saved.
-- `%LocalAppData%\PortfolioSaver\Caches\History` exists and purges files older than 14 days.
+- `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer\settings.json` exists for the installed app settings root.
+- `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer\provider-secrets.json` exists only when protected provider secrets have been saved.
+- `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer\Caches\History` exists and purges files older than 14 days.
+- `%LOCALAPPDATA%\PortfolioSaver` is legacy migration input only, not the active storage root; `AppDataRootResolver` owns automatic startup migration into `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer`.
 - Summarized news uses the configured AI provider no more often than every 15 minutes and falls back cleanly when the key or provider is unavailable.
 
 ### Floating overlays
@@ -151,7 +152,7 @@ Acceptance for the current YFinance.NET lane:
 
 ### Final Windows integration
 - Treat the Inno Setup package produced by `build\publish-inno-installer.ps1` as the primary public distribution method.
-- The installer requires administrative privileges, shows the root `LICENSE` as the required license-agreement page, and uses a fixed public install location at `%ProgramFiles%\SANYALnet Labs\DoNotPanicPortfolioVisualizer`.
+- The installer requires administrative privileges, shows the root `LICENSE` as the required license-agreement page, and uses a fixed public install location at `%PROGRAMFILES%\SANYALnet Labs\DoNotPanicPortfolioVisualizer`.
 - The installer includes the desktop app, config app, legacy screensaver host, owned YFinance.NET server bundle, root `LICENSE`, `THIRD-PARTY-NOTICES.md`, and `THIRD-PARTY-LICENSES`.
 - Automated install/uninstall validation must run from an already elevated administrator context using `build\installer\Test-InnoInstallCycle.ps1`; Windows UAC prompts are not safely auto-accepted from a non-elevated process.
 
@@ -209,28 +210,13 @@ $setup = ".\build\artifacts\inno\output\DoNotPanicPortfolioVisualizerSetup-$vers
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\build\installer\Test-InnoInstallCycle.ps1 -SetupPath $setup
 ```
 
-3. The harness installs silently with `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`, verifies the Program Files payload and legal files, runs the Inno uninstaller silently, and verifies uninstall cleanup. Because this is an all-users Program Files installer, uninstall cleanup explicitly removes the app-owned `%LocalAppData%\DoNotPanicPortfolioVisualizer` root for local profiles; user-selected external background folders are never targeted.
+3. The harness installs silently with `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`, verifies the Program Files payload and legal files, runs the Inno uninstaller silently, and verifies uninstall cleanup. Because this is an all-users Program Files installer, uninstall cleanup explicitly removes the app-owned `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer` root for local profiles; user-selected external background folders are never targeted.
 
-## Legacy installer sandbox smoke test
+## Manual installer smoke test
 
-1. Double-click `build\sandbox\PortfolioSaverInstallerTest.wsb`.
-2. In Windows Sandbox, open `C:\Users\WDAGUtilityAccount\Desktop\PortfolioSaverWorkspace\build\artifacts`.
-3. Run `PortfolioSaverScreensaverSetup.exe`.
-4. Accept the UAC prompt and let the installer finish.
-5. Open Screen Saver Settings and verify `PortfolioSaver.Screensaver` appears in the list.
-6. In PowerShell inside the sandbox, run:
+The automated Inno install/uninstall cycle above remains the canonical scripted installer regression check. For a supplementary human-facing smoke test, copy the fresh setup executable from `build\artifacts\inno\output` to the target machine, run it elevated, accept the SANYALnet Labs Non-Commercial License page, confirm the Start Menu and desktop shortcuts are created, launch the desktop app, then uninstall from Windows Apps/Programs. After uninstall, verify that `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer` no longer exists for the tested profile and that the Start Menu and desktop shortcuts are gone.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\Users\WDAGUtilityAccount\Desktop\PortfolioSaverWorkspace\build\sandbox\Validate-PortfolioSaverState.ps1 -ExpectedState Installed
-```
-
-7. Uninstall from Programs and Features, or run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File "C:\ProgramData\PortfolioSaverScreensaver\Uninstall-PortfolioSaverScreensaver.ps1"
-```
-
-8. Run the validator again with `-ExpectedState Uninstalled`.
+Legacy Windows Sandbox files under `build\sandbox` are retained only for old screensaver-installer archaeology. They are not the release gate for the current Inno installer.
 
 ## Important note
 

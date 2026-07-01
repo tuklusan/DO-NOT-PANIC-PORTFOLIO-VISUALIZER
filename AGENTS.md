@@ -35,7 +35,7 @@ Exchange-local times belong in the Global Markets lane and related exchange card
 Any floating clock-style overlay behavior should stay visually consistent with the small sparkline-card language rather than becoming a large dashboard widget.
 
 ## Data note
-Historical cache belongs under `%LOCALAPPDATA%\PortfolioSaver\Caches\History`. Delete history files older than 14 days.
+Historical cache belongs under `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer\Caches\History`. Legacy `%LOCALAPPDATA%\PortfolioSaver` content is migration input only. Delete history files older than 14 days.
 
 ## Canonical Codex operational rule
 When running Codex-Agent, cloud requests initiated by the agent must be spaced out by at least 15 seconds after the last response.
