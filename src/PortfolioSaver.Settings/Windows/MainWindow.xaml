@@ -48,22 +48,42 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Margin" Value="0,0,12,0" />
         </Style>
-        <Style x:Key="HelpBadgeStyle" TargetType="Border">
+        <Style x:Key="HelpBadgeStyle" TargetType="Button">
             <Setter Property="Width" Value="18" />
             <Setter Property="Height" Value="18" />
-            <Setter Property="CornerRadius" Value="9" />
             <Setter Property="Background" Value="#2C5878" />
             <Setter Property="BorderBrush" Value="#6FA9D6" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Margin" Value="8,0,0,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-        <Style x:Key="HelpBadgeTextStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="White" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="FontSize" Value="11" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="HelpBadgeBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="9">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="HelpBadgeBorder" Property="Background" Value="#376A90" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="HelpBadgeBorder" Property="BorderBrush" Value="#EAF6FF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style x:Key="SectionNoteStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#AAB6C1" />
@@ -171,9 +191,7 @@
                                 <DockPanel Margin="0,0,0,10">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Background" Foreground="White" FontSize="20" />
-                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Choose your own image folder, or leave this off to use the built-in background rotation.">
-                                            <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
-                                        </Border>
+                                        <Button Content="?" Style="{StaticResource HelpBadgeStyle}" Click="OnHelpBadgeClick" AutomationProperties.Name="Background help" ToolTip="Choose your own image folder, or leave this off to use the built-in background rotation." />
                                     </StackPanel>
                                 </DockPanel>
 
@@ -220,9 +238,7 @@
                                 <DockPanel Margin="0,0,0,10">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Portfolio tapes" Foreground="White" FontSize="20" />
-                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Ticker names fill in during Validate when available.">
-                                            <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
-                                        </Border>
+                                        <Button Content="?" Style="{StaticResource HelpBadgeStyle}" Click="OnHelpBadgeClick" AutomationProperties.Name="Portfolio tapes help" ToolTip="Ticker names fill in during Validate when available." />
                                     </StackPanel>
                                 </DockPanel>
                                 <TextBlock Text="Edit the ticker tapes the screensaver should display." Foreground="#DDDDDD" TextWrapping="Wrap" Margin="0,0,0,4" />
@@ -363,9 +379,7 @@
                         <DockPanel Margin="0,0,0,20">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Advanced News Settings" Foreground="White" FontSize="28" FontWeight="Bold" />
-                                <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Configure financial news behavior. Summarized mode can use a personal non-commercial AI API key; RSS mode reads the feed URL directly.">
-                                    <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
-                                </Border>
+                                <Button Content="?" Style="{StaticResource HelpBadgeStyle}" Click="OnHelpBadgeClick" AutomationProperties.Name="Advanced news settings help" ToolTip="Configure financial news behavior. Summarized mode can use a personal non-commercial AI API key; RSS mode reads the feed URL directly." />
                             </StackPanel>
                         </DockPanel>
                         <Border Grid.Row="1" Style="{StaticResource SectionCardStyle}">
@@ -373,9 +387,7 @@
                                 <DockPanel Margin="0,0,0,10">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="News Scroller" Foreground="White" FontSize="20" />
-                                        <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="For free personal API access: go to openrouter.ai, sign up, choose Individual, create an API key, and paste it below. You may also adjust endpoint and model ID for another compatible AI engine.">
-                                            <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
-                                        </Border>
+                                        <Button Content="?" Style="{StaticResource HelpBadgeStyle}" Click="OnHelpBadgeClick" AutomationProperties.Name="News scroller help" ToolTip="RSS Feed works without an API key. Summarized Financial News requires a compatible AI API key. Example for free personal OpenRouter access: go to openrouter.ai, sign up, choose Individual, create an API key, and paste it into AI API key. Leave the default endpoint and model, or adjust them for another compatible AI provider." />
                                     </StackPanel>
                                 </DockPanel>
 
@@ -591,3 +603,4 @@
         </Border>
     </Grid>
 </Window>
+

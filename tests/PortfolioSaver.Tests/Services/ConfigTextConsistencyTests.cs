@@ -178,12 +178,15 @@ public sealed class ConfigTextConsistencyTests
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
 
         int helpBadgeCount = xaml.Split("Style=\"{StaticResource HelpBadgeStyle}\"", StringSplitOptions.None).Length - 1;
+        int clickHandlerCount = xaml.Split("Click=\"OnHelpBadgeClick\"", StringSplitOptions.None).Length - 1;
         int tooltipCount = xaml.Split("ToolTip=\"", StringSplitOptions.None).Length - 1;
 
         Assert.Equal(4, helpBadgeCount);
+        Assert.Equal(4, clickHandlerCount);
         Assert.True(tooltipCount >= 4, "Expected every visible help badge to carry a tooltip.");
         Assert.Contains("Choose your own image folder", xaml, StringComparison.Ordinal);
         Assert.Contains("go to openrouter.ai", xaml, StringComparison.Ordinal);
+        Assert.Contains("RSS Feed works without an API key", xaml, StringComparison.Ordinal);
         Assert.Contains("Ticker names fill in during Validate when available.", xaml, StringComparison.Ordinal);
         Assert.Contains("Summarized mode can use a personal non-commercial AI API key", xaml, StringComparison.Ordinal);
         Assert.Contains("Minimum=\"10\"", xaml, StringComparison.Ordinal);

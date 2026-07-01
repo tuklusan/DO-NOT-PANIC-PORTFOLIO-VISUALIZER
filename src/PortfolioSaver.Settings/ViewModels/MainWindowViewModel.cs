@@ -60,7 +60,6 @@ public sealed class MainWindowViewModel : BindableBase
     private bool _isValidationClosePending;
     private bool _allowClose;
     private bool _isNetworkAvailable;
-    private bool _hasValidatedAiAccessInThisWindow;
     private string _validatedFingerprint = string.Empty;
     private readonly Dictionary<TickerGroupEditorViewModel, TickerGroup> _validatedGroupSnapshots = [];
     private readonly Dictionary<TickerItemEditorViewModel, TickerItem> _validatedTickerSnapshots = [];
@@ -378,7 +377,6 @@ public sealed class MainWindowViewModel : BindableBase
 
                 AppendValidationLog(aiValidation.ValidationSkipped ? "AI NEWS ACCESS CHECK SKIPPED" : "AI NEWS ACCESS OK");
                 TraceValidation(aiValidation.ValidationSkipped ? "AiNewsAccessValidationSkipped" : "AiNewsAccessValidationSucceeded");
-                _hasValidatedAiAccessInThisWindow = true;
             }
             else
             {
@@ -769,9 +767,6 @@ public sealed class MainWindowViewModel : BindableBase
             return false;
 
         if (_loadedSettingsSnapshot.NewsScrollerMode != NewsScrollerMode.SummarizedFinancialNews)
-            return true;
-
-        if (!_hasValidatedAiAccessInThisWindow)
             return true;
 
         return !AiAccessFieldsEqual(_loadedSettingsSnapshot, candidate);

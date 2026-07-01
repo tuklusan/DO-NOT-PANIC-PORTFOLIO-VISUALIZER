@@ -8311,7 +8311,7 @@
       "priority": 2,
       "area": "Backgrounds",
       "title": "Normalize custom background image scaling to screen bounds",
-      "status": "open",
+      "status": "closed",
       "source": "manual_user_report",
       "severity": "Medium",
       "evidence": [
@@ -8322,7 +8322,12 @@
       "notes": [
         "Acceptance: background renderer offers and uses a deterministic fill-to-screen mode that stretches image width and height to the visible scene bounds when needed.",
         "Acceptance: behavior works for arbitrary user-selected local images; distorted aspect ratio is acceptable per user direction.",
-        "Acceptance: add local/unit or VM visual proof using landscape images in C:\\Users\\sanyalnet\\Pictures."
+        "Acceptance: add local/unit or VM visual proof using landscape images in C:\\Users\\sanyalnet\\Pictures.",
+        "Implemented during autonomous CR queue pass on 2026-07-01.",
+        "Focused local validation passed: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~MainWindowViewModelValidationTests|FullyQualifiedName~ConfigTextConsistencyTests|FullyQualifiedName~ScreensaverRenderBehaviorTests|FullyQualifiedName~FinanceNewsServiceTests\" --nologo (200/200).",
+        "DeepSeek code review gate passed with no blocking findings: build\\deepseek-review\\deepseek-review-20260701-085020.md.",
+        "Background layers now use Stretch=\"Fill\" with an explicit CR-160 comment documenting distortion-over-cropping behavior.",
+        "ScreensaverRenderBehaviorTests.BackgroundImages_StretchToScreenBoundsWithoutUniformCropping parses the scene XAML and verifies both background image layers use Fill and UniformToFill is absent."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -8331,7 +8336,8 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "closed_at_utc": "2026-07-01T12:52:05.8462062Z"
     },
     {
       "id": "CR-161",
@@ -8339,7 +8345,7 @@
       "priority": 1,
       "area": "Configuration",
       "title": "Avoid rate-limit-triggering AI access validation in config workflow",
-      "status": "open",
+      "status": "closed",
       "source": "manual_user_report",
       "severity": "High",
       "evidence": [
@@ -8352,7 +8358,13 @@
         "Acceptance: changing unrelated settings such as tape speed or direction must not force live AI provider validation if AI settings did not change and a previously saved AI configuration exists.",
         "Acceptance: config validation must avoid costly/rate-limit-prone full AI requests for key sanity checks; prefer cached validation, a minimal probe, deferred runtime retry, or non-blocking warning behavior.",
         "Acceptance: provider 429 is treated as transient rate limiting, not as proof that API key, endpoint, or model are invalid. User must be able to save unrelated config changes.",
-        "Acceptance: traces distinguish invalid credentials (401/403), transient rate-limit (429), timeout, and skipped validation because AI config was unchanged."
+        "Acceptance: traces distinguish invalid credentials (401/403), transient rate-limit (429), timeout, and skipped validation because AI config was unchanged.",
+        "Implemented during autonomous CR queue pass on 2026-07-01.",
+        "Focused local validation passed: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~MainWindowViewModelValidationTests|FullyQualifiedName~ConfigTextConsistencyTests|FullyQualifiedName~ScreensaverRenderBehaviorTests|FullyQualifiedName~FinanceNewsServiceTests\" --nologo (200/200).",
+        "DeepSeek code review gate passed with no blocking findings: build\\deepseek-review\\deepseek-review-20260701-085020.md.",
+        "Config validation now skips live AI provider probes when saved AI access fields are unchanged, including first validation in a newly opened settings window.",
+        "HTTP 429 from config AI validation is traced as AiAccessValidationRateLimited and treated as skipped/transient instead of invalid credentials.",
+        "MainWindowViewModelValidationTests cover unchanged saved AI settings and 429 transient validation."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -8361,7 +8373,8 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "closed_at_utc": "2026-07-01T12:52:05.9020793Z"
     },
     {
       "id": "CR-162",
@@ -8369,7 +8382,7 @@
       "priority": 2,
       "area": "Configuration",
       "title": "Config help bubbles do not open when question-mark icons are clicked",
-      "status": "open",
+      "status": "closed",
       "source": "manual_user_report",
       "severity": "Medium",
       "evidence": [
@@ -8381,7 +8394,13 @@
         "Acceptance: clicking every visible question-mark help icon opens a concise balloon/help popup near the icon or otherwise clearly associated with the relevant section.",
         "Acceptance: News Scroller help explains that RSS works without a key, summarized AI news requires a compatible AI API key, and gives concise example steps for obtaining a free personal OpenRouter key: go to openrouter.ai, sign up, choose Individual, create an API key, paste it into AI API key, and adjust endpoint/model if using another compatible AI provider.",
         "Acceptance: behavior is covered by config harness or reflection tests so inert help icons do not regress again.",
-        "Acceptance: no screenshots or test artifacts containing real API keys are committed."
+        "Acceptance: no screenshots or test artifacts containing real API keys are committed.",
+        "Implemented during autonomous CR queue pass on 2026-07-01.",
+        "Focused local validation passed: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~MainWindowViewModelValidationTests|FullyQualifiedName~ConfigTextConsistencyTests|FullyQualifiedName~ScreensaverRenderBehaviorTests|FullyQualifiedName~FinanceNewsServiceTests\" --nologo (200/200).",
+        "DeepSeek code review gate passed with no blocking findings: build\\deepseek-review\\deepseek-review-20260701-085020.md.",
+        "Config question-mark badges are now clickable buttons with OnHelpBadgeClick opening wrapped balloon ToolTip content.",
+        "News Scroller help explains RSS mode, summarized AI requirements, OpenRouter sign-up/key creation, and endpoint/model customization.",
+        "ConfigTextConsistencyTests asserts all four visible help badges have click handlers and non-empty guidance."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -8390,7 +8409,44 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "closed_at_utc": "2026-07-01T12:52:05.9112460Z"
+    },
+    {
+      "id": "CR-163",
+      "tracking_number": "CR-163",
+      "priority": 1,
+      "area": "Finance News",
+      "title": "Bad configured AI key should visibly fall back to RSS instead of styled local summary",
+      "status": "closed",
+      "source": "manual_user_report",
+      "severity": "High",
+      "evidence": [
+        "User installed with the installer AI checkbox enabled and intentionally typed Garbage as the API key; first app launch still displayed Douglas-Adams/Vogon-style finance news.",
+        "Code inspection shows FinanceNewsService falls back to CreateSummarizedFallbackResult for AI HTTP failures, which locally generates styled summarized-looking items from RSS headlines, making a bad key look like working AI.",
+        "Expected user experience: invalid AI credentials fall back to RSS financial news and make the fallback understandable in a friendly non-modal way."
+      ],
+      "notes": [
+        "Acceptance: invalid AI auth such as 401/403 does not display locally stylized summarized/Vogon/Shakespeare fallback as if AI worked.",
+        "Acceptance: runtime Finance News falls back to RSS headlines for invalid credentials and traces the reason distinctly.",
+        "Acceptance: user receives friendly visible/non-blocking indication that AI news is unavailable and RSS is being used.",
+        "Acceptance: transient failures may continue to use cached or local fallback where appropriate, but bad credentials must not masquerade as successful AI style output.",
+        "Implemented during autonomous CR queue pass on 2026-07-01.",
+        "Focused local validation passed: dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~MainWindowViewModelValidationTests|FullyQualifiedName~ConfigTextConsistencyTests|FullyQualifiedName~ScreensaverRenderBehaviorTests|FullyQualifiedName~FinanceNewsServiceTests\" --nologo (200/200).",
+        "DeepSeek code review gate passed with no blocking findings: build\\deepseek-review\\deepseek-review-20260701-085020.md.",
+        "Invalid AI credentials (401/403) now use a plain RSS fallback with a friendly visible first headline instead of locally generated Vogon/Shakespeare fallback.",
+        "FinanceNewsService traces NewsSummaryInvalidCredentialsRssFallback and NewsSummaryPlainRssFallbackUsed for this path.",
+        "FinanceNewsServiceTests.GetHeadlinesAsync_SummarizedMode_InvalidAiCredentialsUsePlainRssFallback covers 401 and 403."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "closed_at_utc": "2026-07-01T12:52:05.9161606Z"
     }
   ],
   "remaining_validation_gaps": [],

@@ -1074,7 +1074,6 @@ public sealed class FinanceNewsServiceTests
     }
 
     [Theory]
-    [InlineData(HttpStatusCode.Unauthorized)]
     [InlineData(HttpStatusCode.TooManyRequests)]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
     public async Task GetHeadlinesAsync_SummarizedMode_AiHttpFailureUsesStructuredFallback(HttpStatusCode statusCode)
@@ -1126,6 +1125,56 @@ public sealed class FinanceNewsServiceTests
         Assert.Equal(2, headlines.Count);
         Assert.Contains("Markets brace for a", headlines[0], StringComparison.Ordinal);
         Assert.Equal("[[CLOSING_QUOTE]] \"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"", headlines[1]);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task GetHeadlinesAsync_SummarizedMode_InvalidAiCredentialsUsePlainRssFallback(HttpStatusCode statusCode)
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        int aiRequestCount = 0;
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    <rss><channel><item><title>Markets brace for a volatile week as oil and bonds diverge</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            aiRequestCount++;
+            return new HttpResponseMessage(statusCode)
+            {
+                Content = new StringContent(statusCode.ToString(), Encoding.UTF8, "text/plain")
+            };
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            AiWritingStyle = AiWritingStyle.DouglasAdams,
+            NewsRefreshMinutes = 15,
+            AiApiKey = "bad-key"
+        };
+
+        IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
+
+        Assert.Equal(1, aiRequestCount);
+        Assert.True(headlines.Count >= 2);
+        Assert.Contains("AI summarized financial news is unavailable", headlines[0], StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("showing RSS financial news", headlines[0], StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Markets brace for a volatile week", headlines[1], StringComparison.Ordinal);
+        Assert.DoesNotContain(headlines, headline => headline.Contains("[[CLOSING_QUOTE]]", StringComparison.Ordinal));
+        Assert.DoesNotContain(headlines, headline => headline.Contains("Nothing travels faster", StringComparison.Ordinal));
     }
 
     [Fact]

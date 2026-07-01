@@ -18,6 +18,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Xml.Linq;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
@@ -122,6 +123,30 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("DetailText", xaml, StringComparison.Ordinal);
         Assert.Contains("_networkWaitingViewModel.BounceWithinViewport = true;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_motionController.Step(_networkWaitingViewModel, GetWaitingBounds(), elapsedSeconds);", codeBehind, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BackgroundImages_StretchToScreenBoundsWithoutUniformCropping()
+    {
+        string xaml = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "ScreensaverSceneControl.xaml"));
+        XDocument document = XDocument.Parse(xaml);
+        XNamespace wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+        string[] backgroundStretchValues = document.Descendants(wpf + "Image")
+            .Where(element =>
+                element.Attribute(x + "Name")?.Value is "BackgroundImageA" or "BackgroundImageB")
+            .Select(element => element.Attribute("Stretch")?.Value ?? string.Empty)
+            .Order()
+            .ToArray();
+
+        Assert.True(backgroundStretchValues.SequenceEqual(["Fill", "Fill"]), string.Join(", ", backgroundStretchValues));
+        Assert.DoesNotContain("Stretch=\"UniformToFill\"", xaml, StringComparison.Ordinal);
     }
 
     [Fact]

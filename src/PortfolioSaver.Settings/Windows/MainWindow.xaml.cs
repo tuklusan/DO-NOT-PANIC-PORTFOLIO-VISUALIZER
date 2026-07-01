@@ -13,6 +13,8 @@
 // ============================================================================
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Threading;
 using System.ComponentModel;
 using PortfolioSaver.Config.ViewModels;
@@ -152,6 +154,32 @@ public partial class MainWindow : Window
 
         _validationProgressWindow.Closed -= OnValidationProgressWindowClosed;
         _validationProgressWindow = null;
+    }
+
+    private void OnHelpBadgeClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement element || element.ToolTip is null)
+            return;
+
+        bool createdTooltip = element.ToolTip is not System.Windows.Controls.ToolTip;
+        System.Windows.Controls.ToolTip tooltip = element.ToolTip as System.Windows.Controls.ToolTip ?? new System.Windows.Controls.ToolTip
+        {
+            Content = new TextBlock
+            {
+                Text = element.ToolTip.ToString() ?? string.Empty,
+                MaxWidth = 420,
+                TextWrapping = TextWrapping.Wrap
+            },
+            StaysOpen = false
+        };
+        tooltip.PlacementTarget = element;
+        tooltip.Placement = PlacementMode.Bottom;
+        if (createdTooltip)
+            element.ToolTip = tooltip;
+
+        if (!tooltip.IsOpen)
+            tooltip.IsOpen = true;
+        e.Handled = true;
     }
 
     private void OnWindowClosed(object? sender, EventArgs e)

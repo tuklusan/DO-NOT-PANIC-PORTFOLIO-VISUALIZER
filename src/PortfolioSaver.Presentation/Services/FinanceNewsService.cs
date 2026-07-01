@@ -443,6 +443,18 @@ public sealed class FinanceNewsService
                         new KeyValuePair<string, object?>("configured_model_id", configuredModelId));
                     continue;
                 }
+                catch (HttpRequestException ex) when (IsInvalidAiCredentialStatus(ex.StatusCode))
+                {
+                    string reason = $"ai-credentials-rejected-http-{(int)ex.StatusCode!.Value}";
+                    TraceNewsState(
+                        "NewsSummaryInvalidCredentialsRssFallback",
+                        new KeyValuePair<string, object?>("reason", reason),
+                        new KeyValuePair<string, object?>("attempt", attempt),
+                        new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                        new KeyValuePair<string, object?>("model_id", modelId),
+                        new KeyValuePair<string, object?>("configured_model_id", configuredModelId));
+                    return CreatePlainRssFallbackResult(context.Headlines, reason);
+                }
                 catch (Exception ex) when (IsRetryableSummaryException(ex) && attempt < MaxAiSummaryAttempts)
                 {
                     retryReason = ex.GetType().Name;
@@ -584,6 +596,9 @@ public sealed class FinanceNewsService
 
     private static bool IsRetryableSummaryException(Exception ex)
         => ex is HttpRequestException or JsonException;
+
+    private static bool IsInvalidAiCredentialStatus(System.Net.HttpStatusCode? statusCode)
+        => statusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden;
 
     private static Dictionary<string, object?> CreateSummarizedNewsPayload(
         string modelId,
@@ -1375,6 +1390,29 @@ public sealed class FinanceNewsService
             new KeyValuePair<string, object?>("item_count", structuredFallback.Count));
 
         return new(structuredFallback, structuredFallback.Count > 0);
+    }
+
+    private static NewsFetchResult CreatePlainRssFallbackResult(
+        IReadOnlyList<string> sourceHeadlines,
+        string reason)
+    {
+        List<string> rssFallback =
+        [
+            "AI summarized financial news is unavailable right now; showing RSS financial news instead."
+        ];
+        rssFallback.AddRange(sourceHeadlines
+            .Where(headline => !string.IsNullOrWhiteSpace(headline))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(8)
+            .Select(NormalizeSummaryLine));
+
+        TraceNewsState(
+            "NewsSummaryPlainRssFallbackUsed",
+            new KeyValuePair<string, object?>("reason", reason),
+            new KeyValuePair<string, object?>("source_headline_count", sourceHeadlines.Count),
+            new KeyValuePair<string, object?>("item_count", rssFallback.Count));
+
+        return new(rssFallback, true);
     }
 
     private static List<string> BuildLocalStructuredFallbackHeadlines(

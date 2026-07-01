@@ -108,8 +108,15 @@ public sealed class AiNewsAccessValidationService : IAiNewsAccessValidationServi
             using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
-                string reason = $"AI access was rejected by the provider ({(int)response.StatusCode}). Check the API key, endpoint URL, and model ID.";
+                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    TraceAiValidation("AiAccessValidationRateLimited", operationId, endpointUrl, modelId, $"http-{(int)response.StatusCode}");
+                    return AiNewsAccessValidationResult.Skipped(
+                        "AI provider rate-limited the validation probe. Settings were not rejected; the app will retry summarized news at runtime.");
+                }
+
                 TraceAiValidation("AiAccessValidationFailed", operationId, endpointUrl, modelId, $"http-{(int)response.StatusCode}");
+                string reason = $"AI access was rejected by the provider ({(int)response.StatusCode}). Check the API key, endpoint URL, and model ID.";
                 return AiNewsAccessValidationResult.Failed(reason);
             }
 

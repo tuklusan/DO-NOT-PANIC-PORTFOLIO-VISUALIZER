@@ -24,8 +24,9 @@
              mc:Ignorable="d">
     <Grid>
         <Grid IsHitTestVisible="False">
+            <!-- Intentionally stretch user-supplied backgrounds to screen bounds; CR-160 prefers distortion over crop. -->
             <Image x:Name="BackgroundImageA"
-                   Stretch="UniformToFill"
+                   Stretch="Fill"
                    Opacity="0.45"
                    RenderTransformOrigin="0.5,0.5">
                 <Image.RenderTransform>
@@ -36,7 +37,7 @@
                 </Image.RenderTransform>
             </Image>
             <Image x:Name="BackgroundImageB"
-                   Stretch="UniformToFill"
+                   Stretch="Fill"
                    Opacity="0"
                    RenderTransformOrigin="0.5,0.5">
                 <Image.RenderTransform>

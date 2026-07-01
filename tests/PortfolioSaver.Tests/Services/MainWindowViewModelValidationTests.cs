@@ -931,14 +931,68 @@ public sealed class MainWindowViewModelValidationTests
 
             await InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
 
-            Assert.Equal(1, aiValidation.CallCount);
-            Assert.Contains("AI NEWS ACCESS OK", vm.ValidationLogText, StringComparison.Ordinal);
+            Assert.Equal(0, aiValidation.CallCount);
+            Assert.Contains("AI NEWS ACCESS CHECK SKIPPED: AI ACCESS SETTINGS UNCHANGED", vm.ValidationLogText, StringComparison.Ordinal);
 
             vm.Groups[0].SpeedValue = 0.40d;
 
             await InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
 
-            Assert.Equal(1, aiValidation.CallCount);
+            Assert.Equal(0, aiValidation.CallCount);
+            Assert.Contains("AI NEWS ACCESS CHECK SKIPPED: AI ACCESS SETTINGS UNCHANGED", vm.ValidationLogText, StringComparison.Ordinal);
+            Assert.Contains("VALIDATION PASSED", vm.ValidationLogText, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", originalLocalDataRoot);
+            try
+            {
+                if (Directory.Exists(localDataRoot))
+                    Directory.Delete(localDataRoot, recursive: true);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ValidateConfigurationAsync_WithUnchangedSavedAiSettings_SkipsFirstWindowLiveAiProbe()
+    {
+        string localDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(localDataRoot);
+        string? originalLocalDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", localDataRoot);
+
+        try
+        {
+            AppSettings saved = Defaults.CreateSettings();
+            saved.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+            saved.AiApiKey = "test-saved-openrouter-key";
+            saved.AiEndpointUrl = "https://openrouter.ai/api/v1/";
+            saved.AiModelId = Defaults.DefaultAiModelId;
+            saved.Groups =
+            [
+                new TickerGroup
+                {
+                    Name = "Test",
+                    Enabled = true,
+                    Speed = 0.30d,
+                    Tickers = [new TickerItem { Symbol = "AAPL", Enabled = true }]
+                }
+            ];
+            new SettingsFileService().Save(saved);
+
+            FakeAiNewsAccessValidationService aiValidation = new(AiNewsAccessValidationResult.Failed("Unexpected live AI probe."));
+            MainWindowViewModel vm = CreateIsolatedViewModel(
+                new FakeConnectivityService(initiallyAvailable: true),
+                aiValidation,
+                new CountingYahooSymbolValidationService());
+            vm.Groups[0].SpeedValue = 0.40d;
+
+            await InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
+
+            Assert.Equal(0, aiValidation.CallCount);
             Assert.Contains("AI NEWS ACCESS CHECK SKIPPED: AI ACCESS SETTINGS UNCHANGED", vm.ValidationLogText, StringComparison.Ordinal);
             Assert.Contains("VALIDATION PASSED", vm.ValidationLogText, StringComparison.Ordinal);
         }
@@ -1094,6 +1148,22 @@ public sealed class MainWindowViewModelValidationTests
 
         Assert.False(result.IsValid);
         Assert.Contains("timed out", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AiNewsAccessValidationService_SummarizedMode_Treats429AsTransientSkippedValidation()
+    {
+        AiNewsAccessValidationService service = new(_ => new HttpClient(new FakeHttpMessageHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.TooManyRequests))));
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+        settings.AiApiKey = "test-key";
+
+        AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
+
+        Assert.True(result.IsValid);
+        Assert.True(result.ValidationSkipped);
+        Assert.Contains("rate-limited", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
