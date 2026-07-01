@@ -97,15 +97,8 @@ Type: dirifempty; Name: "{autopf}\{#AppPublisher}"
 
 [Code]
 var
-  AiSetupPage: TWizardPage;
-  AiSetupCheckBox: TNewCheckBox;
-  AiInstructionsLabel: TNewStaticText;
-  AiApiKeyLabel: TNewStaticText;
-  AiEndpointLabel: TNewStaticText;
-  AiModelLabel: TNewStaticText;
-  AiApiKeyEdit: TPasswordEdit;
-  AiEndpointEdit: TNewEdit;
-  AiModelEdit: TNewEdit;
+  AiChoicePage: TInputOptionWizardPage;
+  AiSetupPage: TInputQueryWizardPage;
 
 function JsonEscape(Value: String): String;
 var
@@ -124,88 +117,33 @@ begin
   Result := Value;
 end;
 
-procedure SetAiControlsEnabled(Enabled: Boolean);
+function IsAiSetupRequested(): Boolean;
 begin
-  AiApiKeyLabel.Enabled := Enabled;
-  AiEndpointLabel.Enabled := Enabled;
-  AiModelLabel.Enabled := Enabled;
-  AiApiKeyEdit.Enabled := Enabled;
-  AiEndpointEdit.Enabled := Enabled;
-  AiModelEdit.Enabled := Enabled;
-end;
-
-procedure AiSetupCheckBoxClick(Sender: TObject);
-begin
-  SetAiControlsEnabled(AiSetupCheckBox.Checked);
+  Result := Assigned(AiChoicePage) and AiChoicePage.Values[0];
 end;
 
 procedure InitializeWizard();
 begin
-  AiSetupPage := CreateCustomPage(
+  AiChoicePage := CreateInputOptionPage(
     wpSelectTasks,
     'Optional AI News Setup',
-    'Configure optional AI-summarized financial news.');
+    'Configure optional AI-summarized financial news.',
+    'RSS financial news is the default and does not require an API key. Select this option only if you want the installer to save AI access settings now.',
+    False,
+    False);
+  AiChoicePage.Add('Configure AI-summarized financial news now');
+  AiChoicePage.Values[0] := False;
 
-  AiSetupCheckBox := TNewCheckBox.Create(AiSetupPage);
-  AiSetupCheckBox.Parent := AiSetupPage.Surface;
-  AiSetupCheckBox.Left := 0;
-  AiSetupCheckBox.Top := ScaleY(6);
-  AiSetupCheckBox.Width := AiSetupPage.SurfaceWidth;
-  AiSetupCheckBox.Caption := 'Configure AI-summarized financial news now';
-  AiSetupCheckBox.OnClick := @AiSetupCheckBoxClick;
-
-  AiInstructionsLabel := TNewStaticText.Create(AiSetupPage);
-  AiInstructionsLabel.Parent := AiSetupPage.Surface;
-  AiInstructionsLabel.Left := 0;
-  AiInstructionsLabel.Top := AiSetupCheckBox.Top + ScaleY(26);
-  AiInstructionsLabel.Width := AiSetupPage.SurfaceWidth;
-  AiInstructionsLabel.Height := ScaleY(54);
-  AiInstructionsLabel.WordWrap := True;
-  AiInstructionsLabel.Caption :=
-    'Example free personal setup: visit openrouter.ai, create an Individual key, and paste it here. Endpoint and model can be changed for another compatible AI engine.';
-
-  AiApiKeyLabel := TNewStaticText.Create(AiSetupPage);
-  AiApiKeyLabel.Parent := AiSetupPage.Surface;
-  AiApiKeyLabel.Left := 0;
-  AiApiKeyLabel.Top := AiInstructionsLabel.Top + AiInstructionsLabel.Height + ScaleY(12);
-  AiApiKeyLabel.Width := ScaleX(104);
-  AiApiKeyLabel.Caption := 'AI API key:';
-
-  AiApiKeyEdit := TPasswordEdit.Create(AiSetupPage);
-  AiApiKeyEdit.Parent := AiSetupPage.Surface;
-  AiApiKeyEdit.Left := ScaleX(112);
-  AiApiKeyEdit.Top := AiApiKeyLabel.Top - ScaleY(3);
-  AiApiKeyEdit.Width := AiSetupPage.SurfaceWidth - AiApiKeyEdit.Left;
-
-  AiEndpointLabel := TNewStaticText.Create(AiSetupPage);
-  AiEndpointLabel.Parent := AiSetupPage.Surface;
-  AiEndpointLabel.Left := 0;
-  AiEndpointLabel.Top := AiApiKeyLabel.Top + ScaleY(30);
-  AiEndpointLabel.Width := ScaleX(104);
-  AiEndpointLabel.Caption := 'Endpoint URL:';
-
-  AiEndpointEdit := TNewEdit.Create(AiSetupPage);
-  AiEndpointEdit.Parent := AiSetupPage.Surface;
-  AiEndpointEdit.Left := ScaleX(112);
-  AiEndpointEdit.Top := AiEndpointLabel.Top - ScaleY(3);
-  AiEndpointEdit.Width := AiSetupPage.SurfaceWidth - AiEndpointEdit.Left;
-  AiEndpointEdit.Text := 'https://openrouter.ai/api/v1';
-
-  AiModelLabel := TNewStaticText.Create(AiSetupPage);
-  AiModelLabel.Parent := AiSetupPage.Surface;
-  AiModelLabel.Left := 0;
-  AiModelLabel.Top := AiEndpointLabel.Top + ScaleY(30);
-  AiModelLabel.Width := ScaleX(104);
-  AiModelLabel.Caption := 'Model ID:';
-
-  AiModelEdit := TNewEdit.Create(AiSetupPage);
-  AiModelEdit.Parent := AiSetupPage.Surface;
-  AiModelEdit.Left := ScaleX(112);
-  AiModelEdit.Top := AiModelLabel.Top - ScaleY(3);
-  AiModelEdit.Width := AiSetupPage.SurfaceWidth - AiModelEdit.Left;
-  AiModelEdit.Text := 'openrouter/free';
-
-  SetAiControlsEnabled(False);
+  AiSetupPage := CreateInputQueryPage(
+    AiChoicePage.ID,
+    'AI News Access',
+    'Enter optional AI API access details.',
+    'Example free personal setup: visit openrouter.ai, sign up for a free Individual account, create an API key, and paste it here. You may also change the endpoint and model for another compatible AI engine.');
+  AiSetupPage.Add('AI API key:', True);
+  AiSetupPage.Add('Endpoint URL:', False);
+  AiSetupPage.Add('Model ID:', False);
+  AiSetupPage.Values[1] := 'https://openrouter.ai/api/v1';
+  AiSetupPage.Values[2] := 'openrouter/free';
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
@@ -213,17 +151,24 @@ begin
   Result := True;
   if CurPageID = AiSetupPage.ID then
   begin
-    if AiSetupCheckBox.Checked then
+    if IsAiSetupRequested() then
     begin
-      if (Trim(AiApiKeyEdit.Text) = '') or
-         (Trim(AiEndpointEdit.Text) = '') or
-         (Trim(AiModelEdit.Text) = '') then
+      if (Trim(AiSetupPage.Values[0]) = '') or
+         (Trim(AiSetupPage.Values[1]) = '') or
+         (Trim(AiSetupPage.Values[2]) = '') then
       begin
-        MsgBox('Enter AI API key, endpoint URL, and model ID, or clear the checkbox to skip AI setup.', mbError, MB_OK);
+        MsgBox('Enter AI API key, endpoint URL, and model ID, or go back and clear the AI setup option.', mbError, MB_OK);
         Result := False;
       end;
     end;
   end;
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+  if Assigned(AiSetupPage) and (PageID = AiSetupPage.ID) then
+    Result := not IsAiSetupRequested();
 end;
 
 procedure SaveOptionalAiSettings();
@@ -235,7 +180,7 @@ var
   MergeScript: String;
   ResultCode: Integer;
 begin
-  if not AiSetupCheckBox.Checked then
+  if not IsAiSetupRequested() then
     Exit;
 
   SettingsDir := ExpandConstant('{localappdata}\DoNotPanicPortfolioVisualizer');
@@ -245,9 +190,9 @@ begin
   Json :=
     '{'#13#10 +
     '  "NewsScrollerMode": 0,'#13#10 +
-    '  "AiApiKey": "' + JsonEscape(Trim(AiApiKeyEdit.Text)) + '",'#13#10 +
-    '  "AiEndpointUrl": "' + JsonEscape(Trim(AiEndpointEdit.Text)) + '",'#13#10 +
-    '  "AiModelId": "' + JsonEscape(Trim(AiModelEdit.Text)) + '",'#13#10 +
+    '  "AiApiKey": "' + JsonEscape(Trim(AiSetupPage.Values[0])) + '",'#13#10 +
+    '  "AiEndpointUrl": "' + JsonEscape(Trim(AiSetupPage.Values[1])) + '",'#13#10 +
+    '  "AiModelId": "' + JsonEscape(Trim(AiSetupPage.Values[2])) + '",'#13#10 +
     '  "NewsRefreshMinutes": 30'#13#10 +
     '}'#13#10;
   SaveStringToFile(ImportPath, Json, False);

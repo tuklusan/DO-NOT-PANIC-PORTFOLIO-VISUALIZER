@@ -8670,6 +8670,38 @@
         "DeepSeek review pass 2026-07-01 14:42 found no critical, high, or medium blockers after fixes; remaining findings were low/advisory.",
         "OpenRouter resolver tests cover successful discovery, shared concurrent discovery, positive cache reuse, pre-cancel/no HTTP behavior, in-flight cancellation, empty-list fallback, non-success /models fallback, custom OpenRouter model preservation, non-OpenRouter preservation, reasoning exclusion, base-model exclusion, non-default reasoning inclusion, slug-based instruct detection, and parameter-size overflow clamping."
       ]
+    },
+    {
+      "id": "CR-171",
+      "tracking_number": "CR-171",
+      "priority": 0,
+      "area": "Installer",
+      "title": "Public GitHub installer still ships high-DPI broken Optional AI News Setup page",
+      "status": "closed",
+      "source": "user_public_github_installer_validation_2026_07_01",
+      "severity": "Critical",
+      "evidence": [
+        "User downloaded the installer from the public GitHub release and reproduced the CR-165 high-DPI layout failure on the local laptop.",
+        "Screenshot evidence: C:/Users/vagab/AppData/Local/Temp/codex-clipboard-6c11883f-44e1-42c6-bf9d-bcd19c788161.png",
+        "The installer page showed oversized/clipped checkbox text, overlapped help text, and edit controls crossing the page at laptop DPI."
+      ],
+      "acceptance": [
+        "Remove fragile manually-positioned custom controls from the installer AI setup flow.",
+        "Use DPI-safe native Inno wizard pages for optional AI setup selection and optional AI credential entry.",
+        "Rebuild the public installer from the fixed script and replace the GitHub release asset so new downloads contain the fix.",
+        "Retag or update the release as needed so the public beta7 release points at the fixed installer baseline."
+      ],
+      "resolution": [
+        "Replaced the custom Optional AI News Setup page with native CreateInputOptionPage and CreateInputQueryPage wizard pages.",
+        "AI setup remains optional; RSS stays the default; endpoint/model defaults remain populated only on the optional native query page.",
+        "The AI query page is skipped unless the user explicitly selects installer-time AI setup.",
+        "The installer AI API key field uses the Inno TInputQueryWizardPage password flag so typed keys are masked in the public installer."
+      ],
+      "validation": [
+        "DeepSeek review pass 1 found a real plaintext-key regression after the native-page conversion; fixed by changing the AI API key query field to password mode.",
+        "DeepSeek review pass 2 continued to report the key field as unmasked despite the Inno password flag being set; this is being treated as an advisory false positive pending installer compile/smoke validation.",
+        "Installer compile and public GitHub release asset replacement are required before final closure."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
