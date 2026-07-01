@@ -73,15 +73,10 @@
                                Foreground="#E5EDF4"
                                FontSize="15"
                                Margin="0,0,0,16" />
-                    <TextBlock Text="BETA-7 desktop baseline. This build combines the top-level market ribbon, world markets, progressive ticker tapes, teleprinter-style finance news, and exchange-photo backgrounds under the DO NOT PANIC identity."
+                    <TextBlock Text="DO NOT PANIC PORTFOLIO VISUALIZER is a decorative desktop market visualizer with animated ticker tapes, macro and world-market ribbons, graph cards, finance-news flavor text, and rotating exchange/city backgrounds. It is for ambient information and entertainment only: it absolutely must not be used as a financial planning, trading, alerting, advice, portfolio-monitoring, or decision-support tool."
                                Foreground="#C9D8E4"
                                TextWrapping="Wrap"
                                FontSize="14"
-                               Margin="0,0,0,10" />
-                    <TextBlock Text="The revision-3 brand assets are now the shared icon and splash sources for runtime surfaces so the desktop shell, config app, legacy screensaver host, and installer all present one coherent product identity."
-                               Foreground="#AFC3D2"
-                               TextWrapping="Wrap"
-                               FontSize="13"
                                Margin="0,0,0,18" />
                     <TextBlock Text="License Text"
                                Foreground="White"

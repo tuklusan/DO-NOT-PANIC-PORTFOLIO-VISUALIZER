@@ -8072,6 +8072,113 @@
         "Focused tests pass and no local testhost modal is produced.",
         "Ticket is marked closed with trace root cause and local validation evidence."
       ]
+    },
+    {
+      "id": "CR-153",
+      "tracking_number": "CR-153",
+      "priority": 2,
+      "area": "desktop_about_ux",
+      "title": "Revise About screen description and financial-use disclaimer",
+      "status": "closed",
+      "source": "user_request",
+      "severity": "Medium",
+      "evidence": [
+        "User requested About screen copy cleanup: remove the existing second paragraph before the License section, and replace the only remaining paragraph with a concise product feature description plus a clear statement that the program absolutely cannot be used as a financial planning or monitoring tool.",
+        "Affected surface: Help -> About desktop window, including any tests/documentation that assert About text content.",
+        "Implemented in src/PortfolioSaver.Desktop/Windows/AboutWindow.xaml: the two old pre-license paragraphs were replaced with one concise feature/disclaimer paragraph.",
+        "Regression coverage updated in tests/PortfolioSaver.Tests/Services/DesktopShellMigrationTests.cs to assert the new About description and removal of the old Beta/revision copy.",
+        "dotnet test PortfolioScreensaver.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run",
+        "DeepSeek closure review reports no blocking findings: build/deepseek-review/deepseek-review-20260630-214904.md"
+      ],
+      "notes": [
+        "The About screen should have one short, well-written paragraph before the License section.",
+        "The paragraph should summarize the visualizer features without sounding like investment software.",
+        "The disclaimer must be explicit: the app is not a financial planning, advice, trading, alerting, or monitoring tool and must not be relied on for financial decisions.",
+        "Closed after local regression and DeepSeek review confirmed the About text change matches the requested UX/legal disclaimer."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "resolution": "fixed",
+      "closed_date": "2026-07-01"
+    },
+    {
+      "id": "CR-154",
+      "tracking_number": "CR-154",
+      "priority": 1,
+      "area": "config_ai_validation_ux",
+      "title": "Config validation incorrectly blocks non-AI tape-only changes with AI access rejection",
+      "status": "closed",
+      "source": "user_reported_blocker",
+      "severity": "Critical",
+      "evidence": [
+        "Screenshot evidence: docs\\cr-evidence\\CR-154-ai-access-validation-blocker.png",
+        "User reports AI financial news is already working in runtime, but opening Settings and changing only tape speed/direction triggers AI News Access Required with provider 401 on Validate.",
+        "Visible modal: \"AI access was rejected by the provider (401). Check the API key, endpoint URL, and model ID.\"",
+        "This blocks saving unrelated configuration changes and contradicts runtime behavior where AI/news path appears active.",
+        "Addendum: user reports that even pasting the correct AI API key into the configuration screen still produces the AI access rejection/validation failure.",
+        "Root cause: config validation always re-probed AI access for summarized-news mode and AppSettingsNormalizer allowed environment fallback to override an explicit key pasted/saved in Settings.",
+        "Implemented explicit saved-key precedence over environment fallback in src/PortfolioSaver.Core/Services/AppSettingsNormalizer.cs; README documents saved key > environment variable behavior.",
+        "Implemented MainWindowViewModel AI-validation lifecycle: first summarized-news validation in a settings window probes AI access; subsequent validations skip the AI probe when AI fields are unchanged; AI field/mode changes still force validation.",
+        "Added/updated tests in MainWindowViewModelValidationTests and AppSettingsNormalizerTests covering explicit pasted-key precedence, RSS-to-AI validation, first summarized validation, and tape-only edits after successful AI validation.",
+        "dotnet test PortfolioScreensaver.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run",
+        "DeepSeek closure review reports no blocking findings: build/deepseek-review/deepseek-review-20260630-214904.md"
+      ],
+      "notes": [
+        "Huge blocker: validation must not fail unrelated settings changes merely because an AI access probe returns transient/provider-specific 401 when AI configuration was not changed.",
+        "Analyze whether config validation is over-validating AI access on every Save/Validate instead of validating only when AI settings or AI-enabled mode changed, or whether config and runtime use different API-key sources/environment scopes.",
+        "Verify OpenRouter environment/config precedence, installed runtime vs config app process environment, masked key persistence, endpoint/model routing, and immediate-apply behavior.",
+        "This reduces likelihood of simple user key-entry error and increases priority of checking config-app validation request construction, masked key handling, environment fallback precedence, endpoint/model defaults, OpenRouter authorization headers, and whether the validator is probing a different provider/path than runtime news generation.",
+        "Closed with screenshot evidence retained in docs/cr-evidence and local coverage for the exact config-validation blocker path."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "resolution": "fixed",
+      "closed_date": "2026-07-01"
+    },
+    {
+      "id": "CR-155",
+      "tracking_number": "CR-155",
+      "priority": 1,
+      "area": "config_background_runtime_apply",
+      "title": "Background folder changes do not refresh scene immediately after OK",
+      "status": "closed",
+      "source": "user_reported_blocker",
+      "severity": "High",
+      "evidence": [
+        "User changed the custom background image folder to C:\\Windows and clicked OK after validation.",
+        "Expected behavior: the running scene should immediately refresh/re-evaluate background selection after OK, using images from the new folder if present or showing the defined no-image/default fallback if the folder has no usable images.",
+        "Actual behavior: the existing background stayed visible and did not change, indicating the background runtime did not immediately apply the saved folder setting.",
+        "Implemented immediate config-resume background catalog refresh in src/PortfolioSaver.Presentation/Controls/ScreensaverSceneControl.xaml.cs.",
+        "RefreshBackgroundCatalogFromSettings now rescans the active settings catalog, invalidates stale current backgrounds, clears both image layers for no-image fallback, traces BackgroundCatalogRescanned, and re-arms timers.",
+        "Added background decision tests in ScreensaverRenderBehaviorTests for invalid current path, expanded catalog with current still valid, and unchanged catalog behavior.",
+        "dotnet test PortfolioScreensaver.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run",
+        "DeepSeek closure review reports no blocking findings: build/deepseek-review/deepseek-review-20260630-214904.md"
+      ],
+      "notes": [
+        "Analyze configuration OK/apply path for background settings and the runtime background image selector/rescan lifecycle.",
+        "A custom folder change must invalidate any active/current background selected from the previous folder or downloaded/default pool.",
+        "If the new folder contains no supported images, the UI should not keep showing a stale image from the previous source as though it still applies; use the project-defined blank/default/no-image behavior instead.",
+        "Closed with local decision-seam coverage for the immediate background refresh/no-stale-image behavior."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ],
+      "resolution": "fixed",
+      "closed_date": "2026-07-01"
     }
   ],
   "remaining_validation_gaps": [],

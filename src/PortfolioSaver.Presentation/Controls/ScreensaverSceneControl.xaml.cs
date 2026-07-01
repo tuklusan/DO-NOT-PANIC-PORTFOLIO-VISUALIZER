@@ -199,20 +199,7 @@ public partial class ScreensaverSceneControl : UserControl
 
         _ = Dispatcher.BeginInvoke(new Action(() =>
         {
-            (IReadOnlyList<string> paths, IReadOnlyDictionary<string, string> attributions) = _startupCoordinator.GetCurrentBackgroundCatalog();
-            _backgroundAttributions = attributions;
-            _backgroundPaths = paths
-                .Where(IsSupportedBackgroundReference)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            if (string.IsNullOrWhiteSpace(_currentBackgroundPath) || !_backgroundPaths.Contains(_currentBackgroundPath, StringComparer.OrdinalIgnoreCase))
-                _currentBackgroundPath = null;
-            else
-                UpdateFooterAttribution(_currentBackgroundPath);
-            ConfigureTimers();
-            TraceSceneState(
-                "BackgroundCatalogRescanned",
-                new KeyValuePair<string, object?>("background_count", _backgroundPaths.Count));
+            RefreshBackgroundCatalogFromSettings("warmup-complete");
         }), DispatcherPriority.Background);
     }
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -1238,7 +1225,7 @@ public partial class ScreensaverSceneControl : UserControl
             return;
         }
 
-        ConfigureTimers();
+        RefreshBackgroundCatalogFromSettings("config-resume");
         if (_initialized)
             _ = RefreshSceneAfterValidationPauseAsync();
 
@@ -1256,6 +1243,67 @@ public partial class ScreensaverSceneControl : UserControl
         _worldDataTimer.Stop();
         _motionTimer.Stop();
     }
+
+    private void RefreshBackgroundCatalogFromSettings(string reason)
+    {
+        _backgroundPaths ??= [];
+        _backgroundAttributions ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        (IReadOnlyList<string> paths, IReadOnlyDictionary<string, string> attributions) = _startupCoordinator.GetCurrentBackgroundCatalog();
+        List<string> refreshedPaths = paths
+            .Where(IsSupportedBackgroundReference)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        BackgroundCatalogRefreshDecision decision = DecideBackgroundCatalogRefresh(
+            _currentBackgroundPath,
+            _backgroundPaths,
+            refreshedPaths);
+
+        _backgroundAttributions = attributions;
+        _backgroundPaths = refreshedPaths;
+        if (!decision.CurrentStillValid)
+        {
+            _currentBackgroundPath = null;
+            _ = RotateBackgroundAsync(forceDifferent: false);
+        }
+        else if (decision.ShouldForceDifferentRotation)
+        {
+            _ = RotateBackgroundAsync(forceDifferent: true);
+        }
+        else
+        {
+            UpdateFooterAttribution(_currentBackgroundPath);
+        }
+
+        ConfigureTimers();
+        TraceSceneState(
+            "BackgroundCatalogRescanned",
+            new KeyValuePair<string, object?>("reason", reason),
+            new KeyValuePair<string, object?>("background_count", _backgroundPaths.Count),
+            new KeyValuePair<string, object?>("catalog_changed", decision.CatalogChanged),
+            new KeyValuePair<string, object?>("current_still_valid", decision.CurrentStillValid));
+    }
+
+    internal static BackgroundCatalogRefreshDecision DecideBackgroundCatalogRefresh(
+        string? currentBackgroundPath,
+        IReadOnlyList<string> existingPaths,
+        IReadOnlyList<string> refreshedPaths)
+    {
+        bool currentStillValid = !string.IsNullOrWhiteSpace(currentBackgroundPath) &&
+                                 refreshedPaths.Contains(currentBackgroundPath, StringComparer.OrdinalIgnoreCase);
+        bool catalogChanged = !refreshedPaths.SequenceEqual(existingPaths, StringComparer.OrdinalIgnoreCase);
+        return new BackgroundCatalogRefreshDecision(
+            catalogChanged,
+            currentStillValid,
+            ShouldRotate: !currentStillValid || catalogChanged,
+            ShouldForceDifferentRotation: currentStillValid && catalogChanged);
+    }
+
+    internal readonly record struct BackgroundCatalogRefreshDecision(
+        bool CatalogChanged,
+        bool CurrentStillValid,
+        bool ShouldRotate,
+        bool ShouldForceDifferentRotation);
 
     private async Task RefreshSceneAfterValidationPauseAsync()
     {
@@ -2830,11 +2878,10 @@ public partial class ScreensaverSceneControl : UserControl
             _currentBackgroundBitmap = null;
             _committedBackgroundSource = null;
             SetBackgroundZoomRunning(false, "background-cleared");
-            if (_activeBackgroundImage is not null)
-                _activeBackgroundImage.Source = null;
-            if (_inactiveBackgroundImage is not null)
-                _inactiveBackgroundImage.Source = null;
+            ClearBackgroundImageLayer(_activeBackgroundImage);
+            ClearBackgroundImageLayer(_inactiveBackgroundImage);
             UpdateFooterAttribution(null);
+            TraceSceneState("BackgroundCleared");
             return;
         }
 
@@ -2885,6 +2932,17 @@ public partial class ScreensaverSceneControl : UserControl
 
         if (FooterAttributionWatermark is not null)
             FooterAttributionWatermark.Text = FooterBaseText + " | Image: " + attribution.Trim();
+    }
+
+    private static void ClearBackgroundImageLayer(Image? image)
+    {
+        if (image is null)
+            return;
+
+        StopBackgroundAnimations(image);
+        image.Source = null;
+        image.Opacity = 0d;
+        ResetBackgroundTransform(image);
     }
 
     private void ApplyDimOpacity(double opacity)

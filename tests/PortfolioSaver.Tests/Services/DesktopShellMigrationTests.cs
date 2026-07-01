@@ -174,13 +174,16 @@ public sealed class DesktopShellMigrationTests
 
         Assert.Contains("Source=\"/Assets/Branding/dnppv-icon-rev-3-splash.png\"", xaml, StringComparison.Ordinal);
         Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER", xaml, StringComparison.Ordinal);
-        Assert.Contains("BETA-7 desktop baseline", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("BETA-7 desktop baseline", xaml, StringComparison.Ordinal);
         Assert.Contains("Publisher: {AppIdentity.PublisherName}", code, StringComparison.Ordinal);
         Assert.Contains("Author: {AppIdentity.AuthorName}", code, StringComparison.Ordinal);
         Assert.Contains("License: {AppIdentity.LicenseName}", code, StringComparison.Ordinal);
         Assert.Contains("FullLicenseText", code, StringComparison.Ordinal);
         Assert.Contains("License Text", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding FullLicenseText}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("decorative desktop market visualizer", xaml, StringComparison.Ordinal);
+        Assert.Contains("absolutely must not be used as a financial planning", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("The revision-3 brand assets are now", xaml, StringComparison.Ordinal);
     }
 
     private static string GetRepoRoot()

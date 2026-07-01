@@ -1836,7 +1836,13 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("BackgroundAttributions", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("UpdateFooterAttribution(backgroundPath);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("QueueBackgroundCatalogRescan", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RefreshBackgroundCatalogFromSettings(\"config-resume\")", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RotateBackgroundAsync(forceDifferent: false)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RotateBackgroundAsync(forceDifferent: true)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundCatalogRescanned", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ClearBackgroundImageLayer(_activeBackgroundImage);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ClearBackgroundImageLayer(_inactiveBackgroundImage);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TraceSceneState(\"BackgroundCleared\")", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("FontSize=\"19\"", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("DropShadowEffect", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("VersionWatermark.Text = PortfolioVersion.SemanticVersion;", sceneCodeBehind, StringComparison.Ordinal);
@@ -1850,6 +1856,51 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("StableClockFont", floatingClockXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("SevenSegmentDigitConverter", statusBarXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("SevenSegmentDigitConverter", floatingClockXaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BackgroundCatalogRefreshDecision_InvalidCurrentPath_RotatesWithoutForceDifferent()
+    {
+        ScreensaverSceneControl.BackgroundCatalogRefreshDecision decision =
+            ScreensaverSceneControl.DecideBackgroundCatalogRefresh(
+                @"C:\old\background.jpg",
+                [@"C:\old\background.jpg"],
+                [@"C:\new\background.jpg"]);
+
+        Assert.True(decision.CatalogChanged);
+        Assert.False(decision.CurrentStillValid);
+        Assert.True(decision.ShouldRotate);
+        Assert.False(decision.ShouldForceDifferentRotation);
+    }
+
+    [Fact]
+    public void BackgroundCatalogRefreshDecision_CatalogChangedButCurrentStillValid_ForcesDifferentRotation()
+    {
+        ScreensaverSceneControl.BackgroundCatalogRefreshDecision decision =
+            ScreensaverSceneControl.DecideBackgroundCatalogRefresh(
+                @"C:\shared\background.jpg",
+                [@"C:\shared\background.jpg"],
+                [@"C:\shared\background.jpg", @"C:\shared\second.jpg"]);
+
+        Assert.True(decision.CatalogChanged);
+        Assert.True(decision.CurrentStillValid);
+        Assert.True(decision.ShouldRotate);
+        Assert.True(decision.ShouldForceDifferentRotation);
+    }
+
+    [Fact]
+    public void BackgroundCatalogRefreshDecision_UnchangedCatalogAndCurrentStillValid_DoesNotRotate()
+    {
+        ScreensaverSceneControl.BackgroundCatalogRefreshDecision decision =
+            ScreensaverSceneControl.DecideBackgroundCatalogRefresh(
+                @"C:\shared\background.jpg",
+                [@"C:\shared\background.jpg", @"C:\shared\second.jpg"],
+                [@"C:\shared\background.jpg", @"C:\shared\second.jpg"]);
+
+        Assert.False(decision.CatalogChanged);
+        Assert.True(decision.CurrentStillValid);
+        Assert.False(decision.ShouldRotate);
+        Assert.False(decision.ShouldForceDifferentRotation);
     }
 
     [Fact]

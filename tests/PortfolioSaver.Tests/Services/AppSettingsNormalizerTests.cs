@@ -12,6 +12,7 @@
 // patent, trademark, and governing-law provisions.
 // ============================================================================
 using Xunit;
+using System.Reflection;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
@@ -19,8 +20,35 @@ using PortfolioSaver.Core.Services;
 
 namespace PortfolioSaver.Tests.Services;
 
+[Collection("EnvironmentSerial")]
 public sealed class AppSettingsNormalizerTests
 {
+    [Fact]
+    public void Clone_CopiesAllWritableSettingsGraphPropertiesAndDeepCopiesLists()
+    {
+        AppSettings settings = new();
+        SetDistinctWritableProperties(settings, nameof(AppSettings.Groups));
+        TickerGroup group = new();
+        SetDistinctWritableProperties(group, nameof(TickerGroup.Tickers));
+        TickerItem ticker = new();
+        SetDistinctWritableProperties(ticker);
+        group.Tickers = [ticker];
+        settings.Groups = [group];
+
+        AppSettings clone = settings.Clone();
+
+        Assert.NotSame(settings, clone);
+        AssertEquivalentWritableProperties(settings, clone, nameof(AppSettings.Groups));
+        Assert.NotSame(settings.Groups, clone.Groups);
+        TickerGroup clonedGroup = Assert.Single(clone.Groups);
+        Assert.NotSame(group, clonedGroup);
+        AssertEquivalentWritableProperties(group, clonedGroup, nameof(TickerGroup.Tickers));
+        Assert.NotSame(group.Tickers, clonedGroup.Tickers);
+        TickerItem clonedTicker = Assert.Single(clonedGroup.Tickers);
+        Assert.NotSame(ticker, clonedTicker);
+        AssertEquivalentWritableProperties(ticker, clonedTicker);
+    }
+
     [Fact]
     public void Normalize_ClampsTickersPerTapeToEight()
     {
@@ -135,7 +163,7 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
-    public void Normalize_AiApiKey_PrefersOpenRouterEnvironmentVariable_OverPersistedValue()
+    public void Normalize_AiApiKey_PrefersExplicitConfiguredValue_OverOpenRouterEnvironmentVariable()
     {
         const string environmentName = "OPENROUTER_AI_API_KEY";
         string? previous = Environment.GetEnvironmentVariable(environmentName);
@@ -148,7 +176,7 @@ public sealed class AppSettingsNormalizerTests
 
             AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
-            Assert.Equal("test-env-openrouter-key", normalized.DeepSeekApiKey);
+            Assert.Equal("test-persisted-deepseek-key", normalized.DeepSeekApiKey);
         }
         finally
         {
@@ -200,7 +228,7 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
-    public void Normalize_AiApiKey_UsesDocumentedEnvironmentVariablePrecedence()
+    public void Normalize_AiApiKey_UsesDocumentedEnvironmentVariablePrecedence_WhenExplicitKeyMissing()
     {
         IReadOnlyList<string> names = Defaults.AiApiKeyEnvironmentVariableNames;
         Dictionary<string, string?> previous = CaptureEnvironmentVariables(names);
@@ -211,7 +239,7 @@ public sealed class AppSettingsNormalizerTests
                 Environment.SetEnvironmentVariable(names[index], $"key-{index}");
 
             AppSettings settings = Defaults.CreateSettings();
-            settings.DeepSeekApiKey = "persisted-key";
+            settings.DeepSeekApiKey = string.Empty;
 
             AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
@@ -348,5 +376,64 @@ public sealed class AppSettingsNormalizerTests
         AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
         Assert.Equal("https://localhost:11434/v1", normalized.DeepSeekEndpointUrl);
+    }
+
+    private static void SetDistinctWritableProperties(object target, params string[] excludedPropertyNames)
+    {
+        HashSet<string> excluded = excludedPropertyNames.ToHashSet(StringComparer.Ordinal);
+        PropertyInfo[] properties = target.GetType()
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Where(property => property.CanRead && property.CanWrite && !excluded.Contains(property.Name))
+            .ToArray();
+
+        for (int index = 0; index < properties.Length; index++)
+        {
+            PropertyInfo property = properties[index];
+            Type propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+            object value;
+            if (propertyType == typeof(string))
+            {
+                value = $"clone-test-{target.GetType().Name}-{property.Name}";
+            }
+            else if (propertyType == typeof(int))
+            {
+                value = 1000 + index;
+            }
+            else if (propertyType == typeof(double))
+            {
+                value = 1000.25d + index;
+            }
+            else if (propertyType == typeof(decimal))
+            {
+                value = 1000.50m + index;
+            }
+            else if (propertyType == typeof(bool))
+            {
+                value = !(bool)(property.GetValue(target) ?? false);
+            }
+            else if (propertyType.IsEnum)
+            {
+                Array values = Enum.GetValues(propertyType);
+                object current = property.GetValue(target)!;
+                value = values.Cast<object>().First(candidate => !Equals(candidate, current));
+            }
+            else
+            {
+                throw new NotSupportedException($"Clone coverage test does not know how to assign {target.GetType().Name}.{property.Name} ({property.PropertyType}).");
+            }
+
+            property.SetValue(target, value);
+        }
+    }
+
+    private static void AssertEquivalentWritableProperties(object expected, object actual, params string[] excludedPropertyNames)
+    {
+        HashSet<string> excluded = excludedPropertyNames.ToHashSet(StringComparer.Ordinal);
+        foreach (PropertyInfo property in expected.GetType()
+                     .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                     .Where(property => property.CanRead && property.CanWrite && !excluded.Contains(property.Name)))
+        {
+            Assert.Equal(property.GetValue(expected), property.GetValue(actual));
+        }
     }
 }

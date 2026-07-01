@@ -55,4 +55,68 @@ public sealed class AppSettings
 
     public bool BackgroundIncludeSubfolders { get; set; } = true;
     public List<TickerGroup> Groups { get; set; } = [];
+
+    /// <summary>
+    /// Creates a detached copy used by config change detection.
+    /// </summary>
+    /// <remarks>
+    /// Keep this explicit clone in sync with AppSettings, TickerGroup, and TickerItem properties.
+    /// AppSettingsNormalizerTests.Clone_CopiesAllWritableSettingsGraphPropertiesAndDeepCopiesLists
+    /// guards against silent omissions when these models grow.
+    /// </remarks>
+    public AppSettings Clone() => new()
+    {
+        RefreshSecondsPortfolio = RefreshSecondsPortfolio,
+        RefreshSecondsOffHours = RefreshSecondsOffHours,
+        HttpTimeoutSeconds = HttpTimeoutSeconds,
+        NewsScrollerMode = NewsScrollerMode,
+        DeepSeekWritingStyle = DeepSeekWritingStyle,
+        NewsFeedUrl = NewsFeedUrl,
+        NewsRefreshMinutes = NewsRefreshMinutes,
+        BackgroundImageFolder = BackgroundImageFolder,
+        UseCustomBackgroundImageFolder = UseCustomBackgroundImageFolder,
+        CustomBackgroundImageFolder = CustomBackgroundImageFolder,
+        BackgroundChangeSeconds = BackgroundChangeSeconds,
+        ShuffleBackgrounds = ShuffleBackgrounds,
+        DimOpacity = DimOpacity,
+        LayoutPreset = LayoutPreset,
+        DeepSeekApiKey = DeepSeekApiKey,
+        DeepSeekEndpointUrl = DeepSeekEndpointUrl,
+        DeepSeekModelId = DeepSeekModelId,
+        MarketCalendarRefreshHours = MarketCalendarRefreshHours,
+        EnableFloatingGraphs = EnableFloatingGraphs,
+        HistoricalLookbackDays = HistoricalLookbackDays,
+        HistoricalRefreshHours = HistoricalRefreshHours,
+        MaxFloatingGraphsPerTape = MaxFloatingGraphsPerTape,
+        HistoricalCacheRootFolder = HistoricalCacheRootFolder,
+        EnableBouncingGraphCards = EnableBouncingGraphCards,
+        FloatingGraphVelocityMin = FloatingGraphVelocityMin,
+        FloatingGraphVelocityMax = FloatingGraphVelocityMax,
+        EnableFloatingClock = EnableFloatingClock,
+        ClockRefreshSeconds = ClockRefreshSeconds,
+        BackgroundIncludeSubfolders = BackgroundIncludeSubfolders,
+        Groups = (Groups ?? []).Select(CloneGroup).ToList()
+    };
+
+    private static TickerGroup CloneGroup(TickerGroup source) => new()
+    {
+        Id = source.Id,
+        Name = source.Name,
+        Speed = source.Speed,
+        Direction = source.Direction,
+        RenderMode = source.RenderMode,
+        RowHeight = source.RowHeight,
+        Enabled = source.Enabled,
+        Tickers = (source.Tickers ?? []).Select(CloneTicker).ToList()
+    };
+
+    private static TickerItem CloneTicker(TickerItem source) => new()
+    {
+        Symbol = source.Symbol,
+        DisplayName = source.DisplayName,
+        Quantity = source.Quantity,
+        CostBasis = source.CostBasis,
+        Currency = source.Currency,
+        Enabled = source.Enabled
+    };
 }

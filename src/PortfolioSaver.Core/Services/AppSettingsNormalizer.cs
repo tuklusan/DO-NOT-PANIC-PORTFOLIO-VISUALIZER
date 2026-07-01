@@ -208,15 +208,12 @@ public static class AppSettingsNormalizer
 
     private static string NormalizeApiKey(string currentValue, IEnumerable<string> environmentVariableNames)
     {
-        string environmentValue = GetFirstEnvironmentVariableValue(environmentVariableNames);
-        if (!string.IsNullOrWhiteSpace(environmentValue))
-            return environmentValue;
-
         string trimmed = (currentValue ?? string.Empty).Trim();
-        if (IsApiKeyPlaceholder(trimmed))
-            return string.Empty;
+        if (!string.IsNullOrWhiteSpace(trimmed) && !IsApiKeyPlaceholder(trimmed))
+            return trimmed;
 
-        return trimmed;
+        string environmentValue = GetFirstEnvironmentVariableValue(environmentVariableNames);
+        return string.IsNullOrWhiteSpace(environmentValue) ? string.Empty : environmentValue;
     }
 
     private static string GetFirstEnvironmentVariableValue(IEnumerable<string> environmentVariableNames)

@@ -44,6 +44,7 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly IConnectivityService _connectivityService;
     private readonly IYahooSymbolValidationService _yahooSymbolValidationService;
     private readonly SymbolProfileStore _symbolProfileStore;
+    private AppSettings _loadedSettingsSnapshot;
     private readonly DispatcherTimer _stateTimer;
     private readonly Dispatcher _uiDispatcher;
     private readonly SemaphoreSlim _symbolProfileSaveGate = new(1, 1);
@@ -59,6 +60,7 @@ public sealed class MainWindowViewModel : BindableBase
     private bool _isValidationClosePending;
     private bool _allowClose;
     private bool _isNetworkAvailable;
+    private bool _hasValidatedAiAccessInThisWindow;
     private string _validatedFingerprint = string.Empty;
     private readonly Dictionary<TickerGroupEditorViewModel, TickerGroup> _validatedGroupSnapshots = [];
     private readonly Dictionary<TickerItemEditorViewModel, TickerItem> _validatedTickerSnapshots = [];
@@ -94,6 +96,9 @@ public sealed class MainWindowViewModel : BindableBase
         _uiDispatcher = Dispatcher.CurrentDispatcher;
 
         _settings = _settingsFileService.Load();
+        // This snapshot is scoped to one settings window instance. If the app ever adds
+        // in-window reload-from-disk, refresh this snapshot at the same time.
+        _loadedSettingsSnapshot = AppSettingsNormalizer.Normalize(_settings).Clone();
         Groups = new ObservableCollection<TickerGroupEditorViewModel>(
             _settings.Groups.Select(group => new TickerGroupEditorViewModel(group, RemoveGroup)));
         ValidationLogText = string.Empty;
@@ -348,7 +353,7 @@ public sealed class MainWindowViewModel : BindableBase
                     AppendValidationLog(feedValidation.ValidationSkipped ? "RSS FEED CHECK SKIPPED" : "RSS FEED OK");
                 }
             }
-            else
+            else if (ShouldValidateAiNewsAccess(candidate))
             {
                 AppendValidationLog("AI NEWS ACCESS CHECK...");
                 AiNewsAccessValidationResult aiValidation = await _aiNewsAccessValidationService.ValidateAsync(
@@ -373,6 +378,12 @@ public sealed class MainWindowViewModel : BindableBase
 
                 AppendValidationLog(aiValidation.ValidationSkipped ? "AI NEWS ACCESS CHECK SKIPPED" : "AI NEWS ACCESS OK");
                 TraceValidation(aiValidation.ValidationSkipped ? "AiNewsAccessValidationSkipped" : "AiNewsAccessValidationSucceeded");
+                _hasValidatedAiAccessInThisWindow = true;
+            }
+            else
+            {
+                AppendValidationLog("AI NEWS ACCESS CHECK SKIPPED: AI ACCESS SETTINGS UNCHANGED");
+                TraceValidation("AiNewsAccessValidationSkippedUnchanged");
             }
 
             IReadOnlyList<string> configErrors = _settingsValidator.Validate(candidate);
@@ -465,6 +476,7 @@ public sealed class MainWindowViewModel : BindableBase
             _validatedFingerprint = BuildFingerprint(candidate);
             _allowClose = false;
             _validatedCandidateSettings = AppSettingsNormalizer.Normalize(candidate);
+            _loadedSettingsSnapshot = _validatedCandidateSettings.Clone();
             CaptureValidatedEditorSnapshots(_validatedCandidateSettings);
             _validatedQuoteSeeds = symbolValidation.ValidatedQuotes.Values
                 .Select(CloneQuote)
@@ -750,6 +762,28 @@ public sealed class MainWindowViewModel : BindableBase
         candidate.Groups = Groups.Select(group => group.ToModel()).ToList();
         return AppSettingsNormalizer.Normalize(candidate);
     }
+
+    private bool ShouldValidateAiNewsAccess(AppSettings candidate)
+    {
+        if (candidate.NewsScrollerMode != NewsScrollerMode.SummarizedFinancialNews)
+            return false;
+
+        if (_loadedSettingsSnapshot.NewsScrollerMode != NewsScrollerMode.SummarizedFinancialNews)
+            return true;
+
+        if (!_hasValidatedAiAccessInThisWindow)
+            return true;
+
+        return !AiAccessFieldsEqual(_loadedSettingsSnapshot, candidate);
+    }
+
+    private static bool AiAccessFieldsEqual(AppSettings left, AppSettings right)
+        => string.Equals(left.DeepSeekApiKey?.Trim(), right.DeepSeekApiKey?.Trim(), StringComparison.Ordinal) &&
+           string.Equals(NormalizeComparableEndpoint(left.DeepSeekEndpointUrl), NormalizeComparableEndpoint(right.DeepSeekEndpointUrl), StringComparison.OrdinalIgnoreCase) &&
+           string.Equals(left.DeepSeekModelId?.Trim(), right.DeepSeekModelId?.Trim(), StringComparison.Ordinal);
+
+    private static string NormalizeComparableEndpoint(string? endpoint)
+        => (endpoint ?? string.Empty).Trim().TrimEnd('/');
 
     private static string BuildFingerprint(AppSettings settings)
         => JsonSerializer.Serialize(settings);

@@ -82,6 +82,8 @@ The app works without an AI key by using RSS financial headlines. For stylized A
 - Model ID: `openrouter/free`
 - Supported runtime key environment variables: `OPENROUTER_AI_API_KEY`, `OPENROUTER_API_KEY`, `DEEPSEEK_API_KEY`, or `PORTFOLIOSAVER_DEEPSEEK_API_KEY`
 
+An API key saved through Settings or the installer takes precedence over environment variables. Environment variables are used only when the saved key is blank or still contains a placeholder value. To switch back to environment-variable fallback, clear the saved **AI API key** field and validate the configuration again.
+
 To obtain a free OpenRouter API key for personal non-commercial use:
 
 1. Visit [openrouter.ai](https://openrouter.ai/) and sign up or sign in.

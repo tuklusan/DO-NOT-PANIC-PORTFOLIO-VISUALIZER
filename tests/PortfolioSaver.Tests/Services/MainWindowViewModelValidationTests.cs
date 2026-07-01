@@ -837,6 +837,153 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
+    public async Task ValidateConfigurationAsync_SwitchingFromRssToSummarizedMode_CallsAiValidation()
+    {
+        string localDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(localDataRoot);
+        string? originalLocalDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        Dictionary<string, string?> previousAiKeyVariables = CaptureEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", localDataRoot);
+        ClearEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
+
+        try
+        {
+            AppSettings saved = Defaults.CreateSettings();
+            saved.NewsScrollerMode = NewsScrollerMode.RssFeed;
+            saved.DeepSeekApiKey = string.Empty;
+            saved.Groups =
+            [
+                new TickerGroup
+                {
+                    Name = "Test",
+                    Enabled = true,
+                    Tickers = [new TickerItem { Symbol = "AAPL", Enabled = true }]
+                }
+            ];
+            new SettingsFileService().Save(saved);
+
+            FakeAiNewsAccessValidationService aiValidation = new(AiNewsAccessValidationResult.Success());
+            CountingYahooSymbolValidationService tickerValidation = new();
+            MainWindowViewModel vm = CreateIsolatedViewModel(
+                new FakeConnectivityService(initiallyAvailable: true),
+                aiValidation,
+                tickerValidation);
+            vm.Settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+            vm.Settings.DeepSeekApiKey = "test-new-openrouter-key";
+
+            await InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
+
+            Assert.Equal(1, aiValidation.CallCount);
+            Assert.Equal(1, tickerValidation.CallCount);
+            Assert.Contains("AI NEWS ACCESS OK", vm.ValidationLogText, StringComparison.Ordinal);
+            Assert.Contains("VALIDATION PASSED", vm.ValidationLogText, StringComparison.Ordinal);
+
+            vm.Groups[0].SpeedValue += 0.10d;
+
+            await InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
+
+            Assert.Equal(1, aiValidation.CallCount);
+            Assert.Contains("AI NEWS ACCESS CHECK SKIPPED: AI ACCESS SETTINGS UNCHANGED", vm.ValidationLogText, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", originalLocalDataRoot);
+            RestoreEnvironmentVariables(previousAiKeyVariables);
+            try
+            {
+                if (Directory.Exists(localDataRoot))
+                    Directory.Delete(localDataRoot, recursive: true);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ValidateConfigurationAsync_AfterAiAccessValidated_SkipsLiveAiProbeForTapeOnlyEdits()
+    {
+        string localDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(localDataRoot);
+        string? originalLocalDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
+        Dictionary<string, string?> previousAiKeyVariables = CaptureEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", localDataRoot);
+        ClearEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
+
+        try
+        {
+            AppSettings saved = Defaults.CreateSettings();
+            saved.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+            saved.DeepSeekApiKey = "test-saved-openrouter-key";
+            saved.Groups =
+            [
+                new TickerGroup
+                {
+                    Name = "Test",
+                    Enabled = true,
+                    Speed = 0.30d,
+                    Tickers = [new TickerItem { Symbol = "AAPL", Enabled = true }]
+                }
+            ];
+            new SettingsFileService().Save(saved);
+
+            FakeAiNewsAccessValidationService aiValidation = new(AiNewsAccessValidationResult.Success());
+            CountingYahooSymbolValidationService tickerValidation = new();
+            MainWindowViewModel vm = CreateIsolatedViewModel(
+                new FakeConnectivityService(initiallyAvailable: true),
+                aiValidation,
+                tickerValidation);
+
+            await InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
+
+            Assert.Equal(1, aiValidation.CallCount);
+            Assert.Contains("AI NEWS ACCESS OK", vm.ValidationLogText, StringComparison.Ordinal);
+
+            vm.Groups[0].SpeedValue = 0.40d;
+
+            await InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
+
+            Assert.Equal(1, aiValidation.CallCount);
+            Assert.Contains("AI NEWS ACCESS CHECK SKIPPED: AI ACCESS SETTINGS UNCHANGED", vm.ValidationLogText, StringComparison.Ordinal);
+            Assert.Contains("VALIDATION PASSED", vm.ValidationLogText, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", originalLocalDataRoot);
+            RestoreEnvironmentVariables(previousAiKeyVariables);
+            try
+            {
+                if (Directory.Exists(localDataRoot))
+                    Directory.Delete(localDataRoot, recursive: true);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    [Fact]
+    public void BuildCandidateSettings_UsesExplicitPastedAiKeyOverEnvironmentFallback()
+    {
+        Dictionary<string, string?> previousAiKeyVariables = CaptureEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
+        try
+        {
+            ClearEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
+            Environment.SetEnvironmentVariable(Defaults.AiApiKeyEnvironmentVariableNames[0], "test-stale-env-key");
+            MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));
+            vm.Settings.DeepSeekApiKey = "test-fresh-pasted-key";
+
+            AppSettings candidate = InvokePrivate<AppSettings>(vm, "BuildCandidateSettings", []);
+
+            Assert.Equal("test-fresh-pasted-key", candidate.DeepSeekApiKey);
+        }
+        finally
+        {
+            RestoreEnvironmentVariables(previousAiKeyVariables);
+        }
+    }
+
+    [Fact]
     public async Task ValidateConfigurationAsync_CancelledValidationDoesNotShowUnexpectedErrorDialog()
     {
         CancelAwareAiNewsAccessValidationService aiValidation = new();
@@ -1223,6 +1370,21 @@ public sealed class MainWindowViewModelValidationTests
         Assert.NotNull(field);
         object? value = field!.GetValue(instance);
         return Assert.IsType<T>(value);
+    }
+
+    private static Dictionary<string, string?> CaptureEnvironmentVariables(IEnumerable<string> names)
+        => names.ToDictionary(name => name, Environment.GetEnvironmentVariable, StringComparer.OrdinalIgnoreCase);
+
+    private static void ClearEnvironmentVariables(IEnumerable<string> names)
+    {
+        foreach (string name in names)
+            Environment.SetEnvironmentVariable(name, null);
+    }
+
+    private static void RestoreEnvironmentVariables(IReadOnlyDictionary<string, string?> previous)
+    {
+        foreach ((string name, string? value) in previous)
+            Environment.SetEnvironmentVariable(name, value);
     }
 
     private sealed class FakeConnectivityService(bool initiallyAvailable) : IConnectivityService
