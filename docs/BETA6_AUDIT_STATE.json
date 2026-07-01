@@ -8481,6 +8481,135 @@
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ],
       "closed_at_utc": "2026-07-01T13:41:33.1803296Z"
+    },
+    {
+      "id": "CR-165",
+      "tracking_number": "CR-165",
+      "priority": 1,
+      "area": "Installer",
+      "title": "Installer optional AI setup page is not DPI-safe on high-resolution laptop display",
+      "status": "open",
+      "source": "user_laptop_release_candidate_review_2026_07_01",
+      "severity": "High",
+      "evidence": [
+        "Screenshot: docs/cr-evidence/CR-165-installer-dpi-layout.png shows Inno optional AI setup page with oversized/clipped text, overlapping controls, and unusable layout on the user laptop while VM rendering looked acceptable."
+      ],
+      "notes": [
+        "Observed after public installer build 0.9.0-beta7 on local laptop.",
+        "The VM was not sufficient as a representative display-scaling environment; release validation needs a local/high-DPI lane for installer UI."
+      ],
+      "acceptance": [
+        "Installer wizard pages must render cleanly at common laptop DPI/display scaling settings, including high-DPI/high-resolution screens, without clipped text, overlapping controls, or off-screen content.",
+        "Optional AI setup page must be redesigned using DPI-safe Inno layout calculations, scrollable content, shorter text, or a custom external configuration handoff if needed.",
+        "Validation must include at least one local high-DPI/laptop-resolution proof screenshot and one VM proof screenshot."
+      ],
+      "resolution": [],
+      "validation": []
+    },
+    {
+      "id": "CR-166",
+      "tracking_number": "CR-166",
+      "priority": 1,
+      "area": "Desktop Layout",
+      "title": "Maximized windowed mode does not scale the scene to the available laptop display area",
+      "status": "open",
+      "source": "user_laptop_release_candidate_review_2026_07_01",
+      "severity": "High",
+      "evidence": [
+        "Screenshot: docs/cr-evidence/CR-166-maximized-laptop-scaling.png shows the app maximized in non-full-screen mode but scene content remains fixed-size/left-biased with a large unused black region on the right."
+      ],
+      "notes": [
+        "This is distinct from full-screen mode: the failure is maximized non-full-screen scaling."
+      ],
+      "acceptance": [
+        "When the desktop app is maximized but not full-screen, the visual scene must scale or lay out responsively to the full available client area.",
+        "Behavior must remain correct on the smaller VM screen, the user laptop screen, and larger/wide/ultra-wide monitors.",
+        "No fixed 16:9 or fixed-pixel assumptions may leave unused black regions in maximized mode unless intentionally letterboxed and documented; preferred behavior is full available scene use.",
+        "Validation must include screenshots for windowed, maximized, and full-screen modes on at least VM and local/laptop display geometries."
+      ],
+      "resolution": [],
+      "validation": []
+    },
+    {
+      "id": "CR-167",
+      "tracking_number": "CR-167",
+      "priority": 1,
+      "area": "Desktop Fullscreen",
+      "title": "View->Full Screen crashes on local laptop display geometry while VM full-screen works",
+      "status": "open",
+      "source": "user_laptop_release_candidate_review_2026_07_01",
+      "severity": "Critical",
+      "evidence": [
+        "User reports a crash when invoking View->Full Screen on the local laptop after the public release installer build; VM full-screen worked.",
+        "Crash dump metadata: docs/cr-evidence/CR-167-local-fullscreen-crash-dump-metadata.json points to C:\\Users\\vagab\\AppData\\Local\\CrashDumps\\PortfolioSaver.Desktop.exe.12096.dmp, timestamp 2026-07-01 10:37:02 local, size 40,562,310 bytes.",
+        "Trace excerpts captured: docs/cr-evidence/CR-167-local-fullscreen-crash-trace-tail.txt and docs/cr-evidence/CR-167-local-fullscreen-crash-yfinance-tail.txt."
+      ],
+      "notes": [
+        "This is a public-release blocker because the primary desktop menu action crashes on at least one real user display environment."
+      ],
+      "acceptance": [
+        "Full-screen entry and exit must never crash on local laptop, VM, large external monitors, or ultra-wide displays.",
+        "Full-screen code must handle per-monitor DPI, multi-monitor coordinates, negative/large virtual-screen bounds, maximized-window state, and unusual aspect ratios safely.",
+        "Crash dump must be analyzed before implementation so the root cause is identified rather than guessed.",
+        "Validation must include local laptop View->Full Screen, Esc/F11 exit, VM full-screen, and at least one simulated or real large/wide display geometry proof.",
+        "Add regression tests or harness checks for display-bound calculations wherever feasible."
+      ],
+      "resolution": [],
+      "validation": []
+    },
+    {
+      "id": "CR-168",
+      "tracking_number": "CR-168",
+      "priority": 2,
+      "area": "Distribution",
+      "title": "Make public installer download discoverable from GitHub repository and release documentation",
+      "status": "open",
+      "source": "user_laptop_release_candidate_review_2026_07_01",
+      "severity": "Medium",
+      "evidence": [
+        "User could not find a standard RELEASE directory in the remote GitHub repo for downloading the installer.",
+        "Current distribution is GitHub Releases: https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER/releases/tag/v0.9.0-beta7 with installer and SHA-256 assets."
+      ],
+      "notes": [
+        "GitHub Releases is the normal GitHub-native mechanism for binary release assets. A source-tree RELEASE directory would bloat git history and is not recommended for large installers."
+      ],
+      "acceptance": [
+        "Decide and document the canonical public distribution method. Current recommendation: GitHub Releases is sufficient; no SourceForge mirror is needed unless download analytics, alternate hosting, or non-GitHub audience reach becomes a product requirement.",
+        "README top section must include an obvious Download Latest Installer link pointing to the GitHub Releases page or latest release asset.",
+        "BUILD_AND_DEPLOY must document that release binaries are not stored in a source-tree RELEASE folder; they are GitHub Release assets generated by the Inno publish pipeline.",
+        "Optionally add a small docs/RELEASES.md or release badge/link, but do not commit installer binaries into git source history."
+      ],
+      "resolution": [],
+      "validation": []
+    },
+    {
+      "id": "CR-169",
+      "tracking_number": "CR-169",
+      "priority": 1,
+      "area": "Finance News AI",
+      "title": "Re-audit OpenRouter free-tier limits and adjust AI news refresh cadence/request usage",
+      "status": "open",
+      "source": "openrouter_documentation_review_2026_07_01",
+      "severity": "High",
+      "evidence": [
+        "Official OpenRouter rate-limit docs: https://openrouter.ai/docs/api/reference/limits say :free model variants are capped at 20 requests/minute; if the account has purchased less than 10 credits, the daily cap is 50 :free model requests/day; with at least 10 credits, the cap becomes 1000/day.",
+        "Official OpenRouter FAQ: https://openrouter.ai/docs/faq says free models have low rate limits, 50 requests/day total, and are usually not suitable for production use; openrouter/free is available as the Free Models Router.",
+        "Official OpenRouter API docs: https://openrouter.ai/docs/api/reference/overview document Bearer auth plus optional HTTP-Referer and X-OpenRouter-Title app attribution headers.",
+        "Official App Attribution docs: https://openrouter.ai/docs/app-attribution describe HTTP-Referer as required for app attribution and X-OpenRouter-Title as the app display name header."
+      ],
+      "notes": [
+        "30 minutes yields at most 48 scheduled AI news refreshes per day, leaving a small margin under the 50/day free-model limit; additional non-scheduled calls must be minimized or explicitly guarded.",
+        "For production-quality usage, docs should explain that OpenRouter free models are for personal/experimental use and may require paid credits or a non-free model for higher reliability."
+      ],
+      "acceptance": [
+        "If the default model remains openrouter/free or any :free model, config and runtime must enforce a minimum AI summarized-news refresh cadence of at least 30 minutes so a continuously running app stays within 48 scheduled requests/day before manual validations/startup checks.",
+        "Account for startup validation, config validation, retries, health checks, and manual refreshes so the app does not burn through a 50/day free quota unexpectedly.",
+        "Config app slider minimum, default, help text, installer guidance, README, and runtime validation must align with the selected free-tier-safe cadence.",
+        "Audit OpenRouter invocation shape for useful current-doc tweaks: app attribution headers, free-router behavior, provider routing/sort options, service_tier applicability, retry/backoff on 429, and clear fallback messaging.",
+        "Tests must cover minimum cadence normalization, config validation limits, 429 handling/backoff, and no hidden repeated AI probes."
+      ],
+      "resolution": [],
+      "validation": []
     }
   ],
   "remaining_validation_gaps": [],
