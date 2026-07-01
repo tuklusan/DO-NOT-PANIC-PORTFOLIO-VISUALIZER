@@ -724,7 +724,7 @@ public sealed class MainWindowViewModelValidationTests
                 Tickers = [new TickerItem { Symbol = "DNPT", Enabled = true }]
             }));
             vm.Settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
-            vm.Settings.DeepSeekApiKey = "test-key";
+            vm.Settings.AiApiKey = "test-key";
 
             Task validationTask = InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
             await validationTask;
@@ -772,7 +772,7 @@ public sealed class MainWindowViewModelValidationTests
             Tickers = [new TickerItem { Symbol = "AAPL", Enabled = true }]
         }));
         vm.Settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
-        vm.Settings.DeepSeekApiKey = "test-key";
+        vm.Settings.AiApiKey = "test-key";
         SetPrivateField(vm, "_isValidated", true);
 
         await InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
@@ -842,15 +842,13 @@ public sealed class MainWindowViewModelValidationTests
         string localDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(localDataRoot);
         string? originalLocalDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
-        Dictionary<string, string?> previousAiKeyVariables = CaptureEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", localDataRoot);
-        ClearEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
 
         try
         {
             AppSettings saved = Defaults.CreateSettings();
             saved.NewsScrollerMode = NewsScrollerMode.RssFeed;
-            saved.DeepSeekApiKey = string.Empty;
+            saved.AiApiKey = string.Empty;
             saved.Groups =
             [
                 new TickerGroup
@@ -869,7 +867,7 @@ public sealed class MainWindowViewModelValidationTests
                 aiValidation,
                 tickerValidation);
             vm.Settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
-            vm.Settings.DeepSeekApiKey = "test-new-openrouter-key";
+            vm.Settings.AiApiKey = "test-new-openrouter-key";
 
             await InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
 
@@ -888,7 +886,6 @@ public sealed class MainWindowViewModelValidationTests
         finally
         {
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", originalLocalDataRoot);
-            RestoreEnvironmentVariables(previousAiKeyVariables);
             try
             {
                 if (Directory.Exists(localDataRoot))
@@ -906,15 +903,13 @@ public sealed class MainWindowViewModelValidationTests
         string localDataRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaver.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(localDataRoot);
         string? originalLocalDataRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT");
-        Dictionary<string, string?> previousAiKeyVariables = CaptureEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", localDataRoot);
-        ClearEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
 
         try
         {
             AppSettings saved = Defaults.CreateSettings();
             saved.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
-            saved.DeepSeekApiKey = "test-saved-openrouter-key";
+            saved.AiApiKey = "test-saved-openrouter-key";
             saved.Groups =
             [
                 new TickerGroup
@@ -950,7 +945,6 @@ public sealed class MainWindowViewModelValidationTests
         finally
         {
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_LOCALDATA_ROOT", originalLocalDataRoot);
-            RestoreEnvironmentVariables(previousAiKeyVariables);
             try
             {
                 if (Directory.Exists(localDataRoot))
@@ -963,24 +957,14 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
-    public void BuildCandidateSettings_UsesExplicitPastedAiKeyOverEnvironmentFallback()
+    public void BuildCandidateSettings_UsesExplicitPastedAiKey()
     {
-        Dictionary<string, string?> previousAiKeyVariables = CaptureEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
-        try
-        {
-            ClearEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
-            Environment.SetEnvironmentVariable(Defaults.AiApiKeyEnvironmentVariableNames[0], "test-stale-env-key");
-            MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));
-            vm.Settings.DeepSeekApiKey = "test-fresh-pasted-key";
+        MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));
+        vm.Settings.AiApiKey = "test-fresh-pasted-key";
 
-            AppSettings candidate = InvokePrivate<AppSettings>(vm, "BuildCandidateSettings", []);
+        AppSettings candidate = InvokePrivate<AppSettings>(vm, "BuildCandidateSettings", []);
 
-            Assert.Equal("test-fresh-pasted-key", candidate.DeepSeekApiKey);
-        }
-        finally
-        {
-            RestoreEnvironmentVariables(previousAiKeyVariables);
-        }
+        Assert.Equal("test-fresh-pasted-key", candidate.AiApiKey);
     }
 
     [Fact]
@@ -994,7 +978,7 @@ public sealed class MainWindowViewModelValidationTests
             new CountingYahooSymbolValidationService(),
             dialogs);
         vm.Settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
-        vm.Settings.DeepSeekApiKey = "test-key";
+        vm.Settings.AiApiKey = "test-key";
 
         Task validationTask = InvokePrivate<Task>(vm, "ValidateConfigurationAsync", []);
         await aiValidation.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -1012,29 +996,15 @@ public sealed class MainWindowViewModelValidationTests
     [Fact]
     public async Task AiNewsAccessValidationService_SummarizedMode_RequiresApiKey()
     {
-        Dictionary<string, string?> previousValues = Defaults.AiApiKeyEnvironmentVariableNames
-            .ToDictionary(name => name, Environment.GetEnvironmentVariable);
+        AiNewsAccessValidationService service = new(_ => throw new InvalidOperationException("HTTP should not be used without an API key."));
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+        settings.AiApiKey = string.Empty;
 
-        try
-        {
-            foreach (string name in Defaults.AiApiKeyEnvironmentVariableNames)
-                Environment.SetEnvironmentVariable(name, null);
+        AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
 
-            AiNewsAccessValidationService service = new(_ => throw new InvalidOperationException("HTTP should not be used without an API key."));
-            AppSettings settings = Defaults.CreateSettings();
-            settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
-            settings.DeepSeekApiKey = string.Empty;
-
-            AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
-
-            Assert.False(result.IsValid);
-            Assert.Contains("API key", result.Message, StringComparison.OrdinalIgnoreCase);
-        }
-        finally
-        {
-            foreach ((string name, string? value) in previousValues)
-                Environment.SetEnvironmentVariable(name, value);
-        }
+        Assert.False(result.IsValid);
+        Assert.Contains("API key", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -1054,9 +1024,9 @@ public sealed class MainWindowViewModelValidationTests
         })));
         AppSettings settings = Defaults.CreateSettings();
         settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
-        settings.DeepSeekApiKey = "test-key";
-        settings.DeepSeekEndpointUrl = "https://openrouter.ai/api/v1";
-        settings.DeepSeekModelId = Defaults.DefaultDeepSeekModelId;
+        settings.AiApiKey = "test-key";
+        settings.AiEndpointUrl = "https://openrouter.ai/api/v1";
+        settings.AiModelId = Defaults.DefaultAiModelId;
 
         AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
 
@@ -1075,7 +1045,7 @@ public sealed class MainWindowViewModelValidationTests
         AiNewsAccessValidationService service = new(_ => throw new InvalidOperationException("HTTP should not be used without network."));
         AppSettings settings = Defaults.CreateSettings();
         settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
-        settings.DeepSeekApiKey = "test-key";
+        settings.AiApiKey = "test-key";
 
         AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: false);
 
@@ -1118,7 +1088,7 @@ public sealed class MainWindowViewModelValidationTests
             throw new TaskCanceledException("simulated timeout"))));
         AppSettings settings = Defaults.CreateSettings();
         settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
-        settings.DeepSeekApiKey = "test-key";
+        settings.AiApiKey = "test-key";
 
         AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
 
@@ -1132,7 +1102,7 @@ public sealed class MainWindowViewModelValidationTests
         AiNewsAccessValidationService service = new(_ => throw new InvalidOperationException("HTTP should not be used when token is already cancelled."));
         AppSettings settings = Defaults.CreateSettings();
         settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
-        settings.DeepSeekApiKey = "test-key";
+        settings.AiApiKey = "test-key";
         using CancellationTokenSource cancellation = new();
         cancellation.Cancel();
 
@@ -1146,8 +1116,8 @@ public sealed class MainWindowViewModelValidationTests
         AiNewsAccessValidationService service = new(_ => throw new InvalidOperationException("HTTP should not be used with malformed endpoint URL."));
         AppSettings settings = Defaults.CreateSettings();
         settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
-        settings.DeepSeekApiKey = "test-key";
-        settings.DeepSeekEndpointUrl = "not-a-url";
+        settings.AiApiKey = "test-key";
+        settings.AiEndpointUrl = "not-a-url";
 
         AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
 
@@ -1169,51 +1139,38 @@ public sealed class MainWindowViewModelValidationTests
         })));
         AppSettings settings = Defaults.CreateSettings();
         settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
-        settings.DeepSeekApiKey = "test-key";
-        settings.DeepSeekEndpointUrl = "https://example.invalid/v1";
-        settings.DeepSeekModelId = string.Empty;
+        settings.AiApiKey = "test-key";
+        settings.AiEndpointUrl = "https://example.invalid/v1";
+        settings.AiModelId = string.Empty;
 
         AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
 
         Assert.True(result.IsValid);
-        Assert.Contains(Defaults.DefaultDeepSeekModelId, capturedBody, StringComparison.Ordinal);
+        Assert.Contains(Defaults.DefaultAiModelId, capturedBody, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task AiNewsAccessValidationService_SummarizedMode_UsesEnvironmentApiKeyWhenConfigKeyBlank()
+    public async Task AiNewsAccessValidationService_SummarizedMode_IgnoresEnvironmentApiKeyWhenConfigKeyBlank()
     {
-        Dictionary<string, string?> previousValues = Defaults.AiApiKeyEnvironmentVariableNames
-            .ToDictionary(name => name, Environment.GetEnvironmentVariable);
-        HttpRequestMessage? capturedRequest = null;
+        const string environmentName = "OPENROUTER_AI_API_KEY";
+        string? previousValue = Environment.GetEnvironmentVariable(environmentName);
+        Environment.SetEnvironmentVariable(environmentName, "env-test-key");
 
         try
         {
-            foreach (string name in Defaults.AiApiKeyEnvironmentVariableNames)
-                Environment.SetEnvironmentVariable(name, null);
-
-            Assert.Contains("OPENROUTER_AI_API_KEY", Defaults.AiApiKeyEnvironmentVariableNames);
-            Environment.SetEnvironmentVariable("OPENROUTER_AI_API_KEY", "env-test-key");
-            AiNewsAccessValidationService service = new(_ => new HttpClient(new FakeHttpMessageHandler(request =>
-            {
-                capturedRequest = request;
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent("""{"choices":[{"message":{"content":"OK"}}]}""", Encoding.UTF8, "application/json")
-                };
-            })));
+            AiNewsAccessValidationService service = new(_ => throw new InvalidOperationException("HTTP should not be used without a configured API key."));
             AppSettings settings = Defaults.CreateSettings();
             settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
-            settings.DeepSeekApiKey = string.Empty;
+            settings.AiApiKey = string.Empty;
 
             AiNewsAccessValidationResult result = await service.ValidateAsync(settings, networkAvailable: true);
 
-            Assert.True(result.IsValid);
-            Assert.Equal("env-test-key", capturedRequest?.Headers.Authorization?.Parameter);
+            Assert.False(result.IsValid);
+            Assert.Contains("API key", result.Message, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
-            foreach ((string name, string? value) in previousValues)
-                Environment.SetEnvironmentVariable(name, value);
+            Environment.SetEnvironmentVariable(environmentName, previousValue);
         }
     }
 
@@ -1233,7 +1190,7 @@ public sealed class MainWindowViewModelValidationTests
             vm.CloseRequested += () => closeRequested = true;
 
             AppSettings validated = Defaults.CreateSettings();
-            validated.DeepSeekApiKey = "super-secret";
+            validated.AiApiKey = "super-secret";
             SetPrivateField(vm, "_validatedCandidateSettings", validated);
             SetPrivateField(vm, "_validatedQuoteSeeds", new List<QuoteSnapshot>
             {
@@ -1370,21 +1327,6 @@ public sealed class MainWindowViewModelValidationTests
         Assert.NotNull(field);
         object? value = field!.GetValue(instance);
         return Assert.IsType<T>(value);
-    }
-
-    private static Dictionary<string, string?> CaptureEnvironmentVariables(IEnumerable<string> names)
-        => names.ToDictionary(name => name, Environment.GetEnvironmentVariable, StringComparer.OrdinalIgnoreCase);
-
-    private static void ClearEnvironmentVariables(IEnumerable<string> names)
-    {
-        foreach (string name in names)
-            Environment.SetEnvironmentVariable(name, null);
-    }
-
-    private static void RestoreEnvironmentVariables(IReadOnlyDictionary<string, string?> previous)
-    {
-        foreach ((string name, string? value) in previous)
-            Environment.SetEnvironmentVariable(name, value);
     }
 
     private sealed class FakeConnectivityService(bool initiallyAvailable) : IConnectivityService

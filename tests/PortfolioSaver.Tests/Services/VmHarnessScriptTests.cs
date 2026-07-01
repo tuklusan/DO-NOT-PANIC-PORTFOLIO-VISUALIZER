@@ -735,10 +735,10 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("FaultProfile = $FaultProfile", invoke, StringComparison.Ordinal);
         string agent = ReadRepoText("src", "PortfolioSaver.VmAgent", "Program.cs");
         Assert.Contains("\"offline-then-recover-runtime\"", agent, StringComparison.Ordinal);
-        Assert.Contains("OpenRouterApiKey", applySecrets, StringComparison.Ordinal);
-        Assert.Contains("OPENROUTER_AI_API_KEY", applySecrets, StringComparison.Ordinal);
-        Assert.Contains("OPENROUTER_API_KEY", applySecrets, StringComparison.Ordinal);
         Assert.Contains("DEEPSEEK_API_KEY", applySecrets, StringComparison.Ordinal);
+        Assert.DoesNotContain("OpenRouterApiKey", applySecrets, StringComparison.Ordinal);
+        Assert.DoesNotContain("OPENROUTER_AI_API_KEY", applySecrets, StringComparison.Ordinal);
+        Assert.DoesNotContain("OPENROUTER_API_KEY", applySecrets, StringComparison.Ordinal);
         Assert.DoesNotContain("PORTFOLIOSAVER_FINNHUB_API_KEY", applySecrets, StringComparison.Ordinal);
         Assert.DoesNotContain("PORTFOLIOSAVER_TWELVEDATA_API_KEY", applySecrets, StringComparison.Ordinal);
         Assert.DoesNotContain("PORTFOLIOSAVER_TIINGO_API_KEY", applySecrets, StringComparison.Ordinal);

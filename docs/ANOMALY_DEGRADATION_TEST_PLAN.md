@@ -22,7 +22,7 @@ Applies to: CR-064 through CR-085
 
 ## Purpose
 
-The healthy-path autonomous VM validation loop is now available. The next validation frontier is proving that the application behaves intentionally under degraded, anomalous, and exceptional conditions instead of merely passing when the internet, Yahoo/YFinance, DeepSeek, local storage, graphics, and harness infrastructure are healthy.
+The healthy-path autonomous VM validation loop is now available. The next validation frontier is proving that the application behaves intentionally under degraded, anomalous, and exceptional conditions instead of merely passing when the internet, Yahoo/YFinance, AI-provider access, local storage, graphics, and harness infrastructure are healthy.
 
 These tickets define a repeatable degraded-mode validation matrix. Each scenario should be reproducible through deterministic local or VM harness injection, should produce clear trace evidence, and should never rely on a lucky live outage.
 
@@ -57,7 +57,7 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Status: closed
 - Closure evidence: VM run `ux-deep-ssh-20260621-055258` completed config, desktop, and fullscreen phases under `FaultProfile=offline-at-start`; analyzer `visual-validation-ux-deep-ssh-20260621-055258.json` reported clean with 0 findings, runtime trace showed `OFFLINE - waiting for data`, and DeepSeek artifact advisory `deepseek-artifact-review-20260621-063454.md` found no deterministic blocker for the offline pathway.
 - Evidence / rationale:
-  - Startup is the most fragile time because quotes, news, background downloads, DeepSeek/RSS, upstream diagnostics, and YFinance server startup may all begin near each other.
+  - Startup is the most fragile time because quotes, news, background downloads, AI/RSS, upstream diagnostics, and YFinance server startup may all begin near each other.
   - The app must not hang, show misleading fresh values, or fail to render when launched fully offline.
 - Notes:
   - Expected behavior should distinguish no-data-yet from stale cached data.
@@ -274,15 +274,15 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
   - Trace output clearly records the injected condition, observed fallback/degradation path, recovery behavior, and whether user-facing data is fresh, stale, partial, or unavailable.
   - The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.
 
-### CR-076 - Validate Finance News degradation: no DeepSeek key, bad key, endpoint down, rate limit, slow response, malformed AI output, RSS-only fallback
+### CR-076 - Validate Finance News degradation: no AI key, bad key, endpoint down, rate limit, slow response, malformed AI output, RSS-only fallback
 
 - Priority: 2
 - Severity: Medium
 - Area: news_degradation
 - Status: closed
-- Closure evidence: commit `b4fb1d4` added explicit RSS-only structured fallback for summarized-news mode when no DeepSeek API key is configured and preserved the waiting placeholder when RSS is also unavailable; DeepSeek review `build/deepseek-review/deepseek-review-20260622-004326.md` was reviewed and its no-key behavior advisory was accepted as the intended RSS-only fallback requirement; focused local validation passed 95/95 on 2026-06-22 for `FinanceNewsServiceTests`, `StartupCoordinatorNewsTests`, and `ScreensaverRenderBehaviorTests` using `dotnet test tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj -c Release --filter "FullyQualifiedName~FinanceNewsServiceTests|FullyQualifiedName~StartupCoordinatorNewsTests|FullyQualifiedName~ScreensaverRenderBehaviorTests" --nologo`; validation-script smoke returned `VALIDATION_SCRIPT_SMOKE_TEST=Passed`. Concrete coverage includes `FinanceNewsServiceTests.GetHeadlinesAsync_SummarizedMode_WithoutApiKey_UsesRssBackedStructuredFallback`, `DeepSeekHttpFailureUsesStructuredFallback`, `SlowDeepSeekResponseUsesStructuredFallbackWithinBudget`, `RetriesOnceAfterMalformedDeepSeekJson`, and scroller-liveness tests such as `NewsFlasherControl_ScrollsAfterSecondLineAndDefersRefreshUntilAfterAdvance`, `CarriesPriorBottomLineWithoutRetypingIt`, and `PausesAfterFinalSegmentBeforeNextHeadline`. The off-UI-thread independent news lane remains covered by the previously closed NB-048 proof and `Nb048BehaviorTests.ScreensaverSceneControl_UsesIndependentBackgroundNewsRefreshLane`.
+- Closure evidence: commit `b4fb1d4` added explicit RSS-only structured fallback for summarized-news mode when no AI API key is configured and preserved the waiting placeholder when RSS is also unavailable; DeepSeek review `build/deepseek-review/deepseek-review-20260622-004326.md` was reviewed and its no-key behavior advisory was accepted as the intended RSS-only fallback requirement; focused local validation passed 95/95 on 2026-06-22 for `FinanceNewsServiceTests`, `StartupCoordinatorNewsTests`, and `ScreensaverRenderBehaviorTests` using `dotnet test tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj -c Release --filter "FullyQualifiedName~FinanceNewsServiceTests|FullyQualifiedName~StartupCoordinatorNewsTests|FullyQualifiedName~ScreensaverRenderBehaviorTests" --nologo`; validation-script smoke returned `VALIDATION_SCRIPT_SMOKE_TEST=Passed`. Concrete coverage includes `FinanceNewsServiceTests.GetHeadlinesAsync_SummarizedMode_WithoutApiKey_UsesRssBackedStructuredFallback`, `AiHttpFailureUsesStructuredFallback`, `SlowAiResponseUsesStructuredFallbackWithinBudget`, `RetriesOnceAfterMalformedAiJson`, and scroller-liveness tests such as `NewsFlasherControl_ScrollsAfterSecondLineAndDefersRefreshUntilAfterAdvance`, `CarriesPriorBottomLineWithoutRetypingIt`, and `PausesAfterFinalSegmentBeforeNextHeadline`. The off-UI-thread independent news lane remains covered by the previously closed NB-048 proof and `Nb048BehaviorTests.ScreensaverSceneControl_UsesIndependentBackgroundNewsRefreshLane`.
 - Evidence / rationale:
-  - News scroller uses DeepSeek when configured and RSS-only fallback when unavailable.
+  - News scroller uses AI provider when configured and RSS-only fallback when unavailable.
   - We previously proved RSS-only fallback once, but not as a repeatable degraded-mode matrix.
 - Notes:
   - Cover Adams/Vogon mode and classical Shakespeare mode prompts.
@@ -388,7 +388,7 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
   - Configuration changes should not mutate server internals beyond documented control surfaces.
 - Notes:
   - Exercise Apply/OK and Cancel after successful validation, plus failed validation with no apply.
-  - Cover symbol list changes, background folder changes, news mode changes, DeepSeek settings changes, and timing slider changes.
+  - Cover symbol list changes, background folder changes, news mode changes, AI settings changes, and timing slider changes.
 - Closure evidence:
   - Closed on 2026-06-22 with no product-code change required after audit. Existing behavioral coverage proves OK saves validated settings and publishes runtime quote seeds, Cancel closes without publishing validated quotes, validation transitions expose OK/Cancel only after success, and the desktop host pauses/resumes the scene around the modal settings dialog.
   - Focused local validation passed 85/85 using `dotnet test tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj -c Release --filter "FullyQualifiedName~MainWindowViewModelValidationTests|FullyQualifiedName~DesktopShellMigrationTests|FullyQualifiedName~ConfigTextConsistencyTests|FullyQualifiedName~YFinanceClientServerProtocolTests" --nologo`.

@@ -163,110 +163,47 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
-    public void Normalize_AiApiKey_PrefersExplicitConfiguredValue_OverOpenRouterEnvironmentVariable()
+    public void Normalize_AiApiKey_PreservesExplicitConfiguredValue()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.AiApiKey = "test-persisted-ai-key";
+
+        AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+        Assert.Equal("test-persisted-ai-key", normalized.AiApiKey);
+    }
+
+    [Fact]
+    public void Normalize_AiApiKey_ClearsPlaceholder()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.AiApiKey = "REPLACE_WITH_AI_API_KEY";
+
+        AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+        Assert.True(string.IsNullOrWhiteSpace(normalized.AiApiKey));
+    }
+
+    [Fact]
+    public void Normalize_AiApiKey_IgnoresEnvironmentVariableWhenConfigKeyBlank()
     {
         const string environmentName = "OPENROUTER_AI_API_KEY";
         string? previous = Environment.GetEnvironmentVariable(environmentName);
-        Environment.SetEnvironmentVariable(environmentName, "test-env-openrouter-key");
+        Environment.SetEnvironmentVariable(environmentName, "env-key");
 
         try
         {
             AppSettings settings = Defaults.CreateSettings();
-            settings.DeepSeekApiKey = "test-persisted-deepseek-key";
+            settings.AiApiKey = string.Empty;
 
             AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
-            Assert.Equal("test-persisted-deepseek-key", normalized.DeepSeekApiKey);
+            Assert.True(string.IsNullOrWhiteSpace(normalized.AiApiKey));
         }
         finally
         {
             Environment.SetEnvironmentVariable(environmentName, previous);
         }
-    }
-
-    [Fact]
-    public void Normalize_AiApiKey_WhenNoEnvironmentVariablesSet_ClearsPlaceholder()
-    {
-        Dictionary<string, string?> previous = CaptureEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
-        ClearEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
-
-        try
-        {
-            AppSettings settings = Defaults.CreateSettings();
-            settings.DeepSeekApiKey = "REPLACE_WITH_DEEPSEEK_API_KEY";
-
-            AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
-
-            Assert.True(string.IsNullOrWhiteSpace(normalized.DeepSeekApiKey));
-        }
-        finally
-        {
-            RestoreEnvironmentVariables(previous);
-        }
-    }
-
-    [Fact]
-    public void Normalize_AiApiKey_PrefersEnvironmentVariable_OverPlaceholder()
-    {
-        Dictionary<string, string?> previous = CaptureEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
-        ClearEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
-
-        try
-        {
-            Environment.SetEnvironmentVariable(Defaults.AiApiKeyEnvironmentVariableNames[0], "env-key");
-            AppSettings settings = Defaults.CreateSettings();
-            settings.DeepSeekApiKey = "REPLACE_WITH_DEEPSEEK_API_KEY";
-
-            AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
-
-            Assert.Equal("env-key", normalized.DeepSeekApiKey);
-        }
-        finally
-        {
-            RestoreEnvironmentVariables(previous);
-        }
-    }
-
-    [Fact]
-    public void Normalize_AiApiKey_UsesDocumentedEnvironmentVariablePrecedence_WhenExplicitKeyMissing()
-    {
-        IReadOnlyList<string> names = Defaults.AiApiKeyEnvironmentVariableNames;
-        Dictionary<string, string?> previous = CaptureEnvironmentVariables(names);
-
-        try
-        {
-            for (int index = 0; index < names.Count; index++)
-                Environment.SetEnvironmentVariable(names[index], $"key-{index}");
-
-            AppSettings settings = Defaults.CreateSettings();
-            settings.DeepSeekApiKey = string.Empty;
-
-            AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
-
-            Assert.Equal("key-0", normalized.DeepSeekApiKey);
-        }
-        finally
-        {
-            RestoreEnvironmentVariables(previous);
-        }
-    }
-
-    private static Dictionary<string, string?> CaptureEnvironmentVariables(IEnumerable<string> names)
-        => names.ToDictionary(
-            static name => name,
-            static name => Environment.GetEnvironmentVariable(name),
-            StringComparer.Ordinal);
-
-    private static void ClearEnvironmentVariables(IEnumerable<string> names)
-    {
-        foreach (string name in names)
-            Environment.SetEnvironmentVariable(name, null);
-    }
-
-    private static void RestoreEnvironmentVariables(IReadOnlyDictionary<string, string?> previous)
-    {
-        foreach ((string name, string? value) in previous)
-            Environment.SetEnvironmentVariable(name, value);
     }
 
     [Fact]
@@ -320,40 +257,62 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
-    public void Normalize_DefaultsDeepSeekWritingStyleToDouglasAdams()
+    public void Normalize_DefaultsAiWritingStyleToDouglasAdams()
     {
         AppSettings settings = Defaults.CreateSettings();
-        settings.DeepSeekWritingStyle = (DeepSeekWritingStyle)999;
+        settings.AiWritingStyle = (AiWritingStyle)999;
 
         AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
-        Assert.Equal(DeepSeekWritingStyle.DouglasAdams, normalized.DeepSeekWritingStyle);
+        Assert.Equal(AiWritingStyle.DouglasAdams, normalized.AiWritingStyle);
     }
 
     [Fact]
-    public void Normalize_DefaultsDeepSeekEndpointAndModelWhenBlank()
+    public void Normalize_DefaultsAiEndpointAndModelWhenBlank()
     {
         AppSettings settings = Defaults.CreateSettings();
-        settings.DeepSeekEndpointUrl = "   ";
-        settings.DeepSeekModelId = " ";
+        settings.AiEndpointUrl = "   ";
+        settings.AiModelId = " ";
 
         AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
-        Assert.Equal(Defaults.DefaultDeepSeekEndpointUrl, normalized.DeepSeekEndpointUrl);
-        Assert.Equal(Defaults.DefaultDeepSeekModelId, normalized.DeepSeekModelId);
+        Assert.Equal(Defaults.DefaultAiEndpointUrl, normalized.AiEndpointUrl);
+        Assert.Equal(Defaults.DefaultAiModelId, normalized.AiModelId);
     }
 
     [Fact]
-    public void Normalize_MigratesLegacyDeepSeekDefaultsToOpenRouterDefaults()
+    public void Normalize_PreservesConfiguredAiEndpointAndModel()
     {
         AppSettings settings = Defaults.CreateSettings();
-        settings.DeepSeekEndpointUrl = "https://api.deepseek.com/chat/completions";
-        settings.DeepSeekModelId = "deepseek-v4-flash";
+        settings.AiEndpointUrl = "https://ai.example.test/v1/chat/completions";
+        settings.AiModelId = "example-model";
 
         AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
-        Assert.Equal(Defaults.DefaultDeepSeekEndpointUrl, normalized.DeepSeekEndpointUrl);
-        Assert.Equal(Defaults.DefaultDeepSeekModelId, normalized.DeepSeekModelId);
+        Assert.Equal("https://ai.example.test/v1", normalized.AiEndpointUrl);
+        Assert.Equal("example-model", normalized.AiModelId);
+    }
+
+    [Fact]
+    public void Normalize_MigratesLegacyDefaultAiEndpointToCurrentDefault()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.AiEndpointUrl = "https://api.deepseek.com/chat/completions";
+
+        AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+        Assert.Equal(Defaults.DefaultAiEndpointUrl, normalized.AiEndpointUrl);
+    }
+
+    [Fact]
+    public void Normalize_MigratesLegacyDefaultAiModelToCurrentDefault()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.AiModelId = "deepseek-v4-flash";
+
+        AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+        Assert.Equal(Defaults.DefaultAiModelId, normalized.AiModelId);
     }
 
     [Fact]
@@ -368,14 +327,14 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
-    public void Normalize_CanonicalizesDeepSeekChatCompletionsEndpointToBaseUrl()
+    public void Normalize_CanonicalizesAiChatCompletionsEndpointToBaseUrl()
     {
         AppSettings settings = Defaults.CreateSettings();
-        settings.DeepSeekEndpointUrl = "https://localhost:11434/v1/chat/completions/";
+        settings.AiEndpointUrl = "https://localhost:11434/v1/chat/completions/";
 
         AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
-        Assert.Equal("https://localhost:11434/v1", normalized.DeepSeekEndpointUrl);
+        Assert.Equal("https://localhost:11434/v1", normalized.AiEndpointUrl);
     }
 
     private static void SetDistinctWritableProperties(object target, params string[] excludedPropertyNames)

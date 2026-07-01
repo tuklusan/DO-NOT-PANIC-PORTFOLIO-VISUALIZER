@@ -50,6 +50,7 @@ public sealed class SettingsFileService
             {
                 string json = File.ReadAllText(SettingsPath);
                 settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? settings;
+                MigrateLegacySerializedAiSettings(settings, json);
             }
 
             _providerSecretStoreService.OverlaySecrets(settings);
@@ -75,9 +76,67 @@ public sealed class SettingsFileService
             JsonSerializer.Serialize(settings),
             JsonOptions) ?? Defaults.CreateSettings();
 
-        copy.DeepSeekApiKey = string.Empty;
+        copy.AiApiKey = string.Empty;
 
         return copy;
+    }
+
+    private static void MigrateLegacySerializedAiSettings(AppSettings settings, string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return;
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(json);
+            JsonElement root = document.RootElement;
+            if (string.IsNullOrWhiteSpace(settings.AiApiKey))
+                settings.AiApiKey = GetString(root, "DeepSeekApiKey");
+            if (string.IsNullOrWhiteSpace(settings.AiEndpointUrl) ||
+                string.Equals(settings.AiEndpointUrl, Defaults.DefaultAiEndpointUrl, StringComparison.OrdinalIgnoreCase))
+            {
+                settings.AiEndpointUrl = GetString(root, "DeepSeekEndpointUrl", settings.AiEndpointUrl);
+            }
+
+            if (string.IsNullOrWhiteSpace(settings.AiModelId) ||
+                string.Equals(settings.AiModelId, Defaults.DefaultAiModelId, StringComparison.OrdinalIgnoreCase))
+            {
+                settings.AiModelId = GetString(root, "DeepSeekModelId", settings.AiModelId);
+            }
+
+            if (!root.TryGetProperty("AiWritingStyle", out _) &&
+                root.TryGetProperty("DeepSeekWritingStyle", out JsonElement styleElement))
+            {
+                settings.AiWritingStyle = ReadAiWritingStyle(styleElement, settings.AiWritingStyle);
+            }
+        }
+        catch (JsonException)
+        {
+        }
+    }
+
+    private static string GetString(JsonElement root, string propertyName, string fallback = "")
+        => root.TryGetProperty(propertyName, out JsonElement element) && element.ValueKind == JsonValueKind.String
+            ? element.GetString() ?? fallback
+            : fallback;
+
+    private static Core.Enums.AiWritingStyle ReadAiWritingStyle(JsonElement element, Core.Enums.AiWritingStyle fallback)
+    {
+        if (element.ValueKind == JsonValueKind.Number &&
+            element.TryGetInt32(out int numeric) &&
+            Enum.IsDefined(typeof(Core.Enums.AiWritingStyle), numeric))
+        {
+            return (Core.Enums.AiWritingStyle)numeric;
+        }
+
+        if (element.ValueKind == JsonValueKind.String &&
+            Enum.TryParse(element.GetString(), ignoreCase: true, out Core.Enums.AiWritingStyle parsed) &&
+            Enum.IsDefined(typeof(Core.Enums.AiWritingStyle), parsed))
+        {
+            return parsed;
+        }
+
+        return fallback;
     }
 
     /// <summary>

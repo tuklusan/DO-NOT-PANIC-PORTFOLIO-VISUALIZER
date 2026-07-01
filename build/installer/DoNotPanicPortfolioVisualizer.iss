@@ -245,9 +245,9 @@ begin
   Json :=
     '{'#13#10 +
     '  "NewsScrollerMode": 0,'#13#10 +
-    '  "DeepSeekApiKey": "' + JsonEscape(Trim(AiApiKeyEdit.Text)) + '",'#13#10 +
-    '  "DeepSeekEndpointUrl": "' + JsonEscape(Trim(AiEndpointEdit.Text)) + '",'#13#10 +
-    '  "DeepSeekModelId": "' + JsonEscape(Trim(AiModelEdit.Text)) + '",'#13#10 +
+    '  "AiApiKey": "' + JsonEscape(Trim(AiApiKeyEdit.Text)) + '",'#13#10 +
+    '  "AiEndpointUrl": "' + JsonEscape(Trim(AiEndpointEdit.Text)) + '",'#13#10 +
+    '  "AiModelId": "' + JsonEscape(Trim(AiModelEdit.Text)) + '",'#13#10 +
     '  "NewsRefreshMinutes": 15'#13#10 +
     '}'#13#10;
   SaveStringToFile(ImportPath, Json, False);
@@ -271,32 +271,44 @@ begin
     '  if ($settings.PSObject.Properties[$Name]) { return [string]$settings.$Name }'#13#10 +
     '  return '''''#13#10 +
     '}'#13#10 +
+    'function Get-SettingValueWithFallback([string]$Name, [string]$LegacyName) {'#13#10 +
+    '  $value = Get-SettingValue $Name'#13#10 +
+    '  if ([string]::IsNullOrWhiteSpace($value)) { $value = Get-SettingValue $LegacyName }'#13#10 +
+    '  return $value'#13#10 +
+    '}'#13#10 +
     'Set-SettingValue ''NewsScrollerMode'' $incoming.NewsScrollerMode'#13#10 +
     'Set-SettingValue ''NewsRefreshMinutes'' $incoming.NewsRefreshMinutes'#13#10 +
-    'Set-SettingValue ''DeepSeekApiKey'' '''''#13#10 +
+    'Set-SettingValue ''AiApiKey'' '''''#13#10 +
     '$defaultEndpoint = ''https://openrouter.ai/api/v1'''#13#10 +
-    '$existingEndpoint = Get-SettingValue ''DeepSeekEndpointUrl'''#13#10 +
-    'if ([string]::IsNullOrWhiteSpace($existingEndpoint) -or [string]::Equals($existingEndpoint, $defaultEndpoint, [StringComparison]::OrdinalIgnoreCase) -or -not [string]::Equals([string]$incoming.DeepSeekEndpointUrl, $defaultEndpoint, [StringComparison]::OrdinalIgnoreCase)) {'#13#10 +
-    '  Set-SettingValue ''DeepSeekEndpointUrl'' $incoming.DeepSeekEndpointUrl'#13#10 +
+    '$existingEndpoint = Get-SettingValueWithFallback ''AiEndpointUrl'' ''DeepSeekEndpointUrl'''#13#10 +
+    'if ([string]::IsNullOrWhiteSpace($existingEndpoint) -or [string]::Equals($existingEndpoint, $defaultEndpoint, [StringComparison]::OrdinalIgnoreCase)) {'#13#10 +
+    '  Set-SettingValue ''AiEndpointUrl'' $incoming.AiEndpointUrl'#13#10 +
+    '} else {'#13#10 +
+    '  Set-SettingValue ''AiEndpointUrl'' $existingEndpoint'#13#10 +
     '}'#13#10 +
     '$defaultModel = ''openrouter/free'''#13#10 +
-    '$existingModel = Get-SettingValue ''DeepSeekModelId'''#13#10 +
-    'if ([string]::IsNullOrWhiteSpace($existingModel) -or [string]::Equals($existingModel, $defaultModel, [StringComparison]::OrdinalIgnoreCase) -or -not [string]::Equals([string]$incoming.DeepSeekModelId, $defaultModel, [StringComparison]::OrdinalIgnoreCase)) {'#13#10 +
-    '  Set-SettingValue ''DeepSeekModelId'' $incoming.DeepSeekModelId'#13#10 +
+    '$existingModel = Get-SettingValueWithFallback ''AiModelId'' ''DeepSeekModelId'''#13#10 +
+    'if ([string]::IsNullOrWhiteSpace($existingModel) -or [string]::Equals($existingModel, $defaultModel, [StringComparison]::OrdinalIgnoreCase)) {'#13#10 +
+    '  Set-SettingValue ''AiModelId'' $incoming.AiModelId'#13#10 +
+    '} else {'#13#10 +
+    '  Set-SettingValue ''AiModelId'' $existingModel'#13#10 +
     '}'#13#10 +
     '$settings | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $settingsPath -Encoding UTF8'#13#10 +
-    'if (-not [string]::IsNullOrWhiteSpace([string]$incoming.DeepSeekApiKey)) {'#13#10 +
+    'if (-not [string]::IsNullOrWhiteSpace([string]$incoming.AiApiKey)) {'#13#10 +
     '  if (Test-Path -LiteralPath $secretsPath) {'#13#10 +
     '    try { $secrets = Get-Content -Raw -LiteralPath $secretsPath | ConvertFrom-Json } catch { $secrets = [pscustomobject]@{} }'#13#10 +
     '  } else {'#13#10 +
     '    $secrets = [pscustomobject]@{}'#13#10 +
     '  }'#13#10 +
     '  Add-Type -AssemblyName System.Security'#13#10 +
-    '  $plainBytes = [Text.Encoding]::UTF8.GetBytes([string]$incoming.DeepSeekApiKey)'#13#10 +
+    '  $plainBytes = [Text.Encoding]::UTF8.GetBytes([string]$incoming.AiApiKey)'#13#10 +
     '  $protectedBytes = [Security.Cryptography.ProtectedData]::Protect($plainBytes, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)'#13#10 +
     '  $protectedValue = [Convert]::ToBase64String($protectedBytes)'#13#10 +
-    '  if ($secrets.PSObject.Properties[''DeepSeekApiKey'']) { $secrets.DeepSeekApiKey = $protectedValue } else { Add-Member -InputObject $secrets -NotePropertyName ''DeepSeekApiKey'' -NotePropertyValue $protectedValue }'#13#10 +
+    '  if ($secrets.PSObject.Properties[''AiApiKey'']) { $secrets.AiApiKey = $protectedValue } else { Add-Member -InputObject $secrets -NotePropertyName ''AiApiKey'' -NotePropertyValue $protectedValue }'#13#10 +
     '  $secrets | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $secretsPath -Encoding UTF8'#13#10 +
+    '} elseif ((Test-Path -LiteralPath $secretsPath)) {'#13#10 +
+    '  try { $secrets = Get-Content -Raw -LiteralPath $secretsPath | ConvertFrom-Json } catch { $secrets = [pscustomobject]@{} }'#13#10 +
+    '  if (-not $secrets.PSObject.Properties[''AiApiKey''] -and $secrets.PSObject.Properties[''DeepSeekApiKey'']) { Add-Member -InputObject $secrets -NotePropertyName ''AiApiKey'' -NotePropertyValue $secrets.DeepSeekApiKey; $secrets | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $secretsPath -Encoding UTF8 }'#13#10 +
     '}'#13#10 +
     'Remove-Item -LiteralPath $importPath -Force -ErrorAction SilentlyContinue'#13#10;
   SaveStringToFile(MergeScriptPath, MergeScript, False);

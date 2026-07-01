@@ -41,9 +41,7 @@ public sealed class FinanceNewsService
     private const string NytEconomyFeedUrl = "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml";
     private const string OpenRouterAttributionReferer = "https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER";
     private const string OpenRouterAttributionTitle = "DO NOT PANIC PORTFOLIO VISUALIZER";
-    // Selected on 2026-06-30 after live OpenRouter probes showed the router alias timing out for the structured news contract.
-    private const string OpenRouterFreeStructuredNewsModelId = "nvidia/nemotron-3-super-120b-a12b:free";
-    private const int MaxDeepSeekSummaryAttempts = 2;
+    private const int MaxAiSummaryAttempts = 2;
     private const int SummaryRetryBaseDelayMilliseconds = 750;
     private static readonly TimeSpan DefaultSummarizedNewsExternalCallBudget = TimeSpan.FromSeconds(60);
     internal static readonly TimeSpan RecommendedSummarizedNewsHttpClientTimeout = TimeSpan.FromSeconds(65);
@@ -57,20 +55,20 @@ public sealed class FinanceNewsService
     private const string DouglasAdamsClosingQuote = "\"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws.\"";
     private const string WilliamShakespeareClosingQuote = "\"All that glisters is not gold.\"";
     private readonly string _cachePath;
-    private readonly Func<string> _deepSeekApiKeyResolver;
+    private readonly Func<string> _aiApiKeyResolver;
     private readonly Func<TimeSpan, CancellationToken, Task> _delayAsync;
     private readonly TimeSpan _summarizedNewsExternalCallBudget;
 
     public FinanceNewsService(
         string? cachePath = null,
-        Func<string>? deepSeekApiKeyResolver = null,
+        Func<string>? aiApiKeyResolver = null,
         Func<TimeSpan, CancellationToken, Task>? delayAsync = null,
         TimeSpan? summarizedNewsExternalCallBudget = null)
     {
         _cachePath = string.IsNullOrWhiteSpace(cachePath)
             ? Path.Combine(PathHelper.GetLocalDataDirectory(), CacheFileName)
             : cachePath;
-        _deepSeekApiKeyResolver = deepSeekApiKeyResolver ?? (() => string.Empty);
+        _aiApiKeyResolver = aiApiKeyResolver ?? (() => string.Empty);
         _delayAsync = delayAsync ?? Task.Delay;
         _summarizedNewsExternalCallBudget = summarizedNewsExternalCallBudget.GetValueOrDefault(DefaultSummarizedNewsExternalCallBudget);
     }
@@ -82,7 +80,7 @@ public sealed class FinanceNewsService
         CancellationToken cancellationToken = default)
     {
         NewsScrollerMode mode = settings.NewsScrollerMode;
-        DeepSeekWritingStyle writingStyle = settings.DeepSeekWritingStyle;
+        AiWritingStyle writingStyle = settings.AiWritingStyle;
         string requestUrl = NormalizeFeedUrl(settings.NewsFeedUrl);
         TimeSpan refreshInterval = GetRefreshInterval(mode, settings.NewsRefreshMinutes);
         string modeKey = GetModeKey(mode, writingStyle);
@@ -214,7 +212,7 @@ public sealed class FinanceNewsService
     public IReadOnlyList<string> GetCachedHeadlines(NewsScrollerMode mode)
         => throw new NotSupportedException("Call GetCachedHeadlines(mode, writingStyle) so summarized financial news cache lookup respects the configured writing style.");
 
-    public IReadOnlyList<string> GetCachedHeadlines(NewsScrollerMode mode, DeepSeekWritingStyle writingStyle)
+    public IReadOnlyList<string> GetCachedHeadlines(NewsScrollerMode mode, AiWritingStyle writingStyle)
     {
         if (!File.Exists(_cachePath))
             return GetFallbackHeadlines(mode, []);
@@ -245,77 +243,76 @@ public sealed class FinanceNewsService
         if (settings.NewsScrollerMode != NewsScrollerMode.SummarizedFinancialNews)
             return AiNewsAccessCheckResult.Skipped("rss-mode");
 
-        string apiKey = ResolveDeepSeekApiKey(settings.DeepSeekApiKey);
+        string apiKey = ResolveAiApiKey(settings.AiApiKey);
         if (string.IsNullOrWhiteSpace(apiKey))
             return AiNewsAccessCheckResult.Skipped("api-key-not-configured");
 
-        string endpointUrl = ResolveDeepSeekEndpointUrl(settings.DeepSeekEndpointUrl);
-        string configuredModelId = ResolveDeepSeekModelId(settings.DeepSeekModelId);
-        IReadOnlyList<string> modelCandidates = ResolveDeepSeekModelCandidates(endpointUrl, configuredModelId);
-        string lastFailureReason = "no-model-candidates";
+        string endpointUrl = ResolveAiEndpointUrl(settings.AiEndpointUrl);
+        string configuredModelId = ResolveAiModelId(settings.AiModelId);
 
-        foreach (string modelId in modelCandidates)
+        TraceNewsState(
+            "NewsSummaryAccessCheckStart",
+            new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+            new KeyValuePair<string, object?>("model_id", configuredModelId),
+            new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
+            new KeyValuePair<string, object?>("model_fallback_policy", "configured-model-only"));
+
+        try
+        {
+            using HttpRequestMessage request = new(HttpMethod.Post, BuildAiChatCompletionsUri(endpointUrl));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            AddOpenRouterAttributionHeaders(request, endpointUrl);
+            request.Content = new StringContent(
+                JsonSerializer.Serialize(CreateAiAccessCheckPayload(configuredModelId)),
+                Encoding.UTF8,
+                "application/json");
+
+            using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                string reason = $"http-{(int)response.StatusCode}";
+                TraceNewsState(
+                    "NewsSummaryAccessCheckFailed",
+                    new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                    new KeyValuePair<string, object?>("model_id", configuredModelId),
+                    new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
+                    new KeyValuePair<string, object?>("model_fallback_policy", "configured-model-only"),
+                    new KeyValuePair<string, object?>("reason", reason));
+                return AiNewsAccessCheckResult.Failed(reason);
+            }
+
+            TraceNewsState(
+                "NewsSummaryAccessCheckSucceeded",
+                new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                new KeyValuePair<string, object?>("model_id", configuredModelId),
+                new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
+                new KeyValuePair<string, object?>("model_fallback_policy", "configured-model-only"));
+            return AiNewsAccessCheckResult.Success();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             TraceNewsState(
-                "NewsSummaryAccessCheckStart",
+                "NewsSummaryAccessCheckFailed",
                 new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                new KeyValuePair<string, object?>("model_id", modelId),
-                new KeyValuePair<string, object?>("configured_model_id", configuredModelId));
-
-            try
-            {
-                using HttpRequestMessage request = new(HttpMethod.Post, BuildDeepSeekChatCompletionsUri(endpointUrl));
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-                AddOpenRouterAttributionHeaders(request, endpointUrl);
-                request.Content = new StringContent(
-                    JsonSerializer.Serialize(CreateAiAccessCheckPayload(modelId)),
-                    Encoding.UTF8,
-                    "application/json");
-
-                using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
-                if (!response.IsSuccessStatusCode)
-                {
-                    lastFailureReason = $"http-{(int)response.StatusCode}";
-                    TraceNewsState(
-                        "NewsSummaryAccessCheckFailed",
-                        new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                        new KeyValuePair<string, object?>("model_id", modelId),
-                        new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
-                        new KeyValuePair<string, object?>("reason", lastFailureReason));
-                    continue;
-                }
-
-                TraceNewsState(
-                    "NewsSummaryAccessCheckSucceeded",
-                    new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                    new KeyValuePair<string, object?>("model_id", modelId),
-                    new KeyValuePair<string, object?>("configured_model_id", configuredModelId));
-                return AiNewsAccessCheckResult.Success();
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                lastFailureReason = "timeout-or-cancelled";
-                TraceNewsState(
-                    "NewsSummaryAccessCheckFailed",
-                    new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                    new KeyValuePair<string, object?>("model_id", modelId),
-                    new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
-                    new KeyValuePair<string, object?>("reason", lastFailureReason));
-                return AiNewsAccessCheckResult.Failed(lastFailureReason);
-            }
-            catch (Exception ex)
-            {
-                lastFailureReason = ex.GetType().Name;
-                TraceNewsState(
-                    "NewsSummaryAccessCheckFailed",
-                    new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                    new KeyValuePair<string, object?>("model_id", modelId),
-                    new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
-                    new KeyValuePair<string, object?>("reason", lastFailureReason));
-            }
+                new KeyValuePair<string, object?>("model_id", configuredModelId),
+                new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
+                new KeyValuePair<string, object?>("model_fallback_policy", "configured-model-only"),
+                new KeyValuePair<string, object?>("reason", "timeout-or-cancelled"));
+            return AiNewsAccessCheckResult.Failed("timeout-or-cancelled");
         }
+        catch (Exception ex)
+        {
+            string reason = ex.GetType().Name;
+            TraceNewsState(
+                "NewsSummaryAccessCheckFailed",
+                new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                new KeyValuePair<string, object?>("model_id", configuredModelId),
+                new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
+                new KeyValuePair<string, object?>("model_fallback_policy", "configured-model-only"),
+                new KeyValuePair<string, object?>("reason", reason));
 
-        return AiNewsAccessCheckResult.Failed(lastFailureReason);
+            return AiNewsAccessCheckResult.Failed(reason);
+        }
     }
 
     private static async Task<List<string>> FetchRssHeadlinesAsync(
@@ -340,7 +337,7 @@ public sealed class FinanceNewsService
         AppSettings settings,
         CancellationToken cancellationToken)
     {
-        string apiKey = ResolveDeepSeekApiKey(settings.DeepSeekApiKey);
+        string apiKey = ResolveAiApiKey(settings.AiApiKey);
         if (string.IsNullOrWhiteSpace(apiKey))
             return await FetchRssOnlyStructuredFallbackAsync(httpClient, settings, cancellationToken).ConfigureAwait(false);
 
@@ -371,19 +368,18 @@ public sealed class FinanceNewsService
 
         try
         {
-            string endpointUrl = ResolveDeepSeekEndpointUrl(settings.DeepSeekEndpointUrl);
-            string configuredModelId = ResolveDeepSeekModelId(settings.DeepSeekModelId);
-            IReadOnlyList<string> modelCandidates = ResolveDeepSeekModelCandidates(endpointUrl, configuredModelId);
+            string endpointUrl = ResolveAiEndpointUrl(settings.AiEndpointUrl);
+            string configuredModelId = ResolveAiModelId(settings.AiModelId);
             string? retryReason = null;
             bool requestStrictJsonResponseFormat = true;
-            string userPrompt = BuildSummarizedNewsPrompt(settings.DeepSeekWritingStyle, context);
-            for (int attempt = 1; attempt <= MaxDeepSeekSummaryAttempts; attempt++)
+            string userPrompt = BuildSummarizedNewsPrompt(settings.AiWritingStyle, context);
+            for (int attempt = 1; attempt <= MaxAiSummaryAttempts; attempt++)
             {
-                string modelId = modelCandidates[Math.Min(attempt - 1, modelCandidates.Count - 1)];
+                string modelId = configuredModelId;
                 JsonDocument document;
                 try
                 {
-                    using HttpRequestMessage request = new(HttpMethod.Post, BuildDeepSeekChatCompletionsUri(endpointUrl));
+                    using HttpRequestMessage request = new(HttpMethod.Post, BuildAiChatCompletionsUri(endpointUrl));
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
                     AddOpenRouterAttributionHeaders(request, endpointUrl);
                     request.Content = new StringContent(
@@ -414,12 +410,12 @@ public sealed class FinanceNewsService
                 {
                     TraceNewsState(
                         "NewsSummaryExternalBudgetExceeded",
-                        new KeyValuePair<string, object?>("phase", "deepseek"),
+                        new KeyValuePair<string, object?>("phase", "ai-provider"),
                         new KeyValuePair<string, object?>("attempt", attempt),
                         new KeyValuePair<string, object?>("budget_seconds", _summarizedNewsExternalCallBudget.TotalSeconds));
-                    return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "deepseek-request-timeout");
+                    return CreateSummarizedFallbackResult(context.Headlines, settings.AiWritingStyle, "ai-request-timeout");
                 }
-                catch (OperationCanceledException ex) when (attempt < MaxDeepSeekSummaryAttempts)
+                catch (OperationCanceledException ex) when (attempt < MaxAiSummaryAttempts)
                 {
                     retryReason = ex.GetType().Name;
                     await DelayBeforeSummaryRetryAsync(retryReason, attempt, boundedToken);
@@ -433,7 +429,7 @@ public sealed class FinanceNewsService
                         new KeyValuePair<string, object?>("attempt", attempt),
                         new KeyValuePair<string, object?>("http_timeout_seconds", httpClient.Timeout.TotalSeconds),
                         new KeyValuePair<string, object?>("budget_seconds", _summarizedNewsExternalCallBudget.TotalSeconds));
-                    return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "deepseek-request-canceled");
+                    return CreateSummarizedFallbackResult(context.Headlines, settings.AiWritingStyle, "ai-request-canceled");
                 }
                 catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.BadRequest && requestStrictJsonResponseFormat)
                 {
@@ -447,7 +443,7 @@ public sealed class FinanceNewsService
                         new KeyValuePair<string, object?>("configured_model_id", configuredModelId));
                     continue;
                 }
-                catch (Exception ex) when (IsRetryableSummaryException(ex) && attempt < MaxDeepSeekSummaryAttempts)
+                catch (Exception ex) when (IsRetryableSummaryException(ex) && attempt < MaxAiSummaryAttempts)
                 {
                     retryReason = ex.GetType().Name;
                     await DelayBeforeSummaryRetryAsync(retryReason, attempt, boundedToken);
@@ -460,28 +456,28 @@ public sealed class FinanceNewsService
                         choicesElement.ValueKind != JsonValueKind.Array ||
                         choicesElement.GetArrayLength() == 0)
                     {
-                        if (attempt < MaxDeepSeekSummaryAttempts)
+                        if (attempt < MaxAiSummaryAttempts)
                         {
                             retryReason = "empty-choices";
                             await DelayBeforeSummaryRetryAsync(retryReason, attempt, boundedToken);
                             continue;
                         }
 
-                        return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "empty-choices");
+                        return CreateSummarizedFallbackResult(context.Headlines, settings.AiWritingStyle, "empty-choices");
                     }
 
                     JsonElement firstChoice = choicesElement[0];
                     if (!firstChoice.TryGetProperty("message", out JsonElement messageElement) ||
                         !messageElement.TryGetProperty("content", out JsonElement contentElement))
                     {
-                        if (attempt < MaxDeepSeekSummaryAttempts)
+                        if (attempt < MaxAiSummaryAttempts)
                         {
                             retryReason = "missing-message-content";
                             await DelayBeforeSummaryRetryAsync(retryReason, attempt, boundedToken);
                             continue;
                         }
 
-                        return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "missing-message-content");
+                        return CreateSummarizedFallbackResult(context.Headlines, settings.AiWritingStyle, "missing-message-content");
                     }
 
                     string? content = contentElement.GetString();
@@ -491,14 +487,14 @@ public sealed class FinanceNewsService
                         new KeyValuePair<string, object?>("mode", NewsScrollerMode.SummarizedFinancialNews),
                         new KeyValuePair<string, object?>("source_headline_count", context.Headlines.Count),
                         new KeyValuePair<string, object?>("item_count", summarizedItems.Count),
-                        new KeyValuePair<string, object?>("writing_style", settings.DeepSeekWritingStyle),
+                        new KeyValuePair<string, object?>("writing_style", settings.AiWritingStyle),
                         new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
                         new KeyValuePair<string, object?>("model_id", modelId),
                         new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
                         new KeyValuePair<string, object?>("attempt", attempt));
                     if (summarizedItems.Count == 0)
                     {
-                        if (attempt < MaxDeepSeekSummaryAttempts)
+                        if (attempt < MaxAiSummaryAttempts)
                         {
                             retryReason = "empty-summary-items";
                             await DelayBeforeSummaryRetryAsync(retryReason, attempt, boundedToken);
@@ -511,7 +507,7 @@ public sealed class FinanceNewsService
                             new KeyValuePair<string, object?>("content_preview", BuildResponsePreview(content)),
                             new KeyValuePair<string, object?>("response_length", content?.Length ?? 0),
                             new KeyValuePair<string, object?>("attempt", attempt));
-                        return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "empty-summary-items");
+                        return CreateSummarizedFallbackResult(context.Headlines, settings.AiWritingStyle, "empty-summary-items");
                     }
 
                     if (!string.IsNullOrWhiteSpace(retryReason))
@@ -523,12 +519,12 @@ public sealed class FinanceNewsService
                             new KeyValuePair<string, object?>("item_count", summarizedItems.Count));
                     }
 
-                    summarizedItems.Add(BuildClosingQuoteHeadline(settings.DeepSeekWritingStyle));
+                    summarizedItems.Add(BuildClosingQuoteHeadline(settings.AiWritingStyle));
                     return new(summarizedItems, false);
                 }
             }
 
-            return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "retry-exhausted");
+            return CreateSummarizedFallbackResult(context.Headlines, settings.AiWritingStyle, "retry-exhausted");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -540,11 +536,11 @@ public sealed class FinanceNewsService
                 "NewsSummaryExternalBudgetExceeded",
                 new KeyValuePair<string, object?>("phase", "retry-delay"),
                 new KeyValuePair<string, object?>("budget_seconds", _summarizedNewsExternalCallBudget.TotalSeconds));
-            return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "deepseek-request-timeout");
+            return CreateSummarizedFallbackResult(context.Headlines, settings.AiWritingStyle, "ai-request-timeout");
         }
         catch
         {
-            return CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "deepseek-request-failed");
+            return CreateSummarizedFallbackResult(context.Headlines, settings.AiWritingStyle, "ai-request-failed");
         }
     }
 
@@ -569,7 +565,7 @@ public sealed class FinanceNewsService
 
         return context.Headlines.Count == 0
             ? new([], false)
-            : CreateSummarizedFallbackResult(context.Headlines, settings.DeepSeekWritingStyle, "deepseek-api-key-missing");
+            : CreateSummarizedFallbackResult(context.Headlines, settings.AiWritingStyle, "ai-api-key-missing");
     }
 
     private async Task DelayBeforeSummaryRetryAsync(
@@ -688,7 +684,7 @@ public sealed class FinanceNewsService
             .ToList();
     }
 
-    private static string BuildSummarizedNewsPrompt(DeepSeekWritingStyle writingStyle, SummarizedNewsContext context)
+    private static string BuildSummarizedNewsPrompt(AiWritingStyle writingStyle, SummarizedNewsContext context)
     {
         StringBuilder builder = new();
         builder.AppendLine("You are a dependable fiduciary and are presenting current financial news highlights to your customers.");
@@ -696,12 +692,20 @@ public sealed class FinanceNewsService
         builder.Append("Restyle this live financial snapshot captured at ");
         builder.Append(context.CapturedAtUtc.ToString("yyyy-MM-dd HH:mm 'UTC'"));
         builder.AppendLine(" into short sequential items for the news scroller.");
-        builder.AppendLine("For each item, write three short haiku-style lines first, then one compact Adams-style prose line using only the supplied facts.");
-        builder.AppendLine("The haiku may sound bleak, officious, or absurdly bureaucratic in a Vogon-adjacent way, but it must still reflect the supplied facts.");
-        builder.AppendLine("The prose line must remain recognizably Douglas Adams in tone and also use only the supplied facts.");
+        builder.AppendLine("For each item, write three short poem lines first, then one compact stylized prose line using only the supplied facts.");
+        if (writingStyle == AiWritingStyle.WilliamShakespeare)
+        {
+            builder.AppendLine("The poem lines may sound theatrical, Elizabethan, and slightly ominous, but they must still reflect the supplied facts.");
+            builder.AppendLine("The prose line must remain recognizably classical Shakespeare in tone and also use only the supplied facts.");
+        }
+        else
+        {
+            builder.AppendLine("The poem lines may sound bleak, officious, or absurdly bureaucratic in a Vogon-adjacent way, but they must still reflect the supplied facts.");
+            builder.AppendLine("The prose line must remain recognizably Douglas Adams in tone and also use only the supplied facts.");
+        }
         builder.AppendLine("Every haiku line must be a complete readable phrase, not a mechanically chopped headline fragment.");
         builder.AppendLine("Do not end a haiku line with an article, preposition, conjunction, dangling adjective, or any word that clearly expects the next word.");
-        builder.AppendLine("Vary the Adams-style prose frame across items; never reuse the same opening phrase or sentence skeleton.");
+        builder.AppendLine("Vary the prose frame across items; never reuse the same opening phrase or sentence skeleton.");
         builder.AppendLine("Each item must remain readable when displayed line by line in a slow teleprinter scroller.");
         builder.AppendLine("Only restyle the supplied facts. Do not add, remove, alter, correct, or infer factual content.");
         builder.AppendLine("Never include investment recommendations, stock-picking language, or advice about whether an asset is a buy, sell, or hold.");
@@ -1172,21 +1176,21 @@ public sealed class FinanceNewsService
         return candidate.Length <= 240 ? candidate : candidate[..240];
     }
 
-    private static string GetWritingStyleInstruction(DeepSeekWritingStyle writingStyle)
+    private static string GetWritingStyleInstruction(AiWritingStyle writingStyle)
         => writingStyle switch
         {
-            DeepSeekWritingStyle.WilliamShakespeare => "You write in the style of classical Shakespeare.",
+            AiWritingStyle.WilliamShakespeare => "You write in the style of classical Shakespeare.",
             _ => "You write in the style of Douglas Adams."
         };
 
-    private static string GetClosingQuotation(DeepSeekWritingStyle writingStyle)
+    private static string GetClosingQuotation(AiWritingStyle writingStyle)
         => writingStyle switch
         {
-            DeepSeekWritingStyle.WilliamShakespeare => WilliamShakespeareClosingQuote,
+            AiWritingStyle.WilliamShakespeare => WilliamShakespeareClosingQuote,
             _ => DouglasAdamsClosingQuote
         };
 
-    internal static string BuildClosingQuoteHeadline(DeepSeekWritingStyle writingStyle)
+    internal static string BuildClosingQuoteHeadline(AiWritingStyle writingStyle)
         => $"{ClosingQuoteHeadlinePrefix}{GetClosingQuotation(writingStyle)}";
 
     internal static bool TryParseSpecialHeadline(string headline, out string text, out bool isSupplemental)
@@ -1203,20 +1207,20 @@ public sealed class FinanceNewsService
         return !string.IsNullOrWhiteSpace(text);
     }
 
-    private string ResolveDeepSeekApiKey(string? explicitApiKey)
+    private string ResolveAiApiKey(string? explicitApiKey)
     {
         string candidate = (explicitApiKey ?? string.Empty).Trim();
         if (!string.IsNullOrWhiteSpace(candidate))
             return candidate;
 
-        return (_deepSeekApiKeyResolver() ?? string.Empty).Trim();
+        return (_aiApiKeyResolver() ?? string.Empty).Trim();
     }
 
-    private static string ResolveDeepSeekEndpointUrl(string? explicitEndpointUrl)
+    private static string ResolveAiEndpointUrl(string? explicitEndpointUrl)
     {
         string candidate = (explicitEndpointUrl ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(candidate))
-            return Defaults.DefaultDeepSeekEndpointUrl;
+            return Defaults.DefaultAiEndpointUrl;
 
         string normalized = candidate.TrimEnd('/');
         const string chatPath = "/chat/completions";
@@ -1226,26 +1230,15 @@ public sealed class FinanceNewsService
         return normalized;
     }
 
-    private static string ResolveDeepSeekModelId(string? explicitModelId)
+    private static string ResolveAiModelId(string? explicitModelId)
     {
         string candidate = (explicitModelId ?? string.Empty).Trim();
         return string.IsNullOrWhiteSpace(candidate)
-            ? Defaults.DefaultDeepSeekModelId
+            ? Defaults.DefaultAiModelId
             : candidate;
     }
 
-    private static IReadOnlyList<string> ResolveDeepSeekModelCandidates(string endpointUrl, string configuredModelId)
-    {
-        if (IsOpenRouterEndpoint(endpointUrl) &&
-            string.Equals(configuredModelId, Defaults.DefaultDeepSeekModelId, StringComparison.OrdinalIgnoreCase))
-        {
-            return [OpenRouterFreeStructuredNewsModelId, configuredModelId];
-        }
-
-        return [configuredModelId];
-    }
-
-    private static Uri BuildDeepSeekChatCompletionsUri(string endpointUrl)
+    private static Uri BuildAiChatCompletionsUri(string endpointUrl)
         => new(new Uri($"{endpointUrl.TrimEnd('/')}/", UriKind.Absolute), "chat/completions");
 
     private static void AddOpenRouterAttributionHeaders(HttpRequestMessage request, string endpointUrl)
@@ -1323,13 +1316,13 @@ public sealed class FinanceNewsService
         return DefaultFeedUrl;
     }
 
-    private static string GetModeKey(NewsScrollerMode mode, DeepSeekWritingStyle writingStyle)
+    private static string GetModeKey(NewsScrollerMode mode, AiWritingStyle writingStyle)
         => mode switch
         {
             NewsScrollerMode.RssFeed => "rss",
             _ => writingStyle switch
             {
-                DeepSeekWritingStyle.WilliamShakespeare => $"summarized-financial-news:{SummarizedNewsCacheFormatVersion}:william-shakespeare",
+                AiWritingStyle.WilliamShakespeare => $"summarized-financial-news:{SummarizedNewsCacheFormatVersion}:william-shakespeare",
                 _ => $"summarized-financial-news:{SummarizedNewsCacheFormatVersion}:douglas-adams"
             }
         };
@@ -1365,7 +1358,7 @@ public sealed class FinanceNewsService
 
     private static NewsFetchResult CreateSummarizedFallbackResult(
         IReadOnlyList<string> sourceHeadlines,
-        DeepSeekWritingStyle writingStyle,
+        AiWritingStyle writingStyle,
         string reason)
     {
         List<string> fallbackHeadlines = sourceHeadlines
@@ -1386,7 +1379,7 @@ public sealed class FinanceNewsService
 
     private static List<string> BuildLocalStructuredFallbackHeadlines(
         IReadOnlyList<string> sourceHeadlines,
-        DeepSeekWritingStyle writingStyle)
+        AiWritingStyle writingStyle)
     {
         List<string> items = [];
         foreach (string headline in sourceHeadlines
@@ -1411,11 +1404,11 @@ public sealed class FinanceNewsService
 
     private static string[] BuildFallbackPoeticLines(
         string headline,
-        DeepSeekWritingStyle writingStyle,
+        AiWritingStyle writingStyle,
         int itemIndex)
     {
         string factLine = BuildFallbackFactLine(headline);
-        string[][] templates = writingStyle == DeepSeekWritingStyle.WilliamShakespeare
+        string[][] templates = writingStyle == AiWritingStyle.WilliamShakespeare
             ? ShakespeareFallbackPoeticLines
             : DouglasFallbackPoeticLines;
         string[] selected = templates[Math.Abs(itemIndex) % templates.Length];
@@ -1487,11 +1480,11 @@ public sealed class FinanceNewsService
 
     private static string BuildFallbackProseLine(
         string headline,
-        DeepSeekWritingStyle writingStyle,
+        AiWritingStyle writingStyle,
         int itemIndex)
         => writingStyle switch
         {
-            DeepSeekWritingStyle.WilliamShakespeare => string.Format(
+            AiWritingStyle.WilliamShakespeare => string.Format(
                 CultureInfo.InvariantCulture,
                 ShakespeareFallbackProseTemplates[Math.Abs(itemIndex) % ShakespeareFallbackProseTemplates.Length],
                 headline),

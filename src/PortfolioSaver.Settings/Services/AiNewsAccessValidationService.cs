@@ -60,17 +60,17 @@ public sealed class AiNewsAccessValidationService : IAiNewsAccessValidationServi
         if (settings.NewsScrollerMode != NewsScrollerMode.SummarizedFinancialNews)
             return AiNewsAccessValidationResult.Skipped("AI summarized news is not selected.");
 
-        string apiKey = ResolveApiKey(settings.DeepSeekApiKey);
+        string apiKey = ResolveApiKey(settings.AiApiKey);
         if (string.IsNullOrWhiteSpace(apiKey))
             return AiNewsAccessValidationResult.Failed("Enter an AI API key, or switch Finance News to RSS Feed.");
 
-        string endpointUrl = NormalizeEndpointUrl(settings.DeepSeekEndpointUrl);
+        string endpointUrl = NormalizeEndpointUrl(settings.AiEndpointUrl);
         if (string.IsNullOrWhiteSpace(endpointUrl))
             return AiNewsAccessValidationResult.Failed("Enter a valid AI endpoint URL.");
 
-        string modelId = string.IsNullOrWhiteSpace(settings.DeepSeekModelId)
-            ? Defaults.DefaultDeepSeekModelId
-            : settings.DeepSeekModelId.Trim();
+        string modelId = string.IsNullOrWhiteSpace(settings.AiModelId)
+            ? Defaults.DefaultAiModelId
+            : settings.AiModelId.Trim();
         if (string.IsNullOrWhiteSpace(modelId))
             return AiNewsAccessValidationResult.Failed("Enter a valid AI model ID.");
 
@@ -139,24 +139,15 @@ public sealed class AiNewsAccessValidationService : IAiNewsAccessValidationServi
 
     private static string ResolveApiKey(string? explicitApiKey)
     {
-        if (!string.IsNullOrWhiteSpace(explicitApiKey))
-            return explicitApiKey.Trim();
-
-        // Defaults lists the current OpenRouter-specific names first, followed by legacy DeepSeek names.
-        foreach (string name in Defaults.AiApiKeyEnvironmentVariableNames)
-        {
-            string? value = Environment.GetEnvironmentVariable(name);
-            if (!string.IsNullOrWhiteSpace(value))
-                return value.Trim();
-        }
-
-        return string.Empty;
+        return string.IsNullOrWhiteSpace(explicitApiKey)
+            ? string.Empty
+            : explicitApiKey.Trim();
     }
 
     private static string NormalizeEndpointUrl(string? endpointUrl)
     {
         string candidate = string.IsNullOrWhiteSpace(endpointUrl)
-            ? Defaults.DefaultDeepSeekEndpointUrl
+            ? Defaults.DefaultAiEndpointUrl
             : endpointUrl.Trim();
 
         if (!Uri.TryCreate(candidate, UriKind.Absolute, out Uri? uri) ||

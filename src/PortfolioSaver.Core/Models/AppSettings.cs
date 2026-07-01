@@ -22,7 +22,7 @@ public sealed class AppSettings
     public int RefreshSecondsOffHours { get; set; } = 300;
     public int HttpTimeoutSeconds { get; set; } = 10;
     public NewsScrollerMode NewsScrollerMode { get; set; } = NewsScrollerMode.RssFeed;
-    public DeepSeekWritingStyle DeepSeekWritingStyle { get; set; } = DeepSeekWritingStyle.DouglasAdams;
+    public AiWritingStyle AiWritingStyle { get; set; } = AiWritingStyle.DouglasAdams;
     public string NewsFeedUrl { get; set; } = "https://finance.yahoo.com/news/rss";
     public int NewsRefreshMinutes { get; set; } = 15;
 
@@ -34,11 +34,10 @@ public sealed class AppSettings
     public double DimOpacity { get; set; } = 0.55;
     public LayoutPreset LayoutPreset { get; set; } = LayoutPreset.UltrawideDefault;
 
-    // Summarized news uses an OpenAI-compatible AI endpoint. The property names remain
-    // DeepSeek-prefixed for config compatibility, but defaults now target OpenRouter.
-    public string DeepSeekApiKey { get; set; } = string.Empty;
-    public string DeepSeekEndpointUrl { get; set; } = Defaults.DefaultDeepSeekEndpointUrl;
-    public string DeepSeekModelId { get; set; } = Defaults.DefaultDeepSeekModelId;
+    // Summarized news uses a user-configurable OpenAI-compatible AI endpoint.
+    public string AiApiKey { get; set; } = string.Empty;
+    public string AiEndpointUrl { get; set; } = Defaults.DefaultAiEndpointUrl;
+    public string AiModelId { get; set; } = Defaults.DefaultAiModelId;
     public int MarketCalendarRefreshHours { get; set; } = 12;
 
     public bool EnableFloatingGraphs { get; set; } = true;
@@ -70,7 +69,7 @@ public sealed class AppSettings
         RefreshSecondsOffHours = RefreshSecondsOffHours,
         HttpTimeoutSeconds = HttpTimeoutSeconds,
         NewsScrollerMode = NewsScrollerMode,
-        DeepSeekWritingStyle = DeepSeekWritingStyle,
+        AiWritingStyle = AiWritingStyle,
         NewsFeedUrl = NewsFeedUrl,
         NewsRefreshMinutes = NewsRefreshMinutes,
         BackgroundImageFolder = BackgroundImageFolder,
@@ -80,9 +79,9 @@ public sealed class AppSettings
         ShuffleBackgrounds = ShuffleBackgrounds,
         DimOpacity = DimOpacity,
         LayoutPreset = LayoutPreset,
-        DeepSeekApiKey = DeepSeekApiKey,
-        DeepSeekEndpointUrl = DeepSeekEndpointUrl,
-        DeepSeekModelId = DeepSeekModelId,
+        AiApiKey = AiApiKey,
+        AiEndpointUrl = AiEndpointUrl,
+        AiModelId = AiModelId,
         MarketCalendarRefreshHours = MarketCalendarRefreshHours,
         EnableFloatingGraphs = EnableFloatingGraphs,
         HistoricalLookbackDays = HistoricalLookbackDays,

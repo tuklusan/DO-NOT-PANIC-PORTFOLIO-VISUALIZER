@@ -39,17 +39,14 @@ public sealed class ProviderSecretStoreService
     public void OverlaySecrets(AppSettings settings)
     {
         ProviderSecretsDto dto = LoadSecretsDto();
-        ApplySecret(settings, dto.DeepSeekApiKey, static s => s.DeepSeekApiKey, static (s, v) => s.DeepSeekApiKey = v);
+        ApplySecret(settings, dto.AiApiKey, static s => s.AiApiKey, static (s, v) => s.AiApiKey = v);
     }
 
     public void Save(AppSettings settings)
     {
         ProviderSecretsDto dto = LoadSecretsDto();
 
-        dto.DeepSeekApiKey = ResolvePersistedProtectedValue(
-            settings.DeepSeekApiKey,
-            Defaults.AiApiKeyEnvironmentVariableNames,
-            dto.DeepSeekApiKey);
+        dto.AiApiKey = ResolvePersistedProtectedValue(settings.AiApiKey, dto.AiApiKey);
 
         if (!dto.HasAnySecrets())
         {
@@ -81,34 +78,16 @@ public sealed class ProviderSecretStoreService
             setter(settings, unprotected);
     }
 
-    private string ResolvePersistedProtectedValue(string currentValue, IEnumerable<string> environmentVariableNames, string existingProtectedValue)
+    private string ResolvePersistedProtectedValue(string currentValue, string persistedProtectedValue)
     {
         string trimmed = (currentValue ?? string.Empty).Trim();
-        string environmentValue = GetFirstEnvironmentVariableValue(environmentVariableNames);
-
-        if (!string.IsNullOrWhiteSpace(environmentValue) &&
-            string.Equals(trimmed, environmentValue, StringComparison.Ordinal))
-        {
-            return existingProtectedValue ?? string.Empty;
-        }
-
-        // Environment-sourced keys are intentionally not persisted; the normalizer reapplies them on load.
         if (string.IsNullOrWhiteSpace(trimmed))
             return string.Empty;
 
+        if (string.Equals(UnprotectSafe(persistedProtectedValue), trimmed, StringComparison.Ordinal))
+            return persistedProtectedValue;
+
         return _settingsProtectionService.Protect(trimmed);
-    }
-
-    private static string GetFirstEnvironmentVariableValue(IEnumerable<string> environmentVariableNames)
-    {
-        foreach (string name in environmentVariableNames)
-        {
-            string value = (Environment.GetEnvironmentVariable(name) ?? string.Empty).Trim();
-            if (!string.IsNullOrWhiteSpace(value))
-                return value;
-        }
-
-        return string.Empty;
     }
 
     private ProviderSecretsDto LoadSecretsDto()
@@ -119,11 +98,32 @@ public sealed class ProviderSecretStoreService
         try
         {
             string json = File.ReadAllText(SecretsPath);
-            return JsonSerializer.Deserialize<ProviderSecretsDto>(json, JsonOptions) ?? new ProviderSecretsDto();
+            ProviderSecretsDto dto = JsonSerializer.Deserialize<ProviderSecretsDto>(json, JsonOptions) ?? new ProviderSecretsDto();
+            MigrateLegacySerializedAiSecrets(dto, json);
+            return dto;
         }
         catch
         {
             return new ProviderSecretsDto();
+        }
+    }
+
+    private static void MigrateLegacySerializedAiSecrets(ProviderSecretsDto dto, string json)
+    {
+        if (!string.IsNullOrWhiteSpace(dto.AiApiKey) || string.IsNullOrWhiteSpace(json))
+            return;
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(json);
+            if (document.RootElement.TryGetProperty("DeepSeekApiKey", out JsonElement element) &&
+                element.ValueKind == JsonValueKind.String)
+            {
+                dto.AiApiKey = element.GetString() ?? string.Empty;
+            }
+        }
+        catch (JsonException)
+        {
         }
     }
 
@@ -144,9 +144,9 @@ public sealed class ProviderSecretStoreService
 
     private sealed class ProviderSecretsDto
     {
-        public string DeepSeekApiKey { get; set; } = string.Empty;
+        public string AiApiKey { get; set; } = string.Empty;
 
         public bool HasAnySecrets()
-            => !string.IsNullOrWhiteSpace(DeepSeekApiKey);
+            => !string.IsNullOrWhiteSpace(AiApiKey);
     }
 }

@@ -41,6 +41,15 @@ public sealed class StartupCoordinator
     private const int MaxSceneGraphCards = 16;
     private const int MaxGraphBuildCacheEntries = 64;
     private const string StatusFreshnessAnchorSymbol = "^SPX";
+    private static readonly string[] LegacyRuntimeAiApiKeyEnvironmentVariableNames =
+    [
+        "OPENROUTER_AI_API_KEY",
+        "OPENROUTER_API_KEY",
+        "DEEPSEEK_API_KEY",
+        "PORTFOLIOSAVER_DEEPSEEK_API_KEY"
+    ];
+
+    private static int s_legacyRuntimeAiApiKeyEnvironmentWarningLogged;
     public static readonly TimeSpan LiveQuoteFeedMaximumAge = TimeSpan.FromMinutes(15);
 
     private readonly ScreensaverSettingsService _settingsService = new();
@@ -79,13 +88,14 @@ public sealed class StartupCoordinator
     {
         ConsumePendingRuntimeQuoteSeeds();
         AppSettings settings = _settingsService.Load();
+        WarnIfIgnoredLegacyRuntimeAiApiKeyEnvironmentVariableIsPresent(settings);
         bool networkAvailable = _isNetworkAvailable();
         IReadOnlyList<string> backgroundPaths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
         Dictionary<string, QuoteSnapshot> cachedQuotes = _runtimeQuoteMemory.ToDictionary(
             pair => pair.Key,
             pair => CloneQuote(pair.Value),
             StringComparer.OrdinalIgnoreCase);
-        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode, settings.DeepSeekWritingStyle);
+        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode, settings.AiWritingStyle);
         DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
         bool showNetworkWaitingOverlay = !networkAvailable;
 
@@ -172,6 +182,7 @@ public sealed class StartupCoordinator
     {
         ConsumePendingRuntimeQuoteSeeds();
         AppSettings settings = _settingsService.Load();
+        WarnIfIgnoredLegacyRuntimeAiApiKeyEnvironmentVariableIsPresent(settings);
         bool networkAvailable = _isNetworkAvailable();
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
         IQuoteProvider yahooFinanceProvider = _createYahooProvider(httpClient);
@@ -196,7 +207,7 @@ public sealed class StartupCoordinator
             httpClient,
             networkAvailable,
             cancellationToken);
-        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode, settings.DeepSeekWritingStyle);
+        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode, settings.AiWritingStyle);
 
         await Task.WhenAll(quotesTask, backgroundsTask);
 
@@ -210,6 +221,7 @@ public sealed class StartupCoordinator
     {
         ConsumePendingRuntimeQuoteSeeds();
         AppSettings settings = _settingsService.Load();
+        WarnIfIgnoredLegacyRuntimeAiApiKeyEnvironmentVariableIsPresent(settings);
         bool networkAvailable = _isNetworkAvailable();
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
         IQuoteProvider yahooFinanceProvider = _createYahooProvider(httpClient);
@@ -231,7 +243,7 @@ public sealed class StartupCoordinator
             cancellationToken);
 
         IReadOnlyList<string> backgroundPaths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
-        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode, settings.DeepSeekWritingStyle);
+        IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode, settings.AiWritingStyle);
 
         return BuildSceneState(settings, quotes, backgroundPaths, headlines, networkAvailable);
     }
@@ -1081,6 +1093,29 @@ public sealed class StartupCoordinator
     private static void TraceGraph(string message)
     {
         TraceLog.Info("StartupCoordinator.Graph", message);
+    }
+
+    private static void WarnIfIgnoredLegacyRuntimeAiApiKeyEnvironmentVariableIsPresent(AppSettings settings)
+    {
+        if (settings.NewsScrollerMode != NewsScrollerMode.SummarizedFinancialNews ||
+            !string.IsNullOrWhiteSpace(settings.AiApiKey) ||
+            Interlocked.Exchange(ref s_legacyRuntimeAiApiKeyEnvironmentWarningLogged, 1) != 0)
+        {
+            return;
+        }
+
+        string? presentName = LegacyRuntimeAiApiKeyEnvironmentVariableNames
+            .FirstOrDefault(name => !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(name)));
+        if (string.IsNullOrWhiteSpace(presentName))
+            return;
+
+        TraceLog.WarnState(
+            "StartupCoordinator.Runtime",
+            "LegacyRuntimeAiApiKeyEnvironmentVariableIgnored",
+            [
+                new("environment_variable", presentName),
+                new("reason", "target-app-ai-api-key-must-be-configured-in-settings")
+            ]);
     }
 
     private static void TraceRuntimeState(string eventName, params KeyValuePair<string, object?>[] fields)

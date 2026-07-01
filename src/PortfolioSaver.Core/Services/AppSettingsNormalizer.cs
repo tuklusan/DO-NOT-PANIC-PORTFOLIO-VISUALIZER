@@ -21,8 +21,9 @@ namespace PortfolioSaver.Core.Services;
 
 public static class AppSettingsNormalizer
 {
-    private const string LegacyDefaultDeepSeekEndpointUrl = "https://api.deepseek.com";
-    private const string LegacyDefaultDeepSeekModelId = "deepseek-v4-flash";
+    private const string LegacyDefaultAiEndpointUrl = "https://api.deepseek.com";
+    private const string LegacyDefaultAiModelId = "deepseek-v4-flash";
+
     public static AppSettings Normalize(AppSettings? settings)
     {
         AppSettings normalized = settings ?? Defaults.CreateSettings();
@@ -55,11 +56,9 @@ public static class AppSettingsNormalizer
             normalized.CustomBackgroundImageFolder,
             string.Empty);
 
-        normalized.DeepSeekApiKey = NormalizeApiKey(
-            normalized.DeepSeekApiKey,
-            Defaults.AiApiKeyEnvironmentVariableNames);
-        normalized.DeepSeekEndpointUrl = NormalizeDeepSeekEndpointUrl(normalized.DeepSeekEndpointUrl);
-        normalized.DeepSeekModelId = NormalizeDeepSeekModelId(normalized.DeepSeekModelId);
+        normalized.AiApiKey = NormalizeApiKey(normalized.AiApiKey);
+        normalized.AiEndpointUrl = NormalizeAiEndpointUrl(normalized.AiEndpointUrl);
+        normalized.AiModelId = NormalizeAiModelId(normalized.AiModelId);
 
         normalized.MarketCalendarRefreshHours = Clamp(
             normalized.MarketCalendarRefreshHours,
@@ -83,7 +82,7 @@ public static class AppSettingsNormalizer
             15);
 
         normalized.NewsScrollerMode = NormalizeNewsScrollerMode(normalized.NewsScrollerMode);
-        normalized.DeepSeekWritingStyle = NormalizeDeepSeekWritingStyle(normalized.DeepSeekWritingStyle);
+        normalized.AiWritingStyle = NormalizeAiWritingStyle(normalized.AiWritingStyle);
         normalized.NewsFeedUrl = NormalizeNewsFeedUrl(normalized.NewsFeedUrl);
 
         return normalized;
@@ -206,26 +205,10 @@ public static class AppSettingsNormalizer
             StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string NormalizeApiKey(string currentValue, IEnumerable<string> environmentVariableNames)
+    private static string NormalizeApiKey(string currentValue)
     {
         string trimmed = (currentValue ?? string.Empty).Trim();
-        if (!string.IsNullOrWhiteSpace(trimmed) && !IsApiKeyPlaceholder(trimmed))
-            return trimmed;
-
-        string environmentValue = GetFirstEnvironmentVariableValue(environmentVariableNames);
-        return string.IsNullOrWhiteSpace(environmentValue) ? string.Empty : environmentValue;
-    }
-
-    private static string GetFirstEnvironmentVariableValue(IEnumerable<string> environmentVariableNames)
-    {
-        foreach (string name in environmentVariableNames)
-        {
-            string value = (Environment.GetEnvironmentVariable(name) ?? string.Empty).Trim();
-            if (!string.IsNullOrWhiteSpace(value))
-                return value;
-        }
-
-        return string.Empty;
+        return IsApiKeyPlaceholder(trimmed) ? string.Empty : trimmed;
     }
 
     private static bool IsApiKeyPlaceholder(string value)
@@ -257,7 +240,7 @@ public static class AppSettingsNormalizer
         return Defaults.DefaultNewsFeedUrl;
     }
 
-    private static string NormalizeDeepSeekEndpointUrl(string currentValue)
+    private static string NormalizeAiEndpointUrl(string currentValue)
     {
         string candidate = (currentValue ?? string.Empty).Trim();
         if (Uri.TryCreate(candidate, UriKind.Absolute, out Uri? uri) &&
@@ -268,23 +251,23 @@ public static class AppSettingsNormalizer
             if (normalized.EndsWith(chatPath, StringComparison.OrdinalIgnoreCase))
                 normalized = normalized[..^chatPath.Length];
 
-            if (string.Equals(normalized, LegacyDefaultDeepSeekEndpointUrl, StringComparison.OrdinalIgnoreCase))
-                return Defaults.DefaultDeepSeekEndpointUrl;
+            if (string.Equals(normalized, LegacyDefaultAiEndpointUrl, StringComparison.OrdinalIgnoreCase))
+                return Defaults.DefaultAiEndpointUrl;
 
             return normalized;
         }
 
-        return Defaults.DefaultDeepSeekEndpointUrl;
+        return Defaults.DefaultAiEndpointUrl;
     }
 
-    private static string NormalizeDeepSeekModelId(string currentValue)
+    private static string NormalizeAiModelId(string currentValue)
     {
         string candidate = (currentValue ?? string.Empty).Trim();
-        if (string.Equals(candidate, LegacyDefaultDeepSeekModelId, StringComparison.OrdinalIgnoreCase))
-            return Defaults.DefaultDeepSeekModelId;
+        if (string.Equals(candidate, LegacyDefaultAiModelId, StringComparison.OrdinalIgnoreCase))
+            return Defaults.DefaultAiModelId;
 
         return string.IsNullOrWhiteSpace(candidate)
-            ? Defaults.DefaultDeepSeekModelId
+            ? Defaults.DefaultAiModelId
             : candidate;
     }
 
@@ -293,10 +276,10 @@ public static class AppSettingsNormalizer
             ? currentValue
             : NewsScrollerMode.RssFeed;
 
-    private static DeepSeekWritingStyle NormalizeDeepSeekWritingStyle(DeepSeekWritingStyle currentValue)
-        => Enum.IsDefined(typeof(DeepSeekWritingStyle), currentValue)
+    private static AiWritingStyle NormalizeAiWritingStyle(AiWritingStyle currentValue)
+        => Enum.IsDefined(typeof(AiWritingStyle), currentValue)
             ? currentValue
-            : DeepSeekWritingStyle.DouglasAdams;
+            : AiWritingStyle.DouglasAdams;
 
     private static string NormalizeTapeName(string? currentValue, int index)
     {

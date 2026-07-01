@@ -4091,12 +4091,12 @@ public partial class ScreensaverSceneControl : UserControl
     private static AppSettings CloneNewsSettings(AppSettings source) => new()
     {
         NewsScrollerMode = source.NewsScrollerMode,
-        DeepSeekWritingStyle = source.DeepSeekWritingStyle,
+        AiWritingStyle = source.AiWritingStyle,
         NewsFeedUrl = source.NewsFeedUrl,
         NewsRefreshMinutes = source.NewsRefreshMinutes,
-        DeepSeekApiKey = source.DeepSeekApiKey,
-        DeepSeekEndpointUrl = source.DeepSeekEndpointUrl,
-        DeepSeekModelId = source.DeepSeekModelId,
+        AiApiKey = source.AiApiKey,
+        AiEndpointUrl = source.AiEndpointUrl,
+        AiModelId = source.AiModelId,
         HttpTimeoutSeconds = source.HttpTimeoutSeconds
     };
 

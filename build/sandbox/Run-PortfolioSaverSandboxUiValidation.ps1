@@ -75,13 +75,7 @@ function Import-TestSecrets {
         return
     }
 
-    $secrets = Get-Content -LiteralPath $secretsPath -Raw | ConvertFrom-Json
-    if (-not [string]::IsNullOrWhiteSpace($secrets.DeepSeekApiKey)) {
-        [Environment]::SetEnvironmentVariable("DEEPSEEK_API_KEY", [string]$secrets.DeepSeekApiKey, "Process")
-        [Environment]::SetEnvironmentVariable("PORTFOLIOSAVER_DEEPSEEK_API_KEY", [string]$secrets.DeepSeekApiKey, "Process")
-    }
-
-    Write-Log "Loaded sandbox test API keys into process environment."
+    Write-Log "Sandbox runtime does not import AI API keys from environment variables."
 }
 
 function Write-TestSettings {
@@ -100,7 +94,7 @@ function Write-TestSettings {
         BackgroundChangeSeconds = 120
         ShuffleBackgrounds = $true
         DimOpacity = 0.55
-        DeepSeekApiKey = ""
+        AiApiKey = ""
         EnableFloatingGraphs = $true
         HistoricalLookbackDays = 14
         HistoricalRefreshHours = 1

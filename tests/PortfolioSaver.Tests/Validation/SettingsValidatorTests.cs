@@ -31,9 +31,9 @@ public sealed class SettingsValidatorTests
         var errors = validator.Validate(settings);
         Assert.Empty(errors);
         Assert.Equal(NewsScrollerMode.RssFeed, settings.NewsScrollerMode);
-        Assert.True(string.IsNullOrWhiteSpace(settings.DeepSeekApiKey));
-        Assert.Equal(Defaults.DefaultDeepSeekEndpointUrl, settings.DeepSeekEndpointUrl);
-        Assert.Equal(Defaults.DefaultDeepSeekModelId, settings.DeepSeekModelId);
+        Assert.True(string.IsNullOrWhiteSpace(settings.AiApiKey));
+        Assert.Equal(Defaults.DefaultAiEndpointUrl, settings.AiEndpointUrl);
+        Assert.Equal(Defaults.DefaultAiModelId, settings.AiModelId);
         Assert.False(string.IsNullOrWhiteSpace(settings.BackgroundImageFolder));
         Assert.StartsWith(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

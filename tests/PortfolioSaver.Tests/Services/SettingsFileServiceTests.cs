@@ -14,7 +14,9 @@
 using System.Text.Json;
 using PortfolioSaver.Config.Services;
 using PortfolioSaver.Core.Constants;
+using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Data.Services;
 using PortfolioSaver.Screensaver.Services;
 using Xunit;
 
@@ -57,14 +59,14 @@ public sealed class SettingsFileServiceTests
         {
             SettingsFileService service = new();
             AppSettings settings = Defaults.CreateSettings();
-            settings.DeepSeekApiKey = "placeholder-value";
+            settings.AiApiKey = "placeholder-value";
 
             service.Save(settings);
 
             string json = File.ReadAllText(service.SettingsPath);
             AppSettings persisted = JsonSerializer.Deserialize<AppSettings>(json)!;
 
-            Assert.True(string.IsNullOrWhiteSpace(persisted.DeepSeekApiKey));
+            Assert.True(string.IsNullOrWhiteSpace(persisted.AiApiKey));
             Assert.DoesNotContain("placeholder-value", json, StringComparison.Ordinal);
         }
         finally
@@ -80,9 +82,7 @@ public sealed class SettingsFileServiceTests
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
         string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
-        Dictionary<string, string?> previousAiKeyVariables = CaptureEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
-        ClearEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
 
         try
         {
@@ -90,53 +90,184 @@ public sealed class SettingsFileServiceTests
 
             AppSettings settings = service.Load();
 
-            Assert.True(string.IsNullOrWhiteSpace(settings.DeepSeekApiKey));
+            Assert.True(string.IsNullOrWhiteSpace(settings.AiApiKey));
         }
         finally
         {
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
-            RestoreEnvironmentVariables(previousAiKeyVariables);
             if (Directory.Exists(tempRoot))
                 DeleteDirectoryWithRetry(tempRoot);
         }
     }
 
     [Fact]
-    public void Save_PersistsDeepSeekSecretSecurely_AndRuntimeLoadRestoresIt()
+    public void Load_MigratesLegacySerializedAiSettingsAndSecret()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
         string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
-        Dictionary<string, string?> previousAiKeyVariables = CaptureEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
-        ClearEnvironmentVariables(Defaults.AiApiKeyEnvironmentVariableNames);
+
+        try
+        {
+            Directory.CreateDirectory(tempRoot);
+            string settingsJson = """
+                {
+                  "DeepSeekEndpointUrl": "https://legacy-ai.example.test/v1",
+                  "DeepSeekModelId": "legacy-model",
+                  "DeepSeekWritingStyle": 1
+                }
+                """;
+            File.WriteAllText(Path.Combine(tempRoot, "settings.json"), settingsJson);
+
+            string protectedKey = new SettingsProtectionService().Protect("legacy-secret-key");
+            string secretsJson = JsonSerializer.Serialize(new Dictionary<string, string>
+            {
+                ["DeepSeekApiKey"] = protectedKey
+            });
+            File.WriteAllText(Path.Combine(tempRoot, "provider-secrets.json"), secretsJson);
+
+            AppSettings settings = new SettingsFileService().Load();
+
+            Assert.Equal("legacy-secret-key", settings.AiApiKey);
+            Assert.Equal("https://legacy-ai.example.test/v1", settings.AiEndpointUrl);
+            Assert.Equal("legacy-model", settings.AiModelId);
+            Assert.Equal(AiWritingStyle.WilliamShakespeare, settings.AiWritingStyle);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
+            if (Directory.Exists(tempRoot))
+                DeleteDirectoryWithRetry(tempRoot);
+        }
+    }
+
+    [Fact]
+    public void Load_MigratesLegacySerializedAiWritingStyleStringWhenNewPropertyMissing()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
+
+        try
+        {
+            Directory.CreateDirectory(tempRoot);
+            string settingsJson = """
+                {
+                  "DeepSeekWritingStyle": "WilliamShakespeare"
+                }
+                """;
+            File.WriteAllText(Path.Combine(tempRoot, "settings.json"), settingsJson);
+
+            AppSettings settings = new SettingsFileService().Load();
+
+            Assert.Equal(AiWritingStyle.WilliamShakespeare, settings.AiWritingStyle);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
+            if (Directory.Exists(tempRoot))
+                DeleteDirectoryWithRetry(tempRoot);
+        }
+    }
+
+    [Fact]
+    public void Load_DoesNotLetLegacySerializedAiWritingStyleOverrideNewProperty()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
+
+        try
+        {
+            Directory.CreateDirectory(tempRoot);
+            string settingsJson = """
+                {
+                  "AiWritingStyle": 0,
+                  "DeepSeekWritingStyle": 1
+                }
+                """;
+            File.WriteAllText(Path.Combine(tempRoot, "settings.json"), settingsJson);
+
+            AppSettings settings = new SettingsFileService().Load();
+
+            Assert.Equal(AiWritingStyle.DouglasAdams, settings.AiWritingStyle);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
+            if (Directory.Exists(tempRoot))
+                DeleteDirectoryWithRetry(tempRoot);
+        }
+    }
+
+    [Fact]
+    public void ProviderSecretStoreService_OverlaySecrets_MigratesLegacySerializedAiSecret()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
+
+        try
+        {
+            Directory.CreateDirectory(tempRoot);
+            string protectedKey = new SettingsProtectionService().Protect("legacy-secret-key");
+            string secretsJson = JsonSerializer.Serialize(new Dictionary<string, string>
+            {
+                ["DeepSeekApiKey"] = protectedKey
+            });
+            File.WriteAllText(Path.Combine(tempRoot, "provider-secrets.json"), secretsJson);
+
+            AppSettings settings = Defaults.CreateSettings();
+            settings.AiApiKey = string.Empty;
+
+            new ProviderSecretStoreService().OverlaySecrets(settings);
+
+            Assert.Equal("legacy-secret-key", settings.AiApiKey);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
+            if (Directory.Exists(tempRoot))
+                DeleteDirectoryWithRetry(tempRoot);
+        }
+    }
+
+    [Fact]
+    public void Save_PersistsAiSecretSecurely_AndRuntimeLoadRestoresIt()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
+        string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", tempRoot);
 
         try
         {
             SettingsFileService service = new();
             AppSettings settings = Defaults.CreateSettings();
-            settings.DeepSeekApiKey = "placeholder-value";
+            settings.AiApiKey = "placeholder-value";
 
             service.Save(settings);
 
             string settingsJson = File.ReadAllText(service.SettingsPath);
             string secretsPath = Path.Combine(tempRoot, "provider-secrets.json");
             string secretsJson = File.ReadAllText(secretsPath);
+            service.Save(settings);
+            string secretsJsonAfterSecondSave = File.ReadAllText(secretsPath);
 
             Assert.DoesNotContain("placeholder-value", settingsJson, StringComparison.Ordinal);
             Assert.DoesNotContain("placeholder-value", secretsJson, StringComparison.Ordinal);
+            Assert.Equal(secretsJson, secretsJsonAfterSecondSave);
 
             AppSettings configLoaded = service.Load();
             ScreensaverSettingsService runtimeService = new();
             AppSettings runtimeLoaded = runtimeService.Load();
 
-            Assert.Equal("placeholder-value", configLoaded.DeepSeekApiKey);
+            Assert.Equal("placeholder-value", configLoaded.AiApiKey);
 
-            Assert.Equal("placeholder-value", runtimeLoaded.DeepSeekApiKey);
+            Assert.Equal("placeholder-value", runtimeLoaded.AiApiKey);
         }
         finally
         {
             Environment.SetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT", previousRoot);
-            RestoreEnvironmentVariables(previousAiKeyVariables);
             if (Directory.Exists(tempRoot))
                 DeleteDirectoryWithRetry(tempRoot);
         }
@@ -259,21 +390,4 @@ public sealed class SettingsFileServiceTests
         }
     }
 
-    private static Dictionary<string, string?> CaptureEnvironmentVariables(IEnumerable<string> names)
-        => names.ToDictionary(
-            static name => name,
-            static name => Environment.GetEnvironmentVariable(name),
-            StringComparer.Ordinal);
-
-    private static void ClearEnvironmentVariables(IEnumerable<string> names)
-    {
-        foreach (string name in names)
-            Environment.SetEnvironmentVariable(name, null);
-    }
-
-    private static void RestoreEnvironmentVariables(IReadOnlyDictionary<string, string?> previous)
-    {
-        foreach ((string name, string? value) in previous)
-            Environment.SetEnvironmentVariable(name, value);
-    }
 }

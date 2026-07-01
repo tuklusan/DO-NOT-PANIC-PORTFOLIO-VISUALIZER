@@ -13,7 +13,7 @@
 // ============================================================================
 namespace PortfolioSaver.Core.Enums;
 
-public enum DeepSeekWritingStyle
+public enum AiWritingStyle
 {
     DouglasAdams = 0,
     WilliamShakespeare = 1

@@ -8250,6 +8250,60 @@
       ],
       "resolution": "fixed",
       "closed_date": "2026-07-01"
+    },
+    {
+      "id": "CR-158",
+      "tracking_number": "CR-158",
+      "priority": 1,
+      "area": "Configuration",
+      "title": "Remove runtime environment-variable AI API key support",
+      "status": "closed",
+      "source": "manual_user_request",
+      "severity": "High",
+      "evidence": [
+        "User requested CR-1: remove support for environment-based AI API keys from the target application.",
+        "Runtime app should only use explicitly configured AI API key from Settings/installer; environment variables may remain only for developer workflow tooling.",
+        "Closure: runtime environment AI API key fallback removed; legacy env key presence is trace-only and not used; focused local tests passed 169/169; full solution tests passed 599/599; DeepSeek review gate found no blocking findings."
+      ],
+      "notes": [
+        "Acceptance: target application and settings validation do not read OPENROUTER/DEEPSEEK environment variables for runtime AI news access.",
+        "Acceptance: documentation no longer tells end users to configure runtime AI keys via environment variables."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-159",
+      "tracking_number": "CR-159",
+      "priority": 1,
+      "area": "Configuration",
+      "title": "Replace target-app DeepSeek references with generic AI terminology",
+      "status": "closed",
+      "source": "manual_user_request",
+      "severity": "High",
+      "evidence": [
+        "User requested CR-2: inspect code and documentation and replace DeepSeek references with generic AI references.",
+        "The app has provider-configurable endpoint URL, model ID, and API key; OpenRouter is only the current default, not the product architecture.",
+        "Closure: target-app runtime/settings terminology was genericized to AI naming; legacy DeepSeek serialized settings/secrets migrate to Ai* properties; remaining DeepSeek references are developer workflow gate, legacy migration keys, or tests; full solution tests passed 599/599."
+      ],
+      "notes": [
+        "Acceptance: target application code, settings UI, tests, and user docs use generic AI naming/wording for summarized news provider concepts.",
+        "Developer workflow code-review gate may keep explicit DeepSeek terminology because it is a separate project workflow dependency, not runtime application behavior."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
@@ -8293,3 +8347,4 @@
     }
   ]
 }
+

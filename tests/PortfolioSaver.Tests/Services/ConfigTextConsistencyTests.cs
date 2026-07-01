@@ -84,7 +84,7 @@ public sealed class ConfigTextConsistencyTests
         Assert.DoesNotContain("Text=\"{Binding CostBasis}\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding Currency, UpdateSourceTrigger=PropertyChanged}\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("PasswordBox", xaml, StringComparison.Ordinal);
-        Assert.Contains("Text=\"{Binding Settings.DeepSeekApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Settings.AiApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("This API key is intentionally shown as plain text", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding Settings.FinnhubApiKey", xaml, StringComparison.Ordinal);
     }
@@ -185,7 +185,7 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("Choose your own image folder", xaml, StringComparison.Ordinal);
         Assert.Contains("go to openrouter.ai", xaml, StringComparison.Ordinal);
         Assert.Contains("Ticker names fill in during Validate when available.", xaml, StringComparison.Ordinal);
-        Assert.Contains("Summarized mode can use a personal non-commercial OpenRouter API key", xaml, StringComparison.Ordinal);
+        Assert.Contains("Summarized mode can use a personal non-commercial AI API key", xaml, StringComparison.Ordinal);
         Assert.Contains("Minimum=\"10\"", xaml, StringComparison.Ordinal);
     }
 

@@ -224,13 +224,13 @@ public sealed class MainWindowViewModel : BindableBase
 
     public bool IsDouglasAdamsStyleSelected
     {
-        get => Settings.DeepSeekWritingStyle == DeepSeekWritingStyle.DouglasAdams;
+        get => Settings.AiWritingStyle == AiWritingStyle.DouglasAdams;
         set
         {
-            if (!value || Settings.DeepSeekWritingStyle == DeepSeekWritingStyle.DouglasAdams)
+            if (!value || Settings.AiWritingStyle == AiWritingStyle.DouglasAdams)
                 return;
 
-            Settings.DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams;
+            Settings.AiWritingStyle = AiWritingStyle.DouglasAdams;
             RaisePropertyChanged(nameof(IsDouglasAdamsStyleSelected));
             RaisePropertyChanged(nameof(IsWilliamShakespeareStyleSelected));
             InvalidateValidationState("Configuration changed. Click Validate.");
@@ -239,13 +239,13 @@ public sealed class MainWindowViewModel : BindableBase
 
     public bool IsWilliamShakespeareStyleSelected
     {
-        get => Settings.DeepSeekWritingStyle == DeepSeekWritingStyle.WilliamShakespeare;
+        get => Settings.AiWritingStyle == AiWritingStyle.WilliamShakespeare;
         set
         {
-            if (!value || Settings.DeepSeekWritingStyle == DeepSeekWritingStyle.WilliamShakespeare)
+            if (!value || Settings.AiWritingStyle == AiWritingStyle.WilliamShakespeare)
                 return;
 
-            Settings.DeepSeekWritingStyle = DeepSeekWritingStyle.WilliamShakespeare;
+            Settings.AiWritingStyle = AiWritingStyle.WilliamShakespeare;
             RaisePropertyChanged(nameof(IsDouglasAdamsStyleSelected));
             RaisePropertyChanged(nameof(IsWilliamShakespeareStyleSelected));
             InvalidateValidationState("Configuration changed. Click Validate.");
@@ -778,9 +778,9 @@ public sealed class MainWindowViewModel : BindableBase
     }
 
     private static bool AiAccessFieldsEqual(AppSettings left, AppSettings right)
-        => string.Equals(left.DeepSeekApiKey?.Trim(), right.DeepSeekApiKey?.Trim(), StringComparison.Ordinal) &&
-           string.Equals(NormalizeComparableEndpoint(left.DeepSeekEndpointUrl), NormalizeComparableEndpoint(right.DeepSeekEndpointUrl), StringComparison.OrdinalIgnoreCase) &&
-           string.Equals(left.DeepSeekModelId?.Trim(), right.DeepSeekModelId?.Trim(), StringComparison.Ordinal);
+        => string.Equals(left.AiApiKey?.Trim(), right.AiApiKey?.Trim(), StringComparison.Ordinal) &&
+           string.Equals(NormalizeComparableEndpoint(left.AiEndpointUrl), NormalizeComparableEndpoint(right.AiEndpointUrl), StringComparison.OrdinalIgnoreCase) &&
+           string.Equals(left.AiModelId?.Trim(), right.AiModelId?.Trim(), StringComparison.Ordinal);
 
     private static string NormalizeComparableEndpoint(string? endpoint)
         => (endpoint ?? string.Empty).Trim().TrimEnd('/');

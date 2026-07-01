@@ -175,7 +175,7 @@ public partial class App : Application
         SettingsFileService settingsFileService = new();
         AppSettings settings = settingsFileService.Load();
         if (settings.NewsScrollerMode != NewsScrollerMode.SummarizedFinancialNews ||
-            string.IsNullOrWhiteSpace(settings.DeepSeekApiKey))
+            string.IsNullOrWhiteSpace(settings.AiApiKey))
         {
             return;
         }

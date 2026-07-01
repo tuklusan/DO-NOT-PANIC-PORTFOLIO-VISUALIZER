@@ -130,13 +130,13 @@ public sealed class TraceLogTests
                 "SecretTrace",
                 new[]
                 {
-                    new KeyValuePair<string, object?>("deepseek_api_key", "sk-live-secret"),
+                    new KeyValuePair<string, object?>("ai_api_key", "sk-live-secret"),
                     new KeyValuePair<string, object?>("Authorization", "Bearer abc123"),
                     new KeyValuePair<string, object?>("message", "token=abc123,def password:letmein safe=ok")
                 }
             ]) ?? throw new InvalidOperationException("Structured message formatter returned null."));
 
-        Assert.Contains("deepseek_api_key=<redacted>", message, StringComparison.Ordinal);
+        Assert.Contains("ai_api_key=<redacted>", message, StringComparison.Ordinal);
         Assert.Contains("Authorization=<redacted>", message, StringComparison.Ordinal);
         Assert.Contains("token=<redacted>", message, StringComparison.Ordinal);
         Assert.Contains("password:<redacted>", message, StringComparison.Ordinal);

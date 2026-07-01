@@ -76,13 +76,12 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
 
 ## Optional AI-Summarized Finance News
 
-The app ships with **RSS Feed** selected for financial news and no AI API key configured. It still includes OpenRouter-ready defaults so a user can opt into stylized AI summaries later:
+The app ships with **RSS Feed** selected for financial news and no AI API key configured. It includes OpenRouter-ready defaults as a convenient starting point, but summarized-news access is provider-configurable through the endpoint URL, model ID, and API key fields:
 
 - Endpoint URL: `https://openrouter.ai/api/v1`
 - Model ID: `openrouter/free`
-- Supported runtime key environment variables: `OPENROUTER_AI_API_KEY`, `OPENROUTER_API_KEY`, `DEEPSEEK_API_KEY`, or `PORTFOLIOSAVER_DEEPSEEK_API_KEY`
 
-An API key saved through Settings or the installer takes precedence over environment variables. Environment variables are used only when the saved key is blank or still contains a placeholder value. To switch back to environment-variable fallback, clear the saved **AI API key** field and validate the configuration again.
+The target application does not read AI API keys from environment variables. Enter the key through **Settings -> Advanced -> News Scroller** or the installer AI setup page so it can be validated and saved in the protected local secret store.
 
 The Settings applet intentionally shows the AI API key as plain text rather than masking it. Keep this in mind during screenshots, screen sharing, or public demos.
 
@@ -98,9 +97,11 @@ To obtain a free OpenRouter API key for personal non-commercial use:
 
 At startup, if summarized news is enabled and the configured AI access check fails, the app warns once and falls back to RSS mode for the session.
 
-When using the OpenRouter endpoint, requests include OpenRouter's optional app-attribution headers: `HTTP-Referer` points to the public GitHub repository and `X-OpenRouter-Title` identifies the app name.
+When using the default OpenRouter-compatible endpoint, requests include OpenRouter's optional app-attribution headers: `HTTP-Referer` points to the public GitHub repository and `X-OpenRouter-Title` identifies the app name. Other OpenAI-compatible providers can be used by changing **AI endpoint URL** and **AI model ID**.
 
-Upgrade note: the default AI endpoint is now OpenRouter. Existing users who only configured `DEEPSEEK_API_KEY` should either create an OpenRouter key and use `OPENROUTER_AI_API_KEY`, or explicitly set **AI endpoint URL** and **AI model ID** to their preferred DeepSeek/OpenAI-compatible provider values.
+Summarized-news requests are sent to the configured model ID directly. The app does not silently substitute a provider-specific fallback model.
+
+Installer upgrades preserve existing custom AI endpoint URLs and model IDs, including values migrated from earlier settings files. To reset to the shipped defaults, clear or edit the AI endpoint/model fields in Settings.
 
 ## Desktop App Modes
 

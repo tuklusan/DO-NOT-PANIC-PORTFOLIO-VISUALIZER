@@ -363,7 +363,7 @@
                         <DockPanel Margin="0,0,0,20">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Advanced News Settings" Foreground="White" FontSize="28" FontWeight="Bold" />
-                                <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Configure financial news behavior. Summarized mode can use a personal non-commercial OpenRouter API key; RSS mode reads the feed URL directly.">
+                                <Border Style="{StaticResource HelpBadgeStyle}" ToolTip="Configure financial news behavior. Summarized mode can use a personal non-commercial AI API key; RSS mode reads the feed URL directly.">
                                     <TextBlock Text="?" Style="{StaticResource HelpBadgeTextStyle}" />
                                 </Border>
                             </StackPanel>
@@ -400,12 +400,12 @@
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" IsEnabled="{Binding IsSummarizedFinancialNewsSelected}">
                                         <RadioButton Content="Douglas Adams"
                                                      Foreground="#EAF3FA"
-                                                     GroupName="DeepSeekWritingStyle"
+                                                     GroupName="AiWritingStyle"
                                                      IsChecked="{Binding IsDouglasAdamsStyleSelected, Mode=TwoWay}"
                                                      Margin="0,0,24,0" />
                                         <RadioButton Content="William Shakespeare"
                                                      Foreground="#EAF3FA"
-                                                     GroupName="DeepSeekWritingStyle"
+                                                     GroupName="AiWritingStyle"
                                                      IsChecked="{Binding IsWilliamShakespeareStyleSelected, Mode=TwoWay}" />
                                     </StackPanel>
                                 </Grid>
@@ -449,7 +449,7 @@
                                     <TextBox Grid.Column="1"
                                              MinWidth="128"
                                              ToolTip="This API key is intentionally shown as plain text; avoid exposing it in screenshots or screen sharing."
-                                             Text="{Binding Settings.DeepSeekApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                             Text="{Binding Settings.AiApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
                                 <Grid Margin="0,4,0,8">
                                     <Grid.ColumnDefinitions>
@@ -460,7 +460,7 @@
                                     <TextBox Grid.Column="1"
                                              MinWidth="128"
                                              IsEnabled="{Binding IsSummarizedFinancialNewsSelected}"
-                                             Text="{Binding Settings.DeepSeekEndpointUrl, UpdateSourceTrigger=PropertyChanged}" />
+                                             Text="{Binding Settings.AiEndpointUrl, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
                                 <Grid Margin="0,4,0,8">
                                     <Grid.ColumnDefinitions>
@@ -471,7 +471,7 @@
                                     <TextBox Grid.Column="1"
                                              MinWidth="128"
                                              IsEnabled="{Binding IsSummarizedFinancialNewsSelected}"
-                                             Text="{Binding Settings.DeepSeekModelId, UpdateSourceTrigger=PropertyChanged}" />
+                                             Text="{Binding Settings.AiModelId, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
                                 <TextBlock Text="Summarized mode uses your API key when available; otherwise the app falls back to RSS financial news." Style="{StaticResource SectionNoteStyle}" />
                             </StackPanel>

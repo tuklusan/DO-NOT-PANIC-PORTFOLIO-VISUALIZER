@@ -22,15 +22,8 @@ namespace PortfolioSaver.Core.Constants;
 public static class Defaults
 {
     public const string DefaultNewsFeedUrl = "https://finance.yahoo.com/news/rss";
-    public const string DefaultDeepSeekEndpointUrl = "https://openrouter.ai/api/v1";
-    public const string DefaultDeepSeekModelId = "openrouter/free";
-    public static IReadOnlyList<string> AiApiKeyEnvironmentVariableNames { get; } =
-    [
-        "OPENROUTER_AI_API_KEY",
-        "OPENROUTER_API_KEY",
-        "DEEPSEEK_API_KEY",
-        "PORTFOLIOSAVER_DEEPSEEK_API_KEY"
-    ];
+    public const string DefaultAiEndpointUrl = "https://openrouter.ai/api/v1";
+    public const string DefaultAiModelId = "openrouter/free";
 
     public const int MinRefreshSeconds = 5;
     public const int MaxRefreshSeconds = 4 * 60 * 60;
@@ -59,14 +52,14 @@ public static class Defaults
 
     public static AppSettings CreateSettings() => new()
     {
-        DeepSeekApiKey = string.Empty,
-        DeepSeekEndpointUrl = DefaultDeepSeekEndpointUrl,
-        DeepSeekModelId = DefaultDeepSeekModelId,
+        AiApiKey = string.Empty,
+        AiEndpointUrl = DefaultAiEndpointUrl,
+        AiModelId = DefaultAiModelId,
         MarketCalendarRefreshHours = 12,
         RefreshSecondsPortfolio = DefaultDesktopRefreshSeconds,
         RefreshSecondsOffHours = DefaultDesktopRefreshSeconds,
         NewsScrollerMode = NewsScrollerMode.RssFeed,
-        DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
+        AiWritingStyle = AiWritingStyle.DouglasAdams,
         NewsFeedUrl = DefaultNewsFeedUrl,
         NewsRefreshMinutes = 15,
         EnableFloatingGraphs = true,

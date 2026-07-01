@@ -72,7 +72,7 @@ For legacy parser/config routing checks:
 - Existing sample settings can be loaded or copied into runtime settings.
 - Ticker groups survive save/reload.
 - Validate flow works online and blocks bad symbols.
-- Summarized Financial News mode accepts a DeepSeek API key from the config screen and survives save/reload through protected local storage.
+- Summarized Financial News mode accepts an AI API key from the config screen and survives save/reload through protected local storage.
 
 ### Desktop full screen
 - desktop app opens windowed.
@@ -90,7 +90,7 @@ For legacy parser/config routing checks:
 - `%LocalAppData%\PortfolioSaver\settings.json` exists for the installed app settings root.
 - `%LocalAppData%\PortfolioSaver\provider-secrets.json` exists only when protected provider secrets have been saved.
 - `%LocalAppData%\PortfolioSaver\Caches\History` exists and purges files older than 14 days.
-- Summarized news uses DeepSeek no more often than every 15 minutes and falls back cleanly when the key is unavailable.
+- Summarized news uses the configured AI provider no more often than every 15 minutes and falls back cleanly when the key or provider is unavailable.
 
 ### Floating overlays
 - Graph cards render.
@@ -124,7 +124,7 @@ For live remote validation against the SSH-first Windows target, place optional 
 
 Supported fields:
 
-- `DeepSeekApiKey`
+- `AiApiKey`
 
 Market-data validation no longer needs separate provider secrets because the runtime is now YFinance.NET-only.
 The remote harness uploads this ignored file when present, applies the values to the remote user environment, and clears stale remote test-secret overlays when the local file is absent.
