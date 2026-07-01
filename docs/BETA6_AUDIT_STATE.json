@@ -8700,7 +8700,9 @@
       "validation": [
         "DeepSeek review pass 1 found a real plaintext-key regression after the native-page conversion; fixed by changing the AI API key query field to password mode.",
         "DeepSeek review pass 2 continued to report the key field as unmasked despite the Inno password flag being set; this is being treated as an advisory false positive pending installer compile/smoke validation.",
-        "Installer compile and public GitHub release asset replacement are required before final closure."
+        "Installer compile succeeded locally with Inno Setup 6.7.3 on 2026-07-01 using build/publish-inno-installer.ps1 -Configuration Release -RuntimeIdentifier win-x64 -RequireIscc.",
+        "Public GitHub release v0.9.0-beta7 was retagged to fixed commit b8c491d and the installer asset was replaced.",
+        "Published installer asset SHA-256 is 64b0d6b100cb4e5184fb5343191b79e2fb0eacc7472f3bcdfe577cba7d088143; stale checksum assets were removed and the release now has one installer plus one matching checksum."
       ]
     }
   ],
