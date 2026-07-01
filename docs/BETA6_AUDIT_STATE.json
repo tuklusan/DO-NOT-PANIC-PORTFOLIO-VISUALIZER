@@ -8630,6 +8630,46 @@
       "validation": [
         "Official OpenRouter docs reviewed 2026-07-01; DeepSeek review passed 2026-07-01 13:11; focused local validation passed 118/118; installer compile succeeded."
       ]
+    },
+    {
+      "id": "CR-170",
+      "tracking_number": "CR-170",
+      "priority": 1,
+      "area": "Finance News AI",
+      "title": "OpenRouter default should auto-discover a free non-reasoning instruct model for news scroller",
+      "status": "closed",
+      "source": "openrouter_documentation_review_2026_07_01_auto_instruct_model_design",
+      "severity": "High",
+      "evidence": [
+        "Official OpenRouter Models API exposes model metadata via GET /api/v1/models including pricing, context, and reasoning fields: https://openrouter.ai/docs/api/api-reference/models/get-models.",
+        "Official OpenRouter reasoning docs state non-reasoning models and dynamic routers such as openrouter/free omit the reasoning field, and reasoning.mandatory models must not be disabled with effort none: https://openrouter.ai/docs/guides/best-practices/reasoning-tokens.",
+        "Official OpenRouter Free Models Router docs state openrouter/free randomly selects from free models and that specific :free model variants should be used when a specific model is required: https://openrouter.ai/docs/guides/routing/routers/free-router.",
+        "The news scroller needs fast, deterministic instruct/chat summarization and style transfer, not reasoning-model behavior."
+      ],
+      "notes": [
+        "The shipped model default remains openrouter/free for simple user configuration, but runtime can treat that default as an auto-discovery request when the endpoint is OpenRouter.",
+        "Custom user model IDs must remain verbatim so advanced users can target paid OpenRouter models, local OpenAI-compatible providers, or any other compatible endpoint."
+      ],
+      "acceptance": [
+        "When endpoint is OpenRouter and the model ID is openrouter/free or auto, runtime queries /models and selects a specific free instruct/chat model when possible.",
+        "Selection excludes mandatory/default-on reasoning models and prefers free :free instruct/chat models with larger parameter-size signal, then larger context length, then model ID for deterministic tie-breaking.",
+        "If discovery fails, runtime falls back to openrouter/free so summarized news still attempts to run.",
+        "Runtime must not send reasoning.effort none to routers or unsupported models; omit reasoning entirely unless a future explicit reasoning feature requires it.",
+        "Config/runtime validation uses the same model resolution path as summarized news generation.",
+        "Tests cover successful discovery, fallback on discovery failure, custom OpenRouter model IDs not being overridden, custom non-OpenRouter endpoints not querying OpenRouter /models, and reasoning models being excluded."
+      ],
+      "resolution": [
+        "Implemented shared OpenRouterModelResolver in PortfolioSaver.Core so runtime news generation and Settings validation use the same OpenRouter model-resolution path.",
+        "OpenRouter endpoints with model ID openrouter/free or auto now query /models and select a concrete free instruct/chat model; custom OpenRouter model IDs and non-OpenRouter endpoints remain verbatim.",
+        "Selection excludes mandatory/default-on reasoning models, excludes explicit base/no-instruct models, ranks by detected parameter-size signal, context length, and model ID, and falls back to openrouter/free when discovery fails.",
+        "Model discovery uses a shared in-flight task per endpoint/model key, a 30-second discovery timeout, a one-hour positive cache, OpenRouter attribution headers, and cancellation-aware request handling.",
+        "Finance news requests no longer send reasoning.effort none for routers or auto-selected models."
+      ],
+      "validation": [
+        "Focused Release test pass after implementation: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter FinanceNewsServiceTests|MainWindowViewModelValidationTests|ConfigTextConsistencyTests|SettingsValidatorTests|OpenRouterModelResolverTests; Passed 144/144.",
+        "DeepSeek review pass 2026-07-01 14:42 found no critical, high, or medium blockers after fixes; remaining findings were low/advisory.",
+        "OpenRouter resolver tests cover successful discovery, shared concurrent discovery, positive cache reuse, pre-cancel/no HTTP behavior, in-flight cancellation, empty-list fallback, non-success /models fallback, custom OpenRouter model preservation, non-OpenRouter preservation, reasoning exclusion, base-model exclusion, non-default reasoning inclusion, slug-based instruct detection, and parameter-size overflow clamping."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

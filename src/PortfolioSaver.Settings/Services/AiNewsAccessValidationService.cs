@@ -20,6 +20,7 @@ using System.Threading.Tasks;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Core.Services;
 using PortfolioSaver.Data.Services;
 using PortfolioSaver.Shared.Diagnostics;
 
@@ -78,18 +79,27 @@ public sealed class AiNewsAccessValidationService : IAiNewsAccessValidationServi
             return AiNewsAccessValidationResult.Failed("Connect to the internet before validating AI summarized financial news.");
 
         string operationId = Guid.NewGuid().ToString("N");
+        string effectiveModelId = modelId;
         using HttpClient httpClient = _httpClientFactory(
             TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
 
         try
         {
+            OpenRouterResolvedModel resolvedModel = await OpenRouterModelResolver.ResolveAsync(
+                httpClient,
+                endpointUrl,
+                modelId,
+                cancellationToken,
+                (eventName, detail) => TraceAiModelResolution(eventName, operationId, endpointUrl, detail));
+            effectiveModelId = resolvedModel.ModelId;
+
             using HttpRequestMessage request = new(HttpMethod.Post, BuildChatCompletionsUri(endpointUrl));
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
             AddOpenRouterAttributionHeaders(request, endpointUrl);
             request.Content = new StringContent(
                 JsonSerializer.Serialize(new
                 {
-                    model = modelId,
+                    model = effectiveModelId,
                     messages = new[]
                     {
                         new
@@ -104,33 +114,33 @@ public sealed class AiNewsAccessValidationService : IAiNewsAccessValidationServi
                 Encoding.UTF8,
                 "application/json");
 
-            TraceAiValidation("AiAccessValidationStart", operationId, endpointUrl, modelId);
+            TraceAiValidation("AiAccessValidationStart", operationId, endpointUrl, effectiveModelId, modelResolution: resolvedModel.Resolution);
             using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                 {
-                    TraceAiValidation("AiAccessValidationRateLimited", operationId, endpointUrl, modelId, $"http-{(int)response.StatusCode}");
+                    TraceAiValidation("AiAccessValidationRateLimited", operationId, endpointUrl, effectiveModelId, $"http-{(int)response.StatusCode}");
                     return AiNewsAccessValidationResult.Skipped(
                         "AI provider rate-limited the validation probe. Settings were not rejected; the app will retry summarized news at runtime.");
                 }
 
-                TraceAiValidation("AiAccessValidationFailed", operationId, endpointUrl, modelId, $"http-{(int)response.StatusCode}");
+                TraceAiValidation("AiAccessValidationFailed", operationId, endpointUrl, effectiveModelId, $"http-{(int)response.StatusCode}");
                 string reason = $"AI access was rejected by the provider ({(int)response.StatusCode}). Check the API key, endpoint URL, and model ID.";
                 return AiNewsAccessValidationResult.Failed(reason);
             }
 
-            TraceAiValidation("AiAccessValidationSucceeded", operationId, endpointUrl, modelId);
+            TraceAiValidation("AiAccessValidationSucceeded", operationId, endpointUrl, effectiveModelId);
             return AiNewsAccessValidationResult.Success();
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            TraceAiValidation("AiAccessValidationFailed", operationId, endpointUrl, modelId, "cancelled");
+            TraceAiValidation("AiAccessValidationFailed", operationId, endpointUrl, effectiveModelId, "cancelled");
             throw;
         }
         catch (TaskCanceledException)
         {
-            TraceAiValidation("AiAccessValidationFailed", operationId, endpointUrl, modelId, "timeout");
+            TraceAiValidation("AiAccessValidationFailed", operationId, endpointUrl, effectiveModelId, "timeout");
             return AiNewsAccessValidationResult.Failed("AI access validation timed out. Check the endpoint/model or switch Finance News to RSS Feed.");
         }
         catch (Exception ex)
@@ -139,7 +149,7 @@ public sealed class AiNewsAccessValidationService : IAiNewsAccessValidationServi
                 throw;
 
             // Do not log ex.Message or ex.ToString(); provider/client exceptions may include request details.
-            TraceAiValidation("AiAccessValidationFailed", operationId, endpointUrl, modelId, ex.GetType().Name);
+            TraceAiValidation("AiAccessValidationFailed", operationId, endpointUrl, effectiveModelId, ex.GetType().Name);
             return AiNewsAccessValidationResult.Failed("AI access validation failed. Check the API key, endpoint URL, and model ID.");
         }
     }
@@ -177,17 +187,15 @@ public sealed class AiNewsAccessValidationService : IAiNewsAccessValidationServi
     }
 
     private static void AddOpenRouterAttributionHeaders(HttpRequestMessage request, string endpointUrl)
-    {
-        if (!endpointUrl.Contains("openrouter.ai", StringComparison.OrdinalIgnoreCase))
-            return;
+        => OpenRouterModelResolver.AddAttributionHeaders(request, endpointUrl);
 
-        request.Headers.Remove("HTTP-Referer");
-        request.Headers.Remove("X-OpenRouter-Title");
-        request.Headers.TryAddWithoutValidation("HTTP-Referer", "https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER");
-        request.Headers.TryAddWithoutValidation("X-OpenRouter-Title", "DO NOT PANIC PORTFOLIO VISUALIZER");
-    }
-
-    private static void TraceAiValidation(string eventName, string operationId, string endpointUrl, string modelId, string? reason = null)
+    private static void TraceAiValidation(
+        string eventName,
+        string operationId,
+        string endpointUrl,
+        string modelId,
+        string? reason = null,
+        string? modelResolution = null)
     {
         List<KeyValuePair<string, object?>> fields =
         [
@@ -197,8 +205,25 @@ public sealed class AiNewsAccessValidationService : IAiNewsAccessValidationServi
         ];
         if (!string.IsNullOrWhiteSpace(reason))
             fields.Add(new("reason", reason));
+        if (!string.IsNullOrWhiteSpace(modelResolution))
+            fields.Add(new("model_resolution", modelResolution));
 
         TraceLog.InfoState("Config.Validation", eventName, fields);
+    }
+
+    private static void TraceAiModelResolution(string eventName, string operationId, string endpointUrl, string detail)
+    {
+        string fieldName = string.Equals(eventName, "OpenRouterAutoModelSelected", StringComparison.Ordinal)
+            ? "model_id"
+            : "reason";
+        TraceLog.InfoState(
+            "Config.Validation",
+            eventName,
+            [
+                new KeyValuePair<string, object?>("operation_id", operationId),
+                new KeyValuePair<string, object?>("endpoint", BuildTraceEndpoint(endpointUrl)),
+                new KeyValuePair<string, object?>(fieldName, detail)
+            ]);
     }
 
     private static string BuildTraceEndpoint(string endpointUrl)

@@ -19,14 +19,22 @@ using System.Text.Json;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Core.Services;
 using PortfolioSaver.Screensaver.Services;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
 
+[Collection("EnvironmentSerial")]
 public sealed class FinanceNewsServiceTests
 {
     private const int ExpiredCacheOffsetMinutes = 60;
+    private const string DefaultDiscoveredOpenRouterModelId = "nousresearch/hermes-3-llama-3.1-405b:free";
+
+    public FinanceNewsServiceTests()
+    {
+        OpenRouterModelResolver.ClearCache();
+    }
 
     [Theory]
     [InlineData(NewsScrollerMode.RssFeed)]
@@ -52,6 +60,24 @@ public sealed class FinanceNewsServiceTests
         TimeSpan interval = FinanceNewsService.GetRefreshInterval(settings);
 
         Assert.Equal(TimeSpan.FromMinutes(45), interval);
+    }
+
+    [Fact]
+    public void ListFreeInstructOpenRouterModels_RanksFreeInstructAndExcludesReasoningModels()
+    {
+        using JsonDocument document = JsonDocument.Parse(CreateDefaultOpenRouterModelsJson());
+
+        IReadOnlyList<OpenRouterModelCandidate> candidates =
+            OpenRouterModelResolver.ListFreeInstructModels(document.RootElement);
+
+        string[] expected =
+        [
+            DefaultDiscoveredOpenRouterModelId,
+            "qwen/qwen3-next-80b-a3b-instruct:free",
+            "meta-llama/llama-3.3-70b-instruct:free"
+        ];
+        Assert.Equal(expected, candidates.Select(candidate => candidate.Id).ToArray());
+        Assert.DoesNotContain(candidates, candidate => candidate.Id.Contains("reasoner", StringComparison.OrdinalIgnoreCase));
     }
 
     private static readonly JsonSerializerOptions CacheJsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
@@ -175,7 +201,7 @@ public sealed class FinanceNewsServiceTests
                 }
                 """, Encoding.UTF8, "application/json")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         FinanceNewsService service = new(cachePath, () => string.Empty);
@@ -205,7 +231,8 @@ public sealed class FinanceNewsServiceTests
         Assert.Equal(1, requestCount);
         string userPrompt = ExtractUserPromptFromRequestBody(capturedBody);
         using JsonDocument requestDocument = JsonDocument.Parse(capturedBody ?? string.Empty);
-        Assert.Equal(Defaults.DefaultAiModelId, requestDocument.RootElement.GetProperty("model").GetString());
+        Assert.Equal(DefaultDiscoveredOpenRouterModelId, requestDocument.RootElement.GetProperty("model").GetString());
+        Assert.DoesNotContain("\"reasoning\"", capturedBody, StringComparison.Ordinal);
         Assert.Contains("You are a dependable fiduciary and are presenting current financial news highlights to your customers.", userPrompt, StringComparison.Ordinal);
         Assert.Contains("You write in the style of Douglas Adams.", userPrompt, StringComparison.Ordinal);
         Assert.Equal("json_object", requestDocument.RootElement.GetProperty("response_format").GetProperty("type").GetString());
@@ -302,7 +329,7 @@ public sealed class FinanceNewsServiceTests
                 }
                 """, Encoding.UTF8, "application/json")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         FinanceNewsService service = new(cachePath, () => string.Empty);
@@ -363,7 +390,7 @@ public sealed class FinanceNewsServiceTests
                 }
                 """, Encoding.UTF8, "application/json")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         FinanceNewsService service = new(cachePath, () => string.Empty);
@@ -419,7 +446,7 @@ public sealed class FinanceNewsServiceTests
                 }
                 """, Encoding.UTF8, "application/json")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         FinanceNewsService service = new(cachePath, () => "resolver-ai-key");
@@ -478,7 +505,7 @@ public sealed class FinanceNewsServiceTests
                 }
                 """, Encoding.UTF8, "application/json")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         FinanceNewsService service = new(cachePath, () => string.Empty);
@@ -538,7 +565,7 @@ public sealed class FinanceNewsServiceTests
                 }
                 """, Encoding.UTF8, "application/json")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         List<TimeSpan> requestedDelays = [];
@@ -1128,7 +1155,7 @@ public sealed class FinanceNewsServiceTests
             {
                 Content = new StringContent(statusCode.ToString(), Encoding.UTF8, "text/plain")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         List<TimeSpan> requestedDelays = [];
@@ -1182,7 +1209,7 @@ public sealed class FinanceNewsServiceTests
             {
                 Content = new StringContent(statusCode.ToString(), Encoding.UTF8, "text/plain")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         FinanceNewsService service = new(cachePath, () => string.Empty);
@@ -1253,7 +1280,7 @@ public sealed class FinanceNewsServiceTests
                 }
                 """, Encoding.UTF8, "application/json")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         List<TimeSpan> requestedDelays = [];
@@ -1303,7 +1330,7 @@ public sealed class FinanceNewsServiceTests
             deepSeekRequestCount++;
             await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
             throw new InvalidOperationException("The test budget should cancel before this response.");
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         FinanceNewsService service = new(
@@ -1353,7 +1380,7 @@ public sealed class FinanceNewsServiceTests
             {
                 Content = new StringContent("service unavailable", Encoding.UTF8, "text/plain")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         List<TimeSpan> requestedDelays = [];
@@ -1429,7 +1456,7 @@ public sealed class FinanceNewsServiceTests
                 }
                 """, Encoding.UTF8, "application/json")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         List<TimeSpan> requestedDelays = [];
@@ -1511,7 +1538,7 @@ public sealed class FinanceNewsServiceTests
                 }
                 """, Encoding.UTF8, "application/json")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         FinanceNewsService service = new(cachePath, () => string.Empty);
@@ -1583,7 +1610,7 @@ public sealed class FinanceNewsServiceTests
                 }
                 """, Encoding.UTF8, "application/json")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         List<TimeSpan> requestedDelays = [];
@@ -1653,7 +1680,7 @@ public sealed class FinanceNewsServiceTests
                 }
                 """, Encoding.UTF8, "application/json")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         List<TimeSpan> requestedDelays = [];
@@ -1714,7 +1741,7 @@ public sealed class FinanceNewsServiceTests
                 }
                 """, Encoding.UTF8, "application/json")
             };
-        });
+        }, autoRespondOpenRouterModels: true);
 
         using HttpClient client = new(handler);
         List<TimeSpan> requestedDelays = [];
@@ -1762,7 +1789,7 @@ public sealed class FinanceNewsServiceTests
             {
                 Content = new StringContent("""{"choices":[{"message":{"content":"OK"}}]}""", Encoding.UTF8, "application/json")
             };
-        }));
+        }, autoRespondOpenRouterModels: true));
         FinanceNewsService service = new();
         AppSettings settings = Defaults.CreateSettings();
         settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
@@ -1774,11 +1801,12 @@ public sealed class FinanceNewsServiceTests
         Assert.True(result.WasChecked);
         Assert.True(result.Succeeded);
         Assert.Equal("https://openrouter.ai/api/v1/chat/completions", capturedUrl);
-        Assert.Contains("\"model\":\"openrouter/free\"", capturedBody, StringComparison.Ordinal);
+        Assert.Contains($"\"model\":\"{DefaultDiscoveredOpenRouterModelId}\"", capturedBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"reasoning\"", capturedBody, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task CheckSummarizedNewsAccessAsync_OpenRouterDefault_UsesConfiguredModel()
+    public async Task CheckSummarizedNewsAccessAsync_OpenRouterDefault_AutoDiscoversSpecificFreeInstructModel()
     {
         List<string> requestedModels = [];
         using HttpClient client = new(new FakeHttpMessageHandler(async (request, cancellationToken) =>
@@ -1792,7 +1820,7 @@ public sealed class FinanceNewsServiceTests
             {
                 Content = new StringContent("""{"choices":[{"message":{"content":"OK"}}]}""", Encoding.UTF8, "application/json")
             };
-        }));
+        }, autoRespondOpenRouterModels: true));
         FinanceNewsService service = new();
         AppSettings settings = Defaults.CreateSettings();
         settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
@@ -1803,7 +1831,44 @@ public sealed class FinanceNewsServiceTests
 
         Assert.True(result.WasChecked);
         Assert.True(result.Succeeded);
-        Assert.Equal(["openrouter/free"], requestedModels);
+        Assert.Equal([DefaultDiscoveredOpenRouterModelId], requestedModels);
+    }
+
+    [Fact]
+    public async Task CheckSummarizedNewsAccessAsync_OpenRouterDiscoveryFailure_FallsBackToFreeRouter()
+    {
+        List<string> requestedModels = [];
+        List<string> requestUrls = [];
+        using HttpClient client = new(new FakeHttpMessageHandler(async (request, cancellationToken) =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            requestUrls.Add(requestUrl);
+            if (requestUrl == "https://fallback.openrouter.ai/api/v1/models")
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+
+            string body = request.Content is null
+                ? string.Empty
+                : await request.Content.ReadAsStringAsync(cancellationToken);
+            using JsonDocument requestDocument = JsonDocument.Parse(body);
+            requestedModels.Add(requestDocument.RootElement.GetProperty("model").GetString() ?? string.Empty);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"choices":[{"message":{"content":"OK"}}]}""", Encoding.UTF8, "application/json")
+            };
+        }, autoRespondOpenRouterModels: false));
+        FinanceNewsService service = new();
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+        settings.AiApiKey = "test-key";
+        settings.AiEndpointUrl = "https://fallback.openrouter.ai/api/v1";
+
+        FinanceNewsService.AiNewsAccessCheckResult result =
+            await service.CheckSummarizedNewsAccessAsync(client, settings);
+
+        Assert.True(result.WasChecked);
+        Assert.True(result.Succeeded);
+        Assert.Equal(["https://fallback.openrouter.ai/api/v1/models", "https://fallback.openrouter.ai/api/v1/chat/completions"], requestUrls);
+        Assert.Equal([Defaults.DefaultAiModelId], requestedModels);
     }
 
     [Fact]
@@ -1818,7 +1883,7 @@ public sealed class FinanceNewsServiceTests
             {
                 Content = new StringContent("""{"choices":[{"message":{"content":"OK"}}]}""", Encoding.UTF8, "application/json")
             };
-        }));
+        }, autoRespondOpenRouterModels: true));
         FinanceNewsService service = new();
         AppSettings settings = Defaults.CreateSettings();
         settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
@@ -1841,7 +1906,7 @@ public sealed class FinanceNewsServiceTests
         {
             requestCount++;
             return new HttpResponseMessage(HttpStatusCode.Unauthorized);
-        }));
+        }, autoRespondOpenRouterModels: true));
         FinanceNewsService service = new();
         AppSettings settings = Defaults.CreateSettings();
         settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
@@ -1876,16 +1941,84 @@ public sealed class FinanceNewsServiceTests
     private sealed class FakeHttpMessageHandler : HttpMessageHandler
     {
         private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _responder;
+        private readonly bool _autoRespondOpenRouterModels;
 
-        public FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder)
-            => _responder = (request, _) => Task.FromResult(responder(request));
+        public FakeHttpMessageHandler(
+            Func<HttpRequestMessage, HttpResponseMessage> responder,
+            bool autoRespondOpenRouterModels = false)
+        {
+            _responder = (request, _) => Task.FromResult(responder(request));
+            _autoRespondOpenRouterModels = autoRespondOpenRouterModels;
+        }
 
-        public FakeHttpMessageHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> responder)
-            => _responder = responder;
+        public FakeHttpMessageHandler(
+            Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> responder,
+            bool autoRespondOpenRouterModels = false)
+        {
+            _responder = responder;
+            _autoRespondOpenRouterModels = autoRespondOpenRouterModels;
+        }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => _responder(request, cancellationToken);
+        {
+            if (_autoRespondOpenRouterModels &&
+                request.Method == HttpMethod.Get &&
+                string.Equals(request.RequestUri?.ToString(), "https://openrouter.ai/api/v1/models", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(CreateDefaultOpenRouterModelsJson(), Encoding.UTF8, "application/json")
+                });
+            }
+
+            return _responder(request, cancellationToken);
+        }
     }
+
+    private static string CreateDefaultOpenRouterModelsJson()
+        => """
+           {
+             "data": [
+               {
+                 "id": "reasoning/vendor-reasoner-700b:free",
+                 "name": "Vendor Reasoner 700B Free",
+                 "context_length": 128000,
+                 "pricing": { "prompt": "0", "completion": "0", "request": "0" },
+                 "reasoning": { "mandatory": true, "default_enabled": true }
+               },
+               {
+                 "id": "meta-llama/llama-3.3-70b-instruct:free",
+                 "name": "Llama 3.3 70B Instruct Free",
+                 "context_length": 131072,
+                 "pricing": { "prompt": "0", "completion": "0", "request": "0" }
+               },
+               {
+                 "id": "qwen/qwen3-next-80b-a3b-instruct:free",
+                 "name": "Qwen3 Next 80B A3B Instruct Free",
+                 "context_length": 262144,
+                 "pricing": { "prompt": "0", "completion": "0", "request": "0" }
+               },
+               {
+                 "id": "nousresearch/hermes-3-llama-3.1-405b:free",
+                 "name": "Hermes 3 Llama 3.1 405B Instruct Free",
+                 "context_length": 131072,
+                 "pricing": { "prompt": "0", "completion": "0", "request": "0" }
+               },
+               {
+                 "id": "meta-llama/base-llama-405b:free",
+                 "name": "Base Llama 405B Free",
+                 "context_length": 131072,
+                 "pricing": { "prompt": "0", "completion": "0", "request": "0" }
+               },
+               {
+                 "id": "vendor/paid-500b-instruct",
+                 "name": "Paid 500B Instruct",
+                 "context_length": 131072,
+                 "pricing": { "prompt": "0.000001", "completion": "0.000001" }
+               }
+             ]
+           }
+           """;
 
     private static string BuildPromptForTest(IReadOnlyList<string> headlines)
     {

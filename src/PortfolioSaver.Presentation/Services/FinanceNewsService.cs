@@ -22,6 +22,7 @@ using System.Xml.Linq;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Core.Services;
 using PortfolioSaver.Shared.Diagnostics;
 using PortfolioSaver.Shared.Helpers;
 
@@ -39,8 +40,6 @@ public sealed class FinanceNewsService
     private const string CnbcWorldFeedUrl = "https://www.cnbc.com/id/19832390/device/rss/rss.html";
     private const string BbcBusinessFeedUrl = "https://feeds.bbci.co.uk/news/business/rss.xml";
     private const string NytEconomyFeedUrl = "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml";
-    private const string OpenRouterAttributionReferer = "https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER";
-    private const string OpenRouterAttributionTitle = "DO NOT PANIC PORTFOLIO VISUALIZER";
     private const int MaxAiSummaryAttempts = 2;
     private const int SummaryRetryBaseDelayMilliseconds = 750;
     private static readonly TimeSpan DefaultSummarizedNewsExternalCallBudget = TimeSpan.FromSeconds(60);
@@ -58,7 +57,6 @@ public sealed class FinanceNewsService
     private readonly Func<string> _aiApiKeyResolver;
     private readonly Func<TimeSpan, CancellationToken, Task> _delayAsync;
     private readonly TimeSpan _summarizedNewsExternalCallBudget;
-
     public FinanceNewsService(
         string? cachePath = null,
         Func<string>? aiApiKeyResolver = null,
@@ -249,21 +247,31 @@ public sealed class FinanceNewsService
 
         string endpointUrl = ResolveAiEndpointUrl(settings.AiEndpointUrl);
         string configuredModelId = ResolveAiModelId(settings.AiModelId);
-
-        TraceNewsState(
-            "NewsSummaryAccessCheckStart",
-            new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-            new KeyValuePair<string, object?>("model_id", configuredModelId),
-            new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
-            new KeyValuePair<string, object?>("model_fallback_policy", "configured-model-only"));
+        string effectiveModelId = configuredModelId;
+        string modelResolution = "configured-model";
 
         try
         {
+            OpenRouterResolvedModel resolvedModel = await ResolveAiModelForRequestAsync(
+                httpClient,
+                endpointUrl,
+                configuredModelId,
+                cancellationToken).ConfigureAwait(false);
+            effectiveModelId = resolvedModel.ModelId;
+            modelResolution = resolvedModel.Resolution;
+
+            TraceNewsState(
+                "NewsSummaryAccessCheckStart",
+                new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
+                new KeyValuePair<string, object?>("model_id", effectiveModelId),
+                new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
+                new KeyValuePair<string, object?>("model_resolution", modelResolution));
+
             using HttpRequestMessage request = new(HttpMethod.Post, BuildAiChatCompletionsUri(endpointUrl));
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
             AddOpenRouterAttributionHeaders(request, endpointUrl);
             request.Content = new StringContent(
-                JsonSerializer.Serialize(CreateAiAccessCheckPayload(configuredModelId)),
+                JsonSerializer.Serialize(CreateAiAccessCheckPayload(effectiveModelId)),
                 Encoding.UTF8,
                 "application/json");
 
@@ -274,9 +282,9 @@ public sealed class FinanceNewsService
                 TraceNewsState(
                     "NewsSummaryAccessCheckFailed",
                     new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                    new KeyValuePair<string, object?>("model_id", configuredModelId),
+                    new KeyValuePair<string, object?>("model_id", effectiveModelId),
                     new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
-                    new KeyValuePair<string, object?>("model_fallback_policy", "configured-model-only"),
+                    new KeyValuePair<string, object?>("model_resolution", modelResolution),
                     new KeyValuePair<string, object?>("reason", reason));
                 return AiNewsAccessCheckResult.Failed(reason);
             }
@@ -284,9 +292,9 @@ public sealed class FinanceNewsService
             TraceNewsState(
                 "NewsSummaryAccessCheckSucceeded",
                 new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                new KeyValuePair<string, object?>("model_id", configuredModelId),
+                new KeyValuePair<string, object?>("model_id", effectiveModelId),
                 new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
-                new KeyValuePair<string, object?>("model_fallback_policy", "configured-model-only"));
+                new KeyValuePair<string, object?>("model_resolution", modelResolution));
             return AiNewsAccessCheckResult.Success();
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -294,9 +302,9 @@ public sealed class FinanceNewsService
             TraceNewsState(
                 "NewsSummaryAccessCheckFailed",
                 new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                new KeyValuePair<string, object?>("model_id", configuredModelId),
+                new KeyValuePair<string, object?>("model_id", effectiveModelId),
                 new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
-                new KeyValuePair<string, object?>("model_fallback_policy", "configured-model-only"),
+                new KeyValuePair<string, object?>("model_resolution", modelResolution),
                 new KeyValuePair<string, object?>("reason", "timeout-or-cancelled"));
             return AiNewsAccessCheckResult.Failed("timeout-or-cancelled");
         }
@@ -306,9 +314,9 @@ public sealed class FinanceNewsService
             TraceNewsState(
                 "NewsSummaryAccessCheckFailed",
                 new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
-                new KeyValuePair<string, object?>("model_id", configuredModelId),
+                new KeyValuePair<string, object?>("model_id", effectiveModelId),
                 new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
-                new KeyValuePair<string, object?>("model_fallback_policy", "configured-model-only"),
+                new KeyValuePair<string, object?>("model_resolution", modelResolution),
                 new KeyValuePair<string, object?>("reason", reason));
 
             return AiNewsAccessCheckResult.Failed(reason);
@@ -370,12 +378,19 @@ public sealed class FinanceNewsService
         {
             string endpointUrl = ResolveAiEndpointUrl(settings.AiEndpointUrl);
             string configuredModelId = ResolveAiModelId(settings.AiModelId);
+            // OpenRouter auto-discovery is bounded inside the resolver and cached for
+            // one hour; the first uncached refresh may spend part of this call budget.
+            OpenRouterResolvedModel resolvedModel = await ResolveAiModelForRequestAsync(
+                httpClient,
+                endpointUrl,
+                configuredModelId,
+                boundedToken).ConfigureAwait(false);
             string? retryReason = null;
             bool requestStrictJsonResponseFormat = true;
             string userPrompt = BuildSummarizedNewsPrompt(settings.AiWritingStyle, context);
             for (int attempt = 1; attempt <= MaxAiSummaryAttempts; attempt++)
             {
-                string modelId = configuredModelId;
+                string modelId = resolvedModel.ModelId;
                 JsonDocument document;
                 try
                 {
@@ -392,6 +407,7 @@ public sealed class FinanceNewsService
                         new KeyValuePair<string, object?>("endpoint_url", endpointUrl),
                         new KeyValuePair<string, object?>("model_id", modelId),
                         new KeyValuePair<string, object?>("configured_model_id", configuredModelId),
+                        new KeyValuePair<string, object?>("model_resolution", resolvedModel.Resolution),
                         new KeyValuePair<string, object?>("attempt", attempt),
                         new KeyValuePair<string, object?>("strict_json_response_format", requestStrictJsonResponseFormat),
                         new KeyValuePair<string, object?>("http_timeout_seconds", httpClient.Timeout.TotalSeconds),
@@ -1253,24 +1269,28 @@ public sealed class FinanceNewsService
             : candidate;
     }
 
+    private async Task<OpenRouterResolvedModel> ResolveAiModelForRequestAsync(
+        HttpClient httpClient,
+        string endpointUrl,
+        string configuredModelId,
+        CancellationToken cancellationToken)
+    {
+        return await OpenRouterModelResolver.ResolveAsync(
+            httpClient,
+            endpointUrl,
+            configuredModelId,
+            cancellationToken,
+            TraceOpenRouterModelResolution).ConfigureAwait(false);
+    }
+
     private static Uri BuildAiChatCompletionsUri(string endpointUrl)
         => new(new Uri($"{endpointUrl.TrimEnd('/')}/", UriKind.Absolute), "chat/completions");
 
     private static void AddOpenRouterAttributionHeaders(HttpRequestMessage request, string endpointUrl)
-    {
-        if (!IsOpenRouterEndpoint(endpointUrl))
-        {
-            return;
-        }
-
-        request.Headers.TryAddWithoutValidation("HTTP-Referer", OpenRouterAttributionReferer);
-        request.Headers.TryAddWithoutValidation("X-OpenRouter-Title", OpenRouterAttributionTitle);
-    }
+        => OpenRouterModelResolver.AddAttributionHeaders(request, endpointUrl);
 
     private static bool IsOpenRouterEndpoint(string endpointUrl)
-        => Uri.TryCreate(endpointUrl, UriKind.Absolute, out Uri? endpoint) &&
-           (string.Equals(endpoint.Host, "openrouter.ai", StringComparison.OrdinalIgnoreCase) ||
-            endpoint.Host.EndsWith(".openrouter.ai", StringComparison.OrdinalIgnoreCase));
+        => OpenRouterModelResolver.IsOpenRouterEndpoint(endpointUrl);
 
     private static IReadOnlyList<string> GetFallbackHeadlines(NewsScrollerMode mode, IReadOnlyList<string> cached)
         => cached.Count > 0
@@ -1345,6 +1365,14 @@ public sealed class FinanceNewsService
     private static void TraceNewsState(string eventName, params KeyValuePair<string, object?>[] fields)
     {
         TraceLog.InfoState("FinanceNewsService", eventName, fields);
+    }
+
+    private static void TraceOpenRouterModelResolution(string eventName, string detail)
+    {
+        string fieldName = string.Equals(eventName, "OpenRouterAutoModelSelected", StringComparison.Ordinal)
+            ? "model_id"
+            : "reason";
+        TraceNewsState(eventName, new KeyValuePair<string, object?>(fieldName, detail));
     }
 
     private sealed record SummarizedNewsContext(

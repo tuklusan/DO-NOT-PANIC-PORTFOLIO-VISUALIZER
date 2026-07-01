@@ -103,9 +103,9 @@ OpenRouter free-model accounts may be limited to 50 free-model requests per day 
 
 At startup, if summarized news is enabled and the configured AI access check fails, the app warns once, uses RSS-backed fallback content, and keeps retrying AI access on the normal refresh cadence so a temporarily unavailable provider can recover without restarting.
 
-When using the default OpenRouter-compatible endpoint, requests include OpenRouter's optional app-attribution headers: `HTTP-Referer` points to the public GitHub repository and `X-OpenRouter-Title` identifies the app name. Other OpenAI-compatible providers can be used by changing **AI endpoint URL** and **AI model ID**.
+When using the default OpenRouter-compatible endpoint with **AI model ID** set to `openrouter/free` or `auto`, the app first queries OpenRouter's public models list and chooses a concrete free instruct/chat model for the news request. It excludes mandatory/default-on reasoning models, then ranks candidates by detected parameter-size signal, context length, and model ID for deterministic tie-breaking. This avoids the generic free router randomly selecting a reasoning-oriented model for a short style-transfer task. If model discovery fails, the app falls back to `openrouter/free` so summarized news can still attempt to run.
 
-Summarized-news requests are sent to the configured model ID directly. The app does not silently substitute a provider-specific fallback model.
+OpenRouter requests include OpenRouter's optional app-attribution headers: `HTTP-Referer` points to the public GitHub repository and `X-OpenRouter-Title` identifies the app name. Other OpenAI-compatible providers can be used by changing **AI endpoint URL** and **AI model ID**. Custom model IDs are sent directly and are not auto-substituted.
 
 Installer upgrades preserve existing custom AI endpoint URLs and model IDs, including values migrated from earlier settings files. To reset to the shipped defaults, clear or edit the AI endpoint/model fields in Settings.
 

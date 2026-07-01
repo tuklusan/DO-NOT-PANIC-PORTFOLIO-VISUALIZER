@@ -25,6 +25,7 @@ using PortfolioSaver.Config.ViewModels;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Core.Services;
 using PortfolioSaver.Data.Services;
 using Xunit;
 
@@ -33,6 +34,13 @@ namespace PortfolioSaver.Tests.Services;
 [Collection("EnvironmentSerial")]
 public sealed class MainWindowViewModelValidationTests
 {
+    private const string DefaultDiscoveredOpenRouterModelId = "nousresearch/hermes-3-llama-3.1-405b:free";
+
+    public MainWindowViewModelValidationTests()
+    {
+        OpenRouterModelResolver.ClearCache();
+    }
+
     [Fact]
     public void DisableInvalidSymbols_AutoDisablesMatchingTickers()
     {
@@ -1065,9 +1073,11 @@ public sealed class MainWindowViewModelValidationTests
     public async Task AiNewsAccessValidationService_SummarizedMode_UsesOpenAiCompatibleChatCompletionsProbe()
     {
         HttpRequestMessage? capturedRequest = null;
+        string capturedBody = string.Empty;
         AiNewsAccessValidationService service = new(_ => new HttpClient(new FakeHttpMessageHandler(request =>
         {
             capturedRequest = request;
+            capturedBody = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult() ?? string.Empty;
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(
@@ -1075,7 +1085,7 @@ public sealed class MainWindowViewModelValidationTests
                     Encoding.UTF8,
                     "application/json")
             };
-        })));
+        }, autoRespondOpenRouterModels: true)));
         AppSettings settings = Defaults.CreateSettings();
         settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
         settings.AiApiKey = "test-key";
@@ -1091,6 +1101,8 @@ public sealed class MainWindowViewModelValidationTests
         Assert.Equal("test-key", capturedRequest.Headers.Authorization?.Parameter);
         Assert.True(capturedRequest.Headers.Contains("HTTP-Referer"));
         Assert.True(capturedRequest.Headers.Contains("X-OpenRouter-Title"));
+        Assert.Contains(DefaultDiscoveredOpenRouterModelId, capturedBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"reasoning\"", capturedBody, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -1527,9 +1539,60 @@ public sealed class MainWindowViewModelValidationTests
         }
     }
 
-    private sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
+    private static string CreateDefaultOpenRouterModelsJson()
+        => $$"""
+             {
+               "data": [
+                 {
+                   "id": "reasoning/vendor-reasoner-700b:free",
+                   "name": "Vendor Reasoner 700B",
+                   "context_length": 32768,
+                   "pricing": { "prompt": "0", "completion": "0", "request": "0" },
+                   "reasoning": { "mandatory": true, "default_enabled": true },
+                   "architecture": { "instruct_type": "chat" }
+                 },
+                 {
+                   "id": "meta-llama/llama-3.3-70b-instruct:free",
+                   "name": "Llama 3.3 70B Instruct",
+                   "context_length": 131072,
+                   "pricing": { "prompt": "0", "completion": "0", "request": "0" },
+                   "architecture": { "instruct_type": "chat" }
+                 },
+                 {
+                   "id": "nousresearch/hermes-3-llama-3.1-405b:free",
+                   "name": "Hermes 3 Llama 3.1 405B",
+                   "context_length": 131072,
+                   "pricing": { "prompt": "0", "completion": "0", "request": "0" },
+                   "architecture": { "instruct_type": "chat" }
+                 },
+                 {
+                   "id": "openrouter/small-base:free",
+                   "name": "Small Base",
+                   "context_length": 8192,
+                   "pricing": { "prompt": "0", "completion": "0", "request": "0" },
+                   "architecture": { "instruct_type": "none" }
+                 }
+               ]
+             }
+             """;
+
+    private sealed class FakeHttpMessageHandler(
+        Func<HttpRequestMessage, HttpResponseMessage> responder,
+        bool autoRespondOpenRouterModels = false) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => Task.FromResult(responder(request));
+        {
+            if (autoRespondOpenRouterModels &&
+                request.Method == HttpMethod.Get &&
+                string.Equals(request.RequestUri?.ToString(), "https://openrouter.ai/api/v1/models", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(CreateDefaultOpenRouterModelsJson(), Encoding.UTF8, "application/json")
+                });
+            }
+
+            return Task.FromResult(responder(request));
+        }
     }
 }
