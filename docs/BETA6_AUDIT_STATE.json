@@ -8704,6 +8704,46 @@
         "Public GitHub release v0.9.0-beta7 was retagged to fixed commit b8c491d and the installer asset was replaced.",
         "Published installer asset SHA-256 is 64b0d6b100cb4e5184fb5343191b79e2fb0eacc7472f3bcdfe577cba7d088143; stale checksum assets were removed and the release now has one installer plus one matching checksum."
       ]
+    },
+    {
+      "id": "CR-172",
+      "tracking_number": "CR-172",
+      "priority": 1,
+      "area": "Release Security",
+      "title": "Publish VirusTotal URL-scan report for every public installer release",
+      "status": "open",
+      "source": "user_release_confidence_request_2026_07_01",
+      "severity": "High",
+      "evidence": [
+        "User requested a post-release-publication hook so that every GitHub release installer upload is submitted to VirusTotal by public download URL and the resulting report is committed/pushed into the release documentation/artifacts.",
+        "A shell/environment probe found VIRUSTOTAL_API_KEY missing from the current process scope but present in the User environment scope with length 64.",
+        "The VirusTotal API key was copied from User environment scope into ignored build/vm/test-secrets.json as VirusTotalApiKey; the secret value is not tracked or printed."
+      ],
+      "research": [
+        "Official VirusTotal API v3 overview states v3 is the default REST/JSON API and includes Scan URL, Get URL analysis report, and Get file report by hash endpoints: https://docs.virustotal.com/reference/overview.",
+        "Official Scan URL endpoint is POST https://www.virustotal.com/api/v3/urls with form-data field url and x-apikey header; it returns an Analysis ID retrievable through the Analysis endpoint: https://docs.virustotal.com/reference/scan-url.",
+        "Official Analysis endpoint is GET https://www.virustotal.com/api/v3/analyses/{id} with x-apikey header: https://docs.virustotal.com/reference/analysis.",
+        "Official URL report endpoint is GET https://www.virustotal.com/api/v3/urls/{id}, where id is a URL identifier/base64 URL representation without padding, with x-apikey header: https://docs.virustotal.com/reference/url-info.",
+        "Official Public API constraints are 500 requests/day and 4 requests/minute; it must not be used in commercial products/services or business workflows that do not contribute new files: https://docs.virustotal.com/reference/public-vs-premium-api."
+      ],
+      "acceptance": [
+        "Add a release script or hook that runs after GitHub Release asset upload and obtains the public installer URL from the release metadata rather than from a local path.",
+        "Resolve VIRUSTOTAL_API_KEY from process/user environment and ignored build/vm/test-secrets.json without ever committing or logging the secret.",
+        "Submit the public installer download URL to VirusTotal using POST /api/v3/urls with x-apikey and form-data url.",
+        "Poll GET /api/v3/analyses/{id} at a conservative cadence that respects the public API limit of 4 requests/minute and hard-stops before quota abuse.",
+        "Generate a tracked, user-readable report under the project's release documentation/artifacts containing release tag, installer URL, installer SHA-256, VirusTotal analysis ID, permalink/report URL when available, last analysis stats, timestamp, and a clear caveat that VirusTotal is advisory rather than a guarantee.",
+        "Commit and push the generated report after successful release publication so users can inspect the malware-scan confidence artifact from GitHub.",
+        "If VirusTotal is unavailable, rate-limited, or the key is absent, fail the hook visibly for official public releases unless an explicit documented override is supplied.",
+        "Ensure the hook does not upload the local binary directly unless a future CR explicitly approves file submission; first implementation should submit the already-public GitHub installer URL only."
+      ],
+      "notes": [
+        "Feasibility is good: GitHub release assets provide stable public download URLs, VirusTotal supports URL submission and analysis polling, and the request volume is tiny for normal release cadence.",
+        "The safest first implementation is a separate idempotent PowerShell script, for example build/release/Publish-VirusTotalReleaseReport.ps1, invoked after gh release upload.",
+        "Report files should not be named as if VirusTotal certifies safety; use wording such as VirusTotal advisory scan report."
+      ],
+      "validation": [
+        "Pending implementation and live validation against the current beta7 installer URL."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
