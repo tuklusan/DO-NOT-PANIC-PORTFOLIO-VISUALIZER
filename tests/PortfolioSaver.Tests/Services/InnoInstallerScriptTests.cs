@@ -48,7 +48,7 @@ public sealed class InnoInstallerScriptTests
         Assert.Contains("CR-133: the public installer creates a standard all-users desktop shortcut by default.", script, StringComparison.Ordinal);
         Assert.Contains("ScaleY(6)", script, StringComparison.Ordinal);
         Assert.Contains("ScaleX(112)", script, StringComparison.Ordinal);
-        Assert.Contains('\"NewsRefreshMinutes\": 30', script, StringComparison.Ordinal);
+        Assert.Contains("\"NewsRefreshMinutes\": 30", script, StringComparison.Ordinal);
         Assert.Contains(@"Name: ""desktopicon""; Description: ""Create a desktop shortcut""", script, StringComparison.Ordinal);
         Assert.DoesNotContain(@"Name: ""desktopicon""; Description: ""Create a desktop shortcut""; GroupDescription: ""Additional shortcuts:""; Flags: unchecked", script, StringComparison.Ordinal);
         Assert.Contains(@"Name: ""{group}\DO NOT PANIC PORTFOLIO VISUALIZER""; Filename: ""{app}\PortfolioSaver.Desktop.exe""", script, StringComparison.Ordinal);
