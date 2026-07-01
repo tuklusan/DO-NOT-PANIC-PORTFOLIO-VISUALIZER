@@ -1,0 +1,8 @@
+Evidence captured from live VM trace pull: build\vm\artifacts\manual-live-trace-20260701-082321\trace.circular.log
+
+Relevant trace lines:
+2288: 2026-07-01T12:12:47.9526036+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=6892 | tid=2 | event=BackgroundRotationChosen / force_different=false / shuffle_enabled=true / candidate_count=5 / chosen_path=Lake-Louise-landscape-Unsplash-.jpg
+2291: 2026-07-01T12:12:47.9547808+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=6892 | tid=2 | event=BackgroundCatalogRescanned / reason=config-resume / background_count=5 / catalog_changed=true / current_still_valid=false
+2382: 2026-07-01T12:12:50.0298603+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=6892 | tid=2 | event=BackgroundTransitionComplete / path=Lake-Louise-landscape-Unsplash-.jpg / zoom_scale=1.0349999999999995
+2383: 2026-07-01T12:12:50.0298789+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=6892 | tid=2 | event=BackgroundZoomStarted / reason=background-active / scale=1.0349999999999995 / path=Lake-Louise-landscape-Unsplash-.jpg
+4402: 2026-07-01T12:16:01.4611746+00:00 | INFO | program=PortfolioSaver.Desktop | source=Screensaver.Scene | function=TraceSceneState | host=windows10 | ip=192.168.56.102 | pid=6892 | tid=2 | event=BackgroundCatalogRescanned / reason=config-resume / background_count=5 / catalog_changed=false / current_still_valid=true

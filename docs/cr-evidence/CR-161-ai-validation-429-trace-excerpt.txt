@@ -1,0 +1,8 @@
+Evidence captured from live VM trace pull: build\vm\artifacts\manual-live-trace-20260701-082321\trace.circular.log
+
+Relevant trace lines:
+4292: 2026-07-01T12:15:56.9429093+00:00 | INFO | program=PortfolioSaver.Desktop | source=Config.Validation | function=TraceValidation | host=windows10 | ip=192.168.56.102 | pid=6892 | tid=2 | event=EditorChangeInvalidatesValidation / property=SpeedValue / sender_type=TickerGroupEditorViewModel / is_validated=false
+4293: 2026-07-01T12:15:56.9429209+00:00 | INFO | program=PortfolioSaver.Desktop | source=Config.Validation | function=TraceValidation | host=windows10 | ip=192.168.56.102 | pid=6892 | tid=2 | event=ValidationStateInvalidated / status=Configuration changed. Click Validate. / was_validated=false / is_applying=false
+5897: 2026-07-01T12:17:50.8461793+00:00 | INFO | program=PortfolioSaver.Desktop | source=Config.Validation | function=TraceAiValidation | host=windows10 | ip=192.168.56.102 | pid=6892 | tid=2 | event=AiAccessValidationFailed / operation_id=391a001c614343c0b30a741fe639c079 / endpoint=https://openrouter.ai / model_id=openrouter/free / reason=http-429
+5898: 2026-07-01T12:17:50.8480454+00:00 | INFO | program=PortfolioSaver.Desktop | source=Config.Validation | function=TraceValidation | host=windows10 | ip=192.168.56.102 | pid=6892 | tid=2 | event=AiNewsAccessValidationFailed / message=AI access was rejected by the provider (429). Check the API key, endpoint URL, and model ID.
+6508: 2026-07-01T12:19:59.7046429+00:00 | INFO | program=PortfolioSaver.Desktop | source=Config.Validation | function=TraceValidation | host=windows10 | ip=192.168.56.102 | pid=6892 | tid=2 | event=ConnectivityStateUpdated / connected=true / was_connected=true / is_applying=false / is_validated=true

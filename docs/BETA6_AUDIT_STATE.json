@@ -8304,6 +8304,64 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-160",
+      "tracking_number": "CR-160",
+      "priority": 2,
+      "area": "Backgrounds",
+      "title": "Normalize custom background image scaling to screen bounds",
+      "status": "open",
+      "source": "manual_user_report",
+      "severity": "Medium",
+      "evidence": [
+        "User report on 2026-07-01: custom HD Wikimedia landscape backgrounds do not reasonably fit the screen; app should normalize/scale background images to screen resolution even if non-uniform distortion is required.",
+        "Evidence file: docs/cr-evidence/CR-160-background-scaling-trace-excerpt.txt",
+        "Live VM trace shows custom/background catalog rescan with background_count=5 and BackgroundRotationChosen selecting Lake-Louise-landscape-Unsplash-.jpg followed by BackgroundTransitionComplete for that image."
+      ],
+      "notes": [
+        "Acceptance: background renderer offers and uses a deterministic fill-to-screen mode that stretches image width and height to the visible scene bounds when needed.",
+        "Acceptance: behavior works for arbitrary user-selected local images; distorted aspect ratio is acceptable per user direction.",
+        "Acceptance: add local/unit or VM visual proof using landscape images in C:\\Users\\sanyalnet\\Pictures."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-161",
+      "tracking_number": "CR-161",
+      "priority": 1,
+      "area": "Configuration",
+      "title": "Avoid rate-limit-triggering AI access validation in config workflow",
+      "status": "open",
+      "source": "manual_user_report",
+      "severity": "High",
+      "evidence": [
+        "User screenshot shows modal AI News Access Required: provider rejected with 429 during config validation.",
+        "Evidence file: docs/cr-evidence/CR-161-ai-validation-429-modal.png",
+        "Evidence file: docs/cr-evidence/CR-161-ai-validation-429-trace-excerpt.txt",
+        "Live VM trace line 4292 shows only tape SpeedValue change invalidated validation; line 5897 shows AiAccessValidationFailed endpoint=https://openrouter.ai model_id=openrouter/free reason=http-429; line 5898 shows user-facing failure message."
+      ],
+      "notes": [
+        "Acceptance: changing unrelated settings such as tape speed or direction must not force live AI provider validation if AI settings did not change and a previously saved AI configuration exists.",
+        "Acceptance: config validation must avoid costly/rate-limit-prone full AI requests for key sanity checks; prefer cached validation, a minimal probe, deferred runtime retry, or non-blocking warning behavior.",
+        "Acceptance: provider 429 is treated as transient rate limiting, not as proof that API key, endpoint, or model are invalid. User must be able to save unrelated config changes.",
+        "Acceptance: traces distinguish invalid credentials (401/403), transient rate-limit (429), timeout, and skipped validation because AI config was unchanged."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
@@ -8347,4 +8405,3 @@
     }
   ]
 }
-
