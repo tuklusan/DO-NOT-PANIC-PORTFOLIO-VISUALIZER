@@ -11,9 +11,12 @@
 // SANYALnet Labs." See LICENSE for full terms, warranty disclaimer, termination,
 // patent, trademark, and governing-law provisions.
 // ============================================================================
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Automation;
+using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Threading;
 using PortfolioSaver.Shared;
 using PortfolioSaver.Shared.Diagnostics;
@@ -101,10 +104,11 @@ public partial class MainWindow : Window
             MinHeight = 0d;
             MaxWidth = double.PositiveInfinity;
             MaxHeight = double.PositiveInfinity;
-            Left = SystemParameters.VirtualScreenLeft;
-            Top = SystemParameters.VirtualScreenTop;
-            Width = SystemParameters.VirtualScreenWidth;
-            Height = SystemParameters.VirtualScreenHeight;
+            Rect bounds = GetCurrentMonitorBoundsInDips();
+            Left = bounds.Left;
+            Top = bounds.Top;
+            Width = bounds.Width;
+            Height = bounds.Height;
             Topmost = true;
         }
         finally
@@ -118,7 +122,7 @@ public partial class MainWindow : Window
 
         Dispatcher.BeginInvoke(
             DispatcherPriority.ApplicationIdle,
-            new Action(ApplyFullScreenBounds));
+            new Action(ApplyFullScreenBoundsIfNeeded));
     }
 
     public void ExitFullScreen()
@@ -253,28 +257,34 @@ public partial class MainWindow : Window
         }
         else if (WindowState == WindowState.Maximized)
         {
-            MaxWidth = SystemParameters.WorkArea.Width;
-            MaxHeight = SystemParameters.WorkArea.Height;
+            // Let WPF own per-monitor maximized sizing; fixed SystemParameters.WorkArea caps
+            // are primary-monitor DPI values and can crop or undersize large/wide displays.
+            MaxWidth = double.PositiveInfinity;
+            MaxHeight = double.PositiveInfinity;
         }
     }
 
-    private void ApplyFullScreenBounds()
+
+    private void ApplyFullScreenBoundsIfNeeded()
     {
         if (!_isFullScreen)
-        {
             return;
-        }
+
+        Rect bounds = GetCurrentMonitorBoundsInDips();
+        bool alreadyAligned = Math.Abs(Left - bounds.Left) <= 0.5d &&
+                              Math.Abs(Top - bounds.Top) <= 0.5d &&
+                              Math.Abs(Width - bounds.Width) <= 0.5d &&
+                              Math.Abs(Height - bounds.Height) <= 0.5d;
+        if (alreadyAligned)
+            return;
 
         _suppressWindowConstraint = true;
         try
         {
-            MaxWidth = double.PositiveInfinity;
-            MaxHeight = double.PositiveInfinity;
-            Left = SystemParameters.VirtualScreenLeft;
-            Top = SystemParameters.VirtualScreenTop;
-            Width = SystemParameters.VirtualScreenWidth;
-            Height = SystemParameters.VirtualScreenHeight;
-            Topmost = true;
+            Left = bounds.Left;
+            Top = bounds.Top;
+            Width = bounds.Width;
+            Height = bounds.Height;
         }
         finally
         {
@@ -296,5 +306,63 @@ public partial class MainWindow : Window
         {
             _suppressWindowConstraint = false;
         }
+    }
+
+    private Rect GetCurrentMonitorBoundsInDips()
+    {
+        nint hwnd = new WindowInteropHelper(this).Handle;
+        HwndSource? source = hwnd != 0 ? HwndSource.FromHwnd(hwnd) : null;
+        Matrix transform = source?.CompositionTarget?.TransformFromDevice
+            ?? PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice
+            ?? Matrix.Identity;
+
+        if (hwnd == 0 || source is null)
+        {
+            // Fullscreen is only entered after the WPF window is shown; this fallback keeps
+            // unusual early calls safe without mixing raw pixels into WPF layout.
+            return new Rect(0d, 0d, SystemParameters.PrimaryScreenWidth, SystemParameters.PrimaryScreenHeight);
+        }
+
+        // Match normal Windows fullscreen behavior: occupy the monitor that owns this window.
+        // Virtual-screen bounds caused mixed-DPI and ultrawide maximized/fullscreen artifacts.
+        nint monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
+        MonitorInfo monitorInfo = new() { Size = Marshal.SizeOf<MonitorInfo>() };
+        if (monitor == 0 || !GetMonitorInfo(monitor, ref monitorInfo))
+            return new Rect(0d, 0d, SystemParameters.PrimaryScreenWidth, SystemParameters.PrimaryScreenHeight);
+
+        Point topLeft = transform.Transform(new Point(monitorInfo.Monitor.Left, monitorInfo.Monitor.Top));
+        Point bottomRight = transform.Transform(new Point(monitorInfo.Monitor.Right, monitorInfo.Monitor.Bottom));
+
+        double width = Math.Max(1d, bottomRight.X - topLeft.X);
+        double height = Math.Max(1d, bottomRight.Y - topLeft.Y);
+        return new Rect(topLeft.X, topLeft.Y, width, height);
+    }
+
+    // Win32 MONITOR_DEFAULTTONEAREST: use the nearest monitor if the window straddles displays.
+    private const uint MonitorDefaultToNearest = 2;
+
+    [DllImport("user32.dll")]
+    private static extern nint MonitorFromWindow(nint hwnd, uint flags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(nint monitor, ref MonitorInfo monitorInfo);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MonitorInfo
+    {
+        public int Size;
+        public NativeRect Monitor;
+        public NativeRect WorkArea;
+        public uint Flags;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly struct NativeRect
+    {
+        public readonly int Left;
+        public readonly int Top;
+        public readonly int Right;
+        public readonly int Bottom;
     }
 }

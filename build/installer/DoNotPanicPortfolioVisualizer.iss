@@ -149,7 +149,7 @@ begin
   AiSetupCheckBox := TNewCheckBox.Create(AiSetupPage);
   AiSetupCheckBox.Parent := AiSetupPage.Surface;
   AiSetupCheckBox.Left := 0;
-  AiSetupCheckBox.Top := 0;
+  AiSetupCheckBox.Top := ScaleY(6);
   AiSetupCheckBox.Width := AiSetupPage.SurfaceWidth;
   AiSetupCheckBox.Caption := 'Configure AI-summarized financial news now';
   AiSetupCheckBox.OnClick := @AiSetupCheckBoxClick;
@@ -157,52 +157,52 @@ begin
   AiInstructionsLabel := TNewStaticText.Create(AiSetupPage);
   AiInstructionsLabel.Parent := AiSetupPage.Surface;
   AiInstructionsLabel.Left := 0;
-  AiInstructionsLabel.Top := AiSetupCheckBox.Top + 28;
+  AiInstructionsLabel.Top := AiSetupCheckBox.Top + ScaleY(26);
   AiInstructionsLabel.Width := AiSetupPage.SurfaceWidth;
-  AiInstructionsLabel.Height := 58;
+  AiInstructionsLabel.Height := ScaleY(54);
   AiInstructionsLabel.WordWrap := True;
   AiInstructionsLabel.Caption :=
-    'Example free personal setup: go to openrouter.ai, sign up for a free account, choose Individual, create an API key, and paste it here. You may also adjust endpoint and model ID for another compatible AI engine.';
+    'Example free personal setup: visit openrouter.ai, create an Individual key, and paste it here. Endpoint and model can be changed for another compatible AI engine.';
 
   AiApiKeyLabel := TNewStaticText.Create(AiSetupPage);
   AiApiKeyLabel.Parent := AiSetupPage.Surface;
   AiApiKeyLabel.Left := 0;
-  AiApiKeyLabel.Top := AiInstructionsLabel.Top + 70;
-  AiApiKeyLabel.Width := 110;
+  AiApiKeyLabel.Top := AiInstructionsLabel.Top + AiInstructionsLabel.Height + ScaleY(12);
+  AiApiKeyLabel.Width := ScaleX(104);
   AiApiKeyLabel.Caption := 'AI API key:';
 
   AiApiKeyEdit := TPasswordEdit.Create(AiSetupPage);
   AiApiKeyEdit.Parent := AiSetupPage.Surface;
-  AiApiKeyEdit.Left := 120;
-  AiApiKeyEdit.Top := AiApiKeyLabel.Top - 3;
-  AiApiKeyEdit.Width := AiSetupPage.SurfaceWidth - 120;
+  AiApiKeyEdit.Left := ScaleX(112);
+  AiApiKeyEdit.Top := AiApiKeyLabel.Top - ScaleY(3);
+  AiApiKeyEdit.Width := AiSetupPage.SurfaceWidth - AiApiKeyEdit.Left;
 
   AiEndpointLabel := TNewStaticText.Create(AiSetupPage);
   AiEndpointLabel.Parent := AiSetupPage.Surface;
   AiEndpointLabel.Left := 0;
-  AiEndpointLabel.Top := AiApiKeyLabel.Top + 34;
-  AiEndpointLabel.Width := 110;
+  AiEndpointLabel.Top := AiApiKeyLabel.Top + ScaleY(30);
+  AiEndpointLabel.Width := ScaleX(104);
   AiEndpointLabel.Caption := 'Endpoint URL:';
 
   AiEndpointEdit := TNewEdit.Create(AiSetupPage);
   AiEndpointEdit.Parent := AiSetupPage.Surface;
-  AiEndpointEdit.Left := 120;
-  AiEndpointEdit.Top := AiEndpointLabel.Top - 3;
-  AiEndpointEdit.Width := AiSetupPage.SurfaceWidth - 120;
+  AiEndpointEdit.Left := ScaleX(112);
+  AiEndpointEdit.Top := AiEndpointLabel.Top - ScaleY(3);
+  AiEndpointEdit.Width := AiSetupPage.SurfaceWidth - AiEndpointEdit.Left;
   AiEndpointEdit.Text := 'https://openrouter.ai/api/v1';
 
   AiModelLabel := TNewStaticText.Create(AiSetupPage);
   AiModelLabel.Parent := AiSetupPage.Surface;
   AiModelLabel.Left := 0;
-  AiModelLabel.Top := AiEndpointLabel.Top + 34;
-  AiModelLabel.Width := 110;
+  AiModelLabel.Top := AiEndpointLabel.Top + ScaleY(30);
+  AiModelLabel.Width := ScaleX(104);
   AiModelLabel.Caption := 'Model ID:';
 
   AiModelEdit := TNewEdit.Create(AiSetupPage);
   AiModelEdit.Parent := AiSetupPage.Surface;
-  AiModelEdit.Left := 120;
-  AiModelEdit.Top := AiModelLabel.Top - 3;
-  AiModelEdit.Width := AiSetupPage.SurfaceWidth - 120;
+  AiModelEdit.Left := ScaleX(112);
+  AiModelEdit.Top := AiModelLabel.Top - ScaleY(3);
+  AiModelEdit.Width := AiSetupPage.SurfaceWidth - AiModelEdit.Left;
   AiModelEdit.Text := 'openrouter/free';
 
   SetAiControlsEnabled(False);
@@ -248,7 +248,7 @@ begin
     '  "AiApiKey": "' + JsonEscape(Trim(AiApiKeyEdit.Text)) + '",'#13#10 +
     '  "AiEndpointUrl": "' + JsonEscape(Trim(AiEndpointEdit.Text)) + '",'#13#10 +
     '  "AiModelId": "' + JsonEscape(Trim(AiModelEdit.Text)) + '",'#13#10 +
-    '  "NewsRefreshMinutes": 15'#13#10 +
+    '  "NewsRefreshMinutes": 30'#13#10 +
     '}'#13#10;
   SaveStringToFile(ImportPath, Json, False);
 

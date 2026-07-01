@@ -79,7 +79,7 @@ public static class AppSettingsNormalizer
             normalized.NewsRefreshMinutes,
             Defaults.MinNewsRefreshMinutes,
             Defaults.MaxNewsRefreshMinutes,
-            15);
+            Defaults.MinNewsRefreshMinutes);
 
         normalized.NewsScrollerMode = NormalizeNewsScrollerMode(normalized.NewsScrollerMode);
         normalized.AiWritingStyle = NormalizeAiWritingStyle(normalized.AiWritingStyle);

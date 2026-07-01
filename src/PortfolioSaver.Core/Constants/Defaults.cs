@@ -30,8 +30,8 @@ public static class Defaults
     public const int MinBackgroundChangeSeconds = 120;
     public const int DefaultDesktopRefreshSeconds = 300;
     public const int LegacySteadyStateRefreshSeconds = 1200;
-    public const int MinimumSummarizedNewsRefreshMinutes = 10;
-    public const int MinNewsRefreshMinutes = 10;
+    public const int MinimumSummarizedNewsRefreshMinutes = 30;
+    public const int MinNewsRefreshMinutes = 30;
     public const int MaxNewsRefreshMinutes = 4 * 60;
     public const int MaxTapeCount = 4;
     public const int MaxTickersPerTape = 8;
@@ -61,7 +61,7 @@ public static class Defaults
         NewsScrollerMode = NewsScrollerMode.RssFeed,
         AiWritingStyle = AiWritingStyle.DouglasAdams,
         NewsFeedUrl = DefaultNewsFeedUrl,
-        NewsRefreshMinutes = 15,
+        NewsRefreshMinutes = 30,
         EnableFloatingGraphs = true,
         HistoricalLookbackDays = 14,
         HistoricalRefreshHours = 12,

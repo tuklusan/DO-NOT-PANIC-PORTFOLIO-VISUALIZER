@@ -18,6 +18,8 @@ patent, trademark, and governing-law provisions.
 
 Market-aware Windows desktop visualizer and configuration suite by **SANYALnet Labs**, written by **Supratim Sanyal**.
 
+**Download:** use the [latest GitHub Release](https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER/releases/latest) for the public Windows installer and SHA-256 checksum. Installer binaries are distributed through GitHub Releases rather than stored in the source tree.
+
 **License: SANYALnet Labs Non-Commercial License**
 
 This repository ships with the full [LICENSE](LICENSE) text in-tree and is licensed under the **SANYALnet Labs Non-Commercial License**, including the standard warranty and liability disclaimer.
@@ -97,7 +99,9 @@ To obtain a free OpenRouter API key for personal non-commercial use:
 6. Leave **AI endpoint URL** as `https://openrouter.ai/api/v1` and **AI model ID** as `openrouter/free`, unless you intentionally want a different OpenAI-compatible provider/model.
 7. Validate and choose **OK** so the new configuration is saved and applied.
 
-At startup, if summarized news is enabled and the configured AI access check fails, the app warns once and falls back to RSS mode for the session.
+OpenRouter free-model accounts may be limited to 50 free-model requests per day unless credits are added, so the shipped app enforces a 30-minute minimum/default headline refresh for summarized-news mode. That cadence yields at most 48 scheduled AI refreshes per day before occasional startup or manual validation checks.
+
+At startup, if summarized news is enabled and the configured AI access check fails, the app warns once, uses RSS-backed fallback content, and keeps retrying AI access on the normal refresh cadence so a temporarily unavailable provider can recover without restarting.
 
 When using the default OpenRouter-compatible endpoint, requests include OpenRouter's optional app-attribution headers: `HTTP-Referer` points to the public GitHub repository and `X-OpenRouter-Title` identifies the app name. Other OpenAI-compatible providers can be used by changing **AI endpoint URL** and **AI model ID**.
 
@@ -108,7 +112,7 @@ Installer upgrades preserve existing custom AI endpoint URLs and model IDs, incl
 ## Desktop App Modes
 
 - `PortfolioSaver.Desktop` is the primary app host
-- fullscreen toggle from `View -> Full Screen`
+- fullscreen toggle from `View -> Full Screen` targets the current monitor
 - `Esc` exits fullscreen back to windowed mode
 - legacy screensaver `/s`, `/c`, and `/p <HWND>` paths remain for compatibility during Beta 5.6
 

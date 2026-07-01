@@ -405,7 +405,7 @@
                        }
                    ],
     "NewsFeedUrl":  "https://finance.yahoo.com/news/rss",
-    "NewsRefreshMinutes":  15
+    "NewsRefreshMinutes":  30
 }
 
 

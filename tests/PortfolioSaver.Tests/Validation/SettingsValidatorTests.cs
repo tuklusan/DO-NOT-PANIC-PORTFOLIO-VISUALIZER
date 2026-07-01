@@ -82,14 +82,14 @@ public sealed class SettingsValidatorTests
     }
 
     [Fact]
-    public void Validate_NewsRefreshBelowTenMinutes_ReturnsError()
+    public void Validate_NewsRefreshBelowThirtyMinutes_ReturnsError()
     {
         AppSettings settings = Defaults.CreateSettings();
-        settings.NewsRefreshMinutes = 9;
+        settings.NewsRefreshMinutes = 29;
 
         SettingsValidator validator = new();
         IReadOnlyList<string> errors = validator.Validate(settings);
 
-        Assert.Contains(errors, error => error.Contains("between 10 minutes and 4 hours", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(errors, error => error.Contains("between 30 minutes and 4 hours", StringComparison.OrdinalIgnoreCase));
     }
 }

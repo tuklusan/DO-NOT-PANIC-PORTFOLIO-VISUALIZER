@@ -76,7 +76,7 @@ For legacy parser/config routing checks:
 
 ### Desktop full screen
 - desktop app opens windowed.
-- `View -> Full Screen` enters fullscreen.
+- `View -> Full Screen` enters borderless fullscreen on the current monitor.
 - `Esc` returns to windowed mode.
 - Top market/status band renders.
 - Ticker tapes render.
@@ -91,7 +91,7 @@ For legacy parser/config routing checks:
 - `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer\provider-secrets.json` exists only when protected provider secrets have been saved.
 - `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer\Caches\History` exists and purges files older than 14 days.
 - `%LOCALAPPDATA%\PortfolioSaver` is legacy migration input only, not the active storage root; `AppDataRootResolver` owns automatic startup migration into `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer`.
-- Summarized news uses the configured AI provider no more often than every 15 minutes and falls back cleanly when the key or provider is unavailable.
+- Summarized news uses the configured AI provider no more often than every 30 minutes by default/minimum for the shipped OpenRouter free-model path and falls back cleanly when the key or provider is unavailable.
 
 ### Floating overlays
 - Graph cards render.
@@ -151,7 +151,7 @@ Acceptance for the current YFinance.NET lane:
 - Launch `PortfolioSaver.Desktop.exe` directly for primary testing.
 
 ### Final Windows integration
-- Treat the Inno Setup package produced by `build\publish-inno-installer.ps1` as the primary public distribution method.
+- Treat the Inno Setup package produced by `build\publish-inno-installer.ps1` as the primary public distribution method. Public binaries are published as GitHub Release assets, not committed into a source-tree `RELEASE` directory.
 - The installer requires administrative privileges, shows the root `LICENSE` as the required license-agreement page, and uses a fixed public install location at `%PROGRAMFILES%\SANYALnet Labs\DoNotPanicPortfolioVisualizer`.
 - The installer includes the desktop app, config app, legacy screensaver host, owned YFinance.NET server bundle, root `LICENSE`, `THIRD-PARTY-NOTICES.md`, and `THIRD-PARTY-LICENSES`.
 - Automated install/uninstall validation must run from an already elevated administrator context using `build\installer\Test-InnoInstallCycle.ps1`; Windows UAC prompts are not safely auto-accepted from a non-elevated process.

@@ -24,7 +24,7 @@ public sealed class AppSettings
     public NewsScrollerMode NewsScrollerMode { get; set; } = NewsScrollerMode.RssFeed;
     public AiWritingStyle AiWritingStyle { get; set; } = AiWritingStyle.DouglasAdams;
     public string NewsFeedUrl { get; set; } = "https://finance.yahoo.com/news/rss";
-    public int NewsRefreshMinutes { get; set; } = 15;
+    public int NewsRefreshMinutes { get; set; } = 30;
 
     public string BackgroundImageFolder { get; set; } = string.Empty;
     public bool UseCustomBackgroundImageFolder { get; set; }

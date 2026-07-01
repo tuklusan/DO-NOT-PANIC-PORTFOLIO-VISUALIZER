@@ -26,6 +26,32 @@ namespace PortfolioSaver.Tests.Services;
 
 public sealed class FinanceNewsServiceTests
 {
+    [Theory]
+    [InlineData(NewsScrollerMode.RssFeed)]
+    [InlineData(NewsScrollerMode.SummarizedFinancialNews)]
+    public void GetRefreshInterval_ClampsLegacyShortCadenceToThirtyMinutes(NewsScrollerMode mode)
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = mode;
+        settings.NewsRefreshMinutes = 15;
+
+        TimeSpan interval = FinanceNewsService.GetRefreshInterval(settings);
+
+        Assert.Equal(TimeSpan.FromMinutes(30), interval);
+    }
+
+    [Fact]
+    public void GetRefreshInterval_HonorsLongerUserCadence()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
+        settings.NewsRefreshMinutes = 45;
+
+        TimeSpan interval = FinanceNewsService.GetRefreshInterval(settings);
+
+        Assert.Equal(TimeSpan.FromMinutes(45), interval);
+    }
+
     private static readonly JsonSerializerOptions CacheJsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
     [Fact]
@@ -156,7 +182,7 @@ public sealed class FinanceNewsServiceTests
             NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
             AiWritingStyle = AiWritingStyle.DouglasAdams,
             NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
-            NewsRefreshMinutes = 10,
+            NewsRefreshMinutes = 30,
             AiApiKey = "test-ai-key",
             AiEndpointUrl = Defaults.DefaultAiEndpointUrl,
             AiModelId = Defaults.DefaultAiModelId

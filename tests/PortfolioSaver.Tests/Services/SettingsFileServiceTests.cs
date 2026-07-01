@@ -284,7 +284,7 @@ public sealed class SettingsFileServiceTests
         {
             SettingsFileService service = new();
             AppSettings settings = Defaults.CreateSettings();
-            settings.NewsRefreshMinutes = 15;
+            settings.NewsRefreshMinutes = Defaults.MinNewsRefreshMinutes;
 
             service.Save(settings);
             settings.NewsRefreshMinutes = 30;
@@ -370,14 +370,14 @@ public sealed class SettingsFileServiceTests
             await Task.WhenAll(Enumerable.Range(0, 8).Select(index => Task.Run(() =>
             {
                 AppSettings settings = Defaults.CreateSettings();
-                settings.NewsRefreshMinutes = 15 + index;
+                settings.NewsRefreshMinutes = Defaults.MinNewsRefreshMinutes + index;
                 service.Save(settings);
             })));
 
             string json = File.ReadAllText(service.SettingsPath);
             AppSettings persisted = JsonSerializer.Deserialize<AppSettings>(json)!;
 
-            Assert.InRange(persisted.NewsRefreshMinutes, 15, 22);
+            Assert.InRange(persisted.NewsRefreshMinutes, Defaults.MinNewsRefreshMinutes, Defaults.MinNewsRefreshMinutes + 7);
             Assert.DoesNotContain(
                 Directory.EnumerateFiles(tempRoot),
                 path => path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase));

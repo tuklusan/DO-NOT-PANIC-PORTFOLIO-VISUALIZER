@@ -327,6 +327,17 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
+    public void Normalize_MigratesLegacyFifteenMinuteNewsRefreshToCurrentMinimum()
+    {
+        AppSettings settings = Defaults.CreateSettings();
+        settings.NewsRefreshMinutes = 15;
+
+        AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
+
+        Assert.Equal(Defaults.MinNewsRefreshMinutes, normalized.NewsRefreshMinutes);
+    }
+
+    [Fact]
     public void Normalize_CanonicalizesAiChatCompletionsEndpointToBaseUrl()
     {
         AppSettings settings = Defaults.CreateSettings();

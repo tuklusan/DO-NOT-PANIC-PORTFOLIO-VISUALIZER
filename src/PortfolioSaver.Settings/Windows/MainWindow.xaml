@@ -443,10 +443,10 @@
                                     <TextBlock Text="Headline refresh:" Style="{StaticResource FieldLabelStyle}" />
                                     <Slider x:Name="NewsRefreshSlider"
                                             Grid.Column="1"
-                                            Minimum="10"
+                                            Minimum="30"
                                             Maximum="240"
                                             SmallChange="5"
-                                            LargeChange="15"
+                                            LargeChange="30"
                                             TickFrequency="5"
                                             IsSnapToTickEnabled="True"
                                             Value="{Binding Settings.NewsRefreshMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />

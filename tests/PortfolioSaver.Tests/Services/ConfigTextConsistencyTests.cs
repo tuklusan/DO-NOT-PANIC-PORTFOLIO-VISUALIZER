@@ -189,7 +189,7 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("RSS Feed works without an API key", xaml, StringComparison.Ordinal);
         Assert.Contains("Ticker names fill in during Validate when available.", xaml, StringComparison.Ordinal);
         Assert.Contains("Summarized mode can use a personal non-commercial AI API key", xaml, StringComparison.Ordinal);
-        Assert.Contains("Minimum=\"10\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Minimum=\"30\"", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
