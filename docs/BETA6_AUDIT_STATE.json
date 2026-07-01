@@ -8362,6 +8362,35 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-162",
+      "tracking_number": "CR-162",
+      "priority": 2,
+      "area": "Configuration",
+      "title": "Config help bubbles do not open when question-mark icons are clicked",
+      "status": "open",
+      "source": "manual_user_report",
+      "severity": "Medium",
+      "evidence": [
+        "User report on 2026-07-01: blue circular question-mark help icons are visible on General and Advanced config tabs, but clicking them currently does nothing.",
+        "Observed affected examples: Background help icon, Portfolio tapes help icon, Advanced News Settings help icon, and News Scroller help icon.",
+        "Advanced News Scroller help must provide complete but succinct guidance for obtaining and configuring an AI API key; user screenshot was not stored because it displayed an API key."
+      ],
+      "notes": [
+        "Acceptance: clicking every visible question-mark help icon opens a concise balloon/help popup near the icon or otherwise clearly associated with the relevant section.",
+        "Acceptance: News Scroller help explains that RSS works without a key, summarized AI news requires a compatible AI API key, and gives concise example steps for obtaining a free personal OpenRouter key: go to openrouter.ai, sign up, choose Individual, create an API key, paste it into AI API key, and adjust endpoint/model if using another compatible AI provider.",
+        "Acceptance: behavior is covered by config harness or reflection tests so inert help icons do not regress again.",
+        "Acceptance: no screenshots or test artifacts containing real API keys are committed."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
