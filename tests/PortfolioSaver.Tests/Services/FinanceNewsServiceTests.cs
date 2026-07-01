@@ -26,6 +26,8 @@ namespace PortfolioSaver.Tests.Services;
 
 public sealed class FinanceNewsServiceTests
 {
+    private const int ExpiredCacheOffsetMinutes = 60;
+
     [Theory]
     [InlineData(NewsScrollerMode.RssFeed)]
     [InlineData(NewsScrollerMode.SummarizedFinancialNews)]
@@ -1448,7 +1450,8 @@ public sealed class FinanceNewsServiceTests
         IReadOnlyList<string> first = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
         NewsHeadlineCache cache = JsonSerializer.Deserialize<NewsHeadlineCache>(await File.ReadAllTextAsync(cachePath), CacheJsonOptions)
             ?? throw new InvalidOperationException("Cached news payload was not written.");
-        cache.FetchTimestampUtc = DateTimeOffset.UtcNow.AddMinutes(-20);
+        // Keep the synthetic cache well beyond the 30-minute free-tier-safe refresh floor.
+        cache.FetchTimestampUtc = DateTimeOffset.UtcNow.AddMinutes(-ExpiredCacheOffsetMinutes);
         await File.WriteAllTextAsync(cachePath, JsonSerializer.Serialize(cache, CacheJsonOptions));
 
         failAiProvider = true;
@@ -1526,7 +1529,8 @@ public sealed class FinanceNewsServiceTests
         IReadOnlyList<string> fallbackHeadlines = await service.GetHeadlinesAsync(client, settings, networkAvailable: true);
         NewsHeadlineCache cache = JsonSerializer.Deserialize<NewsHeadlineCache>(await File.ReadAllTextAsync(cachePath), CacheJsonOptions)
             ?? throw new InvalidOperationException("Fallback cache payload was not written.");
-        cache.FetchTimestampUtc = DateTimeOffset.UtcNow.AddMinutes(-20);
+        // Keep the synthetic cache well beyond the 30-minute free-tier-safe refresh floor.
+        cache.FetchTimestampUtc = DateTimeOffset.UtcNow.AddMinutes(-ExpiredCacheOffsetMinutes);
         await File.WriteAllTextAsync(cachePath, JsonSerializer.Serialize(cache, CacheJsonOptions));
 
         failAiProvider = false;
