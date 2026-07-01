@@ -76,13 +76,15 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
 
 ## Optional AI-Summarized Finance News
 
-The app works without an AI key by using RSS financial headlines. For stylized AI summaries, the default endpoint is OpenRouter:
+The app ships with **RSS Feed** selected for financial news and no AI API key configured. It still includes OpenRouter-ready defaults so a user can opt into stylized AI summaries later:
 
 - Endpoint URL: `https://openrouter.ai/api/v1`
 - Model ID: `openrouter/free`
 - Supported runtime key environment variables: `OPENROUTER_AI_API_KEY`, `OPENROUTER_API_KEY`, `DEEPSEEK_API_KEY`, or `PORTFOLIOSAVER_DEEPSEEK_API_KEY`
 
 An API key saved through Settings or the installer takes precedence over environment variables. Environment variables are used only when the saved key is blank or still contains a placeholder value. To switch back to environment-variable fallback, clear the saved **AI API key** field and validate the configuration again.
+
+The Settings applet intentionally shows the AI API key as plain text rather than masking it. Keep this in mind during screenshots, screen sharing, or public demos.
 
 To obtain a free OpenRouter API key for personal non-commercial use:
 

@@ -83,7 +83,9 @@ public sealed class ConfigTextConsistencyTests
         Assert.DoesNotContain("Text=\"{Binding Quantity}\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding CostBasis}\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding Currency, UpdateSourceTrigger=PropertyChanged}\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("PasswordBox", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("PasswordBox", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Settings.DeepSeekApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("This API key is intentionally shown as plain text", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"{Binding Settings.FinnhubApiKey", xaml, StringComparison.Ordinal);
     }
 

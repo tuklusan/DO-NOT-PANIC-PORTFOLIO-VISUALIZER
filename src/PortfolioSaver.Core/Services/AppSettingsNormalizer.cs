@@ -291,7 +291,7 @@ public static class AppSettingsNormalizer
     private static NewsScrollerMode NormalizeNewsScrollerMode(NewsScrollerMode currentValue)
         => Enum.IsDefined(typeof(NewsScrollerMode), currentValue)
             ? currentValue
-            : NewsScrollerMode.SummarizedFinancialNews;
+            : NewsScrollerMode.RssFeed;
 
     private static DeepSeekWritingStyle NormalizeDeepSeekWritingStyle(DeepSeekWritingStyle currentValue)
         => Enum.IsDefined(typeof(DeepSeekWritingStyle), currentValue)

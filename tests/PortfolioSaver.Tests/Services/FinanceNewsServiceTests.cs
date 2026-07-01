@@ -1684,6 +1684,7 @@ public sealed class FinanceNewsServiceTests
         }));
         FinanceNewsService service = new();
         AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
         settings.DeepSeekApiKey = "test-key";
 
         FinanceNewsService.AiNewsAccessCheckResult result =
@@ -1715,6 +1716,7 @@ public sealed class FinanceNewsServiceTests
         }));
         FinanceNewsService service = new();
         AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
         settings.DeepSeekApiKey = "test-key";
 
         FinanceNewsService.AiNewsAccessCheckResult result =
@@ -1742,6 +1744,7 @@ public sealed class FinanceNewsServiceTests
         }));
         FinanceNewsService service = new();
         AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
         settings.DeepSeekApiKey = "test-key";
         settings.DeepSeekEndpointUrl = "https://ai.example.test/v1";
         settings.DeepSeekModelId = "local-model";
@@ -1759,6 +1762,7 @@ public sealed class FinanceNewsServiceTests
         using HttpClient client = new(new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized)));
         FinanceNewsService service = new();
         AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
         settings.DeepSeekApiKey = "bad-key";
 
         FinanceNewsService.AiNewsAccessCheckResult result =
@@ -1775,6 +1779,7 @@ public sealed class FinanceNewsServiceTests
         using HttpClient client = new(new FakeHttpMessageHandler(_ => throw new InvalidOperationException("Network should not be used.")));
         FinanceNewsService service = new();
         AppSettings settings = Defaults.CreateSettings();
+        settings.NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews;
         settings.DeepSeekApiKey = string.Empty;
 
         FinanceNewsService.AiNewsAccessCheckResult result =

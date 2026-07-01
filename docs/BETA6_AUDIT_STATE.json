@@ -8179,6 +8179,77 @@
       ],
       "resolution": "fixed",
       "closed_date": "2026-07-01"
+    },
+    {
+      "id": "CR-156",
+      "tracking_number": "CR-156",
+      "priority": 2,
+      "area": "config_ai_key_ux",
+      "title": "Show AI API key as plain text in configuration applet",
+      "status": "closed",
+      "source": "user_request",
+      "severity": "Medium",
+      "evidence": [
+        "User requested that there is no need to visually mask the API key on the config applet.",
+        "The shipped key should be empty, and the field should show either empty or the actual configured key.",
+        "Implemented in src/PortfolioSaver.Settings/Windows/MainWindow.xaml by replacing the PasswordBox with a plain TextBox bound to Settings.DeepSeekApiKey.",
+        "Removed unused src/PortfolioSaver.Settings/Infrastructure/BindablePasswordBox.cs after verifying no remaining active BoundPassword/infra references.",
+        "Added plain-text exposure tooltip and README note so the screenshot/screen-share privacy tradeoff is explicit.",
+        "Regression coverage updated in ConfigTextConsistencyTests to assert no PasswordBox and to assert the plain TextBox API-key binding.",
+        "dotnet test PortfolioScreensaver.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run.",
+        "DeepSeek closure review reports no actionable findings: build/deepseek-review/deepseek-review-20260630-222109.md"
+      ],
+      "notes": [
+        "Replace the masked PasswordBox with a normal TextBox bound to Settings.DeepSeekApiKey.",
+        "Remove unused password-binding helper code if no other config surface uses it.",
+        "Regression coverage should assert the config XAML no longer contains PasswordBox and still binds Settings.DeepSeekApiKey.",
+        "Closed as an intentional UX/security tradeoff requested by the user; the key is visible by design."
+      ],
+      "acceptance": [
+        "Config applet AI API key field is a visible text field, not a masked password field.",
+        "Default/shipped configuration contains no AI API key.",
+        "Local tests pass.",
+        "DeepSeek code review reports no blocking findings.",
+        "Ticket is marked closed with evidence."
+      ],
+      "resolution": "fixed",
+      "closed_date": "2026-07-01"
+    },
+    {
+      "id": "CR-157",
+      "tracking_number": "CR-157",
+      "priority": 1,
+      "area": "installer_default_news_config",
+      "title": "Ship default financial news mode as RSS with AI endpoint/model defaults and no key",
+      "status": "closed",
+      "source": "user_request",
+      "severity": "High",
+      "evidence": [
+        "User requested that the default config shipped with the installer should default financial news to RSS selected.",
+        "The shipped config should include the default AI API URL and model but no key.",
+        "Implemented in AppSettings and Defaults.CreateSettings: default NewsScrollerMode is now RssFeed.",
+        "AppSettingsNormalizer now normalizes invalid/unknown NewsScrollerMode values to RssFeed.",
+        "OpenRouter endpoint/model defaults remain populated and DeepSeekApiKey remains empty for shipped defaults.",
+        "FinanceNewsService AI-access tests now explicitly opt into SummarizedFinancialNews, preserving AI-path coverage after the default switched to RSS.",
+        "SettingsValidatorTests now assert the shipped default is RSS with empty key and default OpenRouter endpoint/model.",
+        "dotnet test PortfolioScreensaver.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run.",
+        "DeepSeek closure review reports no actionable findings: build/deepseek-review/deepseek-review-20260630-222109.md"
+      ],
+      "notes": [
+        "Defaults.CreateSettings and the AppSettings property initializer should default NewsScrollerMode to RssFeed.",
+        "OpenRouter endpoint/model defaults should remain populated so users can opt into summarized news later.",
+        "The optional installer AI setup path may still explicitly enable summarized mode when the user chooses to configure AI during install.",
+        "Closed with local test coverage for default settings, normalizer fallback, and AI-path tests explicitly selecting summarized mode."
+      ],
+      "acceptance": [
+        "Defaults.CreateSettings returns RSS Feed mode, empty AI key, default OpenRouter endpoint, and default OpenRouter model.",
+        "Invalid/unknown news mode normalizes to RSS Feed.",
+        "Local tests pass.",
+        "DeepSeek code review reports no blocking findings.",
+        "Ticket is marked closed with evidence."
+      ],
+      "resolution": "fixed",
+      "closed_date": "2026-07-01"
     }
   ],
   "remaining_validation_gaps": [],

@@ -20,7 +20,6 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:PortfolioSaver.Config.ViewModels"
-        xmlns:infra="clr-namespace:PortfolioSaver.Config.Infrastructure"
         xmlns:enums="clr-namespace:PortfolioSaver.Core.Enums;assembly=PortfolioSaver.Core"
         mc:Ignorable="d"
         Title="DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-7"
@@ -447,9 +446,10 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="AI API key:" Style="{StaticResource FieldLabelStyle}" />
-                                    <PasswordBox Grid.Column="1"
-                                                 MinWidth="128"
-                                                 infra:BindablePasswordBox.BoundPassword="{Binding Settings.DeepSeekApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Grid.Column="1"
+                                             MinWidth="128"
+                                             ToolTip="This API key is intentionally shown as plain text; avoid exposing it in screenshots or screen sharing."
+                                             Text="{Binding Settings.DeepSeekApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
                                 <Grid Margin="0,4,0,8">
                                     <Grid.ColumnDefinitions>

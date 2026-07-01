@@ -309,14 +309,14 @@ public sealed class AppSettingsNormalizerTests
     }
 
     [Fact]
-    public void Normalize_DefaultsNewsScrollerModeToSummarizedFinancialNews()
+    public void Normalize_DefaultsNewsScrollerModeToRssFeed()
     {
         AppSettings settings = Defaults.CreateSettings();
         settings.NewsScrollerMode = (NewsScrollerMode)999;
 
         AppSettings normalized = AppSettingsNormalizer.Normalize(settings);
 
-        Assert.Equal(NewsScrollerMode.SummarizedFinancialNews, normalized.NewsScrollerMode);
+        Assert.Equal(NewsScrollerMode.RssFeed, normalized.NewsScrollerMode);
     }
 
     [Fact]

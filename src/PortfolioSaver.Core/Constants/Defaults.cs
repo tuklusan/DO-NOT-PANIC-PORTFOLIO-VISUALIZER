@@ -65,7 +65,7 @@ public static class Defaults
         MarketCalendarRefreshHours = 12,
         RefreshSecondsPortfolio = DefaultDesktopRefreshSeconds,
         RefreshSecondsOffHours = DefaultDesktopRefreshSeconds,
-        NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+        NewsScrollerMode = NewsScrollerMode.RssFeed,
         DeepSeekWritingStyle = DeepSeekWritingStyle.DouglasAdams,
         NewsFeedUrl = DefaultNewsFeedUrl,
         NewsRefreshMinutes = 15,
