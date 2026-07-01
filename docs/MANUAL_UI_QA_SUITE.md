@@ -42,7 +42,7 @@ This suite exercises every user-configurable surface in the configuration UI and
 ### General tab: runtime summary
 
 1. `Market data source` summary line
-2. `DeepSeek API key` is no longer present on General and should only appear on Advanced
+2. `AI API key` is no longer present on General and should only appear on Advanced
 
 Checks:
 - runtime summary explicitly says YFinance.NET-only
@@ -104,7 +104,7 @@ Checks:
 
 Checks:
 - radio-mode switching updates enabled state correctly
-- DeepSeek style radios are enabled only in summarized mode
+- AI writing-style radios are enabled only in summarized mode
 - RSS textbox is enabled only in RSS mode
 - invalid RSS URL behavior is explicit
 
@@ -122,7 +122,7 @@ Checks:
 
 1. validation happens only when `Validate` is clicked
 2. internet unavailable state locks config editing and shows retry path
-3. blank DeepSeek key is acceptable unless summarized news is selected and validation actually needs it
+3. blank AI API key is acceptable unless summarized news is selected and validation actually needs it
 4. no retired market-data provider key validation remains in the UI
 5. invalid RSS URL resets to default in RSS mode
 6. summarized mode does not require a valid RSS URL
@@ -143,3 +143,4 @@ The suite is complete when:
 - the focused validation test set passes
 - the trace confirms config validation progress and natural close behavior
 - the execution results are written down in a dated results document
+
