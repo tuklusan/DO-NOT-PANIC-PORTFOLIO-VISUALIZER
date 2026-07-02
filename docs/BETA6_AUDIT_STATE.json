@@ -8777,7 +8777,8 @@
         "Implementation should prefer a top-level mouse-double-click handler in the desktop shell or root visual rather than wiring every child control.",
         "Avoid toggling from child windows/dialogs; scope the behavior to the main visualization window.",
         "Resolved on 2026-07-01 by wiring the desktop shell Window PreviewMouseDoubleClick event to the existing ToggleFullScreen path, limited to left-button double-clicks and suppressed while the pointer is over the main menu.",
-        "2026-07-02 fix: retained the managed PreviewMouseDoubleClick path but added a top-level HwndSource hook for WM_LBUTTONDBLCLK so native left-button double-clicks inside the main client area reach ToggleFullScreen even when WPF scene children consume managed mouse events."
+        "2026-07-02 fix: retained the managed PreviewMouseDoubleClick path but added a top-level HwndSource hook for WM_LBUTTONDBLCLK so native left-button double-clicks inside the main client area reach ToggleFullScreen even when WPF scene children consume managed mouse events.",
+        "2026-07-02 hardening pass: added PreviewMouseLeftButtonDown click-count handling, a transparent scene root so visually empty scene areas are hit-testable, an OnSourceInitialized HwndSource hook, and native left-button-down double-click detection for both client and non-client messages. This avoids relying on WPF MouseDoubleClick routing alone."
       ],
       "validation": [
         "Focused local validation passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter DesktopShellMigrationTests; Passed 11/11.",
@@ -8785,7 +8786,10 @@
         "DeepSeek code-review gate passed on 2026-07-01 after replacing the initial bubbling MouseDoubleClick handler with a preview/tunneling handler and adding direct predicate coverage; no High or Medium findings remained.",
         "README.md and BUILD_AND_DEPLOY.md now document double-click fullscreen entry and exit behavior.",
         "Focused local validation passed after native hook: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter DesktopShellMigrationTests; Passed 12/12.",
-        "git diff --check passed after CR-173 regression fix."
+        "git diff --check passed after CR-173 regression fix.",
+        "Focused local validation passed after hardening: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter DesktopShellMigrationTests; Passed 13/13.",
+        "DeepSeek workflow gate passed after CR-173 hardening on 2026-07-02.",
+        "git diff --check passed after CR-173 hardening."
       ]
     },
     {

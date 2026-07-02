@@ -22,7 +22,7 @@
              xmlns:controls="clr-namespace:PortfolioSaver.Render.Controls;assembly=PortfolioSaver.Render"
              xmlns:vm="clr-namespace:PortfolioSaver.Render.ViewModels;assembly=PortfolioSaver.Render"
              mc:Ignorable="d">
-    <Grid>
+    <Grid Background="Transparent">
         <Grid IsHitTestVisible="False">
             <!-- Intentionally stretch user-supplied backgrounds to screen bounds; CR-160 prefers distortion over crop. -->
             <Image x:Name="BackgroundImageA"

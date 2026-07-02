@@ -30,6 +30,7 @@
         WindowState="Maximized"
         WindowStartupLocation="CenterScreen"
         KeyDown="OnWindowKeyDown"
+        PreviewMouseLeftButtonDown="OnWindowPreviewMouseLeftButtonDown"
         PreviewMouseDoubleClick="OnWindowPreviewMouseDoubleClick"
         SizeChanged="OnWindowSizeChanged"
         StateChanged="OnWindowStateChanged">

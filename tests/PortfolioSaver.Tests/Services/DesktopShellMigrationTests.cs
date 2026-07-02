@@ -71,6 +71,7 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("WindowState=\"Maximized\"", xaml, StringComparison.Ordinal);
         Assert.Contains("SizeChanged=\"OnWindowSizeChanged\"", xaml, StringComparison.Ordinal);
         Assert.Contains("StateChanged=\"OnWindowStateChanged\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("PreviewMouseLeftButtonDown=\"OnWindowPreviewMouseLeftButtonDown\"", xaml, StringComparison.Ordinal);
         Assert.Contains("PreviewMouseDoubleClick=\"OnWindowPreviewMouseDoubleClick\"", xaml, StringComparison.Ordinal);
     }
 
@@ -86,10 +87,14 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("if (e.Key == Key.Escape && _isFullScreen)", code, StringComparison.Ordinal);
         Assert.Contains("OnWindowPreviewMouseDoubleClick", code, StringComparison.Ordinal);
         Assert.Contains("ShouldToggleFullScreenFromDoubleClick", code, StringComparison.Ordinal);
+        Assert.Contains("ShouldToggleFullScreenFromLeftButtonDown", code, StringComparison.Ordinal);
         Assert.Contains("ShouldSuppressDoubleClickFullScreenForInteractiveSource", code, StringComparison.Ordinal);
-        Assert.Contains("SourceInitialized += OnSourceInitialized;", code, StringComparison.Ordinal);
+        Assert.Contains("protected override void OnSourceInitialized(EventArgs e)", code, StringComparison.Ordinal);
         Assert.Contains("source?.AddHook(WndProc);", code, StringComparison.Ordinal);
+        Assert.Contains("HwndHookAttached", code, StringComparison.Ordinal);
         Assert.Contains("ShouldToggleFullScreenFromNativeMessage(msg)", code, StringComparison.Ordinal);
+        Assert.Contains("ShouldToggleFullScreenFromNativeLeftButtonDown", code, StringComparison.Ordinal);
+        Assert.Contains("NativeLeftButtonDoubleClickToggle", code, StringComparison.Ordinal);
         Assert.Contains("Leave the routed event unhandled", code, StringComparison.Ordinal);
         Assert.Contains("ToggleFullScreen();", code, StringComparison.Ordinal);
         Assert.Contains("e.Key == Key.F11", code, StringComparison.Ordinal);
@@ -130,6 +135,10 @@ public sealed class DesktopShellMigrationTests
     {
         Assert.True(MainWindow.ShouldToggleFullScreenFromDoubleClick(MouseButton.Left, isMenuMouseOver: false));
         Assert.False(MainWindow.ShouldToggleFullScreenFromDoubleClick(MouseButton.Left, isMenuMouseOver: true));
+        Assert.True(MainWindow.ShouldToggleFullScreenFromLeftButtonDown(2, isMenuMouseOver: false));
+        Assert.True(MainWindow.ShouldToggleFullScreenFromLeftButtonDown(3, isMenuMouseOver: false));
+        Assert.False(MainWindow.ShouldToggleFullScreenFromLeftButtonDown(1, isMenuMouseOver: false));
+        Assert.False(MainWindow.ShouldToggleFullScreenFromLeftButtonDown(2, isMenuMouseOver: true));
 
         foreach (MouseButton button in new[] { MouseButton.Right, MouseButton.Middle, MouseButton.XButton1, MouseButton.XButton2 })
         {
@@ -142,8 +151,52 @@ public sealed class DesktopShellMigrationTests
     public void DesktopShell_NativeDoubleClickMessage_TogglesFullScreen()
     {
         Assert.True(MainWindow.ShouldToggleFullScreenFromNativeMessage(0x0203));
+        Assert.True(MainWindow.ShouldToggleFullScreenFromNativeMessage(0x00A3));
         Assert.False(MainWindow.ShouldToggleFullScreenFromNativeMessage(0x0201));
         Assert.False(MainWindow.ShouldToggleFullScreenFromNativeMessage(0x0204));
+    }
+
+    [Fact]
+    public void DesktopShell_NativeLeftButtonDownDoubleClickDetector_UsesTimeAndDistance()
+    {
+        DateTimeOffset first = new(2026, 7, 2, 18, 0, 0, TimeSpan.Zero);
+        Point firstPoint = new(100, 100);
+
+        Assert.False(MainWindow.ShouldToggleFullScreenFromNativeLeftButtonDown(
+            DateTimeOffset.MinValue,
+            firstPoint,
+            first,
+            firstPoint,
+            TimeSpan.FromMilliseconds(500),
+            4,
+            4));
+
+        Assert.True(MainWindow.ShouldToggleFullScreenFromNativeLeftButtonDown(
+            first,
+            firstPoint,
+            first.AddMilliseconds(150),
+            new Point(103, 104),
+            TimeSpan.FromMilliseconds(500),
+            4,
+            4));
+
+        Assert.False(MainWindow.ShouldToggleFullScreenFromNativeLeftButtonDown(
+            first,
+            firstPoint,
+            first.AddMilliseconds(501),
+            firstPoint,
+            TimeSpan.FromMilliseconds(500),
+            4,
+            4));
+
+        Assert.False(MainWindow.ShouldToggleFullScreenFromNativeLeftButtonDown(
+            first,
+            firstPoint,
+            first.AddMilliseconds(150),
+            new Point(110, 100),
+            TimeSpan.FromMilliseconds(500),
+            4,
+            4));
     }
 
     [Fact]
@@ -248,6 +301,7 @@ public sealed class DesktopShellMigrationTests
 
         Assert.Contains("assembly=PortfolioSaver.Presentation", fullScreenXaml, StringComparison.Ordinal);
         Assert.Contains("assembly=PortfolioSaver.Presentation", previewXaml, StringComparison.Ordinal);
+        Assert.Contains("<Grid Background=\"Transparent\">", File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Presentation", "Controls", "ScreensaverSceneControl.xaml")), StringComparison.Ordinal);
         Assert.DoesNotContain("Icon=\"", fullScreenXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Icon=\"", previewXaml, StringComparison.Ordinal);
         Assert.Contains("<ApplicationIcon>..\\PortfolioSaver.Shared\\Assets\\Branding\\dnppv-icon-rev-3.ico</ApplicationIcon>", csproj, StringComparison.Ordinal);

@@ -41,6 +41,8 @@ public partial class MainWindow : Window
     private double _previousTop;
     private double _previousWidth;
     private double _previousHeight;
+    private DateTimeOffset _lastNativeLeftClickUtc = DateTimeOffset.MinValue;
+    private Point _lastNativeLeftClickPoint;
 
     public MainWindow()
     {
@@ -64,7 +66,6 @@ public partial class MainWindow : Window
             AutomationProperties.SetHelpText(SettingsMenuItem, "Open portfolio visualizer settings");
         }
 
-        SourceInitialized += OnSourceInitialized;
         ApplyWindowStateConstraints();
     }
 
@@ -168,22 +169,85 @@ public partial class MainWindow : Window
         ToggleFullScreen();
     }
 
-    private void OnSourceInitialized(object? sender, EventArgs e)
+    protected override void OnSourceInitialized(EventArgs e)
     {
+        base.OnSourceInitialized(e);
         nint hwnd = new WindowInteropHelper(this).Handle;
-        HwndSource? source = hwnd != 0 ? HwndSource.FromHwnd(hwnd) : null;
+        HwndSource? source = PresentationSource.FromVisual(this) as HwndSource
+            ?? (hwnd != 0 ? HwndSource.FromHwnd(hwnd) : null);
         source?.AddHook(WndProc);
+        TraceLog.InfoState(
+            "Desktop.FullScreen",
+            "HwndHookAttached",
+            [new("hwnd", hwnd), new("attached", source is not null)]);
     }
 
     private nint WndProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
     {
+        if (msg is WmLeftButtonDown or WmNcLeftButtonDown)
+        {
+            Point point = GetClientPointFromLParam(lParam);
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            if (ShouldToggleFullScreenFromNativeLeftButtonDown(
+                    _lastNativeLeftClickUtc,
+                    _lastNativeLeftClickPoint,
+                    now,
+                    point,
+                    TimeSpan.FromMilliseconds(Math.Max(1, GetDoubleClickTime())),
+                    Math.Max(1, GetSystemMetrics(SystemMetricCxDoubleClick)),
+                    Math.Max(1, GetSystemMetrics(SystemMetricCyDoubleClick))))
+            {
+                TraceLog.InfoState(
+                    "Desktop.FullScreen",
+                    "NativeLeftButtonDoubleClickToggle",
+                    [new("message", msg), new("x", point.X), new("y", point.Y), new("is_fullscreen_before", _isFullScreen)]);
+                handled = true;
+                _lastNativeLeftClickUtc = DateTimeOffset.MinValue;
+                Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(ToggleFullScreen));
+                return nint.Zero;
+            }
+
+            _lastNativeLeftClickUtc = now;
+            _lastNativeLeftClickPoint = point;
+        }
+
         if (ShouldToggleFullScreenFromNativeMessage(msg))
         {
+            TraceLog.InfoState(
+                "Desktop.FullScreen",
+                "NativeDoubleClickToggle",
+                [new("message", msg), new("is_fullscreen_before", _isFullScreen)]);
             handled = true;
             Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(ToggleFullScreen));
         }
 
         return nint.Zero;
+    }
+
+    private void OnWindowPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        TraceLog.InfoState(
+            "Desktop.FullScreen",
+            "PreviewMouseLeftButtonDown",
+            [new("click_count", e.ClickCount), new("is_menu_mouse_over", MainMenu?.IsMouseOver == true), new("source_type", e.OriginalSource?.GetType().FullName ?? "<null>")]);
+        if (!ShouldToggleFullScreenFromLeftButtonDown(e.ClickCount, MainMenu?.IsMouseOver == true))
+            return;
+
+        if (ShouldSuppressDoubleClickFullScreenForInteractiveSource(e.OriginalSource as DependencyObject))
+        {
+            TraceLog.InfoState(
+                "Desktop.FullScreen",
+                "PreviewMouseLeftButtonDownSuppressed",
+                [new("click_count", e.ClickCount), new("source_type", e.OriginalSource?.GetType().FullName ?? "<null>")]);
+            return;
+        }
+
+        TraceLog.InfoState(
+            "Desktop.FullScreen",
+            "PreviewMouseLeftButtonDownToggle",
+            [new("click_count", e.ClickCount), new("is_fullscreen_before", _isFullScreen)]);
+        e.Handled = true;
+        ToggleFullScreen();
     }
 
     private void OnWindowPreviewMouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -204,9 +268,33 @@ public partial class MainWindow : Window
         return changedButton == MouseButton.Left && !isMenuMouseOver;
     }
 
+    internal static bool ShouldToggleFullScreenFromLeftButtonDown(int clickCount, bool isMenuMouseOver)
+    {
+        return clickCount >= 2 && !isMenuMouseOver;
+    }
+
     internal static bool ShouldToggleFullScreenFromNativeMessage(int message)
     {
-        return message == WmLeftButtonDoubleClick;
+        return message is WmLeftButtonDoubleClick or WmNcLeftButtonDoubleClick;
+    }
+
+    internal static bool ShouldToggleFullScreenFromNativeLeftButtonDown(
+        DateTimeOffset previousClickUtc,
+        Point previousPoint,
+        DateTimeOffset currentClickUtc,
+        Point currentPoint,
+        TimeSpan doubleClickTime,
+        double doubleClickWidth,
+        double doubleClickHeight)
+    {
+        if (previousClickUtc == DateTimeOffset.MinValue)
+            return false;
+
+        if (currentClickUtc < previousClickUtc || currentClickUtc - previousClickUtc > doubleClickTime)
+            return false;
+
+        return Math.Abs(currentPoint.X - previousPoint.X) <= doubleClickWidth &&
+               Math.Abs(currentPoint.Y - previousPoint.Y) <= doubleClickHeight;
     }
 
     internal static bool ShouldSuppressDoubleClickFullScreenForInteractiveSource(DependencyObject? originalSource)
@@ -236,6 +324,14 @@ public partial class MainWindow : Window
         {
             return null;
         }
+    }
+
+    private static Point GetClientPointFromLParam(nint lParam)
+    {
+        int value = lParam.ToInt32();
+        short x = unchecked((short)(value & 0xFFFF));
+        short y = unchecked((short)((value >> 16) & 0xFFFF));
+        return new Point(x, y);
     }
 
     private void OnSettingsClick(object sender, RoutedEventArgs e)
@@ -413,6 +509,11 @@ public partial class MainWindow : Window
 
     // Win32 MONITOR_DEFAULTTONEAREST: use the nearest monitor if the window straddles displays.
     private const uint MonitorDefaultToNearest = 2;
+    private const int SystemMetricCxDoubleClick = 36;
+    private const int SystemMetricCyDoubleClick = 37;
+    private const int WmNcLeftButtonDown = 0x00A1;
+    private const int WmNcLeftButtonDoubleClick = 0x00A3;
+    private const int WmLeftButtonDown = 0x0201;
     private const int WmLeftButtonDoubleClick = 0x0203;
 
     [DllImport("user32.dll")]
@@ -421,6 +522,12 @@ public partial class MainWindow : Window
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetMonitorInfo(nint monitor, ref MonitorInfo monitorInfo);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDoubleClickTime();
+
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct MonitorInfo
