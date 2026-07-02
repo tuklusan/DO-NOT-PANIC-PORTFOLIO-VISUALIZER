@@ -26,7 +26,7 @@ Market-aware Windows desktop visualizer and configuration suite by **SANYALnet L
 
 This repository ships with the full [LICENSE](LICENSE) text in-tree and is licensed under the **SANYALnet Labs Non-Commercial License**, including the standard warranty and liability disclaimer.
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/sEtRox-geWM?si=AzQUYRXX6xbRt3Gs" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+[![Watch the Video](https://img.youtube.com/vi/sEtRox-geWM/maxresdefault.jpg)](https://youtu.be/sEtRox-geWM)
 
 ## Overview
 
