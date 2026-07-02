@@ -27,7 +27,10 @@ param(
     [int]$RequestTimeoutSeconds = 60,
     [string]$VirusTotalBaseUri = 'https://www.virustotal.com/api/v3',
     [switch]$AllowIncompleteAnalysis,
-    [switch]$AllowMissingApiKey
+    [switch]$AllowMissingApiKey,
+    [switch]$SkipComment,
+    [switch]$RequireComment,
+    [switch]$AllowCommentFailure
 )
 
 Set-StrictMode -Version Latest
@@ -103,11 +106,14 @@ function ConvertTo-MarkdownTableValue {
 }
 
 function Invoke-VirusTotalRequest {
+    # Use Body for application/x-www-form-urlencoded VirusTotal calls and JsonBody
+    # for JSON endpoints such as public URL comments.
     param(
         [Parameter(Mandatory = $true)][string]$Method,
         [Parameter(Mandatory = $true)][string]$Uri,
         [Parameter(Mandatory = $true)][string]$ApiKey,
-        [hashtable]$Body
+        [hashtable]$Body,
+        $JsonBody
     )
 
     $headers = @{
@@ -115,7 +121,16 @@ function Invoke-VirusTotalRequest {
         'x-apikey' = $ApiKey
     }
 
+    if ($null -ne $Body -and $null -ne $JsonBody) {
+        throw 'Invoke-VirusTotalRequest accepts either Body or JsonBody, not both.'
+    }
+
     try {
+        if ($null -ne $JsonBody) {
+            $json = $JsonBody | ConvertTo-Json -Depth 8
+            return Invoke-RestMethod -Method $Method -Uri $Uri -Headers $headers -Body $json -ContentType 'application/json' -TimeoutSec $RequestTimeoutSeconds
+        }
+
         if ($null -ne $Body) {
             return Invoke-RestMethod -Method $Method -Uri $Uri -Headers $headers -Body $Body -ContentType 'application/x-www-form-urlencoded' -TimeoutSec $RequestTimeoutSeconds
         }
@@ -130,6 +145,146 @@ function Invoke-VirusTotalRequest {
 
         throw "VirusTotal request failed method=$Method uri=$Uri detail=$detail"
     }
+}
+
+function Test-VirusTotalRetryableFailure {
+    param([AllowNull()][string]$Message)
+
+    if ([string]::IsNullOrWhiteSpace($Message)) {
+        return $false
+    }
+
+    return $Message -match 'HTTP 429\b' -or $Message -match 'HTTP 5\d\d\b'
+}
+
+function Limit-Text {
+    param(
+        [AllowNull()][string]$Text,
+        [Parameter(Mandatory = $true)][int]$MaximumLength
+    )
+
+    if ([string]::IsNullOrEmpty($Text) -or [Text.Encoding]::UTF8.GetByteCount($Text) -le $MaximumLength) {
+        return $Text
+    }
+
+    $suffix = "`n`n[Truncated for VirusTotal comment length. See the GitHub README and release notes for the full documentation.]"
+    $suffixBytes = [Text.Encoding]::UTF8.GetByteCount($suffix)
+    if ($MaximumLength -le $suffixBytes) {
+        throw "MaximumLength must be greater than the UTF-8 byte length of the truncation suffix ($suffixBytes)."
+    }
+
+    $availablePrefixBytes = $MaximumLength - $suffixBytes
+    $builder = [Text.StringBuilder]::new()
+    $usedBytes = 0
+    for ($index = 0; $index -lt $Text.Length; $index++) {
+        $chunk = if ([char]::IsHighSurrogate($Text[$index]) -and $index + 1 -lt $Text.Length -and [char]::IsLowSurrogate($Text[$index + 1])) {
+            $pair = $Text.Substring($index, 2)
+            $index++
+            $pair
+        }
+        else {
+            [string]$Text[$index]
+        }
+
+        $chunkBytes = [Text.Encoding]::UTF8.GetByteCount($chunk)
+        if ($usedBytes + $chunkBytes -gt $availablePrefixBytes) {
+            break
+        }
+
+        [void]$builder.Append($chunk)
+        $usedBytes += $chunkBytes
+    }
+
+    $result = $builder.ToString().TrimEnd() + $suffix
+    if ([Text.Encoding]::UTF8.GetByteCount($result) -gt $MaximumLength) {
+        throw 'Limit-Text produced a result longer than MaximumLength.'
+    }
+
+    return $result
+}
+
+function New-VirusTotalReleaseCommentText {
+    param(
+        [Parameter(Mandatory = $true)][string]$Repository,
+        [Parameter(Mandatory = $true)][string]$Tag,
+        [Parameter(Mandatory = $true)][string]$InstallerUrl,
+        [Parameter(Mandatory = $true)][string]$ReleaseUrl,
+        [Parameter(Mandatory = $true)][string]$InstallerHash,
+        [Parameter(Mandatory = $true)][string]$VirusTotalReportUrl,
+        [Parameter(Mandatory = $true)][string]$RepositoryRoot
+    )
+
+    $readmePath = Join-Path $RepositoryRoot 'README.md'
+    $readmeExcerpt = if (Test-Path -LiteralPath $readmePath -PathType Leaf) {
+        Limit-Text -Text (Get-Content -Raw -LiteralPath $readmePath) -MaximumLength 1800
+    }
+    else {
+        'README.md was not found in this checkout when the VirusTotal release comment was generated.'
+    }
+
+    $comment = @"
+DO NOT PANIC PORTFOLIO VISUALIZER public installer advisory context
+
+Download URL: $InstallerUrl
+GitHub Release: $ReleaseUrl
+Source Repository: https://github.com/$Repository
+Release Tag: $Tag
+Installer SHA-256: $InstallerHash
+VirusTotal URL Report: $VirusTotalReportUrl
+
+Summary:
+DO NOT PANIC PORTFOLIO VISUALIZER is a cinematic Windows desktop financial visualizer by Supratim Sanyal of SANYALnet Labs. It displays delayed market data, ticker tapes, graph cards, world-market ribbons, configurable backgrounds, and optional AI-styled finance-news summaries. It is a visual/informational desktop application only. It must not be used as a financial planning, financial monitoring, trading, investment-advice, safety, or alerting tool.
+
+License and distribution note:
+This public beta is distributed under the repository LICENSE for strictly non-commercial personal, educational, or hobbyist use. This VirusTotal submission scans the already-public GitHub Release installer download URL and is advisory only; it is not a warranty, certification, or guarantee of safety.
+
+README excerpt:
+$readmeExcerpt
+"@
+
+    # VirusTotal comments are limited to 4096 bytes; keep a margin for UTF-8.
+    return Limit-Text -Text $comment -MaximumLength 4000
+}
+
+function Publish-VirusTotalUrlComment {
+    param(
+        [Parameter(Mandatory = $true)][string]$UrlId,
+        [Parameter(Mandatory = $true)][string]$CommentText,
+        [Parameter(Mandatory = $true)][string]$ApiKey,
+        [Parameter(Mandatory = $true)][string]$VirusTotalBaseUri,
+        [ValidateRange(1, 5)]
+        [int]$Attempts = 3,
+        [ValidateRange(5, 300)]
+        [int]$RetrySleepSeconds = 20
+    )
+
+    $body = @{
+        data = @{
+            type = 'comment'
+            attributes = @{
+                text = $CommentText
+            }
+        }
+    }
+
+    $lastError = $null
+    for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
+        try {
+            return Invoke-VirusTotalRequest -Method Post -Uri "$VirusTotalBaseUri/urls/$UrlId/comments" -ApiKey $ApiKey -JsonBody $body
+        }
+        catch {
+            $lastError = $_
+            if (-not (Test-VirusTotalRetryableFailure -Message $_.Exception.Message)) {
+                throw
+            }
+
+            if ($attempt -lt $Attempts) {
+                Start-Sleep -Seconds $RetrySleepSeconds
+            }
+        }
+    }
+
+    throw $lastError
 }
 
 function Get-ReleaseAsset {
@@ -205,6 +360,10 @@ if ($PollIntervalSeconds * $MaxPollAttempts -gt 1800) {
 }
 
 $VirusTotalBaseUri = $VirusTotalBaseUri.TrimEnd('/')
+if ($SkipComment -and $RequireComment) {
+    throw 'Cannot combine -SkipComment with -RequireComment.'
+}
+
 $apiKey = Get-VirusTotalApiKey -RepositoryRoot $repoRoot
 if ([string]::IsNullOrWhiteSpace($apiKey)) {
     $message = 'VIRUSTOTAL_API_KEY was not found in Process/User/Machine environment or ignored build/vm/test-secrets.json.'
@@ -239,6 +398,7 @@ if (-not $digestMatch.Success) {
 $installerHash = $digestMatch.Groups[1].Value.ToLowerInvariant()
 $urlId = ConvertTo-VirusTotalUrlId -Url $installerUrl
 $releaseBrowserUrl = "https://github.com/$Repository/releases/tag/$Tag"
+$virusTotalUrlReport = "https://www.virustotal.com/gui/url/$urlId/detection"
 
 Write-Information "Submitting public installer URL to VirusTotal: $installerUrl" -InformationAction Continue
 $submission = Invoke-VirusTotalRequest -Method Post -Uri "$VirusTotalBaseUri/urls" -ApiKey $apiKey -Body @{ url = $installerUrl }
@@ -270,6 +430,28 @@ $analysisCompleted = $status -eq 'completed'
 $stats = $analysis.data.attributes.stats
 $analysisDate = Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
 $reportPath = Join-Path $resolvedOutputDirectory 'virustotal-advisory-report.md'
+$commentStatus = 'not attempted'
+$commentId = ''
+$commentNote = 'VirusTotal URL comment posting was not attempted.'
+
+if (-not $SkipComment) {
+    $commentText = New-VirusTotalReleaseCommentText -Repository $Repository -Tag $Tag -InstallerUrl $installerUrl -ReleaseUrl $releaseBrowserUrl -InstallerHash $installerHash -VirusTotalReportUrl $virusTotalUrlReport -RepositoryRoot $repoRoot
+    try {
+        $commentResult = Publish-VirusTotalUrlComment -UrlId $urlId -CommentText $commentText -ApiKey $apiKey -VirusTotalBaseUri $VirusTotalBaseUri
+        $commentStatus = 'posted'
+        $commentId = [string]$commentResult.data.id
+        $commentNote = 'Release context comment posted to the VirusTotal URL object.'
+        Write-Information "VirusTotal URL comment posted id=$commentId" -InformationAction Continue
+    }
+    catch {
+        $commentStatus = 'failed'
+        $commentNote = $_.Exception.Message
+        Write-Warning "VirusTotal URL comment could not be posted: $commentNote"
+        if ($RequireComment -and -not $AllowCommentFailure) {
+            $commentNote = "Required comment failed; advisory report was still generated. $commentNote"
+        }
+    }
+}
 
 $statRows = @()
 foreach ($name in @('malicious', 'suspicious', 'undetected', 'harmless', 'timeout')) {
@@ -327,7 +509,10 @@ This advisory report records a VirusTotal URL scan for the public GitHub Release
 | Completion note | $(ConvertTo-MarkdownTableValue $completionNote) |
 | URL object ID | $(ConvertTo-MarkdownTableValue $urlId) |
 | VirusTotal analysis API | $VirusTotalBaseUri/analyses/$analysisId |
-| VirusTotal URL report | https://www.virustotal.com/gui/url/$urlId/detection |
+| VirusTotal URL report | $virusTotalUrlReport |
+| Release context comment status | $(ConvertTo-MarkdownTableValue $commentStatus) |
+| Release context comment ID | $(ConvertTo-MarkdownTableValue $commentId) |
+| Release context comment note | $(ConvertTo-MarkdownTableValue $commentNote) |
 
 ## Last Analysis Stats
 
@@ -338,6 +523,8 @@ $($statRows -join "`n")
 ## Operational Notes
 
 - The release hook submits the already-public GitHub installer download URL rather than uploading the local installer binary.
+- The release hook posts a bounded public VirusTotal URL comment containing the download URL, release metadata, app summary, and README excerpt so the VirusTotal report has provenance context. That adds one extra API call per release run, plus up to two quota-aware retries if VirusTotal has not accepted comments for the URL object yet. Pass -SkipComment for scan-only advisory runs.
+- Comment-post failure is recorded in the advisory report by default so the scan evidence is not lost; pass -RequireComment if a release gate must fail after report generation when the comment cannot be posted.
 - VirusTotal Public API limits are 500 requests/day and 4 requests/minute; this hook polls no more often than every $PollIntervalSeconds seconds.
 - A clean or low-detection result is advisory only. Users should still apply normal software-installation judgment.
 "@
@@ -350,4 +537,8 @@ Set-Content -LiteralPath $reportPath -Value $report -Encoding UTF8
 Write-Information "VIRUSTOTAL_REPORT=$reportPath" -InformationAction Continue
 if (-not $analysisCompleted -and -not $AllowIncompleteAnalysis) {
     throw "VirusTotal analysis did not complete within $MaxPollAttempts attempts. Partial report written to $reportPath. Rerun later or pass -AllowIncompleteAnalysis for advisory-only publication."
+}
+
+if ($RequireComment -and -not $AllowCommentFailure -and $commentStatus -ne 'posted') {
+    throw "VirusTotal URL comment was required but was not posted. Advisory report written to $reportPath with comment status '$commentStatus'."
 }

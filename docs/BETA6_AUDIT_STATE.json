@@ -8785,6 +8785,45 @@
       ]
     },
     {
+      "id": "CR-175",
+      "tracking_number": "CR-175",
+      "priority": 2,
+      "area": "Release Security",
+      "title": "Post public VirusTotal URL comment with app and release context",
+      "status": "closed",
+      "source": "user_release_confidence_request_2026_07_01",
+      "severity": "Medium",
+      "evidence": [
+        "User asked whether VirusTotal allows documentation to be submitted with the URL being checked so the public report includes app context.",
+        "User requested sending a summary of the app, the download link near the beginning, and detailed README context if VirusTotal supports it."
+      ],
+      "research": [
+        "Official VirusTotal Comments API states users can post comments to give additional context about a file, domain, IP address, graph, or URL, and comments can be retrieved through the API: https://docs.virustotal.com/reference/comments-api.",
+        "Official VirusTotal Add a comment on a URL endpoint is POST https://www.virustotal.com/api/v3/urls/{id}/comments with a JSON comment object body and x-apikey header: https://docs.virustotal.com/reference/urls-comments-post.",
+        "The URL scan submission itself remains POST /api/v3/urls with form-data url; release documentation context is therefore posted as a URL comment after URL object ID resolution rather than embedded in the scan submission body."
+      ],
+      "acceptance": [
+        "Extend the existing VirusTotal release hook to post a public URL comment for the installer URL object after submitting and polling the URL scan.",
+        "The comment must put the public installer download URL near the beginning, followed by GitHub release URL, source repository URL, release tag, installer SHA-256, VirusTotal URL report URL, app summary, non-financial-tool disclaimer, license/distribution note, and bounded README excerpt.",
+        "The hook must use JSON body POST /api/v3/urls/{id}/comments and must not print or persist the VirusTotal API key; scan-only advisory runs must be able to opt out of public comment posting.",
+        "The comment text must be bounded under the VirusTotal comment limit so a long README cannot make the hook fragile.",
+        "The generated advisory report must record whether the release context comment was posted, its comment ID when available, and any failure note without losing the advisory report.",
+        "A strict release gate may opt into failing after report generation when the comment cannot be posted."
+      ],
+      "resolution": [
+        "Implemented New-VirusTotalReleaseCommentText, UTF-8 byte-aware Limit-Text, and Publish-VirusTotalUrlComment in build/release/Publish-VirusTotalReleaseReport.ps1.",
+        "The release hook now posts a bounded public VirusTotal URL comment containing the download URL, release metadata, app summary, license/distribution note, and README excerpt.",
+        "Comment-post failures are recorded in the advisory report by default so scan evidence is not lost; added -RequireComment for strict release gates that must fail after report generation when the comment cannot be posted, and -SkipComment for scan-only advisory runs.",
+        "The advisory report now records release context comment status, comment ID, and note."
+      ],
+      "validation": [
+        "Focused local validation passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter VirusTotalReleaseReportScriptTests; Passed 5/5.",
+        "docs/BETA6_AUDIT_STATE.json parsed successfully after CR insertion.",
+        "git diff --check passed with no whitespace errors.",
+        "DeepSeek code-review gate passed on 2026-07-01 with no actionable findings."
+      ]
+    },
+    {
       "id": "CR-174",
       "tracking_number": "CR-174",
       "priority": 2,
