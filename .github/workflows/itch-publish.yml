@@ -24,10 +24,15 @@ jobs:
       RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
       ITCH_GAME: do-not-panic-portfolio-viewer
       ITCH_USER: tuklusan
-      ITCH_CHANNEL: windows
+      ITCH_INSTALLER_CHANNEL: windows
+      ITCH_SHA256_CHANNEL: windows-sha256
+      ITCH_MD5_CHANNEL: windows-md5
+      ITCH_VIRUSTOTAL_CHANNEL: windows-virustotal-report
       PACKAGE_DIR: build/windows
       DOWNLOAD_DIR: build/release-assets
       RELEASE_TAG_PATTERN: '^[A-Za-z0-9._-]+$'
+      RELEASE_ASSET_WAIT_ATTEMPTS: 60
+      RELEASE_ASSET_WAIT_SECONDS: 60
       # Release asset contract: one public Windows installer, one matching SHA-256 file,
       # and one VirusTotal advisory report are published to the GitHub Release.
       BUTLER_VERSION: v15.27.0
@@ -51,7 +56,8 @@ jobs:
             exit 1
           fi
 
-      - name: Download GitHub Release Assets
+      - name: Wait for Complete GitHub Release Asset Set
+        timeout-minutes: 65
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -59,7 +65,12 @@ jobs:
           rm -rf "$DOWNLOAD_DIR" "$PACKAGE_DIR"
           mkdir -p "$DOWNLOAD_DIR" "$PACKAGE_DIR"
 
-          for attempt in 1 2 3 4 5; do
+          # The GitHub Release is created first, then the release script submits
+          # the public installer URL to VirusTotal, waits for results, generates
+          # virustotal-advisory-report.md, and uploads that report as a final
+          # release asset. Itch publishing must not start until all of that is
+          # complete.
+          for ((attempt = 1; attempt <= RELEASE_ASSET_WAIT_ATTEMPTS; attempt++)); do
             attempt_dir="$DOWNLOAD_DIR/attempt-$attempt"
             rm -rf "$attempt_dir"
             mkdir -p "$attempt_dir"
@@ -70,22 +81,50 @@ jobs:
               --pattern 'DoNotPanicPortfolioVisualizerSetup-*.exe' \
               --pattern 'DoNotPanicPortfolioVisualizerSetup-*.sha256.txt' \
               --pattern 'virustotal-advisory-report.md'; then
-              if [ -z "$(find "$attempt_dir" -maxdepth 1 -type f -print -quit)" ]; then
-                echo "Release download returned successfully but no matching assets were present." >&2
-              else
-                rm -rf "$PACKAGE_DIR"
-                mkdir -p "$PACKAGE_DIR"
-                cp -a "$attempt_dir"/. "$PACKAGE_DIR"/
-                break
+              mapfile -d '' attempt_installers < <(find "$attempt_dir" -maxdepth 1 -type f -name 'DoNotPanicPortfolioVisualizerSetup-*.exe' -print0)
+              mapfile -d '' attempt_sha_files < <(find "$attempt_dir" -maxdepth 1 -type f -name 'DoNotPanicPortfolioVisualizerSetup-*.sha256.txt' -print0)
+              mapfile -d '' attempt_vt_reports < <(find "$attempt_dir" -maxdepth 1 -type f -name 'virustotal-advisory-report.md' -print0)
+              installer_count="${#attempt_installers[@]}"
+              sha_count="${#attempt_sha_files[@]}"
+              vt_count="${#attempt_vt_reports[@]}"
+
+              if [ "$installer_count" -gt 1 ] || [ "$sha_count" -gt 1 ] || [ "$vt_count" -gt 1 ]; then
+                echo "Release asset set is ambiguous. installer=$installer_count sha256=$sha_count virustotal=$vt_count" >&2
+                find "$attempt_dir" -maxdepth 1 -type f -print >&2
+                exit 1
               fi
+
+              if [ "$installer_count" = "1" ] && [ "$sha_count" = "1" ] && [ "$vt_count" = "1" ]; then
+                installer_name="$(basename "${attempt_installers[0]}")"
+                tag_without_v="${RELEASE_TAG#v}"
+                expected="$(awk '{print tolower($1)}' "${attempt_sha_files[0]}")"
+                actual="$(sha256sum "${attempt_installers[0]}" | awk '{print tolower($1)}')"
+
+                if [[ "$installer_name" != *"$tag_without_v"* ]]; then
+                  echo "Waiting because installer '$installer_name' does not include release tag '$tag_without_v'." >&2
+                elif [ ! -s "${attempt_installers[0]}" ] || [ ! -s "${attempt_sha_files[0]}" ] || [ ! -s "${attempt_vt_reports[0]}" ]; then
+                  echo "Waiting because one or more release assets are present but still empty." >&2
+                elif [ "$actual" != "$expected" ]; then
+                  echo "Waiting because installer SHA-256 does not match the checksum asset yet." >&2
+                else
+                  rm -rf "$PACKAGE_DIR"
+                  mkdir -p "$PACKAGE_DIR"
+                  cp -a "$attempt_dir"/. "$PACKAGE_DIR"/
+                  break
+                fi
+              else
+                echo "Waiting for complete release asset set. attempt=$attempt installer=$installer_count sha256=$sha_count virustotal=$vt_count" >&2
+              fi
+            else
+              echo "gh release download failed for attempt=$attempt release=$RELEASE_TAG; waiting before retry." >&2
             fi
 
-            if [ "$attempt" -eq 5 ]; then
-              echo "Release assets were not available after $attempt attempts." >&2
+            if [ "$attempt" -eq "$RELEASE_ASSET_WAIT_ATTEMPTS" ]; then
+              echo "Release assets were not complete after $attempt attempts." >&2
               exit 1
             fi
 
-            sleep 15
+            sleep "$RELEASE_ASSET_WAIT_SECONDS"
           done
 
       - name: Verify Release Asset Set
@@ -101,9 +140,19 @@ jobs:
             exit 1
           fi
 
+          if [ ! -s "${installers[0]}" ]; then
+            echo "Installer asset exists but is empty: ${installers[0]}" >&2
+            exit 1
+          fi
+
           if [ "${#sha_files[@]}" -ne 1 ]; then
             echo "Expected exactly one SHA-256 checksum asset, found ${#sha_files[@]}." >&2
             find "$PACKAGE_DIR" -maxdepth 1 -type f -print >&2
+            exit 1
+          fi
+
+          if [ ! -s "${sha_files[0]}" ]; then
+            echo "SHA-256 checksum asset exists but is empty: ${sha_files[0]}" >&2
             exit 1
           fi
 
@@ -125,8 +174,17 @@ jobs:
             exit 1
           fi
 
-          printf 'INSTALLER_PATH=%s\n' "${installers[0]}" >> "$GITHUB_ENV"
-          printf 'SHA256_PATH=%s\n' "${sha_files[0]}" >> "$GITHUB_ENV"
+          {
+            echo 'INSTALLER_PATH<<EOF'
+            printf '%s\n' "${installers[0]}"
+            echo 'EOF'
+            echo 'SHA256_PATH<<EOF'
+            printf '%s\n' "${sha_files[0]}"
+            echo 'EOF'
+            echo 'VIRUSTOTAL_PATH<<EOF'
+            printf '%s\n' "$PACKAGE_DIR/virustotal-advisory-report.md"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
 
       - name: Verify SHA-256 Checksum
         run: |
@@ -145,7 +203,13 @@ jobs:
         run: |
           set -euo pipefail
           installer_name="$(basename "$INSTALLER_PATH")"
-          md5sum "$INSTALLER_PATH" | sed "s#  .*#  $installer_name#" > "$PACKAGE_DIR/${installer_name}.md5.txt"
+          md5_path="$PACKAGE_DIR/${installer_name}.md5.txt"
+          md5sum "$INSTALLER_PATH" | awk -v installer="$installer_name" '{ print $1 "  " installer }' > "$md5_path"
+          {
+            echo 'MD5_PATH<<EOF'
+            printf '%s\n' "$md5_path"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
 
       - name: List Itch Package Contents
         run: |
@@ -171,7 +235,7 @@ jobs:
           chmod +x "$butler_bin"
           dirname "$butler_bin" >> "$GITHUB_PATH"
 
-      - name: Push to Itch.io using Butler
+      - name: Push Installer and Advisory Files to Itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_CREDENTIALS }}
         run: |
@@ -183,4 +247,10 @@ jobs:
 
           echo "::add-mask::$BUTLER_API_KEY"
           butler version
-          butler push "$PACKAGE_DIR" "$ITCH_USER/$ITCH_GAME:$ITCH_CHANNEL" --userversion "$RELEASE_TAG"
+          # Push single files, not the package directory. Butler serves single
+          # file pushes as direct downloads on the itch.io web page; pushing the
+          # whole directory would create an archive-style build/download.
+          butler push "$INSTALLER_PATH" "$ITCH_USER/$ITCH_GAME:$ITCH_INSTALLER_CHANNEL" --userversion "$RELEASE_TAG"
+          butler push "$SHA256_PATH" "$ITCH_USER/$ITCH_GAME:$ITCH_SHA256_CHANNEL" --userversion "$RELEASE_TAG"
+          butler push "$MD5_PATH" "$ITCH_USER/$ITCH_GAME:$ITCH_MD5_CHANNEL" --userversion "$RELEASE_TAG"
+          butler push "$VIRUSTOTAL_PATH" "$ITCH_USER/$ITCH_GAME:$ITCH_VIRUSTOTAL_CHANNEL" --userversion "$RELEASE_TAG"
