@@ -162,8 +162,14 @@ jobs:
           curl --fail --location --silent --show-error "$butler_url" --output "$RUNNER_TEMP/butler/butler.zip"
           echo "$BUTLER_SHA256  $RUNNER_TEMP/butler/butler.zip" | sha256sum --check -
           unzip -q "$RUNNER_TEMP/butler/butler.zip" -d "$RUNNER_TEMP/butler"
-          chmod +x "$RUNNER_TEMP/butler/butler"
-          echo "$RUNNER_TEMP/butler" >> "$GITHUB_PATH"
+          butler_bin="$(find "$RUNNER_TEMP/butler" -type f -name butler -print -quit)"
+          if [ -z "$butler_bin" ]; then
+            echo "Downloaded Butler archive did not contain a butler executable." >&2
+            exit 1
+          fi
+
+          chmod +x "$butler_bin"
+          dirname "$butler_bin" >> "$GITHUB_PATH"
 
       - name: Push to Itch.io using Butler
         env:
