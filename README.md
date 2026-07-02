@@ -24,8 +24,9 @@ Market-aware Windows desktop visualizer and configuration suite by **SANYALnet L
 
 This repository ships with the full [LICENSE](LICENSE) text in-tree and is licensed under the **SANYALnet Labs Non-Commercial License**, including the standard warranty and liability disclaimer.
 
-[![Watch the Video](https://img.youtube.com/vi/sEtRox-geWM/maxresdefault.jpg)](https://youtu.be/sEtRox-geWM)
+### 📺 [Click Here to Watch the Video Demo](https://youtu.be/sEtRox-geWM)
 
+[![Watch the Video](https://img.youtube.com/vi/sEtRox-geWM/maxresdefault.jpg)](https://youtu.be/sEtRox-geWM)
 ## Overview
 
 **DO NOT PANIC PORTFOLIO VISUALIZER** is a .NET 10 / WPF project centered on a Windows desktop app with an immersive fullscreen mode, live market display, ticker tapes, floating graph cards, news, exchange backgrounds, and animated overlays.
