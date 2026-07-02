@@ -8752,6 +8752,70 @@
         "Live VirusTotal URL scan completed for the public v0.9.0-beta7 installer URL with analysis ID u-39af96d0d870b0a32402fe3cb902f5c71846c78cad327ac0581553b5f5ed117a-141b3276.",
         "Generated report releases/v0.9.0-beta7/virustotal-advisory-report.md records status=completed, malicious=0, suspicious=0, harmless=62, undetected=30, installer SHA-256 64b0d6b100cb4e5184fb5343191b79e2fb0eacc7472f3bcdfe577cba7d088143."
       ]
+    },
+    {
+      "id": "CR-173",
+      "tracking_number": "CR-173",
+      "priority": 2,
+      "area": "Desktop UX",
+      "title": "Double-click anywhere in the app toggles full-screen and windowed modes",
+      "status": "open",
+      "source": "user_ux_request_2026_07_01",
+      "severity": "Medium",
+      "evidence": [
+        "User requested that double-clicking anywhere inside the normal app window or full-screen surface toggle between full-screen and windowed modes."
+      ],
+      "acceptance": [
+        "Double-clicking anywhere on the main desktop app content toggles windowed to full-screen.",
+        "Double-clicking anywhere while full-screen toggles back to the previous windowed/maximized state.",
+        "Existing menu and keyboard full-screen controls remain functional.",
+        "The behavior does not interfere with configuration window controls, About dialog controls, or standard single-click interactions.",
+        "Automated or harness validation covers both directions of the toggle."
+      ],
+      "notes": [
+        "Implementation should prefer a top-level mouse-double-click handler in the desktop shell or root visual rather than wiring every child control.",
+        "Avoid toggling from child windows/dialogs; scope the behavior to the main visualization window."
+      ],
+      "validation": [
+        "Pending implementation."
+      ]
+    },
+    {
+      "id": "CR-174",
+      "tracking_number": "CR-174",
+      "priority": 2,
+      "area": "Distribution",
+      "title": "Analyze Microsoft Store migration from Inno installer to MSIX packaging",
+      "status": "open",
+      "source": "user_distribution_request_2026_07_01",
+      "severity": "Medium",
+      "evidence": [
+        "User requested analysis of Microsoft Store requirements, the implications of moving from Inno Setup to MSIX, and whether Store approval avoids paid code-signing certificate costs."
+      ],
+      "research": [
+        "Microsoft Learn Code signing options for Windows app developers states that if an app is published as an MSIX package through the Microsoft Store, code signing is free and handled automatically because Microsoft re-signs the package after certification; no certificate purchase/management is required for Store MSIX distribution: https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options.",
+        "The same Microsoft code-signing guidance states that if publishing an MSI/EXE installer through the Store, the developer remains responsible for Authenticode signing the installer before submission: https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options.",
+        "Microsoft Learn Sign an MSIX package explains development/test signing options including WinApp CLI, SignTool, unsigned testing packages, Azure Artifact Signing, and Device Guard signing: https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview.",
+        "Microsoft Learn guidance for distributing Win32 applications through the Microsoft Store covers MSIX-based Store distribution and recommends Windows App Certification Kit validation for Store compliance: https://learn.microsoft.com/en-us/windows/apps/distribute-through-store/how-to-distribute-your-win32-app-through-microsoft-store.",
+        "Microsoft Store get-started documentation states MSIX/PWA submissions enter certification, where Microsoft performs security tests, technical compliance tests, and content compliance checks, with certification taking up to three business days: https://learn.microsoft.com/en-us/windows/apps/publish/get-started."
+      ],
+      "acceptance": [
+        "Produce a project-native MSIX migration design document comparing current Inno Setup release flow with a Store/MSIX release flow.",
+        "Confirm whether the Store MSIX path avoids paid code-signing certificate cost and document the distinction from MSI/EXE Store submissions.",
+        "Inventory required package identity, publisher identity, app manifest, assets/icons, capabilities, file associations/protocols if any, install/uninstall behavior, Local AppData behavior, startup/background process behavior, and YFinance.NET server bundling implications.",
+        "Analyze whether the app can be packaged as MSIX without breaking owned YFinance.NET server launch, configuration app launch, shortcut behavior, user data location, background image asset/download behavior, and future update/uninstall cleanup expectations.",
+        "Identify required build pipeline changes, likely tooling options, developer/test signing approach, Windows App Certification Kit validation, Store Partner Center steps, and release documentation changes.",
+        "Recommend whether to replace Inno entirely, support both Inno and MSIX in parallel during transition, or defer Store/MSIX until specific blockers are resolved.",
+        "If implementation is approved after analysis, create follow-on implementation CRs for MSIX package generation, Store certification validation, and release pipeline integration."
+      ],
+      "notes": [
+        "Initial research indicates the Store/MSIX path can solve the paid certificate problem for Store distribution because Microsoft re-signs certified MSIX packages.",
+        "Initial research also indicates keeping EXE/MSI/Inno as the Store submission artifact would not solve signing, because Authenticode signing remains our responsibility for MSI/EXE Store submissions.",
+        "This CR is analysis-first because MSIX may affect app identity, process model, installed paths, update behavior, and multi-executable packaging."
+      ],
+      "validation": [
+        "Pending analysis document and project decision."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
