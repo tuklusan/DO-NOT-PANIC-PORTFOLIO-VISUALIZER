@@ -26,24 +26,24 @@ This advisory report records a VirusTotal URL scan for the public GitHub Release
 | GitHub release | https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER/releases/tag/v0.9.0-beta7 |
 | Installer asset | DoNotPanicPortfolioVisualizerSetup-0.9.0-beta7.exe |
 | Installer URL | https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER/releases/download/v0.9.0-beta7/DoNotPanicPortfolioVisualizerSetup-0.9.0-beta7.exe |
-| GitHub asset SHA-256 | f770dbb719d29dbacd785bdf20bbcd8898957d0ad0f3149357f79dd4595248f1 |
-| GitHub asset size | 269954574 bytes |
-| Report generated | 2026-07-01 22:35:10 -04:00 |
+| GitHub asset SHA-256 | 67c3e986e3d289ecd68afe4604545c053469ad24e0886fdfe1b6e0887ebedc11 |
+| GitHub asset size | 269956635 bytes |
+| Report generated | 2026-07-02 14:22:04 -04:00 |
 
 ## VirusTotal
 
 | Field | Value |
 | --- | --- |
 | Submission type | Public URL scan |
-| Analysis ID | u-39af96d0d870b0a32402fe3cb902f5c71846c78cad327ac0581553b5f5ed117a-f1ba7a6d |
+| Analysis ID | u-39af96d0d870b0a32402fe3cb902f5c71846c78cad327ac0581553b5f5ed117a-63b4aa1e |
 | Analysis status | completed |
 | Completion note | VirusTotal analysis completed before this report was generated. |
 | URL object ID | aHR0cHM6Ly9naXRodWIuY29tL3R1a2x1c2FuL0RPLU5PVC1QQU5JQy1QT1JURk9MSU8tVklTVUFMSVpFUi9yZWxlYXNlcy9kb3dubG9hZC92MC45LjAtYmV0YTcvRG9Ob3RQYW5pY1BvcnRmb2xpb1Zpc3VhbGl6ZXJTZXR1cC0wLjkuMC1iZXRhNy5leGU |
-| VirusTotal analysis API | https://www.virustotal.com/api/v3/analyses/u-39af96d0d870b0a32402fe3cb902f5c71846c78cad327ac0581553b5f5ed117a-f1ba7a6d |
+| VirusTotal analysis API | https://www.virustotal.com/api/v3/analyses/u-39af96d0d870b0a32402fe3cb902f5c71846c78cad327ac0581553b5f5ed117a-63b4aa1e |
 | VirusTotal URL report | https://www.virustotal.com/gui/url/aHR0cHM6Ly9naXRodWIuY29tL3R1a2x1c2FuL0RPLU5PVC1QQU5JQy1QT1JURk9MSU8tVklTVUFMSVpFUi9yZWxlYXNlcy9kb3dubG9hZC92MC45LjAtYmV0YTcvRG9Ob3RQYW5pY1BvcnRmb2xpb1Zpc3VhbGl6ZXJTZXR1cC0wLjkuMC1iZXRhNy5leGU/detection |
 | Release context comment status | posted |
-| Release context comment ID | already-existing |
-| Release context comment note | VirusTotal reported HTTP 409 Conflict; the release context comment already exists on the URL object. |
+| Release context comment ID | u-39af96d0d870b0a32402fe3cb902f5c71846c78cad327ac0581553b5f5ed117a-b24287e4 |
+| Release context comment note | Release context comment posted to the VirusTotal URL object. |
 
 ## Last Analysis Stats
 
@@ -51,8 +51,8 @@ This advisory report records a VirusTotal URL scan for the public GitHub Release
 | --- | --- |
 | malicious | 0 |
 | suspicious | 0 |
-| undetected | 31 |
-| harmless | 61 |
+| undetected | 32 |
+| harmless | 60 |
 | timeout | 0 |
 
 ## Operational Notes
