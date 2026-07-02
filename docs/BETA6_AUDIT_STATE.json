@@ -8790,7 +8790,8 @@
       "source": "user_distribution_request_2026_07_01",
       "severity": "Medium",
       "evidence": [
-        "User requested analysis of Microsoft Store requirements, the implications of moving from Inno Setup to MSIX, and whether Store approval avoids paid code-signing certificate costs."
+        "User requested analysis of Microsoft Store requirements, the implications of moving from Inno Setup to MSIX, and whether Store approval avoids paid code-signing certificate costs.",
+        "User explicitly selected the target path: Microsoft Store + MSIX, with $0 developer registration, $0 certification fee, and $0 Microsoft-managed MSIX signing as the desired distribution strategy."
       ],
       "research": [
         "Microsoft Learn Code signing options for Windows app developers states that if an app is published as an MSIX package through the Microsoft Store, code signing is free and handled automatically because Microsoft re-signs the package after certification; no certificate purchase/management is required for Store MSIX distribution: https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options.",
@@ -8800,8 +8801,11 @@
         "Microsoft Store get-started documentation states MSIX/PWA submissions enter certification, where Microsoft performs security tests, technical compliance tests, and content compliance checks, with certification taking up to three business days: https://learn.microsoft.com/en-us/windows/apps/publish/get-started."
       ],
       "acceptance": [
+        "Lock the intended distribution target to Microsoft Store + MSIX, not MSI/EXE/Inno submission through the Store.",
+        "Treat avoidance of recurring paid Authenticode certificate costs as a core requirement of this CR.",
         "Produce a project-native MSIX migration design document comparing current Inno Setup release flow with a Store/MSIX release flow.",
-        "Confirm whether the Store MSIX path avoids paid code-signing certificate cost and document the distinction from MSI/EXE Store submissions.",
+        "Confirm and document that the current Microsoft Store + MSIX path has $0 developer registration, $0 certification fee, and $0 Microsoft-managed MSIX signing cost under current Microsoft onboarding/signing guidance.",
+        "Document the important boundary condition that MSI/EXE/Inno Store submissions do not satisfy this requirement because developer-managed Authenticode signing remains required for those artifacts.",
         "Inventory required package identity, publisher identity, app manifest, assets/icons, capabilities, file associations/protocols if any, install/uninstall behavior, Local AppData behavior, startup/background process behavior, and YFinance.NET server bundling implications.",
         "Analyze whether the app can be packaged as MSIX without breaking owned YFinance.NET server launch, configuration app launch, shortcut behavior, user data location, background image asset/download behavior, and future update/uninstall cleanup expectations.",
         "Identify required build pipeline changes, likely tooling options, developer/test signing approach, Windows App Certification Kit validation, Store Partner Center steps, and release documentation changes.",
@@ -8809,8 +8813,10 @@
         "If implementation is approved after analysis, create follow-on implementation CRs for MSIX package generation, Store certification validation, and release pipeline integration."
       ],
       "notes": [
+        "Project decision: the desired path is Microsoft Store + MSIX specifically because it is the currently documented $0 path for onboarding/certification/MSIX signing.",
         "Initial research indicates the Store/MSIX path can solve the paid certificate problem for Store distribution because Microsoft re-signs certified MSIX packages.",
         "Initial research also indicates keeping EXE/MSI/Inno as the Store submission artifact would not solve signing, because Authenticode signing remains our responsibility for MSI/EXE Store submissions.",
+        "The Inno/GitHub release path may remain useful as a fallback or parallel channel, but it is no longer the preferred primary public trust path if MSIX/Store proves technically feasible.",
         "This CR is analysis-first because MSIX may affect app identity, process model, installed paths, update behavior, and multi-executable packaging."
       ],
       "validation": [
