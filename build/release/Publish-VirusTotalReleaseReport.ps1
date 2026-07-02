@@ -205,46 +205,28 @@ function Limit-Text {
 
 function New-VirusTotalReleaseCommentText {
     param(
-        [Parameter(Mandatory = $true)][string]$Repository,
         [Parameter(Mandatory = $true)][string]$Tag,
         [Parameter(Mandatory = $true)][string]$InstallerUrl,
-        [Parameter(Mandatory = $true)][string]$ReleaseUrl,
-        [Parameter(Mandatory = $true)][string]$InstallerHash,
-        [Parameter(Mandatory = $true)][string]$VirusTotalReportUrl,
-        [Parameter(Mandatory = $true)][string]$RepositoryRoot
+        [Parameter(Mandatory = $true)][string]$InstallerHash
     )
-
-    $readmePath = Join-Path $RepositoryRoot 'README.md'
-    $readmeExcerpt = if (Test-Path -LiteralPath $readmePath -PathType Leaf) {
-        Limit-Text -Text (Get-Content -Raw -LiteralPath $readmePath) -MaximumLength 500
-    }
-    else {
-        'README.md was not found in this checkout when the VirusTotal release comment was generated.'
-    }
 
     $comment = @"
 DO NOT PANIC PORTFOLIO VISUALIZER public installer advisory
 
 Download URL: $InstallerUrl
-GitHub Release: $ReleaseUrl
-Source Repository: https://github.com/$Repository
-Release Tag: $Tag
+Release tag: $Tag
 Installer SHA-256: $InstallerHash
-VirusTotal URL Report: $VirusTotalReportUrl
 
 Summary:
 DO NOT PANIC PORTFOLIO VISUALIZER is a cinematic Windows desktop financial visualizer by Supratim Sanyal of SANYALnet Labs. It displays delayed market data, ticker tapes, graph cards, world-market ribbons, configurable backgrounds, and optional AI-styled finance-news summaries. It is a visual/informational desktop application only. It must not be used as a financial planning, financial monitoring, trading, investment-advice, safety, or alerting tool.
 
 License/distribution:
 Strictly non-commercial personal, educational, or hobbyist use under the repository LICENSE. This VirusTotal URL scan is advisory only; it is not a warranty, certification, or guarantee of safety.
-
-README excerpt:
-$readmeExcerpt
 "@
 
-    # Empirical release validation on 2026-07-01: VirusTotal accepted a compact
-    # provenance comment but rejected the longer 4000-byte variant with HTTP 400.
-    return Limit-Text -Text $comment -MaximumLength 1800
+    # VirusTotal accepted this compact single-link provenance comment with tag
+    # and SHA-256, but rejected longer multi-link metadata comments with HTTP 400.
+    return Limit-Text -Text $comment -MaximumLength 1200
 }
 
 function Publish-VirusTotalUrlComment {
@@ -436,7 +418,7 @@ $commentId = ''
 $commentNote = 'VirusTotal URL comment posting was not attempted.'
 
 if (-not $SkipComment) {
-    $commentText = New-VirusTotalReleaseCommentText -Repository $Repository -Tag $Tag -InstallerUrl $installerUrl -ReleaseUrl $releaseBrowserUrl -InstallerHash $installerHash -VirusTotalReportUrl $virusTotalUrlReport -RepositoryRoot $repoRoot
+    $commentText = New-VirusTotalReleaseCommentText -Tag $Tag -InstallerUrl $installerUrl -InstallerHash $installerHash
     try {
         $commentResult = Publish-VirusTotalUrlComment -UrlId $urlId -CommentText $commentText -ApiKey $apiKey -VirusTotalBaseUri $VirusTotalBaseUri
         $commentStatus = 'posted'
@@ -524,7 +506,7 @@ $($statRows -join "`n")
 ## Operational Notes
 
 - The release hook submits the already-public GitHub installer download URL rather than uploading the local installer binary.
-- The release hook posts a bounded public VirusTotal URL comment containing the download URL, release metadata, app summary, and README excerpt so the VirusTotal report has provenance context. That adds one extra API call per release run, plus up to two quota-aware retries if VirusTotal has not accepted comments for the URL object yet. Pass -SkipComment for scan-only advisory runs.
+- The release hook posts a bounded public VirusTotal URL comment containing the download URL and compact app summary so the VirusTotal report has provenance context. That adds one extra API call per release run, plus up to two quota-aware retries if VirusTotal has not accepted comments for the URL object yet. Pass -SkipComment for scan-only advisory runs.
 - Comment-post failure is recorded in the advisory report by default so the scan evidence is not lost; pass -RequireComment if a release gate must fail after report generation when the comment cannot be posted.
 - VirusTotal Public API limits are 500 requests/day and 4 requests/minute; this hook polls no more often than every $PollIntervalSeconds seconds.
 - A clean or low-detection result is advisory only. Users should still apply normal software-installation judgment.

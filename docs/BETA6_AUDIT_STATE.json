@@ -8804,7 +8804,7 @@
       ],
       "acceptance": [
         "Extend the existing VirusTotal release hook to post a public URL comment for the installer URL object after submitting and polling the URL scan.",
-        "The comment must put the public installer download URL near the beginning, followed by GitHub release URL, source repository URL, release tag, installer SHA-256, VirusTotal URL report URL, app summary, non-financial-tool disclaimer, license/distribution note, and bounded README excerpt.",
+        "The comment must put the public installer download URL near the beginning, followed by release tag, installer SHA-256, compact app summary, non-financial-tool disclaimer, and license/distribution note; the richer advisory report remains tracked under releases/<tag>.",
         "The hook must use JSON body POST /api/v3/urls/{id}/comments and must not print or persist the VirusTotal API key; scan-only advisory runs must be able to opt out of public comment posting.",
         "The comment text must be bounded under the VirusTotal comment limit so a long README cannot make the hook fragile.",
         "The generated advisory report must record whether the release context comment was posted, its comment ID when available, and any failure note without losing the advisory report.",
@@ -8812,7 +8812,7 @@
       ],
       "resolution": [
         "Implemented New-VirusTotalReleaseCommentText, UTF-8 byte-aware Limit-Text, and Publish-VirusTotalUrlComment in build/release/Publish-VirusTotalReleaseReport.ps1.",
-        "The release hook now posts a bounded public VirusTotal URL comment containing the download URL, release metadata, app summary, license/distribution note, and README excerpt.",
+        "The release hook now posts a bounded public VirusTotal URL comment containing the download URL, release tag, installer SHA-256, compact app summary, and license/distribution note.",
         "Comment-post failures are recorded in the advisory report by default so scan evidence is not lost; added -RequireComment for strict release gates that must fail after report generation when the comment cannot be posted, and -SkipComment for scan-only advisory runs.",
         "The advisory report now records release context comment status, comment ID, and note."
       ],
