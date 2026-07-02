@@ -23,6 +23,8 @@ The canonical public download channel for DO NOT PANIC PORTFOLIO VISUALIZER is G
 
 Installer `.exe` files and checksum artifacts are intentionally published as GitHub Release assets. They are not committed into a source-tree `RELEASE` directory because installers are binary build outputs that would unnecessarily bloat repository history.
 
+Release-specific advisory metadata, including VirusTotal URL-scan reports for public installer downloads when available, is tracked under the repository `releases/<tag>/` directory. These reports are third-party advisory signals only; they are not warranties, certifications, or guarantees that software is safe.
+
 SourceForge or another mirror is not required for the current public non-commercial release. Revisit mirroring only if GitHub download availability, analytics, or audience reach becomes a product requirement.
 
 ## News refresh migration note

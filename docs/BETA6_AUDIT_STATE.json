@@ -8711,7 +8711,7 @@
       "priority": 1,
       "area": "Release Security",
       "title": "Publish VirusTotal URL-scan report for every public installer release",
-      "status": "open",
+      "status": "closed",
       "source": "user_release_confidence_request_2026_07_01",
       "severity": "High",
       "evidence": [
@@ -8741,8 +8741,16 @@
         "The safest first implementation is a separate idempotent PowerShell script, for example build/release/Publish-VirusTotalReleaseReport.ps1, invoked after gh release upload.",
         "Report files should not be named as if VirusTotal certifies safety; use wording such as VirusTotal advisory scan report."
       ],
+      "resolution": [
+        "Implemented build/release/Publish-VirusTotalReleaseReport.ps1 as a release hook that reads the public GitHub Release installer asset URL, submits that URL to VirusTotal, polls the analysis endpoint at a rate-safe cadence, and writes a tracked Markdown advisory report under releases/<tag>/.",
+        "Added focused xUnit script-contract tests covering public-download URL enforcement, secret handling, quota/digest safety, and tracked advisory report generation.",
+        "The hook refuses GitHub API asset URLs, validates SHA-256 release-asset digest metadata, bounds polling to 30 minutes by default, and never logs or writes the VirusTotal API key."
+      ],
       "validation": [
-        "Pending implementation and live validation against the current beta7 installer URL."
+        "DeepSeek review passes completed before commits; final actionable findings were addressed or advisory only.",
+        "Focused validation passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter VirusTotalReleaseReportScriptTests; Passed 4/4.",
+        "Live VirusTotal URL scan completed for the public v0.9.0-beta7 installer URL with analysis ID u-39af96d0d870b0a32402fe3cb902f5c71846c78cad327ac0581553b5f5ed117a-141b3276.",
+        "Generated report releases/v0.9.0-beta7/virustotal-advisory-report.md records status=completed, malicious=0, suspicious=0, harmless=62, undetected=30, installer SHA-256 64b0d6b100cb4e5184fb5343191b79e2fb0eacc7472f3bcdfe577cba7d088143."
       ]
     }
   ],
