@@ -98,6 +98,9 @@ public sealed class VirusTotalReleaseReportScriptTests
         Assert.Contains("Test-VirusTotalRetryableFailure", script, StringComparison.Ordinal);
         Assert.Contains("HTTP 429\\b", script, StringComparison.Ordinal);
         Assert.Contains("HTTP 5\\d\\d\\b", script, StringComparison.Ordinal);
+        Assert.Contains("HTTP 409\\b", script, StringComparison.Ordinal);
+        Assert.Contains("already-existing", script, StringComparison.Ordinal);
+        Assert.Contains("release context comment already exists", script, StringComparison.Ordinal);
         Assert.DoesNotContain("MaximumLength 7600", script, StringComparison.Ordinal);
         Assert.Contains("[int]$Attempts = 3", script, StringComparison.Ordinal);
         Assert.Contains("[int]$RetrySleepSeconds = 20", script, StringComparison.Ordinal);

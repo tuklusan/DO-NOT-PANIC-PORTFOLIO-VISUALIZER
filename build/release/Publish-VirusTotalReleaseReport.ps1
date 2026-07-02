@@ -427,11 +427,20 @@ if (-not $SkipComment) {
         Write-Information "VirusTotal URL comment posted id=$commentId" -InformationAction Continue
     }
     catch {
-        $commentStatus = 'failed'
         $commentNote = $_.Exception.Message
-        Write-Warning "VirusTotal URL comment could not be posted: $commentNote"
-        if ($RequireComment -and -not $AllowCommentFailure) {
-            $commentNote = "Required comment failed; advisory report was still generated. $commentNote"
+        # A 409 on URL comments means this exact release-context comment is already present.
+        if ($commentNote -match '\bHTTP 409\b') {
+            $commentStatus = 'posted'
+            $commentId = 'already-existing'
+            $commentNote = 'VirusTotal reported HTTP 409 Conflict; the release context comment already exists on the URL object.'
+            Write-Information $commentNote -InformationAction Continue
+        }
+        else {
+            $commentStatus = 'failed'
+            Write-Warning "VirusTotal URL comment could not be posted: $commentNote"
+            if ($RequireComment -and -not $AllowCommentFailure) {
+                $commentNote = "Required comment failed; advisory report was still generated. $commentNote"
+            }
         }
     }
 }
@@ -506,7 +515,7 @@ $($statRows -join "`n")
 ## Operational Notes
 
 - The release hook submits the already-public GitHub installer download URL rather than uploading the local installer binary.
-- The release hook posts a bounded public VirusTotal URL comment containing the download URL and compact app summary so the VirusTotal report has provenance context. That adds one extra API call per release run, plus up to two quota-aware retries if VirusTotal has not accepted comments for the URL object yet. Pass -SkipComment for scan-only advisory runs.
+- The release hook posts a bounded public VirusTotal URL comment containing the download URL, release tag, SHA-256, and compact app summary so the VirusTotal report has provenance context. That adds one extra API call per release run, plus up to two quota-aware retries if VirusTotal has not accepted comments for the URL object yet. Pass -SkipComment for scan-only advisory runs.
 - Comment-post failure is recorded in the advisory report by default so the scan evidence is not lost; pass -RequireComment if a release gate must fail after report generation when the comment cannot be posted.
 - VirusTotal Public API limits are 500 requests/day and 4 requests/minute; this hook polls no more often than every $PollIntervalSeconds seconds.
 - A clean or low-detection result is advisory only. Users should still apply normal software-installation judgment.
