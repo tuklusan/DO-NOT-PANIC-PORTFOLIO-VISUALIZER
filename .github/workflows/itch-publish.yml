@@ -1,0 +1,180 @@
+name: Publish to Itch.io
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: GitHub release tag to publish to Itch.io
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: itch-publish-${{ github.event.release.tag_name || inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+      ITCH_GAME: do-not-panic-portfolio-viewer
+      ITCH_USER: tuklusan
+      ITCH_CHANNEL: windows
+      PACKAGE_DIR: build/windows
+      DOWNLOAD_DIR: build/release-assets
+      RELEASE_TAG_PATTERN: '^[A-Za-z0-9._-]+$'
+      # Release asset contract: one public Windows installer, one matching SHA-256 file,
+      # and one VirusTotal advisory report are published to the GitHub Release.
+      BUTLER_VERSION: v15.27.0
+      BUTLER_ASSET: butler-linux-amd64.zip
+      BUTLER_SHA256: b78ca81ed566c2daa54d68b7e300dd32888168163212293909ce90f16e0ec75d
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Itch Publish Inputs
+        run: |
+          set -euo pipefail
+
+          if [ -z "${RELEASE_TAG:-}" ]; then
+            echo "Missing release tag. Use a published release event or provide workflow_dispatch.release_tag." >&2
+            exit 1
+          fi
+
+          if ! [[ "$RELEASE_TAG" =~ $RELEASE_TAG_PATTERN ]]; then
+            echo "Release tag '$RELEASE_TAG' contains unsupported characters. Allowed: letters, numbers, dot, underscore, and hyphen." >&2
+            exit 1
+          fi
+
+      - name: Download GitHub Release Assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          rm -rf "$DOWNLOAD_DIR" "$PACKAGE_DIR"
+          mkdir -p "$DOWNLOAD_DIR" "$PACKAGE_DIR"
+
+          for attempt in 1 2 3 4 5; do
+            attempt_dir="$DOWNLOAD_DIR/attempt-$attempt"
+            rm -rf "$attempt_dir"
+            mkdir -p "$attempt_dir"
+
+            if gh release download "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --dir "$attempt_dir" \
+              --pattern 'DoNotPanicPortfolioVisualizerSetup-*.exe' \
+              --pattern 'DoNotPanicPortfolioVisualizerSetup-*.sha256.txt' \
+              --pattern 'virustotal-advisory-report.md'; then
+              if [ -z "$(find "$attempt_dir" -maxdepth 1 -type f -print -quit)" ]; then
+                echo "Release download returned successfully but no matching assets were present." >&2
+              else
+                rm -rf "$PACKAGE_DIR"
+                mkdir -p "$PACKAGE_DIR"
+                cp -a "$attempt_dir"/. "$PACKAGE_DIR"/
+                break
+              fi
+            fi
+
+            if [ "$attempt" -eq 5 ]; then
+              echo "Release assets were not available after $attempt attempts." >&2
+              exit 1
+            fi
+
+            sleep 15
+          done
+
+      - name: Verify Release Asset Set
+        run: |
+          set -euo pipefail
+
+          mapfile -d '' installers < <(find "$PACKAGE_DIR" -maxdepth 1 -type f -name 'DoNotPanicPortfolioVisualizerSetup-*.exe' -print0)
+          mapfile -d '' sha_files < <(find "$PACKAGE_DIR" -maxdepth 1 -type f -name 'DoNotPanicPortfolioVisualizerSetup-*.sha256.txt' -print0)
+
+          if [ "${#installers[@]}" -ne 1 ]; then
+            echo "Expected exactly one installer asset, found ${#installers[@]}." >&2
+            find "$PACKAGE_DIR" -maxdepth 1 -type f -print >&2
+            exit 1
+          fi
+
+          if [ "${#sha_files[@]}" -ne 1 ]; then
+            echo "Expected exactly one SHA-256 checksum asset, found ${#sha_files[@]}." >&2
+            find "$PACKAGE_DIR" -maxdepth 1 -type f -print >&2
+            exit 1
+          fi
+
+          if [ ! -f "$PACKAGE_DIR/virustotal-advisory-report.md" ]; then
+            echo "Missing virustotal-advisory-report.md release asset." >&2
+            find "$PACKAGE_DIR" -maxdepth 1 -type f -print >&2
+            exit 1
+          fi
+
+          installer_name="$(basename "${installers[0]}")"
+          tag_without_v="${RELEASE_TAG#v}"
+          if [[ "$installer_name" != *"$tag_without_v"* ]]; then
+            echo "Installer '$installer_name' does not include release tag '$tag_without_v'." >&2
+            exit 1
+          fi
+
+          if [ ! -s "$PACKAGE_DIR/virustotal-advisory-report.md" ]; then
+            echo "VirusTotal advisory report exists but is empty." >&2
+            exit 1
+          fi
+
+          printf 'INSTALLER_PATH=%s\n' "${installers[0]}" >> "$GITHUB_ENV"
+          printf 'SHA256_PATH=%s\n' "${sha_files[0]}" >> "$GITHUB_ENV"
+
+      - name: Verify SHA-256 Checksum
+        run: |
+          set -euo pipefail
+          expected="$(awk '{print tolower($1)}' "$SHA256_PATH")"
+          actual="$(sha256sum "$INSTALLER_PATH" | awk '{print tolower($1)}')"
+
+          if [ "$actual" != "$expected" ]; then
+            echo "SHA-256 mismatch for $(basename "$INSTALLER_PATH")." >&2
+            echo "expected=$expected" >&2
+            echo "actual=$actual" >&2
+            exit 1
+          fi
+
+      - name: Generate MD5 Checksum
+        run: |
+          set -euo pipefail
+          installer_name="$(basename "$INSTALLER_PATH")"
+          md5sum "$INSTALLER_PATH" | sed "s#  .*#  $installer_name#" > "$PACKAGE_DIR/${installer_name}.md5.txt"
+
+      - name: List Itch Package Contents
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            printf '%s %s bytes\n' "$(basename "$file")" "$(wc -c < "$file")"
+          done < <(find "$PACKAGE_DIR" -maxdepth 1 -type f -print0) | sort
+
+      - name: Install Butler CLI
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/butler"
+          butler_url="https://github.com/itchio/butler/releases/download/${BUTLER_VERSION}/${BUTLER_ASSET}"
+          curl --fail --location --silent --show-error "$butler_url" --output "$RUNNER_TEMP/butler/butler.zip"
+          echo "$BUTLER_SHA256  $RUNNER_TEMP/butler/butler.zip" | sha256sum --check -
+          unzip -q "$RUNNER_TEMP/butler/butler.zip" -d "$RUNNER_TEMP/butler"
+          chmod +x "$RUNNER_TEMP/butler/butler"
+          echo "$RUNNER_TEMP/butler" >> "$GITHUB_PATH"
+
+      - name: Push to Itch.io using Butler
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_CREDENTIALS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BUTLER_API_KEY:-}" ]; then
+            echo "Missing BUTLER_CREDENTIALS repository secret for Itch.io publishing." >&2
+            exit 1
+          fi
+
+          echo "::add-mask::$BUTLER_API_KEY"
+          butler version
+          butler push "$PACKAGE_DIR" "$ITCH_USER/$ITCH_GAME:$ITCH_CHANNEL" --userversion "$RELEASE_TAG"
