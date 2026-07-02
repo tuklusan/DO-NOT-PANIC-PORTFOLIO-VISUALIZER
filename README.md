@@ -16,8 +16,6 @@ patent, trademark, and governing-law provisions.
 
 # DO NOT PANIC PORTFOLIO VISUALIZER
 
-<img width="1921" height="1051" alt="screenshot" src="https://github.com/user-attachments/assets/cff7ab60-a107-440f-955b-8c57ccadd15c" />
-
 Market-aware Windows desktop visualizer and configuration suite by **SANYALnet Labs**, written by **Supratim Sanyal**.
 
 **Download:** use the [latest GitHub Release](https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER/releases/latest) for the public Windows installer and SHA-256 checksum. Installer binaries are distributed through GitHub Releases rather than stored in the source tree.
