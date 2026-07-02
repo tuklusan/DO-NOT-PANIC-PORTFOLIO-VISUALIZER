@@ -12,6 +12,12 @@
 // patent, trademark, and governing-law provisions.
 // ============================================================================
 using Xunit;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Threading;
+using PortfolioSaver.Desktop.Windows;
 
 namespace PortfolioSaver.Tests.Services;
 
@@ -65,6 +71,7 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("WindowState=\"Maximized\"", xaml, StringComparison.Ordinal);
         Assert.Contains("SizeChanged=\"OnWindowSizeChanged\"", xaml, StringComparison.Ordinal);
         Assert.Contains("StateChanged=\"OnWindowStateChanged\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("PreviewMouseDoubleClick=\"OnWindowPreviewMouseDoubleClick\"", xaml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -77,6 +84,13 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("ExitFullScreen()", code, StringComparison.Ordinal);
         Assert.Contains("if (e.Key == Key.F11)", code, StringComparison.Ordinal);
         Assert.Contains("if (e.Key == Key.Escape && _isFullScreen)", code, StringComparison.Ordinal);
+        Assert.Contains("OnWindowPreviewMouseDoubleClick", code, StringComparison.Ordinal);
+        Assert.Contains("ShouldToggleFullScreenFromDoubleClick", code, StringComparison.Ordinal);
+        Assert.Contains("ShouldSuppressDoubleClickFullScreenForInteractiveSource", code, StringComparison.Ordinal);
+        Assert.Contains("Leave the routed event unhandled", code, StringComparison.Ordinal);
+        Assert.Contains("ToggleFullScreen();", code, StringComparison.Ordinal);
+        Assert.Contains("e.Key == Key.F11", code, StringComparison.Ordinal);
+        Assert.Contains("e.Handled = true;", code, StringComparison.Ordinal);
         Assert.Contains("GetCurrentMonitorBoundsInDips()", code, StringComparison.Ordinal);
         Assert.Contains("MonitorFromWindow(hwnd, MonitorDefaultToNearest)", code, StringComparison.Ordinal);
         Assert.Contains("GetMonitorInfo(monitor, ref monitorInfo)", code, StringComparison.Ordinal);
@@ -106,6 +120,64 @@ public sealed class DesktopShellMigrationTests
         Assert.DoesNotContain("SceneHost?.SetValidationPause(isValidating);", code, StringComparison.Ordinal);
         Assert.Contains("AboutWindow window = new()", code, StringComparison.Ordinal);
         Assert.Contains("window.ShowDialog();", code, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DesktopShell_DoubleClickToggleDecision_RequiresLeftButtonAwayFromMenu()
+    {
+        Assert.True(MainWindow.ShouldToggleFullScreenFromDoubleClick(MouseButton.Left, isMenuMouseOver: false));
+        Assert.False(MainWindow.ShouldToggleFullScreenFromDoubleClick(MouseButton.Left, isMenuMouseOver: true));
+
+        foreach (MouseButton button in new[] { MouseButton.Right, MouseButton.Middle, MouseButton.XButton1, MouseButton.XButton2 })
+        {
+            Assert.False(MainWindow.ShouldToggleFullScreenFromDoubleClick(button, isMenuMouseOver: false));
+            Assert.False(MainWindow.ShouldToggleFullScreenFromDoubleClick(button, isMenuMouseOver: true));
+        }
+    }
+
+    [Fact]
+    public void DesktopShell_DoubleClickSuppression_CoversKnownInteractiveControlsOnly()
+    {
+        RunOnSta(() =>
+        {
+            Assert.True(MainWindow.ShouldSuppressDoubleClickFullScreenForInteractiveSource(new MenuItem()));
+            Assert.True(MainWindow.ShouldSuppressDoubleClickFullScreenForInteractiveSource(new Button()));
+            Assert.True(MainWindow.ShouldSuppressDoubleClickFullScreenForInteractiveSource(new TextBox()));
+            Assert.True(MainWindow.ShouldSuppressDoubleClickFullScreenForInteractiveSource(new ListBox()));
+            Assert.True(MainWindow.ShouldSuppressDoubleClickFullScreenForInteractiveSource(new Slider()));
+            Assert.True(MainWindow.ShouldSuppressDoubleClickFullScreenForInteractiveSource(new Thumb()));
+            Assert.True(MainWindow.ShouldSuppressDoubleClickFullScreenForInteractiveSource(new PasswordBox()));
+            Assert.True(MainWindow.ShouldSuppressDoubleClickFullScreenForInteractiveSource(new TreeViewItem()));
+            Assert.False(MainWindow.ShouldSuppressDoubleClickFullScreenForInteractiveSource(new Border()));
+            Assert.False(MainWindow.ShouldSuppressDoubleClickFullScreenForInteractiveSource(null));
+        });
+    }
+
+    private static void RunOnSta(Action action)
+    {
+        Exception? failure = null;
+        Thread thread = new(() =>
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                failure = ex;
+            }
+            finally
+            {
+                Dispatcher.CurrentDispatcher.InvokeShutdown();
+            }
+        });
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        if (failure is not null)
+            throw failure;
     }
 
     [Fact]

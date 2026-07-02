@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\PortfolioSaver.Core\PortfolioSaver.Core.csproj" />
     <ProjectReference Include="..\..\src\PortfolioSaver.Config\PortfolioSaver.Config.csproj" />
     <ProjectReference Include="..\..\src\PortfolioSaver.Data\PortfolioSaver.Data.csproj" />
+    <ProjectReference Include="..\..\src\PortfolioSaver.Desktop\PortfolioSaver.Desktop.csproj" />
     <ProjectReference Include="..\..\src\PortfolioSaver.Screensaver\PortfolioSaver.Screensaver.csproj" />
     <ProjectReference Include="..\..\YFinance.net\YFinance.NET\YFinance.NET.csproj" />
     <ProjectReference Include="..\..\YFinance.net\YFinance.NET.Client\YFinance.NET.Client.csproj" />

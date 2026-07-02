@@ -30,6 +30,7 @@
         WindowState="Maximized"
         WindowStartupLocation="CenterScreen"
         KeyDown="OnWindowKeyDown"
+        PreviewMouseDoubleClick="OnWindowPreviewMouseDoubleClick"
         SizeChanged="OnWindowSizeChanged"
         StateChanged="OnWindowStateChanged">
     <Window.DataContext>

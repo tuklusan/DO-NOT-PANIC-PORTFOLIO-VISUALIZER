@@ -113,6 +113,7 @@ Installer upgrades preserve existing custom AI endpoint URLs and model IDs, incl
 
 - `PortfolioSaver.Desktop` is the primary app host
 - fullscreen toggle from `View -> Full Screen` targets the current monitor
+- double-clicking anywhere in the main desktop visualization window toggles fullscreen mode
 - `Esc` exits fullscreen back to windowed mode
 - legacy screensaver `/s`, `/c`, and `/p <HWND>` paths remain for compatibility during Beta 5.6
 

@@ -77,6 +77,7 @@ For legacy parser/config routing checks:
 ### Desktop full screen
 - desktop app opens windowed.
 - `View -> Full Screen` enters borderless fullscreen on the current monitor.
+- double-clicking inside the main visualization window toggles fullscreen mode.
 - `Esc` returns to windowed mode.
 - Top market/status band renders.
 - Ticker tapes render.
@@ -184,7 +185,7 @@ Current known-good clean proof details:
 
 1. `PortfolioSaver.VmAgent` must be started in session `1`
 2. the config app is discovered through process-bound UI Automation, not by title-only desktop scans
-3. fullscreen is entered through the `ViewFullScreenMenuItem` automation hook, with `F11` only as fallback
+3. fullscreen is entered through the `ViewFullScreenMenuItem` automation hook, with `F11` and main-window double-click as alternate user paths
 4. fullscreen is considered valid only when the live desktop window bounds match the virtual screen
 5. a fully green 20-minute proof was recorded in `build\vm\artifacts\ssh-runs\ux-deep-ssh-20260511-154444`
 

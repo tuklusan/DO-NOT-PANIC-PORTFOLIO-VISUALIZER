@@ -8759,7 +8759,7 @@
       "priority": 2,
       "area": "Desktop UX",
       "title": "Double-click anywhere in the app toggles full-screen and windowed modes",
-      "status": "open",
+      "status": "closed",
       "source": "user_ux_request_2026_07_01",
       "severity": "Medium",
       "evidence": [
@@ -8774,10 +8774,14 @@
       ],
       "notes": [
         "Implementation should prefer a top-level mouse-double-click handler in the desktop shell or root visual rather than wiring every child control.",
-        "Avoid toggling from child windows/dialogs; scope the behavior to the main visualization window."
+        "Avoid toggling from child windows/dialogs; scope the behavior to the main visualization window.",
+        "Resolved on 2026-07-01 by wiring the desktop shell Window PreviewMouseDoubleClick event to the existing ToggleFullScreen path, limited to left-button double-clicks and suppressed while the pointer is over the main menu."
       ],
       "validation": [
-        "Pending implementation."
+        "Focused local validation passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter DesktopShellMigrationTests; Passed 11/11.",
+        "git diff --check passed with no whitespace errors.",
+        "DeepSeek code-review gate passed on 2026-07-01 after replacing the initial bubbling MouseDoubleClick handler with a preview/tunneling handler and adding direct predicate coverage; no High or Medium findings remained.",
+        "README.md and BUILD_AND_DEPLOY.md now document double-click fullscreen entry and exit behavior."
       ]
     },
     {

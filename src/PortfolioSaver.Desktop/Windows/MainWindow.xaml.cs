@@ -13,6 +13,8 @@
 // ============================================================================
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Automation;
 using System.Windows.Interop;
@@ -163,6 +165,53 @@ public partial class MainWindow : Window
     private void OnFullScreenClick(object sender, RoutedEventArgs e)
     {
         ToggleFullScreen();
+    }
+
+    private void OnWindowPreviewMouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (!ShouldToggleFullScreenFromDoubleClick(e.ChangedButton, MainMenu?.IsMouseOver == true))
+            return;
+
+        if (ShouldSuppressDoubleClickFullScreenForInteractiveSource(e.OriginalSource as DependencyObject))
+            return;
+
+        // Use the preview event so child scene controls cannot accidentally swallow the global shortcut.
+        // Leave the routed event unhandled so future non-conflicting child double-click UX can still run.
+        ToggleFullScreen();
+    }
+
+    internal static bool ShouldToggleFullScreenFromDoubleClick(MouseButton changedButton, bool isMenuMouseOver)
+    {
+        return changedButton == MouseButton.Left && !isMenuMouseOver;
+    }
+
+    internal static bool ShouldSuppressDoubleClickFullScreenForInteractiveSource(DependencyObject? originalSource)
+    {
+        for (DependencyObject? current = originalSource; current is not null; current = GetParentObject(current))
+        {
+            if (current is MenuBase or MenuItem or ButtonBase or TextBoxBase or Selector or Slider or ScrollBar or Thumb or PasswordBox or TreeView or TreeViewItem)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static DependencyObject? GetParentObject(DependencyObject current)
+    {
+        if (current is FrameworkElement { Parent: DependencyObject parent })
+            return parent;
+
+        if (current is FrameworkContentElement { Parent: DependencyObject contentParent })
+            return contentParent;
+
+        try
+        {
+            return VisualTreeHelper.GetParent(current);
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     private void OnSettingsClick(object sender, RoutedEventArgs e)

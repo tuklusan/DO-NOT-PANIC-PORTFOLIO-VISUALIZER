@@ -26,6 +26,9 @@
     <ApplicationIcon>..\PortfolioSaver.Shared\Assets\Branding\dnppv-icon-rev-3.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="PortfolioSaver.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\PortfolioSaver.Presentation\PortfolioSaver.Presentation.csproj" />
     <ProjectReference Include="..\PortfolioSaver.Settings\PortfolioSaver.Settings.csproj" />
     <ProjectReference Include="..\PortfolioSaver.Shared\PortfolioSaver.Shared.csproj" />
