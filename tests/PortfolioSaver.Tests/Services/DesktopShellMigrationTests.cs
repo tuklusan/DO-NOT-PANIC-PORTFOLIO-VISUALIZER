@@ -87,6 +87,9 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("OnWindowPreviewMouseDoubleClick", code, StringComparison.Ordinal);
         Assert.Contains("ShouldToggleFullScreenFromDoubleClick", code, StringComparison.Ordinal);
         Assert.Contains("ShouldSuppressDoubleClickFullScreenForInteractiveSource", code, StringComparison.Ordinal);
+        Assert.Contains("SourceInitialized += OnSourceInitialized;", code, StringComparison.Ordinal);
+        Assert.Contains("source?.AddHook(WndProc);", code, StringComparison.Ordinal);
+        Assert.Contains("ShouldToggleFullScreenFromNativeMessage(msg)", code, StringComparison.Ordinal);
         Assert.Contains("Leave the routed event unhandled", code, StringComparison.Ordinal);
         Assert.Contains("ToggleFullScreen();", code, StringComparison.Ordinal);
         Assert.Contains("e.Key == Key.F11", code, StringComparison.Ordinal);
@@ -133,6 +136,14 @@ public sealed class DesktopShellMigrationTests
             Assert.False(MainWindow.ShouldToggleFullScreenFromDoubleClick(button, isMenuMouseOver: false));
             Assert.False(MainWindow.ShouldToggleFullScreenFromDoubleClick(button, isMenuMouseOver: true));
         }
+    }
+
+    [Fact]
+    public void DesktopShell_NativeDoubleClickMessage_TogglesFullScreen()
+    {
+        Assert.True(MainWindow.ShouldToggleFullScreenFromNativeMessage(0x0203));
+        Assert.False(MainWindow.ShouldToggleFullScreenFromNativeMessage(0x0201));
+        Assert.False(MainWindow.ShouldToggleFullScreenFromNativeMessage(0x0204));
     }
 
     [Fact]

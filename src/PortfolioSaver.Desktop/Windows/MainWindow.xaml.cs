@@ -64,6 +64,7 @@ public partial class MainWindow : Window
             AutomationProperties.SetHelpText(SettingsMenuItem, "Open portfolio visualizer settings");
         }
 
+        SourceInitialized += OnSourceInitialized;
         ApplyWindowStateConstraints();
     }
 
@@ -167,6 +168,24 @@ public partial class MainWindow : Window
         ToggleFullScreen();
     }
 
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        nint hwnd = new WindowInteropHelper(this).Handle;
+        HwndSource? source = hwnd != 0 ? HwndSource.FromHwnd(hwnd) : null;
+        source?.AddHook(WndProc);
+    }
+
+    private nint WndProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
+    {
+        if (ShouldToggleFullScreenFromNativeMessage(msg))
+        {
+            handled = true;
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(ToggleFullScreen));
+        }
+
+        return nint.Zero;
+    }
+
     private void OnWindowPreviewMouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (!ShouldToggleFullScreenFromDoubleClick(e.ChangedButton, MainMenu?.IsMouseOver == true))
@@ -183,6 +202,11 @@ public partial class MainWindow : Window
     internal static bool ShouldToggleFullScreenFromDoubleClick(MouseButton changedButton, bool isMenuMouseOver)
     {
         return changedButton == MouseButton.Left && !isMenuMouseOver;
+    }
+
+    internal static bool ShouldToggleFullScreenFromNativeMessage(int message)
+    {
+        return message == WmLeftButtonDoubleClick;
     }
 
     internal static bool ShouldSuppressDoubleClickFullScreenForInteractiveSource(DependencyObject? originalSource)
@@ -389,6 +413,7 @@ public partial class MainWindow : Window
 
     // Win32 MONITOR_DEFAULTTONEAREST: use the nearest monitor if the window straddles displays.
     private const uint MonitorDefaultToNearest = 2;
+    private const int WmLeftButtonDoubleClick = 0x0203;
 
     [DllImport("user32.dll")]
     private static extern nint MonitorFromWindow(nint hwnd, uint flags);
