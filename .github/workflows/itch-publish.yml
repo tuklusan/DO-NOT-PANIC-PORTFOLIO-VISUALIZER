@@ -97,7 +97,7 @@ jobs:
               if [ "$installer_count" = "1" ] && [ "$sha_count" = "1" ] && [ "$vt_count" = "1" ]; then
                 installer_name="$(basename "${attempt_installers[0]}")"
                 tag_without_v="${RELEASE_TAG#v}"
-                expected="$(awk '{print tolower($1)}' "${attempt_sha_files[0]}")"
+                expected="$(awk '{print tolower($1)}' "${attempt_sha_files[0]}" | sed 's/^sha256://')"
                 actual="$(sha256sum "${attempt_installers[0]}" | awk '{print tolower($1)}')"
 
                 if [[ "$installer_name" != *"$tag_without_v"* ]]; then
@@ -189,7 +189,7 @@ jobs:
       - name: Verify SHA-256 Checksum
         run: |
           set -euo pipefail
-          expected="$(awk '{print tolower($1)}' "$SHA256_PATH")"
+          expected="$(awk '{print tolower($1)}' "$SHA256_PATH" | sed 's/^sha256://')"
           actual="$(sha256sum "$INSTALLER_PATH" | awk '{print tolower($1)}')"
 
           if [ "$actual" != "$expected" ]; then
