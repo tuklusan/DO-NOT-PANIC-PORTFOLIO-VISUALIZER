@@ -8789,7 +8789,10 @@
         "git diff --check passed after CR-173 regression fix.",
         "Focused local validation passed after hardening: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter DesktopShellMigrationTests; Passed 13/13.",
         "DeepSeek workflow gate passed after CR-173 hardening on 2026-07-02.",
-        "git diff --check passed after CR-173 hardening."
+        "git diff --check passed after CR-173 hardening.",
+        "Live local desktop GUI-window smoke passed on 2026-07-02: sent two WM_LBUTTONDOWN pairs to the real PortfolioSaver.Desktop HWND, verified captioned window -> borderless fullscreen -> captioned window, and trace recorded NativeLeftButtonDoubleClickToggle for enter and exit.",
+        "Public GitHub release v0.9.0-beta7 refreshed after CR-173 hardening; downloaded release installer SHA-256 matched checksum asset 67c3e986e3d289ecd68afe4604545c053469ad24e0886fdfe1b6e0887ebedc11.",
+        "Itch.io mirror workflow run 28613409301 passed and pushed installer, SHA-256, MD5, and VirusTotal report as single-file channels for v0.9.0-beta7."
       ]
     },
     {
