@@ -84,9 +84,10 @@ public sealed class VirusTotalReleaseReportScriptTests
         Assert.Contains("Limit-Text", script, StringComparison.Ordinal);
         Assert.Contains("GetByteCount", script, StringComparison.Ordinal);
         Assert.Contains("MaximumLength must be greater than the UTF-8 byte length", script, StringComparison.Ordinal);
+        Assert.Contains("MaximumLength 500", script, StringComparison.Ordinal);
         Assert.Contains("MaximumLength 1800", script, StringComparison.Ordinal);
-        Assert.Contains("MaximumLength 4000", script, StringComparison.Ordinal);
-        Assert.Contains("VirusTotal comments are limited to 4096 bytes", script, StringComparison.Ordinal);
+        Assert.Contains("VirusTotal accepted a compact", script, StringComparison.Ordinal);
+        Assert.Contains("rejected the longer 4000-byte variant with HTTP 400", script, StringComparison.Ordinal);
         Assert.Contains("Release context comment status", script, StringComparison.Ordinal);
         Assert.Contains("AllowCommentFailure", script, StringComparison.Ordinal);
         Assert.Contains("RequireComment", script, StringComparison.Ordinal);

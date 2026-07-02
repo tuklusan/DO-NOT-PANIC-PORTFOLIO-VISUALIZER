@@ -216,14 +216,14 @@ function New-VirusTotalReleaseCommentText {
 
     $readmePath = Join-Path $RepositoryRoot 'README.md'
     $readmeExcerpt = if (Test-Path -LiteralPath $readmePath -PathType Leaf) {
-        Limit-Text -Text (Get-Content -Raw -LiteralPath $readmePath) -MaximumLength 1800
+        Limit-Text -Text (Get-Content -Raw -LiteralPath $readmePath) -MaximumLength 500
     }
     else {
         'README.md was not found in this checkout when the VirusTotal release comment was generated.'
     }
 
     $comment = @"
-DO NOT PANIC PORTFOLIO VISUALIZER public installer advisory context
+DO NOT PANIC PORTFOLIO VISUALIZER public installer advisory
 
 Download URL: $InstallerUrl
 GitHub Release: $ReleaseUrl
@@ -235,15 +235,16 @@ VirusTotal URL Report: $VirusTotalReportUrl
 Summary:
 DO NOT PANIC PORTFOLIO VISUALIZER is a cinematic Windows desktop financial visualizer by Supratim Sanyal of SANYALnet Labs. It displays delayed market data, ticker tapes, graph cards, world-market ribbons, configurable backgrounds, and optional AI-styled finance-news summaries. It is a visual/informational desktop application only. It must not be used as a financial planning, financial monitoring, trading, investment-advice, safety, or alerting tool.
 
-License and distribution note:
-This public beta is distributed under the repository LICENSE for strictly non-commercial personal, educational, or hobbyist use. This VirusTotal submission scans the already-public GitHub Release installer download URL and is advisory only; it is not a warranty, certification, or guarantee of safety.
+License/distribution:
+Strictly non-commercial personal, educational, or hobbyist use under the repository LICENSE. This VirusTotal URL scan is advisory only; it is not a warranty, certification, or guarantee of safety.
 
 README excerpt:
 $readmeExcerpt
 "@
 
-    # VirusTotal comments are limited to 4096 bytes; keep a margin for UTF-8.
-    return Limit-Text -Text $comment -MaximumLength 4000
+    # Empirical release validation on 2026-07-01: VirusTotal accepted a compact
+    # provenance comment but rejected the longer 4000-byte variant with HTTP 400.
+    return Limit-Text -Text $comment -MaximumLength 1800
 }
 
 function Publish-VirusTotalUrlComment {
