@@ -13,6 +13,7 @@
 // ============================================================================
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Threading;
 using Xunit;
 
@@ -426,6 +427,81 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$_.CommandLine.Contains(`$root)", helper, StringComparison.Ordinal);
         Assert.DoesNotContain("$rootPattern = $root.Replace", helper, StringComparison.Ordinal);
         Assert.Contains("Stop-Process -Force", helper, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TestAssembly_AllowsParallelExecutionOutsideEnvironmentSerialCollection()
+    {
+        string assemblyInfo = ReadRepoText("tests", "PortfolioSaver.Tests", "Properties", "AssemblyInfo.cs");
+        string environmentSerial = ReadRepoText("tests", "PortfolioSaver.Tests", "Services", "EnvironmentSerialCollection.cs");
+
+        Assert.DoesNotContain("DisableTestParallelization = true", assemblyInfo, StringComparison.Ordinal);
+        Assert.Contains("EnvironmentSerial", assemblyInfo, StringComparison.Ordinal);
+        Assert.Contains("[CollectionDefinition(\"EnvironmentSerial\", DisableParallelization = true)]", environmentSerial, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EnvironmentMutatingTests_OptIntoSerialCollection()
+    {
+        string testsRoot = Path.Combine(GetRepoRoot(), "tests", "PortfolioSaver.Tests");
+        string[] mutatingExpressions =
+        [
+            @"\bEnvironment\.SetEnvironmentVariable\s*\(",
+            @"\bEnvironment\.CurrentDirectory\s*=",
+            @"\bCultureInfo\.CurrentCulture\s*=",
+            @"\bCultureInfo\.CurrentUICulture\s*=",
+            @"\bCultureInfo\.DefaultThreadCurrentCulture\s*=",
+            @"\bCultureInfo\.DefaultThreadCurrentUICulture\s*=",
+            @"\bThread\.CurrentThread\.CurrentCulture\s*=",
+            @"\bThread\.CurrentThread\.CurrentUICulture\s*=",
+            @"\bConsole\.SetOut\s*\(",
+            @"\bConsole\.SetError\s*\(",
+            @"\bDirectory\.SetCurrentDirectory\s*\(",
+            @"\bTraceLog\.Reset\s*\(",
+            @"\bTraceLog\.InfoState\s*\("
+        ];
+
+        List<string> offenders = [];
+        foreach (string file in Directory.EnumerateFiles(testsRoot, "*.cs", SearchOption.AllDirectories))
+        {
+            if (IsBuildOutput(file))
+            {
+                continue;
+            }
+
+            string text = File.ReadAllText(file);
+            if (!IsTestSource(text))
+            {
+                continue;
+            }
+
+            // This file owns the scanner patterns as test data; it does not mutate
+            // process-wide state and is explicitly covered by the parallelism contract test above.
+            if (string.Equals(Path.GetFileName(file), nameof(VmHarnessScriptTests) + ".cs", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (mutatingExpressions.Any(pattern => Regex.IsMatch(text, pattern)) &&
+                !text.Contains("[Collection(\"EnvironmentSerial\")]", StringComparison.Ordinal))
+            {
+                offenders.Add(Path.GetRelativePath(GetRepoRoot(), file));
+            }
+        }
+
+        Assert.True(offenders.Count == 0, "Environment-mutating tests must opt into EnvironmentSerial: " + string.Join(", ", offenders));
+
+        static bool IsBuildOutput(string file)
+        {
+            string normalized = file.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+            string separator = Path.DirectorySeparatorChar.ToString();
+            return normalized.Contains(separator + "bin" + separator, StringComparison.OrdinalIgnoreCase) ||
+                   normalized.Contains(separator + "obj" + separator, StringComparison.OrdinalIgnoreCase);
+        }
+
+        static bool IsTestSource(string text)
+            => text.Contains("[Fact", StringComparison.Ordinal) ||
+               text.Contains("[Theory", StringComparison.Ordinal);
     }
 
     [Fact]

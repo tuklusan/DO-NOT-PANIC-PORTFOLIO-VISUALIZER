@@ -15,5 +15,7 @@ using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
 
+// Environment-mutating tests opt into this collection; non-mutating tests are
+// intentionally allowed to run in parallel.
 [CollectionDefinition("EnvironmentSerial", DisableParallelization = true)]
 public sealed class EnvironmentSerialCollection;

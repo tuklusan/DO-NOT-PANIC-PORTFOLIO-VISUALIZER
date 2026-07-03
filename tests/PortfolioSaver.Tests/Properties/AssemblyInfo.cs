@@ -11,9 +11,6 @@
 // SANYALnet Labs." See LICENSE for full terms, warranty disclaimer, termination,
 // patent, trademark, and governing-law provisions.
 // ============================================================================
-using Xunit;
-
-// The test suite mutates process-wide environment variables and selected
-// static diagnostic state; keep execution serial so VM/CI scheduling cannot
-// interleave those global-state assumptions.
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
+// Tests that mutate process-wide environment variables or selected static
+// diagnostic state opt into the EnvironmentSerial collection. The rest of the
+// suite is allowed to run in parallel for faster local/CI feedback.

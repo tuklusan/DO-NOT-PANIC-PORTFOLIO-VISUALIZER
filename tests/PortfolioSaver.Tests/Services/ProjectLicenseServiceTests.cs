@@ -50,12 +50,13 @@ public sealed class ProjectLicenseServiceTests
     public void StandaloneInstallerPayload_IncludesThirdPartyNotices()
     {
         string repoRoot = GetRepoRoot();
-        string script = File.ReadAllText(Path.Combine(repoRoot, "build", "publish-standalone-installer.ps1"));
+        string publishScript = File.ReadAllText(Path.Combine(repoRoot, "build", "publish-safe-temp.ps1"));
+        string installerScript = File.ReadAllText(Path.Combine(repoRoot, "build", "publish-inno-installer.ps1"));
 
-        Assert.Contains("THIRD-PARTY-NOTICES.md", script, StringComparison.Ordinal);
-        Assert.Contains("THIRD-PARTY-LICENSES", script, StringComparison.Ordinal);
-        Assert.Contains("Join-Path $payloadRoot \"THIRD-PARTY-NOTICES.md\"", script, StringComparison.Ordinal);
-        Assert.Contains("Join-Path $payloadRoot \"THIRD-PARTY-LICENSES\"", script, StringComparison.Ordinal);
+        Assert.Contains("THIRD-PARTY-NOTICES.md", publishScript, StringComparison.Ordinal);
+        Assert.Contains("THIRD-PARTY-LICENSES", publishScript, StringComparison.Ordinal);
+        Assert.Contains("'THIRD-PARTY-NOTICES.md'", installerScript, StringComparison.Ordinal);
+        Assert.Contains("'THIRD-PARTY-LICENSES\\APACHE-2.0.txt'", installerScript, StringComparison.Ordinal);
     }
 
     [Fact]
