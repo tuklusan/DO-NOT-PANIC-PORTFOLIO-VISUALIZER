@@ -12,6 +12,7 @@
 // patent, trademark, and governing-law provisions.
 // ============================================================================
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading;
 using Xunit;
 
@@ -142,6 +143,176 @@ public sealed class VmHarnessScriptTests
         Assert.DoesNotContain("project.assets.json", script, StringComparison.Ordinal);
         Assert.DoesNotContain("--disable-parallel", script, StringComparison.Ordinal);
         Assert.DoesNotContain("-m:1", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VmPackageInstallScripts_AreIdempotentAndRetryTransientFailures()
+    {
+        string common = ReadRepoText("build", "vm", "VmPackageInstallCommon.ps1");
+        string installChoco = ReadRepoText("build", "vm-tools", "install-choco.ps1");
+        string installQaTools = ReadRepoText("build", "vm-tools", "install-vm-qa-tools.ps1");
+        string resumeQaTools = ReadRepoText("build", "vm-tools", "install-vm-qa-tools-resume.ps1");
+        string guestBootstrap = ReadRepoText("build", "vm", "Guest-BootstrapVmRemoteTools.ps1");
+        string pushVmWorkspace = ReadRepoText("build", "vm", "Push-VmWorkspace.ps1");
+
+        Assert.Contains("function Invoke-DnppvCommandWithRetry", common, StringComparison.Ordinal);
+        Assert.Contains("function Test-DnppvChocoPackageInstalled", common, StringComparison.Ordinal);
+        Assert.Contains("function Install-DnppvChocoPackage", common, StringComparison.Ordinal);
+        Assert.Contains("$ErrorActionPreference = 'Stop'", common, StringComparison.Ordinal);
+        Assert.Contains("[bool]$CheckLastExitCode", common, StringComparison.Ordinal);
+        Assert.Contains("$global:LASTEXITCODE = 0", common, StringComparison.Ordinal);
+        Assert.Contains("if (-not $CheckLastExitCode -or $LASTEXITCODE -eq 0) { return }", common, StringComparison.Ordinal);
+        Assert.Contains("-CheckLastExitCode $true -ScriptBlock", common, StringComparison.Ordinal);
+        Assert.Contains("Start-Sleep -Seconds ([Math]::Min(30, $DelaySeconds * $attempt))", common, StringComparison.Ordinal);
+        Assert.Contains("Skipping already-installed choco package", common, StringComparison.Ordinal);
+        Assert.Contains("list --local-only --exact --limit-output", common, StringComparison.Ordinal);
+
+        Assert.Contains("VmPackageInstallCommon.ps1", installChoco, StringComparison.Ordinal);
+        Assert.Contains("Get-Command choco.exe", installChoco, StringComparison.Ordinal);
+        Assert.Contains("Invoke-WebRequest", installChoco, StringComparison.Ordinal);
+        Assert.Contains("install-chocolatey.ps1", installChoco, StringComparison.Ordinal);
+        Assert.Contains("C:\\Temp\\install-choco.log", installChoco, StringComparison.Ordinal);
+        Assert.DoesNotContain("Invoke-Expression", installChoco, StringComparison.Ordinal);
+
+        foreach (string script in new[] { installQaTools, resumeQaTools, guestBootstrap })
+        {
+            Assert.Contains("VmPackageInstallCommon.ps1", script, StringComparison.Ordinal);
+            Assert.DoesNotContain("function Invoke-WithRetry", script, StringComparison.Ordinal);
+            Assert.DoesNotContain("function Test-ChocoPackageInstalled", script, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("Install-DnppvChocoPackage", installQaTools, StringComparison.Ordinal);
+        Assert.Contains("Install-DnppvChocoPackage", resumeQaTools, StringComparison.Ordinal);
+        Assert.Contains("Install-DnppvChocoPackage", guestBootstrap, StringComparison.Ordinal);
+        Assert.Contains("$chocoCommand.Source", guestBootstrap, StringComparison.Ordinal);
+        Assert.Contains("Continuing after failed optional choco package", installQaTools, StringComparison.Ordinal);
+        Assert.Contains("FAILED after retries", resumeQaTools, StringComparison.Ordinal);
+        Assert.Contains("Trying sysinternals via scoop as fallback.", resumeQaTools, StringComparison.Ordinal);
+        Assert.Contains("autohotkey.portable", resumeQaTools, StringComparison.Ordinal);
+        Assert.Contains("autohotkey' | Out-Null", resumeQaTools, StringComparison.Ordinal);
+        Assert.Contains("Send-VmItem -Bundle $bundle -LocalPath (Join-Path $PSScriptRoot 'VmPackageInstallCommon.ps1')", pushVmWorkspace, StringComparison.Ordinal);
+        Assert.Contains("Skipping already-installed global npm package: appium", installQaTools, StringComparison.Ordinal);
+        Assert.Contains("Skipping already-installed global npm package: appium", resumeQaTools, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VmPackageInstallCommon_RetryFunctionRetriesUntilSuccess()
+    {
+        string commonPath = Path.Combine(RepoRoot.Value, "build", "vm", "VmPackageInstallCommon.ps1");
+        string tempScript = Path.Combine(Path.GetTempPath(), $"dnppv-retry-test-{Guid.NewGuid():N}.ps1");
+        File.WriteAllText(tempScript, string.Join(Environment.NewLine, new[]
+        {
+            "$ErrorActionPreference = 'Stop'",
+            "$attempts = 0",
+            $". '{commonPath.Replace("'", "''")}'",
+            "Invoke-DnppvCommandWithRetry -Operation 'test retry' -CheckLastExitCode $false -MaxAttempts 3 -DelaySeconds 0 -ScriptBlock { $script:attempts++; if ($script:attempts -lt 3) { throw 'not yet' } }",
+            "if ($attempts -ne 3) { throw \"attempts=$attempts\" }",
+            "Write-Output \"RETRY_OK attempts=$attempts\""
+        }));
+
+        try
+        {
+            using Process process = new()
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = ResolvePowerShellExe(),
+                    ArgumentList =
+                    {
+                        "-NoLogo",
+                        "-NoProfile",
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-File",
+                        tempScript
+                    },
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                }
+            };
+
+            process.Start();
+            string output = process.StandardOutput.ReadToEnd();
+            string error = process.StandardError.ReadToEnd();
+            if (!process.WaitForExit(15000))
+            {
+                process.Kill(entireProcessTree: true);
+                Assert.Fail("Timed out while testing VmPackageInstallCommon retry behavior.");
+            }
+
+            Assert.Equal(0, process.ExitCode);
+            Assert.Contains("RETRY_OK attempts=3", output, StringComparison.Ordinal);
+            Assert.Contains("test retry failed on attempt 1 of 3", error + output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(tempScript);
+        }
+    }
+
+    [Fact]
+    public void VmPackageInstallCommon_DoesNotReuseStaleLastExitCode()
+    {
+        string commonPath = Path.Combine(RepoRoot.Value, "build", "vm", "VmPackageInstallCommon.ps1");
+        string tempScript = Path.Combine(Path.GetTempPath(), $"dnppv-last-exit-test-{Guid.NewGuid():N}.ps1");
+        File.WriteAllText(tempScript, string.Join(Environment.NewLine, new[]
+        {
+            "$ErrorActionPreference = 'Stop'",
+            "$global:LASTEXITCODE = 0",
+            $". '{commonPath.Replace("'", "''")}'",
+            "try {",
+            "  Invoke-DnppvCommandWithRetry -Operation 'stale exit test' -CheckLastExitCode $true -MaxAttempts 1 -DelaySeconds 0 -ScriptBlock { $global:LASTEXITCODE = 42 }",
+            "  throw 'expected failure was not observed'",
+            "}",
+            "catch {",
+            "  if ($_.Exception.Message -notlike '*exited with 42*') { throw }",
+            "}",
+            "Write-Output 'STALE_EXIT_OK'"
+        }));
+
+        try
+        {
+            using Process process = new()
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = ResolvePowerShellExe(),
+                    ArgumentList =
+                    {
+                        "-NoLogo",
+                        "-NoProfile",
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-File",
+                        tempScript
+                    },
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                }
+            };
+
+            process.Start();
+            string output = process.StandardOutput.ReadToEnd();
+            string error = process.StandardError.ReadToEnd();
+            if (!process.WaitForExit(15000))
+            {
+                process.Kill(entireProcessTree: true);
+                Assert.Fail("Timed out while testing VmPackageInstallCommon LASTEXITCODE reset behavior.");
+            }
+
+            Assert.True(process.ExitCode == 0, error + output);
+            Assert.Contains("STALE_EXIT_OK", output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(tempScript);
+        }
     }
 
     [Fact]
@@ -810,6 +981,22 @@ public sealed class VmHarnessScriptTests
         }
 
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
+    }
+
+    private static string ResolvePowerShellExe()
+    {
+        string? path = Environment.GetEnvironmentVariable("PATH");
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            foreach (string directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+            {
+                string candidate = Path.Combine(directory.Trim(), "pwsh.exe");
+                if (File.Exists(candidate))
+                    return candidate;
+            }
+        }
+
+        return "powershell.exe";
     }
 
 }

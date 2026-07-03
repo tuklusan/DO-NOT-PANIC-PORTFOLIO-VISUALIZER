@@ -9326,17 +9326,25 @@
       "priority": 2,
       "area": "Build/release reliability",
       "title": "Make package install scripts idempotent and add retry error handling",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "High",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: `install-choco.ps1` uses `Invoke-Expression` without retry; `install-vm-qa-tools.ps1` installs packages even if present.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Parser validation passed for VmPackageInstallCommon.ps1, install-choco.ps1, install-vm-qa-tools.ps1, install-vm-qa-tools-resume.ps1, Guest-BootstrapVmRemoteTools.ps1, and Push-VmWorkspace.ps1.",
+        "dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter FullyQualifiedName~VmPackageInstall passed: 3 tests.",
+        "build/validation/Test-ValidationScripts.ps1 passed with known duplicate CR-030 normalization warning only.",
+        "DeepSeek review build/deepseek-review/deepseek-review-20260703-132454.md reported no blocking issues."
       ],
       "notes": [
         "Recommendation: Add `-WhatIf` checks, `try/catch` with retry (3 attempts), and exit-code verification.",
         "Acceptance criteria: Re-running the script on a provisioned VM skips already-installed packages; transient download failures are retried without failing the pipeline.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Implemented shared build/vm/VmPackageInstallCommon.ps1 retry/idempotency helper for Chocolatey/package provisioning.",
+        "Removed Invoke-Expression from Chocolatey bootstrap and added explicit download/install retry flow with cleanup.",
+        "Updated VM QA/bootstrap scripts to skip already-installed packages and continue past optional tooling failures while keeping required bootstrap installs strict.",
+        "Added focused tests for retry success and stale LASTEXITCODE handling."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",

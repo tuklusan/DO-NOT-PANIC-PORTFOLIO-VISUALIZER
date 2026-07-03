@@ -18,6 +18,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'VmPackageInstallCommon.ps1')
+
 function Get-CommandPathOrNull {
     param([Parameter(Mandatory = $true)][string]$Name)
 
@@ -42,11 +44,12 @@ function Ensure-ChocoPackage {
         }
     }
 
-    if (-not (Get-Command choco.exe -ErrorAction SilentlyContinue)) {
+    $chocoCommand = Get-Command choco.exe -ErrorAction SilentlyContinue
+    if ($null -eq $chocoCommand) {
         throw "Chocolatey is required to install $PackageName but is not available."
     }
 
-    choco install $PackageName -y --no-progress | Out-Null
+    Install-DnppvChocoPackage -PackageName $PackageName -ChocoPath $chocoCommand.Source | Out-Null
     $installed = Get-CommandPathOrNull -Name $CommandName
     if ($null -eq $installed) {
         throw "Command '$CommandName' was still not found after installing package '$PackageName'."

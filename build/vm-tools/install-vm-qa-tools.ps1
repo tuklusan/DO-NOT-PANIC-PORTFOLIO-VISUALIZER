@@ -13,6 +13,8 @@
 # ============================================================================
 $ErrorActionPreference = 'Continue'
 
+. (Join-Path $PSScriptRoot '..\vm\VmPackageInstallCommon.ps1')
+
 $logPath = 'C:\Temp\vm-qa-tools-install.log'
 New-Item -ItemType Directory -Path 'C:\Temp' -Force | Out-Null
 Set-Content -LiteralPath $logPath -Value "VM QA Tools Install - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
@@ -22,6 +24,28 @@ function Log {
     $line = "[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $Message
     Write-Host $line
     Add-Content -LiteralPath $logPath -Value $line
+}
+
+function Install-ChocoPackage {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][string]$ChocoPath
+    )
+
+    Log "Installing via choco: $Name"
+    try {
+        $installResult = Install-DnppvChocoPackage -PackageName $Name -ChocoPath $ChocoPath
+        if ($installResult -eq 'present') {
+            Log "Skipping already-installed choco package: $Name"
+        } else {
+            Log "Installed choco package: $Name"
+        }
+        return $true
+    }
+    catch {
+        Log "Install failed after retries: $Name - $($_.Exception.Message)"
+        return $false
+    }
 }
 
 $choco = 'C:\ProgramData\chocolatey\bin\choco.exe'
@@ -44,12 +68,8 @@ $packages = @(
 )
 
 foreach ($pkg in $packages) {
-    Log "Installing via choco: $pkg"
-    & $choco install $pkg -y --no-progress --limit-output
-    if ($LASTEXITCODE -eq 0) {
-        Log "Installed or already present: $pkg"
-    } else {
-        Log "Install failed (exit $LASTEXITCODE): $pkg"
+    if (-not (Install-ChocoPackage -Name $pkg -ChocoPath $choco)) {
+        Log "Continuing after failed optional choco package: $pkg"
     }
 }
 
@@ -58,9 +78,18 @@ $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';
             [System.Environment]::GetEnvironmentVariable('Path', 'User')
 
 if (Get-Command node -ErrorAction SilentlyContinue) {
-    Log "Installing global npm package: appium"
-    npm install -g appium
-    Log "npm exit code: $LASTEXITCODE"
+    if ((npm list -g appium --depth=0 2>$null) -match 'appium@') {
+        Log "Skipping already-installed global npm package: appium"
+    } else {
+        Log "Installing global npm package: appium"
+        try {
+            Invoke-DnppvCommandWithRetry -Operation 'npm install -g appium' -CheckLastExitCode $true -WarningSink { param($Message) Log $Message } -ScriptBlock { npm install -g appium }
+            Log "npm exit code: $LASTEXITCODE"
+        }
+        catch {
+            Log "npm appium install failed after retries: $($_.Exception.Message)"
+        }
+    }
 } else {
     Log "Skipping appium install; node not found."
 }
@@ -74,8 +103,13 @@ if (Get-Command py -ErrorAction SilentlyContinue) {
 
 if ($null -ne $python) {
     Log "Installing Python packages for UI automation/testing"
-    & $python -m pip install --upgrade pip
-    & $python -m pip install pywinauto pywin32 pyautogui pillow requests lxml pytest
+    try {
+        Invoke-DnppvCommandWithRetry -Operation 'pip upgrade' -CheckLastExitCode $true -WarningSink { param($Message) Log $Message } -ScriptBlock { & $python -m pip install --upgrade pip }
+        Invoke-DnppvCommandWithRetry -Operation 'pip install UI packages' -CheckLastExitCode $true -WarningSink { param($Message) Log $Message } -ScriptBlock { & $python -m pip install pywinauto pywin32 pyautogui pillow requests lxml pytest }
+    }
+    catch {
+        Log "Python package install failed after retries: $($_.Exception.Message)"
+    }
     Log "Python package installation attempted."
 } else {
     Log "Skipping Python package installs; Python launcher not found."
@@ -90,3 +124,5 @@ if (Get-Command python -ErrorAction SilentlyContinue) { Log ("python=" + (& pyth
 if (Get-Command py -ErrorAction SilentlyContinue) { Log ("py=" + (& py --version 2>&1)) }
 
 Log "Install log saved to $logPath"
+
+

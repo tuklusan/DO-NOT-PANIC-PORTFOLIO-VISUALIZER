@@ -49,6 +49,7 @@ try {
     $bootstrapRemoteDirectory = Join-Path $RootPath 'scripts'
     $bootstrapRemotePath = Join-Path $bootstrapRemoteDirectory 'Guest-BootstrapVmRemoteTools.ps1'
     Send-VmItem -Bundle $bundle -LocalPath (Join-Path $PSScriptRoot 'Guest-BootstrapVmRemoteTools.ps1') -RemoteDestination $bootstrapRemoteDirectory
+    Send-VmItem -Bundle $bundle -LocalPath (Join-Path $PSScriptRoot 'VmPackageInstallCommon.ps1') -RemoteDestination $bootstrapRemoteDirectory
 
     if ($Bootstrap) {
         Write-VmSshStep "Bootstrapping the guest toolchain and workspace"

@@ -13,6 +13,8 @@
 # ============================================================================
 $ErrorActionPreference = 'Continue'
 
+. (Join-Path $PSScriptRoot '..\vm\VmPackageInstallCommon.ps1')
+
 $logPath = 'C:\Temp\vm-qa-tools-install-resume.log'
 New-Item -ItemType Directory -Path 'C:\Temp' -Force | Out-Null
 Set-Content -LiteralPath $logPath -Value "VM QA Tools Resume - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
@@ -33,14 +35,19 @@ function Choco-Install {
     }
 
     Log "choco install $Name"
-    & $choco install $Name -y --no-progress --limit-output
-    if ($LASTEXITCODE -eq 0) {
-        Log "OK: $Name"
+    try {
+        $installResult = Install-DnppvChocoPackage -PackageName $Name -ChocoPath $choco
+        if ($installResult -eq 'present') {
+            Log "Skipping already-installed choco package: $Name"
+        } else {
+            Log "OK: $Name"
+        }
         return $true
     }
-
-    Log "FAILED: $Name (exit $LASTEXITCODE)"
-    return $false
+    catch {
+        Log "FAILED after retries: $Name - $($_.Exception.Message)"
+        return $false
+    }
 }
 
 function Scoop-Install {
@@ -83,16 +90,32 @@ Choco-Install -Name 'winappdriver' | Out-Null
 $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
 
 if (Get-Command node -ErrorAction SilentlyContinue) {
-    Log "Installing appium globally with npm."
-    npm install -g appium
-    Log "npm exit code: $LASTEXITCODE"
+    if ((npm list -g appium --depth=0 2>$null) -match 'appium@') {
+        Log "Skipping already-installed global npm package: appium"
+    } else {
+        Log "Installing appium globally with npm."
+        try {
+            Invoke-DnppvCommandWithRetry -Operation 'npm install -g appium' -CheckLastExitCode $true -WarningSink { param($Message) Log $Message } -ScriptBlock { npm install -g appium }
+            Log "npm exit code: $LASTEXITCODE"
+        }
+        catch {
+            Log "npm appium install failed after retries: $($_.Exception.Message)"
+        }
+    }
 }
 
 if (Get-Command py -ErrorAction SilentlyContinue) {
     Log "Installing python UI/testing packages."
-    py -m pip install --upgrade pip
-    py -m pip install pywinauto pywin32 pyautogui pillow requests lxml pytest
+    try {
+        Invoke-DnppvCommandWithRetry -Operation 'pip upgrade' -CheckLastExitCode $true -WarningSink { param($Message) Log $Message } -ScriptBlock { py -m pip install --upgrade pip }
+        Invoke-DnppvCommandWithRetry -Operation 'pip install UI packages' -CheckLastExitCode $true -WarningSink { param($Message) Log $Message } -ScriptBlock { py -m pip install pywinauto pywin32 pyautogui pillow requests lxml pytest }
+    }
+    catch {
+        Log "Python package install failed after retries: $($_.Exception.Message)"
+    }
     Log "Python package install attempted."
 }
 
 Log "Resume run completed."
+
+
