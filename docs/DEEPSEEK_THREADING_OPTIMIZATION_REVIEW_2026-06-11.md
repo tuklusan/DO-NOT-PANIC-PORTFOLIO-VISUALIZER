@@ -23,7 +23,7 @@ patent, trademark, and governing-law provisions.
 - Packet manifest: `build/deepseek-review/threading-optimization-20260611-090438/packet-manifest.json`
 - Final synthesis artifact: `build/deepseek-review/threading-optimization-20260611-090438/FINAL_SYNTHESIS.md`
 
-Policy note: this is a versioned project review record. CR candidates from this review are tracked in `docs/BETA6_AUDIT_STATE.json` as CR-015 through CR-060.
+Policy note: this is a versioned project review record. CR candidates from this review are tracked in `docs/AUDIT_STATE.json` as CR-015 through CR-060.
 
 # Consolidated CR Candidates (Deduplicated)
 

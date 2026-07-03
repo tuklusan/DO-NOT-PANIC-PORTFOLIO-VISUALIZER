@@ -118,7 +118,7 @@ Installer upgrades preserve existing custom AI endpoint URLs and model IDs, incl
 - fullscreen toggle from `View -> Full Screen` targets the current monitor
 - double-clicking anywhere in the main desktop visualization window toggles fullscreen mode
 - `Esc` exits fullscreen back to windowed mode
-- legacy screensaver `/s`, `/c`, and `/p <HWND>` paths remain for compatibility during Beta 5.6
+- legacy screensaver `/s`, `/c`, and `/p <HWND>` paths remain for compatibility
 
 ## Project Structure
 
@@ -194,7 +194,7 @@ The active documentation set has been intentionally reduced to a small core:
 
 - `BUILD_AND_DEPLOY.md` - Visual Studio build, run, publish, and installer-sandbox workflow
 - `docs/RELEASE_1_0_BASELINE.md` - active 1.0 development baseline and distribution-freeze rule
-- `docs/BETA6_AUDIT_STATE.json` - single canonical machine-maintained audit, test, and release-gate state
+- `docs/AUDIT_STATE.json` - single canonical machine-maintained audit, test, and release-gate state
 - `build/vm/VM_OPERATIONS_RUNBOOK.md` - repeatable SSH-first remote Windows UX validation workflow using PortfolioSaver.VmAgent and WinAppDriver in the interactive session
 - `YFinance.net/PORTING_PLAN.md` - upstream sync rules, responsibility map, and standalone YFinance.NET proof plan
 - `build/vm/test-secrets.json` - ignored local-only remote-test secret overlay for API keys, including DeepSeek, when you need live remote validation

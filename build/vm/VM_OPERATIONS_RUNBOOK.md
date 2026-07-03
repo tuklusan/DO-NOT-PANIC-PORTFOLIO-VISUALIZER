@@ -16,7 +16,7 @@ patent, trademark, and governing-law provisions.
 
 # Remote Windows Validation Runbook
 
-This runbook documents the supported Beta 5.6 remote-validation architecture:
+This runbook documents the supported remote-validation architecture for the current product line:
 
 - host transport: `SSH + SFTP`
 - remote workspace: `C:\vmharness\portfolio-saver`

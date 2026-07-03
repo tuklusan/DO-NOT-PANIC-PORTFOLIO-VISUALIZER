@@ -19,7 +19,7 @@ param(
     [string[]]$Notes = @(),
     [int]$Priority = 2,
     [string]$Source = 'autonomous_visual_validation',
-    [string]$AuditPath = (Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path 'docs\BETA6_AUDIT_STATE.json')
+    [string]$AuditPath = (Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path 'docs\AUDIT_STATE.json')
 )
 
 Set-StrictMode -Version Latest
@@ -288,7 +288,7 @@ try {
             'DeepSeek code review gate reports no blocking findings for code changes.',
             'Local build/test validation passes when the change affects code.',
             'VM validation passes when the change is UI/runtime/harness-visible.',
-            'Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence.'
+            'Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence.'
         )
     }
 

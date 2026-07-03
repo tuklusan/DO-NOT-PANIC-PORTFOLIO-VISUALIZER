@@ -1,19 +1,19 @@
 {
   "document_type": "audit_state",
-  "title": "BETA-7 Audit State",
+  "title": "Release 1.0 Audit State",
   "date": "2026-05-20",
-  "current_lane": "BETA-7",
+  "current_lane": "1.0",
   "current_snapshot": {
     "product": "DO NOT PANIC PORTFOLIO VISUALIZER",
     "publisher": "SANYALnet Labs",
     "author": "Supratim Sanyal",
     "license": "SANYALnet Labs Non-Commercial License",
-    "semantic_version_lane": "0.9.0-beta7",
+    "semantic_version_lane": "1.0.0",
     "target_framework": "net10.0-windows",
     "primary_host": "PortfolioSaver.Desktop",
     "legacy_host": "PortfolioSaver.Screensaver",
     "repository_history": "main starts at the BETA-5.4 baseline; BETA-5.5 is frozen at tag BETA-5.5 on commit d60e6ed; BETA-5.6 is frozen at tag BETA-5.6 on commit 816708a; BETA-6 begins immediately after that freeze. BETA-7 begins after the degraded-mode validation ticketization baseline.",
-    "current_baseline_label": "BETA-7"
+    "current_baseline_label": "1.0"
   },
   "latest_recorded_validation_state": {
     "automated_tests": {
@@ -1471,7 +1471,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1502,7 +1502,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1533,7 +1533,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1564,7 +1564,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1595,7 +1595,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1626,7 +1626,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1661,7 +1661,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1695,7 +1695,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1729,7 +1729,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1764,7 +1764,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1800,7 +1800,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1833,7 +1833,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1866,7 +1866,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1899,7 +1899,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1933,7 +1933,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1966,7 +1966,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -1995,7 +1995,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-11 by serializing all access to StartupCoordinator._pendingQuotePipeline with _pendingQuotePipelineGate.",
@@ -2035,7 +2035,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-11 by replacing immediate shared YFinanceServerClient disposal with active-operation accounting and retired-client disposal.",
@@ -2075,7 +2075,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-11 by removing the screensaver App.OnExit sync-over-async StopOwnedServerAsync().GetAwaiter().GetResult() call.",
@@ -2114,7 +2114,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-11 by removing synchronous DNS work from TraceLog static field initialization.",
@@ -2153,7 +2153,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence.",
         "Resolved on 2026-06-11 by replacing full FloatingGraphCanvas child clearing with keyed incremental graph-control sync, clearing stale DataContext values only for removed controls, and preserving control order without add/remove churn for unchanged graph cards.",
         "Validation: DeepSeek post-commit reviews reported no blocking findings; local Release build passed with 0 warnings/errors; local Release tests passed 292/292; canonical VM UX run ux-deep-ssh-20260611-151748 completed with remote build/tests passing 292/292, config phase Completed, desktop phase Completed, and version checks Passed."
       ],
@@ -2184,7 +2184,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence.",
         "Resolved on 2026-06-11 by routing config validation profile persistence through SaveTrustedSymbolProfilesAsync, running the existing merge/save disk I/O on a background task, and serializing writes with a SemaphoreSlim gate to avoid overlapping profile-file writes.",
         "Validation: DeepSeek review postcommit-review-20260611-154416 reported the prior concurrency blocker resolved and no new blockers; local Release build passed with 0 warnings/errors; local Release tests passed 293/293."
       ],
@@ -2215,7 +2215,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence.",
         "Resolved on 2026-06-11 by replacing startup's full recursive legacy AppData copy with a deduplicated queued background migration while preserving first-run settings/secrets through a minimal non-overwriting synchronous copy of settings.json and provider-secrets.json.",
         "Validation: DeepSeek CR-023 re-review artifact postcommit-review-cr023-rereview-short-20260611-155914 reported no blockers and no high findings; local Release build passed with 0 warnings/errors; local Release tests passed 297/297."
       ],
@@ -2246,7 +2246,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence.",
         "Resolved on 2026-06-11 by routing Config, Desktop, and Screensaver OnExit through OwnedServerShutdownQueue, which starts a bounded foreground worker thread so the WPF UI close path returns immediately while the process remains alive briefly enough to stop the owned YFinance server or time out.",
         "Validation: DeepSeek CR-024 re-review artifact postcommit-review-cr024-rereview-20260611-160556 reported no blockers and no high findings; local Release build passed with 0 warnings/errors; local Release tests passed 297/297."
       ],
@@ -2277,7 +2277,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence.",
         "Resolved on 2026-06-11 by threading caller cancellation into default background warmup, using explicit gate-acquired release guards, treating background cancellation as normal completion, cleaning temporary downloads on cancellation, and adding direct/background cancellation tests.",
         "Validation: DeepSeek corrected CR-025 review artifact postcommit-review-cr025-corrected-20260611-161719 plus test-fix review postcommit-review-cr025-testfix-20260611-162007 reported no blockers and no high findings; local Release build passed with 0 warnings/errors; local Release tests passed 299/299."
       ],
@@ -2308,7 +2308,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence.",
         "Resolved on 2026-06-11 by adding SymbolProfileStore.LoadAsync(CancellationToken) with async FileStream/JsonSerializer I/O, preserving the synchronous Load API, and switching StartupCoordinator graph profile loading to await the cancellable async path.",
         "Validation: DeepSeek final CR-026 review artifact postcommit-review-cr026-final-20260611-162740 reported no blockers and no high findings; local Release build passed with 0 warnings/errors; local Release tests passed 302/302."
       ],
@@ -2339,7 +2339,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence.",
         "Resolved on 2026-06-11 by moving HistoricalCacheService.PurgeExpiredAsync scan/delete work behind Task.Run, adding cancellation checks, handling missing cache directories, and adding tests for stale deletion, worker-thread offload, mid-execution cancellation, and pre-cancellation.",
         "Validation: DeepSeek final CR-027 review artifact postcommit-review-cr027-final-20260611-163949 reported no blockers and no high findings; local Release build passed with 0 warnings/errors; local Release tests passed 305/305."
       ],
@@ -2370,7 +2370,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence.",
         "Resolved on 2026-06-11 by adding ReleaseManifestGuard.ValidateCurrentExecutableInBackground, running full ValidateDirectory hashing via Task.Run after app host startup/show, preserving failure shutdown through dispatcher callbacks, and containing validation/callback exceptions inside the guard.",
         "Validation: DeepSeek final CR-028 review artifact postcommit-review-cr028-final-20260611-164903 reported no blockers for the deferred validation change; local Release build passed with 0 warnings/errors; local Release tests passed 307/307. DeepSeek also raised unrelated screensaver command-line handling follow-up CR-061."
       ],
@@ -2401,7 +2401,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence.",
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence.",
         "Resolved on 2026-06-11 by replacing the synchronous CreateBackgroundBitmap recovery fallback with TryRecoverOrQueueActiveBackgroundSource, which queues a token-aware async LoadBackgroundAsync recovery reload, uses File.ReadAllBytesAsync with cancellation, cancels on unload/live-timer stop, and protects in-flight ownership with a generation guard.",
         "Validation: DeepSeek final CR-029 review artifact postcommit-review-cr029-final2-20260611-170150 reported no blockers and no high findings; local Release build passed with 0 warnings/errors; local Release tests passed 307/307."
       ],
@@ -2432,7 +2432,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-11 by removing full AppSettings candidate rebuild/JSON fingerprinting from OnEditorChanged. The settings editor now ignores non-persisted status properties, compares only the changed persisted field against validated editor-instance snapshots, and invalidates through collection-change handlers for group/ticker structural changes."
@@ -2465,7 +2465,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-11 by caching NewsFlasherControl text-width measurements with DPI/font-aware keys, bounding the cache to 256 entries, clearing it on headline/layout resets, and removing the redundant post-typing height measurement."
@@ -2498,7 +2498,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-11 by replacing duplicate mini-graph point construction with a single point-list builder and adding ClockCityViewModel.SetMiniGraphPointsIfChanged, which compares value-equal points and only assigns a fresh WPF PointCollection when the graph actually changes. UI-thread mutation paths now explicitly verify dispatcher access."
@@ -2531,7 +2531,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-11 by guarding TapeAnimationController rendering against hidden/unarranged/empty-size elements, preventing Start before Attach, starting tape animation only after valid Update metrics, stopping and clearing scroll tracks on invalid metrics, and preventing queued metrics work from restarting animation after unload."
@@ -2564,7 +2564,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-11 by serializing ProviderHealthService snapshot reads/writes behind a private lock, returning defensive snapshot copies, normalizing blank failure messages, and documenting the thread-safe copy-returning contract."
@@ -2597,7 +2597,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-11 by verifying the existing InternetProbeService in-flight probe coalescing path covers expired-cache refresh races and adding explicit concurrent expired-cache refresh coverage."
@@ -2630,7 +2630,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-11 by introducing a thread-safe CappedFileLogWriter with 10 MB primary-log rotation, one backup file, serialized writes, and release-safe Trace fallback for VmAgent log failures."
@@ -2663,7 +2663,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-11 by adding abort-safe cleanup to build-safe-temp local child processes and VM SSH harness runs. Local child dotnet processes are killed on cancellation/abort, VM abort cleanup stops harness-owned remote processes, writes a harness-aborted.json marker, records cleanup failures, and refuses unsafe generic RootPath values."
@@ -2696,7 +2696,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by making YFinanceServerClient disposal idempotent, observing late receive-loop faults, draining the receive loop during async disposal, settling pending requests on teardown, preserving best-effort async goodbye on an existing connection, and adding sync/async disposal regression tests."
@@ -2729,7 +2729,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by changing YFinanceCircularTraceSink.Instance to an explicit Lazy<T> singleton with ExecutionAndPublication and adding a 100-task concurrent access/write stress test that verifies one instance and all unique markers in the circular trace."
@@ -2762,7 +2762,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by adding viewport readiness guards to NewsFlasherControl, safe finite viewport width fallback, pause/recover handling for unready layouts, recovery via SizeChanged/LayoutUpdated, and WPF regression coverage for pre-layout ticks and viewport recovery."
@@ -2795,7 +2795,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by adding fail-soft TraceLog.WarnState diagnostics for GlobalMarketsTapeControl flag image load failures while preserving the fallback badge behavior."
@@ -2828,7 +2828,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by adding an internal YFinanceRuntimeClientFactory suppression-state seam and a parallel async-flow regression test proving server-startup suppression remains isolated to the owning async flow."
@@ -2861,7 +2861,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by replacing raw default HttpClient construction with shared pooled SocketsHttpHandler defaults for treasury yields, internet probes, and exchange-photo downloads while preserving injected client/handler test seams."
@@ -2894,7 +2894,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by converting HybridHistoricalDataProvider pending live history fetches to bounded two-wide parallel execution with transient retry/backoff, an injectable history-fetch seam, and tests for bounded concurrency, retry, and stale-cache fallback."
@@ -2927,7 +2927,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by adding bounded four-wide parallel summary resolution to YFinance.NET TickerInfoService with internal delegate seams and a behavioral concurrency regression test."
@@ -2960,7 +2960,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by serializing shared RateLimitGuard callers through a private SemaphoreSlim, documenting strict non-reentrant semantics, auditing that no production call sites currently instantiate the guard, and adding concurrent/cancellation/disposal regression coverage."
@@ -2993,7 +2993,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by narrowing ProviderBudgetLedgerService state locking to in-memory mutation/snapshot capture, moving JSON/file persistence outside the state lock, serializing disk writers with a separate save lock, and adding version checks so stale snapshots cannot overwrite newer persisted state."
@@ -3026,7 +3026,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by caching successful YFinance.NET server launch-path resolution per normalized base directory, using OS-appropriate path comparison, invalidating stale cache entries when the binary disappears, and serializing process-manager protocol tests that touch static state."
@@ -3059,7 +3059,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by adding a bounded graph-build cache in StartupCoordinator so unchanged history snapshots reuse existing FloatingGraphViewModel and PointCollection instances, with structured case-insensitive keys, length-prefixed snapshot signatures, LRU trimming, and rebuilds when history/fetch timestamp/bounce settings change."
@@ -3092,7 +3092,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by replacing GlobalMarketsTapeControl static flag Dictionary with ConcurrentDictionary<string, Lazy<ImageSource?>> using ExecutionAndPublication, removing failed null loads from cache for retry, and extending render behavior guard tests for the concurrent lazy pattern."
@@ -3125,7 +3125,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by changing YFinanceServerClient receive-loop envelope verification to per-message handling: corrupt events are warned and skipped; corrupt responses fail only the matching pending request or warn as no-pending if already cancelled; unreadable frames still fail fast. Added corrupt response, corrupt event, and already-cancelled corrupt response regression tests."
@@ -3158,7 +3158,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by tracking accepted YFinance.NET server client handler tasks, removing completed handlers from the tracker, cancelling/stopping on every RunAsync exit path, draining active handlers with a bounded shutdown timeout, logging drain completion/timeout/cancellation/faults, disposing TcpListener explicitly, and deferring shared domain-client disposal only when handlers do not drain before timeout."
@@ -3191,7 +3191,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by adding Wait-UIAutomationCondition polling to Guest-UxDeepExercise.ps1 and replacing fixed config/open/selection/close sleeps with bounded readiness waits. The helper validates timeout/poll inputs and logs condition exceptions through config-window trace events."
@@ -3224,7 +3224,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by replacing remote PowerShell JSON polling in Invoke-VmBuildTest.ps1 with bounded SFTP reads over the existing VM session bundle. The helper validates SFTP prerequisites, retries shared/mid-write reads, returns only parseable JSON, and surfaces persistent SFTP or malformed JSON failures clearly."
@@ -3257,7 +3257,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by parameterizing Guest-UxDeepExercise.ps1 atomic text replacement retries, preserving safe 20x80ms helper defaults, and applying an explicit bounded 3-attempt/50ms summary-write budget at the high-frequency summary callsite. Primary/legacy summary writes are attempted independently; at least one must update, dual failures aggregate both exceptions, and failures are recorded in summary notes/warnings."
@@ -3290,7 +3290,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by adding a lazy cached display-mode provider to Guest-UxDeepExercise.ps1, replacing repeated CIM/native enumeration callsites with Get-CachedDisplayModes, caching only non-empty results, expiring after five minutes, and invalidating the cache after native or Settings-based successful resolution changes."
@@ -3323,7 +3323,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by caching TraceLog circular write position in memory after first index read, eliminating repeated index-file reads for every log line while keeping synchronous index persistence inside the circular-write lock for crash consistency. Added behavioral coverage proving subsequent writes advance from the in-memory cursor even if the on-disk index is tampered."
@@ -3356,7 +3356,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by adding Lazy<string>-backed source text caching to VmHarnessScriptTests, including lazy repo-root discovery and a ConcurrentDictionary keyed by absolute source path. The densest VM harness source-reading fixture now reuses cached contents instead of repeatedly calling File.ReadAllText for the same scripts."
@@ -3389,7 +3389,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by adding a 9-participant Barrier to ProviderBudgetLedgerService_SerializesConcurrentReservationsAndPersistsValidLedger so all eight worker tasks reach the same start gate before TryReserve, forcing true concurrent reservation contention while preserving the single shared timestamp for reuse-interval neutrality."
@@ -3421,7 +3421,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by changing the FinanceNewsServiceTests fake HTTP handler to support asynchronous responders and replacing request-content captures that used ReadAsStringAsync().GetAwaiter().GetResult() with awaited ReadAsStringAsync(cancellationToken). Existing synchronous responders remain supported through a sync constructor wrapper."
@@ -3453,7 +3453,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
-        "Ticket is marked resolved in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-11 by making screensaver launch parsing explicit for /s fullscreen, /p preview with separate or inline decimal/hex HWND values, /c configuration, and /showconfig configuration, with safe configure fallback for unknown arguments."
@@ -3488,7 +3488,7 @@
         "DeepSeek pre-commit code review gate reports no blocking findings for any code changes.",
         "Local build/test validation passes.",
         "Live YFinance.NET validation is run when the change affects Yahoo transport/quote/history behavior and network conditions allow it.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Resolved on 2026-06-12 by comparing synchronized ranaroussi/yfinance and tuklusan/yfinance commit 125b12e058fe37971390e32333d2cf9edb2a8a50 (Version 1.4.1, 2026-05-28) against YFinance.NET responsibilities, documenting the mapping in docs/YFINANCE_NET_UPSTREAM_SYNC_2026-06-12.md, and implementing the applicable active-surface changes: configurable lang/region locale scoping for quote, quoteSummary, chart/history, and market-timing requests; upstream-compatible chart:null fail-soft handling for history and market timing; explicit exceptions for absent or malformed chart nodes; and obsolete no-locale legacy constructor bridges for direct service callers."
@@ -3563,7 +3563,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Harness can run at least: offline-at-start, offline-during-config-validation, offline-during-runtime, high-latency-yfinance, and recovery-after-outage profiles."
       ],
       "resolution": [],
@@ -3597,7 +3597,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Cold offline startup reaches a stable visible scene without unhandled exceptions or dispatcher stalls.",
         "No stale value is represented as fresh."
       ],
@@ -3638,7 +3638,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Config window opens promptly offline and remains closeable/cancelable.",
         "Validation failure state is clear and leaves Validate re-enabled when appropriate."
       ],
@@ -3674,7 +3674,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Validation either succeeds and shows OK/Cancel, or fails and re-enables Validate with actionable status text.",
         "No successful validation path leaves the config window lingering unexpectedly."
       ],
@@ -3706,7 +3706,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Server lifecycle failures produce clear traces and user-visible degradation without crashing the UI.",
         "Owned server exits when the owning UI exits, unless documented otherwise."
       ],
@@ -3751,7 +3751,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Client recovers or degrades predictably after transport break without blocking UI cadence.",
         "Invalid frames/checksums are rejected and traced."
       ],
@@ -3794,7 +3794,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "UI updates remain surgical: at most the affected ticker and corresponding graph-card update per response.",
         "Late responses are handled according to documented ordering/freshness policy."
       ],
@@ -3838,7 +3838,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Failures remain isolated to the affected symbol/card with trace evidence.",
         "Healthy symbols continue one-by-one updates."
       ],
@@ -3883,7 +3883,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Each HTTP failure class is mapped to an intentional retry/backoff/cache/degrade behavior.",
         "Trace records enough detail for support without leaking secrets."
       ],
@@ -3927,7 +3927,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Malformed numeric fields are rejected or displayed with intentional placeholders.",
         "No malformed value causes layout runaway, graph rendering exception, or false flashing."
       ],
@@ -3970,7 +3970,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Stale cache is never labeled fresh.",
         "Expired-cache behavior is documented and consistent across tapes, macros, graph cards, and world markets."
       ],
@@ -4014,7 +4014,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Runtime outage does not freeze the scene or block news/background animations.",
         "Recovery resumes one-by-one cadence without duplicate/batched symbol updates."
       ],
@@ -4061,7 +4061,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "News content fetches off the UI thread and degraded paths keep the scroller alive.",
         "AI failures are traced and fall back to RSS-only or cached text according to documented policy."
       ],
@@ -4104,7 +4104,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Each failed exchange/card degrades independently.",
         "Pinned NYC reuse remains consistent with the top-left status display."
       ],
@@ -4145,7 +4145,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "No image download/decode failure causes a blank scene when a prior good image exists.",
         "TMP cleanup and rescan behavior is traced."
       ],
@@ -4185,7 +4185,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "The app recreates expected Local AppData directories when possible.",
         "Corrupt config/cache files are quarantined or ignored safely with clear trace evidence."
       ],
@@ -4223,7 +4223,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Trace subsystem fails soft and surfaces enough diagnostics when file output is unavailable.",
         "Circular trace recovery after corrupt index/position is proven."
       ],
@@ -4261,7 +4261,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Cancel closes without applying pending config.",
         "Apply performs minimal necessary runtime regeneration without duplicate workers or stale subscriptions."
       ],
@@ -4300,7 +4300,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "All owned child/background processes terminate or are intentionally detached with documentation.",
         "Partial downloads remain TMP and are cleaned on next warm-up."
       ],
@@ -4339,7 +4339,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "UI remains readable and does not enter a blank or frozen state under stress.",
         "Trace identifies whether rendering is hardware or software accelerated when possible."
       ],
@@ -4378,7 +4378,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Market status remains truthful or intentionally blank when timing data is unavailable.",
         "Countdown never shows impossible negative/overflow values."
       ],
@@ -4417,7 +4417,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes for the scenario when it is UI/runtime-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "A single command can run the degraded-mode matrix and produce a summary of pass/fail per injected scenario.",
         "Unexpected findings generate project-native CRs with artifact paths, traces, screenshots, and injection timeline."
       ],
@@ -4470,7 +4470,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "A reference table documents the expected display for every major visible component in healthy/degraded/offline states.",
         "Injected degradation updates the visible state within 2 seconds where practical.",
         "Stale data is never styled identically to fresh/live data."
@@ -4507,7 +4507,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Expected screen-reader output is documented for key degraded states.",
         "High-contrast mode keeps offline/stale/unavailable indicators distinguishable.",
         "Keyboard focus order remains stable and Escape/Cancel paths work during degradation."
@@ -4566,7 +4566,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Screenshots/video show live -> stale -> recovery -> fresh transitions.",
         "The words stale, cached, delayed, offline, or an equivalent explicit indicator are visible when data is not live.",
         "Recovery indication must be noticeable, for example through the persistent freshness/last-updated status visibly returning to live data with distinct text/color; if a future transient recovery notice is added, it must not last longer than 3 seconds or cause batch redraw."
@@ -4603,7 +4603,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Injected symbol failures show consistent placeholder treatment across all applicable components.",
         "Placeholder cards/rows do not resize or shift layout when healthy symbols update.",
         "Tooltip or equivalent detail shows last successful fetch time when available."
@@ -4645,7 +4645,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "Config dialog screenshots show clear, non-technical messages for each injected failure.",
         "Validate/Retry is re-enabled after failure and Cancel closes promptly during slow validation.",
         "Validation progress text fits within current layout without clipping."
@@ -4687,7 +4687,7 @@
         "The UI remains responsive and does not batch-freeze, block the dispatcher, or crash.",
         "Local build/test validation passes when code or harness changes are made.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with concrete run evidence.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with concrete run evidence.",
         "A high-latency harness profile proves controls provide feedback within 500ms of user input.",
         "Cancel/Escape closes dialogs promptly while requests are pending.",
         "No user input is lost or replayed unexpectedly after network recovery."
@@ -4730,7 +4730,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -4763,7 +4763,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -4796,7 +4796,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -4829,7 +4829,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -4862,7 +4862,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -4895,7 +4895,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -4928,7 +4928,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -4961,7 +4961,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -4994,7 +4994,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -5027,7 +5027,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -5065,7 +5065,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -5098,7 +5098,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -5135,7 +5135,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-20 after c70e12a fixed recovery proof instrumentation/analyzer semantics and the latest VM artifact re-analysis passed cleanly. Older duplicate recovery-proof and trace-anomaly entries are superseded by the clean ux-deep-ssh-20260620-182801 re-analysis."
@@ -5183,7 +5183,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-20 after c70e12a fixed recovery proof instrumentation/analyzer semantics and the latest VM artifact re-analysis passed cleanly. Older duplicate recovery-proof and trace-anomaly entries are superseded by the clean ux-deep-ssh-20260620-182801 re-analysis."
@@ -5219,7 +5219,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-20 after c70e12a fixed recovery proof instrumentation/analyzer semantics and the latest VM artifact re-analysis passed cleanly. Older duplicate recovery-proof and trace-anomaly entries are superseded by the clean ux-deep-ssh-20260620-182801 re-analysis."
@@ -5266,7 +5266,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-20 after c70e12a fixed recovery proof instrumentation/analyzer semantics and the latest VM artifact re-analysis passed cleanly. Older duplicate recovery-proof and trace-anomaly entries are superseded by the clean ux-deep-ssh-20260620-182801 re-analysis."
@@ -5302,7 +5302,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-20 after c70e12a fixed recovery proof instrumentation/analyzer semantics and the latest VM artifact re-analysis passed cleanly. Older duplicate recovery-proof and trace-anomaly entries are superseded by the clean ux-deep-ssh-20260620-182801 re-analysis."
@@ -5349,7 +5349,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-20 after c70e12a fixed recovery proof instrumentation/analyzer semantics and the latest VM artifact re-analysis passed cleanly. Older duplicate recovery-proof and trace-anomaly entries are superseded by the clean ux-deep-ssh-20260620-182801 re-analysis."
@@ -5385,7 +5385,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-20 after c70e12a fixed recovery proof instrumentation/analyzer semantics and the latest VM artifact re-analysis passed cleanly. Older duplicate recovery-proof and trace-anomaly entries are superseded by the clean ux-deep-ssh-20260620-182801 re-analysis."
@@ -5432,7 +5432,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-20 after c70e12a fixed recovery proof instrumentation/analyzer semantics and the latest VM artifact re-analysis passed cleanly. Older duplicate recovery-proof and trace-anomaly entries are superseded by the clean ux-deep-ssh-20260620-182801 re-analysis."
@@ -5468,7 +5468,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-20 after c70e12a fixed recovery proof instrumentation/analyzer semantics and the latest VM artifact re-analysis passed cleanly. Older duplicate recovery-proof and trace-anomaly entries are superseded by the clean ux-deep-ssh-20260620-182801 re-analysis."
@@ -5515,7 +5515,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-20 after c70e12a fixed recovery proof instrumentation/analyzer semantics and the latest VM artifact re-analysis passed cleanly. Older duplicate recovery-proof and trace-anomaly entries are superseded by the clean ux-deep-ssh-20260620-182801 re-analysis."
@@ -5551,7 +5551,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-20 after c70e12a fixed recovery proof instrumentation/analyzer semantics and the latest VM artifact re-analysis passed cleanly. Older duplicate recovery-proof and trace-anomaly entries are superseded by the clean ux-deep-ssh-20260620-182801 re-analysis."
@@ -5639,7 +5639,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-20 after c70e12a fixed recovery proof instrumentation/analyzer semantics and the latest VM artifact re-analysis passed cleanly. Older duplicate recovery-proof and trace-anomaly entries are superseded by the clean ux-deep-ssh-20260620-182801 re-analysis."
@@ -5703,7 +5703,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-20 by commit 8016322. Intentional cancellation of in-flight quote requests during config/open shutdown is now logged as QuoteRequestCanceled info instead of QuoteRequestFailed warning. Local focused provider tests and VM run ux-deep-ssh-20260620-202400 deterministic analysis found zero analyzer findings."
@@ -5811,7 +5811,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-21 by commit 9915b77. The graph-card sustained-flash regression was fixed by reconciling FloatingGraphControl sustained animation state when DataContext changes and preserving RawLastValue, QuoteUpdateToken, FlashBrush, IsRefreshTravelFlashActive, and RefreshTravelFlashStartedUtc across graph view-model replacement. This prevents unchanged raw prices from being treated as fresh updates after graph rebuilds while preserving the established gain/loss travel semantics."
@@ -5845,7 +5845,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-21 by commits 9b78a0f, c9ed848, cb4c257, and 1e91f26. The full-suite VM trace-log blockers were fixed by making TraceLogTests deterministic under the static circular trace cache and by retrying transient IOException cleanup locks in NB-040 environment/appdata tests."
@@ -5880,7 +5880,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed on 2026-06-21 by commit 267356d. The VM UX capture-loop starvation was resolved by rewriting Guest-UxDeepExercise.ps1 circular trace tail reads to read only the requested tail window around the circular write cursor instead of loading/reordering the full 32 MB trace file on every runtime freshness sample. VmHarnessScriptTests now guard against reintroducing the whole-file tail read."
@@ -5919,7 +5919,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -5953,7 +5953,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -5989,7 +5989,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -6018,7 +6018,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Closed by adding per-screenshot capture-time provenance to the VM guest harness. Each successful Capture-Screen call now appends a JSONL record containing CapturedAt with local UTC offset, absolute path, file name, and byte length to screen-captures.jsonl while preserving existing screenshot filenames."
@@ -6061,7 +6061,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
       "validation": []
@@ -6091,7 +6091,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code or build outputs.",
         "Distribution/publish output is checked when the change affects packaged artifacts.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Added repository-wide legal header coverage for supported source and documentation formats, preserving parseability for formats that cannot accept comments.",
@@ -6127,7 +6127,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code or build outputs.",
         "Distribution/publish output is checked when the change affects packaged artifacts.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Changed project copyright wording from ambiguous All rights reserved language to Proprietary rights reserved except as expressly licensed herein.",
@@ -6165,7 +6165,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code or build outputs.",
         "Distribution/publish output is checked when the change affects packaged artifacts.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Installed Inno Setup 6.7.3 locally and added build/installer/DoNotPanicPortfolioVisualizer.iss as the primary elevated Program Files installer.",
@@ -6203,7 +6203,7 @@
         "Publish validation scripts consistently choose safe output paths that avoid MSBuild transform quoting hazards.",
         "Build documentation explains why publish proof should avoid apostrophe-containing directories.",
         "A local publish proof demonstrates the selected safe path behavior.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Hardened build/publish-safe-temp.ps1 so the temp workspace carries Directory.Build.targets plus LICENSE, THIRD-PARTY-NOTICES.md, and THIRD-PARTY-LICENSES, keeping safe-temp publish behavior aligned with normal executable distribution output.",
@@ -6237,7 +6237,7 @@
         "Automated install/uninstall validation asserts expected shortcut absence after uninstall.",
         "DeepSeek code review gate reports no blocking findings for code/test changes.",
         "A VM or equivalent Windows install/uninstall proof passes with no shortcut breadcrumbs left behind.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Changed build/installer/DoNotPanicPortfolioVisualizer.iss so the desktopicon task is selected by default, making the Public Desktop shortcut a standard installer artifact alongside the Start Menu group shortcuts.",
@@ -6275,7 +6275,7 @@
         "Automated or scripted image inspection verifies alpha/background transparency.",
         "A VM screenshot or visual artifact confirms the icon no longer shows a rectangular/matte background.",
         "DeepSeek code review gate reports no blocking findings for code/resource changes.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Repaired src/PortfolioSaver.Shared/Assets/Branding/dnppv-icon-rev-3.png by replacing the edge-connected opaque white/matte background with transparent alpha while preserving the circular badge artwork.",
@@ -6311,7 +6311,7 @@
         "Root LICENSE remains the controlling full license text and is not duplicated inconsistently across files.",
         "Local tests or static validation prove no stale header wording remains in tracked source/supporting artifacts outside approved third-party/license text.",
         "DeepSeek code review reports no blocking findings for the header/license changes.",
-        "Ticket is marked closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [
         "Added CR-135 and completed a tracked-file header sweep for source, test, build, documentation, project, XAML, PowerShell, installer, sandbox, and supporting artifacts.",
@@ -7740,7 +7740,7 @@
         "The duplicate-instance path does not start duplicate background workers, duplicate UI update loops, duplicate YFinance.NET server processes, or leave any extra process running after exit.",
         "Local tests or a harness test prove the first instance remains active while the second launch exits through the duplicate-instance path.",
         "VM validation proves the user-visible popup/exit behavior when launched against an already-running installed desktop app.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with implementation and validation evidence."
       ],
       "closure_evidence": [
         "Desktop App.xaml.cs contains Local\\DoNotPanicPortfolioVisualizer.Desktop single-instance mutex acquisition before full startup and releases/disposes ownership on exit.",
@@ -7773,7 +7773,7 @@
         "The config UI label/value presentation cannot show or persist a selectable 5-minute headline refresh value.",
         "Automated tests cover the 10-minute minimum and 15-minute default behavior where practical.",
         "VM or harness validation captures/proves the config screen exposes the updated minimum/default behavior.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with implementation and validation evidence."
       ],
       "closure_evidence": [
         "Settings MainWindow.xaml NewsRefreshSlider Minimum is 10, Defaults.MinNewsRefreshMinutes is 10, and default NewsRefreshMinutes remains 15.",
@@ -7807,7 +7807,7 @@
         "Existing user-customized AI endpoint URL or model ID values are preserved during normal load/save and upgrade flows unless the user explicitly resets to defaults.",
         "Automated tests or harness checks prove default creation/load behavior for endpoint URL and model ID.",
         "VM or config harness validation proves the Config screen exposes the requested default values on a fresh/default configuration.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with implementation and validation evidence."
       ],
       "closure_evidence": [
         "Defaults.DefaultDeepSeekEndpointUrl is https://openrouter.ai/api/v1 and Defaults.DefaultDeepSeekModelId is openrouter/free.",
@@ -7842,7 +7842,7 @@
         "Help text is readable within the available balloon/tool-tip area and does not overlap or obscure critical controls for normal use.",
         "Automated tests or config harness checks verify that help text strings are present for all question-mark icons where practical.",
         "VM or config harness validation captures/proves the help bubble behavior for at least representative General, Advanced, and News Scroller help icons.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with implementation and validation evidence."
       ],
       "closure_evidence": [
         "Settings MainWindow.xaml help badges now have user-facing ToolTip text for Background, Portfolio tapes, Advanced News Settings, and News Scroller.",
@@ -7881,7 +7881,7 @@
         "Existing installed/user-customized AI settings are not silently overwritten during upgrade unless the user explicitly provides new installer values or chooses the installer setup option.",
         "Automated installer-script or harness tests cover default values, blank/skip behavior, all-or-none validation failures, and successful persistence.",
         "VM installer validation proves the final-screen AI setup section is visible, accepts valid values, rejects partial values, and leaves the installed app/config app reading the expected settings.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with implementation and validation evidence."
       ],
       "closure_evidence": [
         "build/installer/DoNotPanicPortfolioVisualizer.iss includes an Optional AI News Setup wizard page after task selection.",
@@ -7919,7 +7919,7 @@
         "If no API key is configured or AI-summarized financial news is disabled, startup does not perform the AI access check and continues through the existing RSS/no-AI path.",
         "Automated tests cover success, failure, no-key, disabled-AI, timeout, and no-key-leak trace behavior where practical.",
         "VM or harness validation proves a bad configured AI key/endpoint produces the warning and RSS fallback while the app remains usable.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with implementation and validation evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with implementation and validation evidence."
       ],
       "closure_evidence": [
         "Desktop App.xaml.cs performs a non-modal bounded startup AI access probe when summarized news and an API key are configured.",
@@ -7955,7 +7955,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "closure_evidence": [
         "OpenRouter endpoint/model defaults, OPENROUTER_AI_API_KEY and OPENROUTER_API_KEY environment fallback, Bearer auth, OpenRouter attribution headers, and /chat/completions routing are implemented in Defaults, AppSettingsNormalizer, FinanceNewsService, and AiNewsAccessValidationService.",
@@ -7992,7 +7992,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "closure_evidence": [
         "FinanceNewsService defaults OpenRouter free traffic to provider sort=latency and tries a structured free model candidate before openrouter/free when the default OpenRouter model is configured.",
@@ -8101,7 +8101,7 @@
         "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": "fixed",
       "closed_date": "2026-07-01"
@@ -8140,7 +8140,7 @@
         "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": "fixed",
       "closed_date": "2026-07-01"
@@ -8175,7 +8175,7 @@
         "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": "fixed",
       "closed_date": "2026-07-01"
@@ -8275,7 +8275,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ]
     },
     {
@@ -8302,7 +8302,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ]
     },
     {
@@ -8335,7 +8335,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "closed_at_utc": "2026-07-01T12:52:05.8462062Z"
     },
@@ -8372,7 +8372,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "closed_at_utc": "2026-07-01T12:52:05.9020793Z"
     },
@@ -8408,7 +8408,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "closed_at_utc": "2026-07-01T12:52:05.911246Z"
     },
@@ -8444,7 +8444,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "closed_at_utc": "2026-07-01T12:52:05.9161606Z"
     },
@@ -8478,7 +8478,7 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/BETA6_AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "closed_at_utc": "2026-07-01T13:41:33.1803296Z"
     },
@@ -8829,7 +8829,7 @@
       ],
       "validation": [
         "Focused local validation passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter VirusTotalReleaseReportScriptTests; Passed 5/5.",
-        "docs/BETA6_AUDIT_STATE.json parsed successfully after CR insertion.",
+        "docs/AUDIT_STATE.json parsed successfully after CR insertion.",
         "git diff --check passed with no whitespace errors.",
         "DeepSeek code-review gate passed on 2026-07-01 with no actionable findings."
       ]

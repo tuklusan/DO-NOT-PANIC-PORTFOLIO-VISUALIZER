@@ -42,6 +42,33 @@ public sealed class ConfigTextConsistencyTests
     }
 
     [Fact]
+    public void AuditStateAndSupportScripts_UseReleaseNeutralCanonicalState()
+    {
+        string repoRoot = GetRepoRoot();
+        string auditPath = Path.Combine(repoRoot, "docs", "AUDIT_STATE.json");
+        string readmeText = File.ReadAllText(Path.Combine(repoRoot, "README.md"));
+        string addCrScript = File.ReadAllText(Path.Combine(repoRoot, "build", "validation", "Add-AuditChangeRequest.ps1"));
+        string sandboxScript = File.ReadAllText(Path.Combine(repoRoot, "build", "sandbox", "Run-PortfolioSaverSandboxUiValidation.ps1"));
+        string vmRunbook = File.ReadAllText(Path.Combine(repoRoot, "build", "vm", "VM_OPERATIONS_RUNBOOK.md"));
+        string auditText = File.ReadAllText(auditPath);
+
+        Assert.True(File.Exists(auditPath));
+        Assert.False(File.Exists(Path.Combine(repoRoot, "docs", "BETA6_AUDIT_STATE.json")));
+        Assert.Contains("\"title\": \"Release 1.0 Audit State\"", auditText, StringComparison.Ordinal);
+        Assert.Contains("\"current_lane\": \"1.0\"", auditText, StringComparison.Ordinal);
+        Assert.Contains("\"semantic_version_lane\": \"1.0.0\"", auditText, StringComparison.Ordinal);
+        Assert.Contains("\"current_baseline_label\": \"1.0\"", auditText, StringComparison.Ordinal);
+        Assert.Contains("docs/AUDIT_STATE.json", readmeText, StringComparison.Ordinal);
+        Assert.DoesNotContain("BETA6_AUDIT_STATE.json", readmeText, StringComparison.Ordinal);
+        Assert.Contains("docs\\AUDIT_STATE.json", addCrScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("BETA6_AUDIT_STATE.json", addCrScript, StringComparison.Ordinal);
+        Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER Config - 1.0", sandboxScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("Config - BETA-1", sandboxScript, StringComparison.Ordinal);
+        Assert.Contains("current product line", vmRunbook, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Beta 5.6 remote-validation architecture", vmRunbook, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AboutDocument_ContainsRelease10PublisherAuthorAndLicense()
     {
         string aboutText = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Content", "about.txt"));

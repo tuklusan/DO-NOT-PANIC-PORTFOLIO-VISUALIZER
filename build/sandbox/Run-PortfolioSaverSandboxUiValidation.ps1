@@ -670,7 +670,7 @@ function Exercise-ConfigWindow {
 
     [void](Resize-ProcessWindow -Process $Process -Width 1200 -Height 760)
 
-    $windowElement = Get-WindowAutomationElement -WindowTitle "Portfolio Screensaver Config - BETA-1"
+    $windowElement = Get-WindowAutomationElement -WindowTitle "DO NOT PANIC PORTFOLIO VISUALIZER Config - 1.0"
     if ($windowElement -ne $null) {
         $firstTicker = Find-EditElementByValue -WindowElement $windowElement -CurrentValue "AAPL"
         if ($firstTicker -ne $null) {
