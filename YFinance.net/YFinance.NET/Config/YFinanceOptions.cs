@@ -25,6 +25,7 @@ public sealed class YFinanceOptions
     public Uri Query1BaseUri { get; init; } = new("https://query1.finance.yahoo.com");
     public Uri Query2BaseUri { get; init; } = new("https://query2.finance.yahoo.com");
     public TimeSpan SessionTtl { get; init; } = TimeSpan.FromMinutes(45);
+    public TimeSpan HttpTimeout { get; init; } = TimeSpan.FromSeconds(30);
     public TimeSpan MinimumRequestSpacing { get; init; } = TimeSpan.FromSeconds(1);
     public int MaxRetries { get; init; } = 3;
     public TimeSpan DefaultCacheTtl { get; init; } = TimeSpan.FromMinutes(10);

@@ -26,10 +26,15 @@ public static class YFinanceRuntimeClientFactory
 {
     private static readonly object Sync = new();
     private static readonly SemaphoreSlim HelloGate = new(1, 1);
+    // The protocol client owns one TCP stream with async pipelining internally,
+    // but the runtime facade deliberately serializes access to the shared client.
+    // This trades throughput for deterministic UI cadence and avoids corrupting
+    // connection state during reconnect/retirement paths. Revisit only if the
+    // facade moves to a tested client pool.
+    private static readonly SemaphoreSlim SharedClientOperationGate = new(1, 1);
     private static long _operationSequence;
-    private static YFinanceServerClient? _sharedClient;
-    private static readonly List<YFinanceServerClient> RetiredClients = [];
-    private static int _activeClientOperations;
+    private static SharedClientEntry? _sharedClient;
+    private static readonly List<SharedClientEntry> RetiredClients = [];
     private static bool _helloCompleted;
     private static bool _serverReadyEnsured;
     private static readonly AsyncLocal<int> ServerStartupSuppressedForTests = new();
@@ -63,19 +68,21 @@ public static class YFinanceRuntimeClientFactory
                 true,
                 Environment.ProcessId);
             TraceLog.InfoState("YFinanceUiBridge", "ServerHelloStart", [new("client_type", clientType), new("client_version", clientVersion)]);
-            YFinanceServerClient client = RentSharedClient();
+            await SharedClientOperationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            SharedClientLease lease = RentSharedClient();
             try
             {
-                await client.ConnectAsync(hello, cancellationToken).ConfigureAwait(false);
+                await lease.Client.ConnectAsync(hello, cancellationToken).ConfigureAwait(false);
             }
             catch
             {
-                RetireConnectionState(client);
+                RetireConnectionState(lease.Entry);
                 throw;
             }
             finally
             {
-                ReleaseSharedClientOperation();
+                ReleaseSharedClientOperation(lease.Entry);
+                SharedClientOperationGate.Release();
             }
 
             _helloCompleted = true;
@@ -97,19 +104,21 @@ public static class YFinanceRuntimeClientFactory
         {
             await EnsureServerReadyAsync("PortfolioSaver.Runtime", PortfolioVersion.Version, cancellationToken).ConfigureAwait(false);
             TraceLog.InfoState("YFinanceRuntimeClientFactory", "ClientOperationStart", [new("lane", lane), new("operation_id", operationId)]);
-            YFinanceServerClient client = RentSharedClient();
+            await SharedClientOperationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            SharedClientLease lease = RentSharedClient();
             try
             {
-                return await action(client, cancellationToken).ConfigureAwait(false);
+                return await action(lease.Client, cancellationToken).ConfigureAwait(false);
             }
             catch
             {
-                RetireConnectionState(client);
+                RetireConnectionState(lease.Entry);
                 throw;
             }
             finally
             {
-                ReleaseSharedClientOperation();
+                ReleaseSharedClientOperation(lease.Entry);
+                SharedClientOperationGate.Release();
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -143,6 +152,11 @@ public static class YFinanceRuntimeClientFactory
     /// Forces a full shared-client reset after sustained runtime quote failures.
     /// This is intentionally limited to product assemblies that own recovery policy.
     /// </summary>
+    /// <remarks>
+    /// This method is safe while an operation is in flight because reset only
+    /// retires the current shared entry; disposal is deferred until the active
+    /// lease is released. New work is serialized through <see cref="RunAsync{T}(string, Func{YFinanceServerClient, CancellationToken, Task{T}}, CancellationToken)"/>.
+    /// </remarks>
     [EditorBrowsable(EditorBrowsableState.Never)]
     internal static void ResetConnectionStateForRecovery(string reason)
     {
@@ -167,13 +181,13 @@ public static class YFinanceRuntimeClientFactory
         return Convert.ToHexString(hash)[..32];
     }
 
-    private static YFinanceServerClient RentSharedClient()
+    private static SharedClientLease RentSharedClient()
     {
         lock (Sync)
         {
-            _sharedClient ??= CreateClient();
-            _activeClientOperations++;
-            return _sharedClient;
+            _sharedClient ??= new SharedClientEntry(CreateClient());
+            _sharedClient.ActiveOperations++;
+            return new SharedClientLease(_sharedClient.Client, _sharedClient);
         }
     }
 
@@ -184,39 +198,43 @@ public static class YFinanceRuntimeClientFactory
             TimeSpan.FromSeconds(5),
             PortfolioSaverYFinanceServerClientTraceSink.Instance));
 
-    private static void RetireConnectionState(YFinanceServerClient failedClient)
+    private static void RetireConnectionState(SharedClientEntry failedEntry)
     {
         List<YFinanceServerClient> disposeNow = [];
         lock (Sync)
         {
-            if (ReferenceEquals(_sharedClient, failedClient))
+            if (ReferenceEquals(_sharedClient, failedEntry))
             {
                 _sharedClient = null;
                 _helloCompleted = false;
                 _serverReadyEnsured = false;
             }
 
-            if (_activeClientOperations == 0)
-                disposeNow.Add(failedClient);
-            else if (!RetiredClients.Any(client => ReferenceEquals(client, failedClient)))
-                RetiredClients.Add(failedClient);
+            failedEntry.Retired = true;
+            if (failedEntry.ActiveOperations == 0)
+            {
+                RetiredClients.Remove(failedEntry);
+                disposeNow.Add(failedEntry.Client);
+            }
+            else if (!RetiredClients.Contains(failedEntry))
+                RetiredClients.Add(failedEntry);
         }
 
         DisposeClients(disposeNow);
     }
 
-    private static void ReleaseSharedClientOperation()
+    private static void ReleaseSharedClientOperation(SharedClientEntry entry)
     {
         List<YFinanceServerClient> disposeNow = [];
         lock (Sync)
         {
-            if (_activeClientOperations > 0)
-                _activeClientOperations--;
+            if (entry.ActiveOperations > 0)
+                entry.ActiveOperations--;
 
-            if (_activeClientOperations == 0 && RetiredClients.Count > 0)
+            if (entry.ActiveOperations == 0 && entry.Retired)
             {
-                disposeNow.AddRange(RetiredClients);
-                RetiredClients.Clear();
+                RetiredClients.Remove(entry);
+                disposeNow.Add(entry.Client);
             }
         }
 
@@ -225,7 +243,7 @@ public static class YFinanceRuntimeClientFactory
 
     private static void ResetConnectionState()
     {
-        YFinanceServerClient? sharedClient;
+        SharedClientEntry? sharedClient;
         lock (Sync)
         {
             sharedClient = _sharedClient;
@@ -234,6 +252,9 @@ public static class YFinanceRuntimeClientFactory
             _serverReadyEnsured = false;
         }
 
+        // Reset may be requested while an operation holds a lease. Retiring the
+        // entry marks it unusable for future work, but disposal is deferred until
+        // ReleaseSharedClientOperation observes that the active lease is gone.
         if (sharedClient is not null)
             RetireConnectionState(sharedClient);
     }
@@ -262,4 +283,13 @@ public static class YFinanceRuntimeClientFactory
                 ServerStartupSuppressedForTests.Value--;
         }
     }
+
+    private sealed class SharedClientEntry(YFinanceServerClient client)
+    {
+        public YFinanceServerClient Client { get; } = client;
+        public int ActiveOperations { get; set; }
+        public bool Retired { get; set; }
+    }
+
+    private readonly record struct SharedClientLease(YFinanceServerClient Client, SharedClientEntry Entry);
 }

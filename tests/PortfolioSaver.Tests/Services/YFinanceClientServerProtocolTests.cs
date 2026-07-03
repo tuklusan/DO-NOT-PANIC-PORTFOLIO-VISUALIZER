@@ -161,6 +161,17 @@ public sealed class YFinanceClientServerProtocolTests
 
         Assert.Equal(IPAddress.Loopback, options.BindAddress);
         Assert.True(options.EnableUpstreamSyncCheck);
+        Assert.Equal(8, options.MaxConcurrentRequestsPerClient);
+    }
+
+    [Fact]
+    public void ServerOptions_CanConfigurePerClientRequestLimit()
+    {
+        ServerOptions options = ServerOptions.Parse(["--max-requests-per-client", "3"]);
+        ServerOptions clamped = ServerOptions.Parse(["--max-requests-per-client", "0"]);
+
+        Assert.Equal(3, options.MaxConcurrentRequestsPerClient);
+        Assert.Equal(1, clamped.MaxConcurrentRequestsPerClient);
     }
 
     [Fact]

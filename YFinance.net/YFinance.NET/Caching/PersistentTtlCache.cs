@@ -37,7 +37,13 @@ public sealed class PersistentTtlCache<TValue>
             return default;
         }
 
-        await using FileStream stream = File.OpenRead(path);
+        await using FileStream stream = new(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 4096,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
         CacheEnvelope<TValue>? envelope = await JsonSerializer.DeserializeAsync<CacheEnvelope<TValue>>(stream, _serializerOptions, cancellationToken).ConfigureAwait(false);
         if (envelope is null || envelope.ExpiresUtc <= DateTimeOffset.UtcNow)
         {
@@ -53,7 +59,13 @@ public sealed class PersistentTtlCache<TValue>
         string path = GetPath(key);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         CacheEnvelope<TValue> envelope = new(value, DateTimeOffset.UtcNow.Add(ttl));
-        await using FileStream stream = File.Create(path);
+        await using FileStream stream = new(
+            path,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 4096,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
         await JsonSerializer.SerializeAsync(stream, envelope, _serializerOptions, cancellationToken).ConfigureAwait(false);
     }
 

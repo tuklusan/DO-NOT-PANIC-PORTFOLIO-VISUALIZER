@@ -63,6 +63,7 @@ public sealed class Nb040BehaviorTests
             Assert.Equal(TimeSpan.FromMinutes(10), options.DefaultCacheTtl);
             Assert.Equal(TimeSpan.FromMinutes(10), options.SummaryCacheTtl);
             Assert.Equal(TimeSpan.FromMinutes(10), options.PersistentMetadataCacheTtl);
+            Assert.Equal(TimeSpan.FromSeconds(30), options.HttpTimeout);
             Assert.Equal("en-US", options.Language);
             Assert.Equal("US", options.Region);
             Assert.Equal(
@@ -369,7 +370,7 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
-    public async Task YFinanceRuntimeClientFactory_AllowsConcurrentClientWork()
+    public async Task YFinanceRuntimeClientFactory_SerializesSharedClientWork()
     {
         // This test verifies factory scheduling only; the client argument is intentionally unused.
         using IDisposable serverBypass = YFinanceRuntimeClientFactory.SuppressServerStartupForTests();
@@ -400,38 +401,31 @@ public sealed class Nb040BehaviorTests
 
         int[] results = await Task.WhenAll(first, second);
 
-        Assert.Equal(new[] { 1, 2 }, results);
-        Assert.True(maxConcurrent >= 2, $"Expected concurrent client work, observed max concurrency {maxConcurrent}.");
+        Assert.Equal([1, 2], results.Order());
+        Assert.Equal(1, maxConcurrent);
         Assert.Equal(0, concurrent);
     }
 
     [Fact]
-    public async Task YFinanceRuntimeClientFactory_DoesNotDisposeSharedClientWhileConcurrentOperationUsesIt()
+    public async Task YFinanceRuntimeClientFactory_FailedOperationRetiresClientAndAllowsFollowUp()
     {
         using IDisposable serverBypass = YFinanceRuntimeClientFactory.SuppressServerStartupForTests();
-        TaskCompletionSource<YFinanceServerClient> survivorClientSeen = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        TaskCompletionSource failureObserved = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        Task<int> survivor = YFinanceRuntimeClientFactory.RunSerializedAsync(
-            "test-survivor",
-            async (client, token) =>
-            {
-                survivorClientSeen.SetResult(client);
-                await failureObserved.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
-                AssertYFinanceClientNotDisposed(client);
-                return 1;
-            });
-
-        await survivorClientSeen.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         Task<int> failing = YFinanceRuntimeClientFactory.RunSerializedAsync<int>(
             "test-failure",
             (_, _) => Task.FromException<int>(new InvalidOperationException("forced failure")));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => failing);
-        failureObserved.SetResult();
 
-        Assert.Equal(1, await survivor);
+        int followUp = await YFinanceRuntimeClientFactory.RunSerializedAsync(
+            "test-follow-up",
+            (client, _) =>
+            {
+                AssertYFinanceClientNotDisposed(client);
+                return Task.FromResult(1);
+            });
+
+        Assert.Equal(1, followUp);
     }
 
     [Fact]

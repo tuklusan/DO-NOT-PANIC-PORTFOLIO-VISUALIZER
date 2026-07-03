@@ -69,7 +69,7 @@ internal static class YFinanceServerProgram
         AppDomain.CurrentDomain.ProcessExit += processExitHandler;
 
         YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ServerStartup",
-        [new("port", options.Port), new("bind_address", options.BindAddress.ToString()), new("owned_mode", options.OwnedMode), new("owner_pid", options.OwnerProcessId), new("max_clients", options.MaxConcurrentClients), new("upstream_sync_check_enabled", options.EnableUpstreamSyncCheck)]);
+        [new("port", options.Port), new("bind_address", options.BindAddress.ToString()), new("owned_mode", options.OwnedMode), new("owner_pid", options.OwnerProcessId), new("max_clients", options.MaxConcurrentClients), new("max_requests_per_client", options.MaxConcurrentRequestsPerClient), new("upstream_sync_check_enabled", options.EnableUpstreamSyncCheck)]);
 
         try
         {
@@ -366,6 +366,7 @@ internal static class YFinanceServerProgram
         YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ClientConnected", [new("remote", remote)]);
         await using NetworkStream stream = tcpClient.GetStream();
         using SemaphoreSlim writeGate = new(1, 1);
+        using SemaphoreSlim requestGate = new(options.MaxConcurrentRequestsPerClient, options.MaxConcurrentRequestsPerClient);
         List<Task> inFlight = [];
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -387,8 +388,16 @@ internal static class YFinanceServerProgram
             YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "RequestReceived", [new("remote", remote), new("request_id", request.RequestId), new("operation", request.Operation), new("timestamp", request.Timestamp), new("payload_checksum", request.PayloadChecksum)]);
             Task requestTask = Task.Run(async () =>
             {
-                object response = await DispatchAsync(request, client, options, startedUtc, getActiveConnections, cancellationToken).ConfigureAwait(false);
-                await WriteResponseAsync(stream, writeGate, response, remote, request, cancellationToken).ConfigureAwait(false);
+                await requestGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    object response = await DispatchAsync(request, client, options, startedUtc, getActiveConnections, cancellationToken).ConfigureAwait(false);
+                    await WriteResponseAsync(stream, writeGate, response, remote, request, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    requestGate.Release();
+                }
             }, cancellationToken);
             inFlight.Add(requestTask);
             if (string.Equals(request.Operation, ProtocolOperations.Goodbye, StringComparison.Ordinal))

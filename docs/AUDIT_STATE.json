@@ -8999,17 +8999,20 @@
       "priority": 1,
       "area": "Multithreading / data corruption",
       "title": "Fix shared-client concurrency hazard in YFinanceRuntimeClientFactory",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Critical",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: `RentSharedClient()` returns the same singleton without exclusive lock; multiple concurrent callers can corrupt protocol connection state.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Implemented P1 YFinance runtime/server/cache hardening slice: serialized shared YFinanceServerClient access; reference-safe retired client disposal; per-client server request throttling; serialized Yahoo consent handling; explicit Yahoo HttpClient timeout; asynchronous PersistentTtlCache file streams.",
+        "Updated behavioral tests for serialized shared-client scheduling and new server/YFinance options."
       ],
       "notes": [
         "Recommendation: Introduce a `SemaphoreSlim` to serialize all operations through the shared client or use a dedicated `Channel`.",
         "Acceptance criteria: All concurrent calls to `RunAsync`/`RunSerializedAsync` are serialized; no data races in protocol state; existing integration tests pass.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Validation passed locally for focused YFinance runtime/server protocol/cache tests."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -9018,6 +9021,10 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "closed_at": "2026-07-03",
+      "validation": [
+        "dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --no-restore --filter \"FullyQualifiedName~Nb040BehaviorTests|FullyQualifiedName~YFinanceClientServerProtocolTests\""
       ]
     },
     {
@@ -9026,17 +9033,20 @@
       "priority": 1,
       "area": "Resource leak / memory",
       "title": "Eliminate shared-client reference leak and retirement race",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "High",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: `RetireConnectionState()` sets `_sharedClient = null` without tracking outstanding operations; old clients are never disposed and can be leaked.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Implemented P1 YFinance runtime/server/cache hardening slice: serialized shared YFinanceServerClient access; reference-safe retired client disposal; per-client server request throttling; serialized Yahoo consent handling; explicit Yahoo HttpClient timeout; asynchronous PersistentTtlCache file streams.",
+        "Updated behavioral tests for serialized shared-client scheduling and new server/YFinance options."
       ],
       "notes": [
         "Recommendation: Replace hand-rolled reference counting with a `ConcurrentDictionary<YFinanceServerClient, int>` or create a new client per operation (pooled).",
         "Acceptance criteria: After a fault, all references to the old client are released and it is disposed exactly once; no client resource leak after 1000 simulated faults.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Validation passed locally for focused YFinance runtime/server protocol/cache tests."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -9045,6 +9055,10 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "closed_at": "2026-07-03",
+      "validation": [
+        "dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --no-restore --filter \"FullyQualifiedName~Nb040BehaviorTests|FullyQualifiedName~YFinanceClientServerProtocolTests\""
       ]
     },
     {
@@ -9053,17 +9067,20 @@
       "priority": 1,
       "area": "Server concurrency / thread-pool starvation",
       "title": "Add per-client request concurrency throttling in YFinanceServer",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "High",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: `HandleClientAsync` launches requests with `Task.Run` without any limit; a single client can exhaust thread pool.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Implemented P1 YFinance runtime/server/cache hardening slice: serialized shared YFinanceServerClient access; reference-safe retired client disposal; per-client server request throttling; serialized Yahoo consent handling; explicit Yahoo HttpClient timeout; asynchronous PersistentTtlCache file streams.",
+        "Updated behavioral tests for serialized shared-client scheduling and new server/YFinance options."
       ],
       "notes": [
         "Recommendation: Add a per-client `SemaphoreSlim` (e.g., max concurrency = 8) inside `HandleClientAsync`.",
         "Acceptance criteria: When a client sends >8 concurrent requests, additional requests are queued; under a 100-request burst the server CPU usage stays below 80%; other clients are not starved.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Validation passed locally for focused YFinance runtime/server protocol/cache tests."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -9072,6 +9089,10 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "closed_at": "2026-07-03",
+      "validation": [
+        "dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --no-restore --filter \"FullyQualifiedName~Nb040BehaviorTests|FullyQualifiedName~YFinanceClientServerProtocolTests\""
       ]
     },
     {
@@ -9080,17 +9101,20 @@
       "priority": 1,
       "area": "Concurrency / cookie corruption",
       "title": "Fix concurrent consent handling without synchronization in YahooSessionManager",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "High",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: `SendAsync` and `SendSimpleGetAsync` both call `AcceptConsentFormAsync` without a lock; `HttpClient` and `CookieContainer` are not thread-safe for modifications.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Implemented P1 YFinance runtime/server/cache hardening slice: serialized shared YFinanceServerClient access; reference-safe retired client disposal; per-client server request throttling; serialized Yahoo consent handling; explicit Yahoo HttpClient timeout; asynchronous PersistentTtlCache file streams.",
+        "Updated behavioral tests for serialized shared-client scheduling and new server/YFinance options."
       ],
       "notes": [
         "Recommendation: Serialize consent acceptance using the existing `_refreshLock` or a dedicated `SemaphoreSlim`.",
         "Acceptance criteria: When two threads simultaneously trigger a consent redirect, only one consent POST is sent and cookie state remains consistent; no `AccessViolationException` observed.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Validation passed locally for focused YFinance runtime/server protocol/cache tests."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -9099,6 +9123,10 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "closed_at": "2026-07-03",
+      "validation": [
+        "dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --no-restore --filter \"FullyQualifiedName~Nb040BehaviorTests|FullyQualifiedName~YFinanceClientServerProtocolTests\""
       ]
     },
     {
@@ -9134,17 +9162,20 @@
       "priority": 1,
       "area": "Network / UI freeze",
       "title": "Set explicit HttpClient timeout in YahooSessionManager to prevent indefinite hang",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "High",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: `_httpClient` created without custom `Timeout` (default 100 s); a slow response can freeze the UI if awaited on dispatcher thread.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Implemented P1 YFinance runtime/server/cache hardening slice: serialized shared YFinanceServerClient access; reference-safe retired client disposal; per-client server request throttling; serialized Yahoo consent handling; explicit Yahoo HttpClient timeout; asynchronous PersistentTtlCache file streams.",
+        "Updated behavioral tests for serialized shared-client scheduling and new server/YFinance options."
       ],
       "notes": [
         "Recommendation: Apply a configurable timeout (e.g., 30 s) via `_options.HttpTimeout`.",
         "Acceptance criteria: When the Yahoo endpoint stalls beyond the timeout, the HTTP call is cancelled and the application remains responsive; the timeout is user-configurable.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Validation passed locally for focused YFinance runtime/server protocol/cache tests."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -9153,6 +9184,10 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "closed_at": "2026-07-03",
+      "validation": [
+        "dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --no-restore --filter \"FullyQualifiedName~Nb040BehaviorTests|FullyQualifiedName~YFinanceClientServerProtocolTests\""
       ]
     },
     {
@@ -9161,17 +9196,20 @@
       "priority": 1,
       "area": "Thread-pool / scalability",
       "title": "Convert PersistentTtlCache file I/O to async to avoid thread-pool starvation",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "High",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: `GetAsync` and `SetAsync` use synchronous `File.OpenRead`/`File.Create` on thread-pool threads.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Implemented P1 YFinance runtime/server/cache hardening slice: serialized shared YFinanceServerClient access; reference-safe retired client disposal; per-client server request throttling; serialized Yahoo consent handling; explicit Yahoo HttpClient timeout; asynchronous PersistentTtlCache file streams.",
+        "Updated behavioral tests for serialized shared-client scheduling and new server/YFinance options."
       ],
       "notes": [
         "Recommendation: Use `new FileStream(..., FileOptions.Asynchronous)` for async file opening.",
         "Acceptance criteria: Under concurrent metadata requests, no thread-pool stall occurs; `GetAsync`/`SetAsync` complete without blocking a thread during the OS open call.\n\n### Priority 2 (Medium/High, material improvement in throughput, reliability, or maintainability)",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Validation passed locally for focused YFinance runtime/server protocol/cache tests."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -9180,6 +9218,10 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "closed_at": "2026-07-03",
+      "validation": [
+        "dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --no-restore --filter \"FullyQualifiedName~Nb040BehaviorTests|FullyQualifiedName~YFinanceClientServerProtocolTests\""
       ]
     },
     {

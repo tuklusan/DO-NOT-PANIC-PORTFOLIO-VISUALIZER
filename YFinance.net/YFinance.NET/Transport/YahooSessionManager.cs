@@ -32,6 +32,9 @@ public sealed class YahooSessionManager : IDisposable
     private readonly HttpClientHandler _handler;
     private readonly HttpClient _httpClient;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
+    // Lock ordering is refresh -> consent. Never acquire _refreshLock while
+    // holding _consentLock; both locks protect shared cookie/session mutation.
+    private readonly SemaphoreSlim _consentLock = new(1, 1);
     private readonly YFinanceTrace _trace;
     private YahooSessionState? _cachedSession;
 
@@ -46,7 +49,10 @@ public sealed class YahooSessionManager : IDisposable
             UseCookies = true,
             AllowAutoRedirect = true
         };
-        _httpClient = new HttpClient(_handler);
+        _httpClient = new HttpClient(_handler)
+        {
+            Timeout = _options.HttpTimeout
+        };
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(_options.UserAgent);
         _httpClient.DefaultRequestHeaders.Accept.Clear();
         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
@@ -171,41 +177,49 @@ public sealed class YahooSessionManager : IDisposable
 
     private async Task<HttpResponseMessage> AcceptConsentFormAsync(HttpResponseMessage consentResponse, CancellationToken cancellationToken)
     {
-        string html = await consentResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        Match formMatch = FormRegex.Match(html);
-        if (!formMatch.Success)
+        await _consentLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            _trace.ErrorState("YFinance.Session", "ConsentFormMissing", null, ("request_uri", consentResponse.RequestMessage?.RequestUri?.ToString() ?? string.Empty));
-            throw new YFinanceApiException("Yahoo redirected to a consent page, but the consent form could not be parsed.");
-        }
-
-        Uri baseUri = consentResponse.RequestMessage?.RequestUri ?? _options.FinanceHomeUri;
-        Uri actionUri = new(baseUri, WebUtility.HtmlDecode(formMatch.Groups["action"].Value));
-        Dictionary<string, string> formValues = new(StringComparer.OrdinalIgnoreCase);
-        foreach (Match match in InputRegex.Matches(formMatch.Groups["body"].Value))
-        {
-            string name = WebUtility.HtmlDecode(match.Groups["name"].Value);
-            if (string.IsNullOrWhiteSpace(name))
+            string html = await consentResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            Match formMatch = FormRegex.Match(html);
+            if (!formMatch.Success)
             {
-                continue;
+                _trace.ErrorState("YFinance.Session", "ConsentFormMissing", null, ("request_uri", consentResponse.RequestMessage?.RequestUri?.ToString() ?? string.Empty));
+                throw new YFinanceApiException("Yahoo redirected to a consent page, but the consent form could not be parsed.");
             }
 
-            string value = WebUtility.HtmlDecode(match.Groups["value"].Value ?? string.Empty);
-            formValues[name] = value;
-        }
+            Uri baseUri = consentResponse.RequestMessage?.RequestUri ?? _options.FinanceHomeUri;
+            Uri actionUri = new(baseUri, WebUtility.HtmlDecode(formMatch.Groups["action"].Value));
+            Dictionary<string, string> formValues = new(StringComparer.OrdinalIgnoreCase);
+            foreach (Match match in InputRegex.Matches(formMatch.Groups["body"].Value))
+            {
+                string name = WebUtility.HtmlDecode(match.Groups["name"].Value);
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    continue;
+                }
 
-        if (!formValues.Keys.Any(static key => key.Contains("agree", StringComparison.OrdinalIgnoreCase) || key.Contains("accept", StringComparison.OrdinalIgnoreCase)))
-        {
-            formValues["agree"] = "1";
-        }
+                string value = WebUtility.HtmlDecode(match.Groups["value"].Value ?? string.Empty);
+                formValues[name] = value;
+            }
 
-        using HttpRequestMessage request = new(HttpMethod.Post, actionUri)
+            if (!formValues.Keys.Any(static key => key.Contains("agree", StringComparison.OrdinalIgnoreCase) || key.Contains("accept", StringComparison.OrdinalIgnoreCase)))
+            {
+                formValues["agree"] = "1";
+            }
+
+            using HttpRequestMessage request = new(HttpMethod.Post, actionUri)
+            {
+                Content = new FormUrlEncodedContent(formValues)
+            };
+            request.Headers.Referrer = baseUri;
+            _trace.InfoState("YFinance.Session", "ConsentSubmit", ("action_uri", actionUri.ToString()), ("field_count", formValues.Count));
+            return await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        }
+        finally
         {
-            Content = new FormUrlEncodedContent(formValues)
-        };
-        request.Headers.Referrer = baseUri;
-        _trace.InfoState("YFinance.Session", "ConsentSubmit", ("action_uri", actionUri.ToString()), ("field_count", formValues.Count));
-        return await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            _consentLock.Release();
+        }
     }
 
     private static bool IsConsentUrl(Uri? uri)
@@ -233,5 +247,6 @@ public sealed class YahooSessionManager : IDisposable
         _httpClient.Dispose();
         _handler.Dispose();
         _refreshLock.Dispose();
+        _consentLock.Dispose();
     }
 }
