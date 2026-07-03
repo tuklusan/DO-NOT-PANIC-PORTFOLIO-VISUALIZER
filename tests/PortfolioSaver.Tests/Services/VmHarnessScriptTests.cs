@@ -410,7 +410,12 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Run did not complete; requesting remote harness abort cleanup", script, StringComparison.Ordinal);
         Assert.Contains("$abortReason = if ([string]::IsNullOrWhiteSpace($runFailureReason))", script, StringComparison.Ordinal);
         Assert.Contains("Invoke-VmHarnessAbortCleanup -Bundle $bundle -RootPath $RootPath -Reason $abortReason", script, StringComparison.Ordinal);
+        Assert.Contains("Remove-VmSshSessionBundle -Bundle $bundle", script, StringComparison.Ordinal);
         Assert.Contains("function Invoke-VmHarnessAbortCleanup", helper, StringComparison.Ordinal);
+        Assert.Contains("'PortfolioSaver.VmAgent'", helper, StringComparison.Ordinal);
+        Assert.Contains("'PortfolioSaver.Config'", helper, StringComparison.Ordinal);
+        Assert.Contains("'PortfolioSaver.Desktop'", helper, StringComparison.Ordinal);
+        Assert.Contains("'WinAppDriver'", helper, StringComparison.Ordinal);
         Assert.Contains("RootPath is not specific enough", helper, StringComparison.Ordinal);
         Assert.Contains("harness-aborted.json", helper, StringComparison.Ordinal);
         Assert.Contains("Result = 'Aborted'", helper, StringComparison.Ordinal);

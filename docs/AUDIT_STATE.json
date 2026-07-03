@@ -9422,17 +9422,23 @@
       "priority": 2,
       "area": "Process management",
       "title": "Add structured cancellation and cleanup hooks to host scripts (Invoke-VmBuildTest.ps1 etc.)",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: No `CancellationToken` propagation; Ctrl+C may leave orphaned guest processes.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "PowerShell parser validation passed for build/vm/Invoke-VmBuildTest.ps1 and build/vm/VmSshCommon.ps1.",
+        "dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter FullyQualifiedName~InvokeVmBuildTest_CleansRemoteProcessesWhenAborted passed.",
+        "DeepSeek review build/deepseek-review/deepseek-review-20260703-134008.md reported no actionable findings."
       ],
       "notes": [
         "Recommendation: Add `trap`/`Register-EngineEvent` and remote cleanup command on exit.",
         "Acceptance criteria: On host script termination, the remote harness is always aborted; no stale Config/Desktop/agent processes remain after cancellation.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Manual inspection confirmed Invoke-VmBuildTest.ps1 already has structured try/catch/finally cleanup that calls Invoke-VmHarnessAbortCleanup on incomplete runs and always removes the SSH/SFTP bundle and local command file.",
+        "Manual inspection confirmed VmSshCommon.ps1 Invoke-VmHarnessAbortCleanup stops PortfolioSaver.VmAgent, PortfolioSaver.Config, PortfolioSaver.Desktop, WinAppDriver, root-owned guest processes, and writes results/harness-aborted.json.",
+        "Added/strengthened test guard coverage in InvokeVmBuildTest_CleansRemoteProcessesWhenAborted so cancellation/abort cleanup invariants stay locked."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
