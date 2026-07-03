@@ -11,6 +11,14 @@
 // SANYALnet Labs." See LICENSE for full terms, warranty disclaimer, termination,
 // patent, trademark, and governing-law provisions.
 // ============================================================================
+using System.IO;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+using PortfolioSaver.Core.Models;
+using PortfolioSaver.Render.ViewModels;
+using PortfolioSaver.Screensaver.Controls;
+using PortfolioSaver.Screensaver.Services;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
@@ -18,38 +26,89 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class Nb048BehaviorTests
 {
     [Fact]
-    public void StartupCoordinator_BuildSceneAsync_UsesCachedNewsInsteadOfLiveNewsTask()
+    public void StartupCoordinator_BuildSceneAsync_SeparatesCachedStartupNewsFromRefreshLane()
     {
-        string source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Presentation", "Services", "StartupCoordinator.cs"));
+        MethodInfo buildScene = RequirePublicMethod(
+            typeof(StartupCoordinator),
+            nameof(StartupCoordinator.BuildSceneAsync),
+            typeof(Task<ScreensaverSceneState>),
+            typeof(int),
+            typeof(CancellationToken));
+        MethodInfo buildBootstrap = RequirePublicMethod(
+            typeof(StartupCoordinator),
+            nameof(StartupCoordinator.BuildBootstrapScene),
+            typeof(ScreensaverSceneState));
+        MethodInfo buildNews = RequirePublicMethod(
+            typeof(StartupCoordinator),
+            nameof(StartupCoordinator.BuildNewsViewModelAsync),
+            typeof(Task<NewsFlasherViewModel>),
+            typeof(AppSettings),
+            typeof(bool),
+            typeof(CancellationToken));
 
-        Assert.Contains("IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode, settings.AiWritingStyle);", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("Task<IReadOnlyList<string>> headlinesTask = _financeNewsService.GetHeadlinesAsync(", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("await Task.WhenAll(quotesTask, backgroundsTask, headlinesTask);", source, StringComparison.Ordinal);
+        Assert.Equal(2, buildScene.GetParameters().Length);
+        Assert.Empty(buildBootstrap.GetParameters());
+        Assert.Equal(3, buildNews.GetParameters().Length);
     }
 
     [Fact]
     public void ScreensaverSceneControl_UsesIndependentBackgroundNewsRefreshLane()
     {
-        string source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Presentation", "Controls", "ScreensaverSceneControl.xaml.cs"));
+        Type control = typeof(ScreensaverSceneControl);
+        BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
 
-        Assert.Contains("StartNewsRefreshLoop();", source, StringComparison.Ordinal);
-        Assert.Contains("RunNewsRefreshLoopAsync", source, StringComparison.Ordinal);
-        Assert.Contains("RefreshNewsLaneAsync", source, StringComparison.Ordinal);
-        Assert.Contains("\"NewsUiPatchComplete\"", source, StringComparison.Ordinal);
-        Assert.Contains("SyncNews(refreshedNews);", source, StringComparison.Ordinal);
+        RequireMethod(control, flags, "StartNewsRefreshLoop", typeof(void));
+        RequireMethod(control, flags, "RunNewsRefreshLoopAsync", typeof(Task), typeof(CancellationToken));
+        RequireMethod(control, flags, "RefreshNewsLaneAsync", typeof(Task), typeof(bool), typeof(CancellationToken));
+        Assert.Equal(typeof(Task), RequireField(control, flags, "_newsRefreshTask").FieldType);
+        Assert.Equal(typeof(CancellationTokenSource), RequireField(control, flags, "_newsRefreshCancellation").FieldType);
     }
 
-    private static string GetRepoRoot()
+    private static MethodInfo RequirePublicMethod(Type type, string name, Type returnType, params Type[] parameterTypes)
     {
-        DirectoryInfo? current = new(AppContext.BaseDirectory);
-        while (current is not null)
-        {
-            if (File.Exists(Path.Combine(current.FullName, "PortfolioScreensaver.sln")))
-                return current.FullName;
+        MethodInfo? method = type.GetMethod(name, BindingFlags.Instance | BindingFlags.Public, parameterTypes);
+        Assert.NotNull(method);
+        Assert.Equal(returnType, method.ReturnType);
+        return method;
+    }
 
-            current = current.Parent;
+    private static MethodInfo RequireMethod(Type type, BindingFlags flags, string name, Type returnType, params Type[] parameterTypes)
+    {
+        MethodInfo? method = type.GetMethod(name, flags, parameterTypes);
+        Assert.NotNull(method);
+        Assert.Equal(returnType, method.ReturnType);
+        return method;
+    }
+
+    [Fact]
+    public void StartupCoordinator_DoesNotReintroduceLiveNewsBlockingIntoSceneBuild()
+    {
+        string source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "PortfolioSaver.Presentation", "Services", "StartupCoordinator.cs"));
+
+        Assert.DoesNotContain("Task<IReadOnlyList<string>> headlinesTask", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("await Task.WhenAll(quotesTask, backgroundsTask, headlinesTask);", source, StringComparison.Ordinal);
+    }
+
+    private static FieldInfo RequireField(Type type, BindingFlags flags, string name)
+    {
+        FieldInfo? field = type.GetField(name, flags);
+        Assert.NotNull(field);
+        return field;
+    }
+    private static string GetRepositoryRoot()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "PortfolioScreensaver.sln")))
+        {
+            directory = directory.Parent;
         }
 
-        throw new DirectoryNotFoundException("PortfolioScreensaver.sln not found from test base directory.");
+        if (directory is null)
+            throw new DirectoryNotFoundException("PortfolioScreensaver.sln not found from test base directory.");
+
+        return directory.FullName;
     }
+
 }
+
+

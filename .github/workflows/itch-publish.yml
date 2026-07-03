@@ -33,6 +33,10 @@ jobs:
       RELEASE_TAG_PATTERN: '^[A-Za-z0-9._-]+$'
       RELEASE_ASSET_WAIT_ATTEMPTS: 60
       RELEASE_ASSET_WAIT_SECONDS: 60
+      # Development freeze is default-on for the 1.0 cycle. Set repository
+      # variable DNPPV_RELEASE_DISTRIBUTION_FROZEN=false only when a maintainer
+      # explicitly approves publishing release assets to Itch.io.
+      DNPPV_RELEASE_DISTRIBUTION_FROZEN: ${{ vars.DNPPV_RELEASE_DISTRIBUTION_FROZEN || 'true' }}
       # Release asset contract: one public Windows installer, one matching SHA-256 file,
       # and one VirusTotal advisory report are published to the GitHub Release.
       BUTLER_VERSION: v15.27.0
@@ -41,6 +45,18 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      # This guard must remain before release asset downloads and Butler uploads.
+      - name: Enforce Distribution Freeze
+        run: |
+          set -euo pipefail
+          echo "DNPPV_RELEASE_DISTRIBUTION_FROZEN='$DNPPV_RELEASE_DISTRIBUTION_FROZEN'"
+          clean_frozen="$(printf '%s' "$DNPPV_RELEASE_DISTRIBUTION_FROZEN" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          if [ "$clean_frozen" != "false" ]; then
+            echo "Itch.io publishing is frozen for the 1.0 development cycle." >&2
+            echo "Set repository variable DNPPV_RELEASE_DISTRIBUTION_FROZEN=false only after explicit maintainer approval." >&2
+            exit 1
+          fi
 
       - name: Validate Itch Publish Inputs
         run: |

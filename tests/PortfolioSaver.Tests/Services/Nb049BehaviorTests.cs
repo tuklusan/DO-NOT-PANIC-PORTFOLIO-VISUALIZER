@@ -11,6 +11,12 @@
 // SANYALnet Labs." See LICENSE for full terms, warranty disclaimer, termination,
 // patent, trademark, and governing-law provisions.
 // ============================================================================
+using System.IO;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+using PortfolioSaver.Core.Models;
+using PortfolioSaver.Screensaver.Controls;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
@@ -20,33 +26,66 @@ public sealed class Nb049BehaviorTests
     [Fact]
     public void ScreensaverSceneControl_UsesIndependentMacroRefreshLane()
     {
-        string source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Presentation", "Controls", "ScreensaverSceneControl.xaml.cs"));
+        Type control = typeof(ScreensaverSceneControl);
+        BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
 
-        Assert.Contains("StartMacroLane();", source, StringComparison.Ordinal);
-        Assert.Contains("RunMacroLaneAsync", source, StringComparison.Ordinal);
-        Assert.Contains("BuildMacroLaneSnapshotAsync", source, StringComparison.Ordinal);
-        Assert.Contains("ApplyMacroLaneSnapshot", source, StringComparison.Ordinal);
-        Assert.Contains("MacroLaneMinimumRefreshInterval", source, StringComparison.Ordinal);
-        Assert.Contains("TimeSpan remaining = MacroLaneMinimumRefreshInterval", source, StringComparison.Ordinal);
-        Assert.Contains("\"MacroRefreshStart\"", source, StringComparison.Ordinal);
-        Assert.Contains("\"MacroUiPatchComplete\"", source, StringComparison.Ordinal);
-        Assert.Contains("QueueMacroRefresh(\"quote-delta\");", source, StringComparison.Ordinal);
-        Assert.Contains("IReadOnlyDictionary<string, QuoteSnapshot> previousQuotes = _latestQuotes;", source, StringComparison.Ordinal);
-        Assert.Contains("HasMeaningfulMacroDelta(previousQuotes, deltaQuotes)", source, StringComparison.Ordinal);
+        RequireMethod(control, flags, "StartMacroLane", typeof(void));
+        RequireMethod(control, flags, "RunMacroLaneAsync", typeof(Task), typeof(CancellationToken));
+                Type snapshotType = RequireNestedType(control, flags, "MacroLaneSnapshot");
+        Type snapshotTaskType = typeof(Task<>).MakeGenericType(snapshotType);
+        RequireMethod(control, flags, "BuildMacroLaneSnapshotAsync", snapshotTaskType, typeof(CancellationToken));
+        RequireMethod(control, flags, "QueueMacroRefresh", typeof(void), typeof(string));
+        RequireMethod(control, flags, "HasMeaningfulMacroDelta", typeof(bool), typeof(IReadOnlyDictionary<string, QuoteSnapshot>), typeof(IReadOnlyDictionary<string, QuoteSnapshot>));
+        Assert.Single(RequireMethod(control, flags, "ApplyMacroLaneSnapshot", typeof(void)).GetParameters());
+        Assert.Equal(typeof(SemaphoreSlim), RequireField(control, flags, "_macroLaneSignal").FieldType);
+        Assert.Equal(typeof(Task), RequireField(control, flags, "_macroLaneTask").FieldType);
+        Assert.Equal(typeof(int), RequireField(control, flags, "_macroLaneDirty").FieldType);
+    }
+
+    private static MethodInfo RequireMethod(Type type, BindingFlags flags, string name, Type? returnType, params Type[] parameterTypes)
+    {
+        MethodInfo? method = parameterTypes.Length == 0
+            ? type.GetMethod(name, flags)
+            : type.GetMethod(name, flags, parameterTypes);
+        Assert.NotNull(method);
+        if (returnType is not null)
+            Assert.Equal(returnType, method.ReturnType);
+        return method;
+    }
+
+    private static Type RequireNestedType(Type type, BindingFlags flags, string name)
+    {
+        Type? nestedType = type.GetNestedType(name, flags);
+        Assert.NotNull(nestedType);
+        return nestedType;
+    }
+
+    [Fact]
+    public void ScreensaverSceneControl_DoesNotReintroduceFullMacroMeterRefreshIntoQuoteLoop()
+    {
+        string source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "PortfolioSaver.Presentation", "Controls", "ScreensaverSceneControl.xaml.cs"));
+
         Assert.DoesNotContain("UpdateStatusMacroMeters(force: true);", source, StringComparison.Ordinal);
     }
 
-    private static string GetRepoRoot()
+    private static FieldInfo RequireField(Type type, BindingFlags flags, string name)
     {
-        DirectoryInfo? current = new(AppContext.BaseDirectory);
-        while (current is not null)
+        FieldInfo? field = type.GetField(name, flags);
+        Assert.NotNull(field);
+        return field;
+    }
+    private static string GetRepositoryRoot()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "PortfolioScreensaver.sln")))
         {
-            if (File.Exists(Path.Combine(current.FullName, "PortfolioScreensaver.sln")))
-                return current.FullName;
-
-            current = current.Parent;
+            directory = directory.Parent;
         }
 
-        throw new DirectoryNotFoundException("PortfolioScreensaver.sln not found from test base directory.");
+        if (directory is null)
+            throw new DirectoryNotFoundException("PortfolioScreensaver.sln not found from test base directory.");
+
+        return directory.FullName;
     }
+
 }

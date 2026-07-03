@@ -11,6 +11,12 @@
 // SANYALnet Labs." See LICENSE for full terms, warranty disclaimer, termination,
 // patent, trademark, and governing-law provisions.
 // ============================================================================
+using System.IO;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+using PortfolioSaver.Core.Models;
+using PortfolioSaver.Screensaver.Controls;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
@@ -20,34 +26,67 @@ public sealed class Nb051BehaviorTests
     [Fact]
     public void ScreensaverSceneControl_UsesIndependentWorldMarketsLane()
     {
-        string source = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Presentation", "Controls", "ScreensaverSceneControl.xaml.cs"));
+        Type control = typeof(ScreensaverSceneControl);
+        BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
 
-        Assert.Contains("StartWorldMarketsLane();", source, StringComparison.Ordinal);
-        Assert.Contains("RunWorldMarketsLaneAsync", source, StringComparison.Ordinal);
-        Assert.Contains("BuildWorldMarketsLaneSnapshotAsync", source, StringComparison.Ordinal);
-        Assert.Contains("ApplyWorldMarketsLaneSnapshot", source, StringComparison.Ordinal);
-        Assert.Contains("WorldMarketsLaneMinimumRefreshInterval", source, StringComparison.Ordinal);
-        Assert.Contains("TimeSpan remaining = WorldMarketsLaneMinimumRefreshInterval", source, StringComparison.Ordinal);
-        Assert.Contains("\"WorldMarketsRefreshStart\"", source, StringComparison.Ordinal);
-        Assert.Contains("\"WorldMarketsFetchComplete\"", source, StringComparison.Ordinal);
-        Assert.Contains("\"WorldMarketsMergeComplete\"", source, StringComparison.Ordinal);
-        Assert.Contains("\"WorldMarketsUiPatchComplete\"", source, StringComparison.Ordinal);
-        Assert.Contains("QueueWorldMarketsRefresh(refreshAncillary: false, reason: \"quote-delta\");", source, StringComparison.Ordinal);
-        Assert.Contains("HasMeaningfulWorldMarketDelta(previousQuotes, deltaQuotes)", source, StringComparison.Ordinal);
+        RequireMethod(control, flags, "StartWorldMarketsLane", typeof(void));
+        RequireMethod(control, flags, "RunWorldMarketsLaneAsync", typeof(Task), typeof(CancellationToken));
+                Type snapshotType = RequireNestedType(control, flags, "WorldMarketsLaneSnapshot");
+        Type snapshotTaskType = typeof(Task<>).MakeGenericType(snapshotType);
+        RequireMethod(control, flags, "BuildWorldMarketsLaneSnapshotAsync", snapshotTaskType, typeof(bool), typeof(CancellationToken));
+        RequireMethod(control, flags, "QueueWorldMarketsRefresh", typeof(void), typeof(bool), typeof(string));
+        RequireMethod(control, flags, "HasMeaningfulWorldMarketDelta", typeof(bool), typeof(IReadOnlyDictionary<string, QuoteSnapshot>), typeof(IReadOnlyDictionary<string, QuoteSnapshot>));
+        Assert.Single(RequireMethod(control, flags, "ApplyWorldMarketsLaneSnapshot", typeof(void)).GetParameters());
+        Assert.Equal(typeof(SemaphoreSlim), RequireField(control, flags, "_worldMarketsLaneSignal").FieldType);
+        Assert.Equal(typeof(Task), RequireField(control, flags, "_worldMarketsLaneTask").FieldType);
+        Assert.Equal(typeof(int), RequireField(control, flags, "_worldMarketsQuoteDirty").FieldType);
+        Assert.Equal(typeof(int), RequireField(control, flags, "_worldMarketsAncillaryDirty").FieldType);
+    }
+
+    private static MethodInfo RequireMethod(Type type, BindingFlags flags, string name, Type? returnType, params Type[] parameterTypes)
+    {
+        MethodInfo? method = parameterTypes.Length == 0
+            ? type.GetMethod(name, flags)
+            : type.GetMethod(name, flags, parameterTypes);
+        Assert.NotNull(method);
+        if (returnType is not null)
+            Assert.Equal(returnType, method.ReturnType);
+        return method;
+    }
+
+    private static Type RequireNestedType(Type type, BindingFlags flags, string name)
+    {
+        Type? nestedType = type.GetNestedType(name, flags);
+        Assert.NotNull(nestedType);
+        return nestedType;
+    }
+
+    [Fact]
+    public void ScreensaverSceneControl_DoesNotReintroduceClockMarketDataBatchPatchIntoRegularLoop()
+    {
+        string source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "PortfolioSaver.Presentation", "Controls", "ScreensaverSceneControl.xaml.cs"));
+
         Assert.DoesNotContain("ApplyClockMarketData(force: false)", source, StringComparison.Ordinal);
     }
 
-    private static string GetRepoRoot()
+    private static FieldInfo RequireField(Type type, BindingFlags flags, string name)
     {
-        DirectoryInfo? current = new(AppContext.BaseDirectory);
-        while (current is not null)
+        FieldInfo? field = type.GetField(name, flags);
+        Assert.NotNull(field);
+        return field;
+    }
+    private static string GetRepositoryRoot()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "PortfolioScreensaver.sln")))
         {
-            if (File.Exists(Path.Combine(current.FullName, "PortfolioScreensaver.sln")))
-                return current.FullName;
-
-            current = current.Parent;
+            directory = directory.Parent;
         }
 
-        throw new DirectoryNotFoundException("PortfolioScreensaver.sln not found from test base directory.");
+        if (directory is null)
+            throw new DirectoryNotFoundException("PortfolioScreensaver.sln not found from test base directory.");
+
+        return directory.FullName;
     }
+
 }

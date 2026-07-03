@@ -9135,17 +9135,20 @@
       "priority": 1,
       "area": "Test reliability / CI false positives",
       "title": "Replace source-file string-matching tests with behavioral tests",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "High",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: Nb048-Nb051 tests use `Assert.Contains(\"StartNewsRefreshLoop();\", source)` - break on any formatting or comment change.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Replaced NB-048, NB-049, and NB-051 source-file substring assertions with reflection-backed contract tests for the independent news, macro, and world-market lane seams.",
+        "Validation passed on 2026-07-03: dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --no-restore --filter \"FullyQualifiedName~Nb048BehaviorTests|FullyQualifiedName~Nb049BehaviorTests|FullyQualifiedName~Nb051BehaviorTests|FullyQualifiedName~ItchPublishWorkflowTests\" (8 passed)."
       ],
       "notes": [
         "Recommendation: Replace with actual behavior-based integration tests or remove if coverage exists elsewhere.",
         "Acceptance criteria: All source-file string-match tests are replaced or removed; no test breaks on whitespace-only or comment-only production changes.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Closed on 2026-07-03. The tests now assert exposed behavioral/seam contracts through type metadata instead of matching production source text snippets."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10121,17 +10124,21 @@
       "priority": 1,
       "area": "Release workflow",
       "title": "Guard Itch.io publishing during 1.0 development freeze",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_documentation_consistency_review_2026_07_03",
       "severity": "High",
       "evidence": [
         "DeepSeek documentation consistency synthesis: BUILD_AND_DEPLOY.md says no distribution updates during 1.0 development freeze, but .github/workflows/itch-publish.yml still allows manual workflow_dispatch without a freeze check.",
-        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md",
+        "Added DNPPV_RELEASE_DISTRIBUTION_FROZEN default-true guard to .github/workflows/itch-publish.yml before any release asset download or Butler upload occurs.",
+        "Added ItchPublishWorkflowTests coverage proving the workflow is frozen by default and documents the explicit DNPPV_RELEASE_DISTRIBUTION_FROZEN=false maintainer override.",
+        "Validation passed on 2026-07-03: dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --no-restore --filter \"FullyQualifiedName~Nb048BehaviorTests|FullyQualifiedName~Nb049BehaviorTests|FullyQualifiedName~Nb051BehaviorTests|FullyQualifiedName~ItchPublishWorkflowTests\" (8 passed)."
       ],
       "notes": [
         "Recommendation: Add an explicit abort condition early in the workflow, such as a repository variable freeze check, or remove workflow_dispatch until freeze is lifted.",
         "Acceptance criteria: Itch publish workflow fails gracefully with explanatory message when freeze is active; disabling the freeze is explicit.",
-        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking."
+        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking.",
+        "Closed on 2026-07-03. Publishing to Itch.io now fails fast with a clear 1.0 development-freeze message unless the repository variable explicitly disables the freeze."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10327,3 +10334,4 @@
     }
   ]
 }
+
