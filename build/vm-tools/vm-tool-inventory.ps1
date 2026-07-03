@@ -77,30 +77,43 @@ foreach ($name in $commands) {
     }
 }
 
-Write-Section "Interesting File Hits (Program Files + Tools)"
-$roots = @(
-    'C:\Program Files',
-    'C:\Program Files (x86)',
-    'C:\Tools',
-    'C:\Windows',
-    $env:USERPROFILE
-)
-$patterns = @(
-    'windriver', 'winappdriver', 'pywin', 'python', 'autohotkey', 'node',
-    'appium', 'selenium', 'sysinternals', 'putty', 'ripgrep', 'jq', 'nssm'
-)
+Write-Section "Known Tool Path Checks"
+$knownPaths = [ordered]@{
+    'WinAppDriver' = @('C:\Program Files (x86)\Windows Application Driver\WinAppDriver.exe')
+    'AutoHotkey' = @(
+        'C:\Program Files\AutoHotkey\AutoHotkey.exe',
+        'C:\ProgramData\chocolatey\lib\autohotkey.portable\tools\AutoHotkey.exe'
+    )
+    'Sysinternals' = @(
+        'C:\Program Files\SysinternalsSuite',
+        'C:\Program Files\sysinternals',
+        'C:\ProgramData\chocolatey\lib\sysinternals'
+    )
+    'Putty' = @(
+        'C:\Program Files\PuTTY\plink.exe',
+        'C:\Program Files\PuTTY\pscp.exe'
+    )
+    'Node' = @('C:\Program Files\nodejs\node.exe')
+    'Python' = @(
+        'C:\Python310\python.exe',
+        'C:\Python311\python.exe',
+        'C:\Python312\python.exe',
+        'C:\Python313\python.exe'
+    )
+    'ChocolateyLib' = @(
+        'C:\ProgramData\chocolatey\lib\jq',
+        'C:\ProgramData\chocolatey\lib\ripgrep',
+        'C:\ProgramData\chocolatey\lib\nssm'
+    )
+}
 
-foreach ($root in $roots) {
-    if (-not (Test-Path -LiteralPath $root)) { continue }
-    "`n-- Scan Root: $root" | Add-Content -LiteralPath $outPath
-    $allFiles = Get-ChildItem -LiteralPath $root -Recurse -File -ErrorAction SilentlyContinue
-    foreach ($pat in $patterns) {
-        $hits = $allFiles |
-            Where-Object { $_.Name -match $pat } |
-            Select-Object -First 20 -ExpandProperty FullName
-        if ($hits) {
-            "Pattern [$pat]:" | Add-Content -LiteralPath $outPath
-            $hits | Add-Content -LiteralPath $outPath
+foreach ($tool in $knownPaths.Keys) {
+    "[$tool]" | Add-Content -LiteralPath $outPath
+    foreach ($path in $knownPaths[$tool]) {
+        if (Test-Path -LiteralPath $path) {
+            "FOUND   $path" | Add-Content -LiteralPath $outPath
+        } else {
+            "MISSING $path" | Add-Content -LiteralPath $outPath
         }
     }
 }

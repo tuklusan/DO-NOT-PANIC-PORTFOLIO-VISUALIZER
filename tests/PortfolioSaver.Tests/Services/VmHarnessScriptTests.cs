@@ -316,6 +316,24 @@ public sealed class VmHarnessScriptTests
     }
 
     [Fact]
+    public void VmToolInventoryScripts_UseTargetedPathChecksInsteadOfRecursiveScans()
+    {
+        string inventory = ReadRepoText("build", "vm-tools", "vm-tool-inventory.ps1");
+        string verify = ReadRepoText("build", "vm-tools", "verify-vm-tools.ps1");
+
+        foreach (string script in new[] { inventory, verify })
+        {
+            Assert.DoesNotContain("Get-ChildItem -LiteralPath $root -Recurse", script, StringComparison.Ordinal);
+            Assert.DoesNotContain("-Recurse -File", script, StringComparison.Ordinal);
+            Assert.Contains("Known Tool", script, StringComparison.Ordinal);
+            Assert.Contains("Test-Path -LiteralPath", script, StringComparison.Ordinal);
+        }
+
+        Assert.DoesNotContain("Add-Section \"Key Paths\"", verify, StringComparison.Ordinal);
+        Assert.Contains("Join-OptionalEnvPath", verify, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void InvokeVmBuildTest_UsesDesktopSessionAgentAndPollsForFinishedSummary()
     {
         string script = ReadRepoText("build",

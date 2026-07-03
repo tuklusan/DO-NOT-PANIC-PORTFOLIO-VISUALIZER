@@ -78,31 +78,46 @@ if ($py) {
     }
 }
 
-Add-Section "Key Paths"
-$paths = @(
-    'C:\Program Files (x86)\Windows Application Driver\WinAppDriver.exe',
-    'C:\Program Files\AutoHotkey\AutoHotkey.exe',
-    'C:\ProgramData\chocolatey\lib\autohotkey.portable',
-    'C:\Program Files\SysinternalsSuite',
-    'C:\Program Files\sysinternals',
-    'C:\ProgramData\chocolatey\lib\sysinternals'
-)
-foreach ($p in $paths) {
-    if (Test-Path -LiteralPath $p) { Add-Line "FOUND $p" } else { Add-Line "MISSING $p" }
+function Join-OptionalEnvPath {
+    param(
+        [string]$Root,
+        [string]$Child
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Root)) { return $null }
+    return Join-Path $Root $Child
 }
 
-Add-Section "File Search Hints"
-$roots = @('C:\Program Files', 'C:\Program Files (x86)', $env:USERPROFILE)
-$patterns = @('windriver', 'winappdriver', 'pywin', 'autohotkey', 'appium')
-foreach ($root in $roots) {
-    if (-not (Test-Path -LiteralPath $root)) { continue }
-    Add-Line "-- $root"
-    $files = Get-ChildItem -LiteralPath $root -Recurse -File -ErrorAction SilentlyContinue
-    foreach ($pat in $patterns) {
-        $hits = $files | Where-Object { $_.Name -match $pat } | Select-Object -First 5 -ExpandProperty FullName
-        if ($hits) {
-            Add-Line "Pattern [$pat]"
-            $hits | ForEach-Object { Add-Line $_ }
+Add-Section "Known Tool Paths"
+$knownPaths = [ordered]@{
+    'WinAppDriver' = @('C:\Program Files (x86)\Windows Application Driver\WinAppDriver.exe')
+    'AutoHotkey' = @(
+        'C:\Program Files\AutoHotkey\AutoHotkey.exe',
+        'C:\ProgramData\chocolatey\lib\autohotkey.portable',
+        'C:\ProgramData\chocolatey\lib\autohotkey.portable\tools\AutoHotkey.exe'
+    )
+    'Appium' = @(
+        (Join-OptionalEnvPath $env:APPDATA 'npm\appium.cmd'),
+        (Join-OptionalEnvPath $env:APPDATA 'npm\node_modules\appium')
+    )
+    'PythonAutomationModules' = @(
+        (Join-OptionalEnvPath $env:LOCALAPPDATA 'Programs\Python'),
+        (Join-OptionalEnvPath $env:APPDATA 'Python')
+    )
+    'Sysinternals' = @(
+        'C:\Program Files\SysinternalsSuite',
+        'C:\Program Files\sysinternals',
+        'C:\ProgramData\chocolatey\lib\sysinternals'
+    )
+}
+
+foreach ($tool in $knownPaths.Keys) {
+    Add-Line "[$tool]"
+    foreach ($path in @($knownPaths[$tool] | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })) {
+        if (Test-Path -LiteralPath $path) {
+            Add-Line "FOUND   $path"
+        } else {
+            Add-Line "MISSING $path"
         }
     }
 }

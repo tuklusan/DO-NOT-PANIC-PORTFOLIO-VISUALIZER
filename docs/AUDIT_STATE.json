@@ -9389,17 +9389,23 @@
       "priority": 2,
       "area": "I/O / pipeline variability",
       "title": "Replace recursive file system scans with targeted `Test-Path` calls in VM inventory scripts",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: `Get-ChildItem -Recurse` over `Program Files` and user profile takes 2-5 minutes.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Manual search confirmed no internal consumers depend on old Pattern[...] recursive scan output.",
+        "PowerShell parser validation passed for build/vm-tools/vm-tool-inventory.ps1 and build/vm-tools/verify-vm-tools.ps1.",
+        "dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter FullyQualifiedName~VmToolInventoryScripts passed.",
+        "DeepSeek review build/deepseek-review/deepseek-review-20260703-133425.md reported no actionable findings."
       ],
       "notes": [
         "Recommendation: Use `Test-Path` on known install directories.",
         "Acceptance criteria: VM inventory scripts complete in <30 s; no access-denied errors.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Replaced recursive Program Files/user-profile file scans in VM inventory and verification scripts with explicit known-tool path probes.",
+        "Merged duplicate verify-vm-tools path sections into one Known Tool Paths section and made environment-derived path probes null-safe."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
