@@ -13,19 +13,29 @@
 // ============================================================================
 namespace PortfolioSaver.Shared.Diagnostics;
 
+using PortfolioSaver.Shared.Infrastructure;
+
 public sealed class CappedFileLogWriter
 {
     private const string BackupExtension = ".1";
     private readonly object _gate = new();
     private readonly string _logPath;
     private readonly long _maxBytes;
+    private readonly IFileSystem _fileSystem;
 
     public CappedFileLogWriter(string logPath, long maxBytes)
+        : this(logPath, maxBytes, RealFileSystem.Instance)
+    {
+    }
+
+    public CappedFileLogWriter(string logPath, long maxBytes, IFileSystem fileSystem)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(logPath);
         _logPath = logPath;
         _maxBytes = Math.Max(1024, maxBytes);
-        Directory.CreateDirectory(Path.GetDirectoryName(_logPath) ?? ".");
+        _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
+        string? directoryPath = Path.GetDirectoryName(_logPath);
+        _fileSystem.CreateDirectory(string.IsNullOrEmpty(directoryPath) ? "." : directoryPath);
     }
 
     public void WriteLine(string message)
@@ -35,24 +45,26 @@ public sealed class CappedFileLogWriter
         lock (_gate)
         {
             RotateIfNeeded(incomingByteCount);
-            File.AppendAllText(_logPath, line);
+            _fileSystem.AppendAllText(_logPath, line);
         }
     }
 
     private void RotateIfNeeded(int incomingByteCount)
     {
-        FileInfo logFile = new(_logPath);
-        if (!logFile.Exists || logFile.Length + incomingByteCount <= _maxBytes)
+        if (!_fileSystem.FileExists(_logPath) ||
+            _fileSystem.GetFileLength(_logPath) + incomingByteCount <= _maxBytes)
+        {
             return;
+        }
 
         string backupPath = _logPath + BackupExtension;
         try
         {
             // VmAgent keeps one backup only; newer rotations replace older archived logs.
-            if (File.Exists(backupPath))
-                File.Delete(backupPath);
+            if (_fileSystem.FileExists(backupPath))
+                _fileSystem.DeleteFile(backupPath);
 
-            File.Move(_logPath, backupPath);
+            _fileSystem.MoveFile(_logPath, backupPath);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
