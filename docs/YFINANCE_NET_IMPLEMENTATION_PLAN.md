@@ -19,7 +19,7 @@ patent, trademark, and governing-law provisions.
 Document status: Initial revision 0.1  
 Primary ticket: `NB-031`  
 Companion ICD: [YFINANCE_NET_ICD.md](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\docs\YFINANCE_NET_ICD.md)  
-Baseline: `BETA-7`
+Baseline: `1.0`
 
 ## 1. Objective
 Implement the `NB-031` architecture transition from in-process `YFinance.NET` usage to a standalone client-server runtime while preserving current product behavior and keeping the codebase sync-friendly with the upstream Python yfinance concepts.

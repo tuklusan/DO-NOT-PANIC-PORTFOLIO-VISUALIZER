@@ -1,12 +1,12 @@
 DO NOT PANIC PORTFOLIO VISUALIZER
 
-BETA-7 baseline.
+Release 1.0 baseline.
 
 Publisher: SANYALnet Labs
 Author: Supratim Sanyal
 License: SANYALnet Labs Non-Commercial License
 
 This build shows floating ticker tapes, finance headlines, exchange-photo backgrounds, and market-aware overlays.
-Beta 7 intentionally retires the legacy portfolio/off-hours refresh sliders; the UI now uses the one-symbol-at-a-time runtime cadence.
-Beta 7 also uses local background files only: built-in starter images are copied to Local AppData, optional Wikimedia images download into that cache, and custom folders are chosen through the Settings screen.
-Beta 7 raises the minimum background rotation interval to 120 seconds to keep scene updates calm during market rendering.
+Release 1.0 retains the one-symbol-at-a-time runtime cadence, local AppData storage model, and configurable custom-background folder support established during the beta cycle.
+Release 1.0 keeps finance news available through RSS by default, with optional OpenAI-compatible AI summarization when the user configures a provider, model, and key.
+Release 1.0 is intended as the first non-prerelease public baseline after the beta7 installer fallback.

@@ -20,34 +20,48 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class ConfigTextConsistencyTests
 {
     [Fact]
-    public void PortfolioVersion_UsesBeta7Labeling()
+    public void PortfolioVersion_UsesRelease10Labeling()
     {
-        Assert.Equal("BETA-7", PortfolioVersion.BaselineLabel);
-        Assert.Contains("beta7", PortfolioVersion.SemanticVersion, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("BETA-7", PortfolioVersion.DisplayName, StringComparison.Ordinal);
+        Assert.Equal("1.0", PortfolioVersion.BaselineLabel);
+        Assert.Equal("1.0.0", PortfolioVersion.SemanticVersion);
+        Assert.Contains("1.0", PortfolioVersion.DisplayName, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void AboutDocument_ContainsBeta7PublisherAuthorAndLicense()
+    public void Release10BaselineDocument_Exists_AndDefinesDistributionFreeze()
+    {
+        string baselinePath = Path.Combine(GetRepoRoot(), "docs", "RELEASE_1_0_BASELINE.md");
+        string baselineText = File.ReadAllText(baselinePath);
+        string normalizedBaselineText = baselineText.Replace("`", string.Empty, StringComparison.Ordinal);
+
+        Assert.Contains("Product semantic version: 1.0.0", normalizedBaselineText, StringComparison.Ordinal);
+        Assert.Contains("Product/baseline display label: 1.0", normalizedBaselineText, StringComparison.Ordinal);
+        Assert.Contains("Distribution status: frozen", normalizedBaselineText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Do not publish or replace GitHub Release assets.", baselineText, StringComparison.Ordinal);
+        Assert.Contains("CR-174", baselineText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AboutDocument_ContainsRelease10PublisherAuthorAndLicense()
     {
         string aboutText = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Content", "about.txt"));
 
-        Assert.Contains("BETA-7 baseline", aboutText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Release 1.0 baseline", aboutText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Publisher: SANYALnet Labs", aboutText, StringComparison.Ordinal);
         Assert.Contains("Author: Supratim Sanyal", aboutText, StringComparison.Ordinal);
         Assert.Contains("License: SANYALnet Labs Non-Commercial License", aboutText, StringComparison.Ordinal);
-        Assert.Contains("retires the legacy portfolio/off-hours refresh sliders", aboutText, StringComparison.Ordinal);
-        Assert.Contains("uses local background files only", aboutText, StringComparison.Ordinal);
+        Assert.Contains("one-symbol-at-a-time runtime cadence", aboutText, StringComparison.Ordinal);
+        Assert.Contains("optional OpenAI-compatible AI summarization", aboutText, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void MainWindowXaml_HasBeta7Title_AndNoBenchmarkEditorText()
+    public void MainWindowXaml_HasRelease10Title_AndNoBenchmarkEditorText()
     {
         string xaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "MainWindow.xaml"));
         string configProject = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Config", "PortfolioSaver.Config.csproj"));
         string progressXaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Settings", "Windows", "ValidationProgressWindow.xaml"));
 
-        Assert.Contains("Title=\"DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-7\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Title=\"DO NOT PANIC PORTFOLIO VISUALIZER Config - 1.0\"", xaml, StringComparison.Ordinal);
         Assert.Contains("<ApplicationIcon>..\\PortfolioSaver.Shared\\Assets\\Branding\\dnppv-icon-rev-3.ico</ApplicationIcon>", configProject, StringComparison.Ordinal);
         Assert.DoesNotContain("Icon=\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Icon=\"", progressXaml, StringComparison.Ordinal);
@@ -202,8 +216,8 @@ public sealed class ConfigTextConsistencyTests
         Assert.False(string.IsNullOrWhiteSpace(aboutText));
         Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER Help", helpText, StringComparison.Ordinal);
         Assert.Contains("License: SANYALnet Labs Non-Commercial License", aboutText, StringComparison.Ordinal);
-        Assert.Contains("retires the legacy portfolio/off-hours refresh sliders", aboutText, StringComparison.Ordinal);
-        Assert.Contains("uses local background files only", aboutText, StringComparison.Ordinal);
+        Assert.Contains("one-symbol-at-a-time runtime cadence", aboutText, StringComparison.Ordinal);
+        Assert.Contains("local AppData storage model", aboutText, StringComparison.Ordinal);
         Assert.Contains("Review the bundled LICENSE file for the full license text.", helpText, StringComparison.Ordinal);
     }
 

@@ -146,12 +146,20 @@ public sealed class YFinanceServerClientPipelineTests
             using (TcpClient first = await listener.AcceptTcpClientAsync(cts.Token).ConfigureAwait(false))
             {
                 await using NetworkStream firstStream = first.GetStream();
-                _ = await ReadRequestAsync(firstStream, cts.Token).ConfigureAwait(false);
+                ProtocolRequest<JsonElement> firstHello = await ReadRequestAsync(firstStream, cts.Token).ConfigureAwait(false);
+                Assert.Equal(ProtocolOperations.Hello, firstHello.Operation);
+                await WriteHelloResponseAsync(firstStream, firstHello, cts.Token).ConfigureAwait(false);
+                ProtocolRequest<JsonElement> firstQuote = await ReadRequestAsync(firstStream, cts.Token).ConfigureAwait(false);
+                Assert.Equal(ProtocolOperations.GetQuote, firstQuote.Operation);
                 firstRequestRead.SetResult();
             }
 
             await using NetworkStream secondStream = (await listener.AcceptTcpClientAsync(cts.Token).ConfigureAwait(false)).GetStream();
+            ProtocolRequest<JsonElement> secondHello = await ReadRequestAsync(secondStream, cts.Token).ConfigureAwait(false);
+            Assert.Equal(ProtocolOperations.Hello, secondHello.Operation);
+            await WriteHelloResponseAsync(secondStream, secondHello, cts.Token).ConfigureAwait(false);
             ProtocolRequest<JsonElement> secondRequest = await ReadRequestAsync(secondStream, cts.Token).ConfigureAwait(false);
+            Assert.Equal(ProtocolOperations.GetQuote, secondRequest.Operation);
             await WriteQuoteResponseAsync(secondStream, secondRequest, cts.Token).ConfigureAwait(false);
         }, cts.Token);
 
@@ -161,6 +169,7 @@ public sealed class YFinanceServerClientPipelineTests
             TimeSpan.FromSeconds(3),
             NullYFinanceServerClientTraceSink.Instance));
 
+        await client.ConnectAsync(new HelloRequestDto("PortfolioSaver.Tests", "1.0", "TESTHASH", false, null), cts.Token).ConfigureAwait(false);
         Task<QuoteDto> disconnected = client.GetQuoteAsync("BROKEN", cts.Token);
         await firstRequestRead.Task.WaitAsync(cts.Token).ConfigureAwait(false);
         Exception disconnectException = await Assert.ThrowsAnyAsync<Exception>(async () => await disconnected.ConfigureAwait(false)).ConfigureAwait(false);
@@ -627,6 +636,20 @@ public sealed class YFinanceServerClientPipelineTests
             Operation = request.Operation,
             Status = "ok",
             Payload = health
+        };
+        ProtocolIntegrity.Stamp(response, response.Payload);
+        await LengthPrefixedProtocolStream.WriteAsync(stream, ProtocolJson.Serialize(response), cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task WriteHelloResponseAsync(NetworkStream stream, ProtocolRequest<JsonElement> request, CancellationToken cancellationToken)
+    {
+        HelloResponseDto hello = new("1.0", 1, ["quote"], 0, "test", 1);
+        ProtocolResponse<HelloResponseDto> response = new()
+        {
+            RequestId = request.RequestId,
+            Operation = request.Operation,
+            Status = "ok",
+            Payload = hello
         };
         ProtocolIntegrity.Stamp(response, response.Payload);
         await LengthPrefixedProtocolStream.WriteAsync(stream, ProtocolJson.Serialize(response), cancellationToken).ConfigureAwait(false);

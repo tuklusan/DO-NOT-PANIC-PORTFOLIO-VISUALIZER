@@ -104,6 +104,12 @@ For legacy parser/config routing checks:
 ### Preview mode
 - `/p` renders the real scene, not a placeholder stub.
 
+## Release 1.0 development freeze
+
+The active development lane is `1.0.0`, but public distribution remains frozen until 1.0 development is complete and explicitly approved. During this phase, do not publish or replace GitHub Release assets, mirror builds to Itch.io, retag `v0.9.0-beta7`, or publish VirusTotal reports for unpublished development installers. Local and VM installer builds are allowed only as private validation artifacts.
+
+The detailed baseline is maintained in `docs\RELEASE_1_0_BASELINE.md`.
+
 ## Publish
 
 Preferred path:

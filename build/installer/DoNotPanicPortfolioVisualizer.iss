@@ -99,6 +99,8 @@ Type: dirifempty; Name: "{autopf}\{#AppPublisher}"
 var
   AiChoicePage: TInputOptionWizardPage;
   AiSetupPage: TInputQueryWizardPage;
+  AiChoiceLayoutNormalized: Boolean;
+  AiSetupLayoutNormalized: Boolean;
 
 function JsonEscape(Value: String): String;
 var
@@ -120,6 +122,42 @@ end;
 function IsAiSetupRequested(): Boolean;
 begin
   Result := Assigned(AiChoicePage) and AiChoicePage.Values[0];
+end;
+
+procedure NormalizeAiChoicePageLayout();
+begin
+  if AiChoiceLayoutNormalized then
+    Exit;
+
+  if Assigned(AiChoicePage) then
+  begin
+    AiChoicePage.CheckListBox.Top := AiChoicePage.CheckListBox.Top + ScaleY(6);
+    AiChoicePage.CheckListBox.Width := AiChoicePage.SurfaceWidth - ScaleX(16);
+  end;
+
+  AiChoiceLayoutNormalized := True;
+end;
+
+procedure NormalizeAiSetupPageLayout();
+var
+  I: Integer;
+  LabelWidth: Integer;
+begin
+  if AiSetupLayoutNormalized then
+    Exit;
+
+  if Assigned(AiSetupPage) then
+  begin
+    LabelWidth := ScaleX(112);
+    for I := 0 to 2 do
+    begin
+      AiSetupPage.PromptLabels[I].Width := LabelWidth;
+      AiSetupPage.Edits[I].Left := AiSetupPage.PromptLabels[I].Left + LabelWidth + ScaleX(8);
+      AiSetupPage.Edits[I].Width := AiSetupPage.SurfaceWidth - AiSetupPage.Edits[I].Left;
+    end;
+  end;
+
+  AiSetupLayoutNormalized := True;
 end;
 
 procedure InitializeWizard();
@@ -144,6 +182,16 @@ begin
   AiSetupPage.Add('Model ID:', False);
   AiSetupPage.Values[1] := 'https://openrouter.ai/api/v1';
   AiSetupPage.Values[2] := 'openrouter/free';
+  AiChoiceLayoutNormalized := False;
+  AiSetupLayoutNormalized := False;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if (Assigned(AiChoicePage)) and (CurPageID = AiChoicePage.ID) then
+    NormalizeAiChoicePageLayout();
+  if (Assigned(AiSetupPage)) and (CurPageID = AiSetupPage.ID) then
+    NormalizeAiSetupPageLayout();
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;

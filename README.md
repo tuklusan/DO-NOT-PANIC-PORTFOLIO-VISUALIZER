@@ -181,7 +181,8 @@ Use the scripts under `build/` for publish and packaging workflows, especially:
 ## Current Baseline
 
 - Remote Git history has been intentionally rebased to start at the `BETA-5.4` baseline
-- Current development/version lane is `BETA-7`
+- Current development/version lane is release `1.0.0`
+- Last public fallback release is `v0.9.0-beta7`; public distribution channels remain frozen until 1.0 development is complete and explicitly approved for publication
 - Product identity:
   - Application: **DO NOT PANIC PORTFOLIO VISUALIZER**
   - Publisher: **SANYALnet Labs**
@@ -192,6 +193,7 @@ Use the scripts under `build/` for publish and packaging workflows, especially:
 The active documentation set has been intentionally reduced to a small core:
 
 - `BUILD_AND_DEPLOY.md` - Visual Studio build, run, publish, and installer-sandbox workflow
+- `docs/RELEASE_1_0_BASELINE.md` - active 1.0 development baseline and distribution-freeze rule
 - `docs/BETA6_AUDIT_STATE.json` - single canonical machine-maintained audit, test, and release-gate state
 - `build/vm/VM_OPERATIONS_RUNBOOK.md` - repeatable SSH-first remote Windows UX validation workflow using PortfolioSaver.VmAgent and WinAppDriver in the interactive session
 - `YFinance.net/PORTING_PLAN.md` - upstream sync rules, responsibility map, and standalone YFinance.NET proof plan

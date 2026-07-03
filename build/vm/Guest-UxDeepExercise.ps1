@@ -3481,13 +3481,13 @@ try {
         if ($null -eq $window) { throw 'Could not locate config window via UI Automation.' }
         Write-ConfigWindowTrace -Event 'ConfigWindowReacquired' -Details ("title={0}; automation_id={1}" -f [string]$window.Current.Name, [string]$window.Current.AutomationId)
         $configInteractionStartedAt = [datetime]::UtcNow
-        if ([string]$window.Current.Name -like '*BETA-7*' -or
-            [string]$window.Current.HelpText -like '*0.9.0-beta7*') {
+        if ([string]$window.Current.Name -like '*Config - 1.0*' -or
+            [string]$window.Current.HelpText -like '*1.0.0*') {
             $summary.ConfigVersionCheck = "Passed"
         }
         else {
             $summary.ConfigVersionCheck = "Failed"
-            $summary.Notes += "Config window title missing expected BETA-7 marker: '$([string]$window.Current.Name)'"
+            $summary.Notes += "Config window title missing expected 1.0 marker: '$([string]$window.Current.Name)'"
         }
 
         $tabNames = @('General', 'Advanced')
@@ -3645,13 +3645,11 @@ try {
         $versionMatch = Find-ElementMetadataByProcessId `
             -ProcessId $desktop.Id `
             -AutomationIds @('ScreensaverVersionWatermark', 'ScreensaverHostWindow', 'DesktopMainWindow', 'MainWindowTitle') `
-            -NameFragments @('beta5', 'Version 0.9.0-beta', '0.9.0-beta', 'Portfolio Visualizer') `
+            -NameFragments @('Version 1.0.0', '1.0.0', 'DO NOT PANIC PORTFOLIO VISUALIZER 1.0') `
             -TimeoutSeconds 10
         if ($null -eq $versionMatch) {
             $desktop.Refresh()
-            if ($desktop.MainWindowTitle -like '*beta5*' -or
-                $desktop.MainWindowTitle -like '*0.9.0-beta*' -or
-                $desktop.MainWindowTitle -like '*Portfolio Visualizer*') {
+            if ($desktop.MainWindowTitle -like '*1.0*') {
                 $versionMatch = [ordered]@{
                     Name = $desktop.MainWindowTitle
                     AutomationId = 'MainWindowTitleFallback'
@@ -3674,11 +3672,11 @@ try {
         else {
             if ($isLongRunSoak) {
                 $summary.ScreensaverVersionCheck = "SoftFailed"
-                $summary.Notes += "Screensaver version element containing the expected beta marker was not detected during long-run soak; continuing."
+                $summary.Notes += "Screensaver version element containing the expected 1.0 marker was not detected during long-run soak; continuing."
             }
             else {
                 $summary.DesktopVersionCheck = "Failed"
-                $summary.Notes += "Desktop version element containing the expected beta marker was not detected."
+                $summary.Notes += "Desktop version element containing the expected 1.0 marker was not detected."
             }
         }
 

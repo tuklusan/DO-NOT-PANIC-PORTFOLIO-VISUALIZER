@@ -546,7 +546,7 @@ public sealed class YFinanceClientServerProtocolTests
         try
         {
             await using YFinanceServerClient client = new(new YFinanceServerConnectionOptions("127.0.0.1", port, TimeSpan.FromSeconds(5), NullYFinanceServerClientTraceSink.Instance));
-            HelloResponseDto hello = await client.HelloAsync(new HelloRequestDto("PortfolioSaver.Tests", "BETA-7", "TESTHASH", false, Environment.ProcessId));
+            HelloResponseDto hello = await client.HelloAsync(new HelloRequestDto("PortfolioSaver.Tests", "1.0", "TESTHASH", false, Environment.ProcessId));
             HealthResponseDto health = await client.HealthAsync();
 
             Assert.Equal(port, hello.ListenerPort);

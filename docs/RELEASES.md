@@ -16,6 +16,19 @@ patent, trademark, and governing-law provisions.
 
 # Public Releases
 
+## Release 1.0 development freeze
+
+The active development lane is `1.0.0`, but public distribution remains frozen until 1.0 development is complete and explicitly approved. The current public fallback remains `v0.9.0-beta7`.
+
+During the freeze:
+
+- do not publish or replace GitHub Release assets
+- do not mirror development builds to Itch.io
+- do not retag `v0.9.0-beta7`
+- do not publish VirusTotal reports for unpublished development installers
+
+Local and VM installer builds are private validation artifacts only. See `docs/RELEASE_1_0_BASELINE.md` for the active baseline.
+
 The canonical public download channel for DO NOT PANIC PORTFOLIO VISUALIZER is GitHub Releases:
 
 - Latest release: https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER/releases/latest
@@ -54,4 +67,4 @@ SourceForge or another mirror is not required for the current public non-commerc
 
 ## News refresh migration note
 
-Starting with the OpenRouter-ready beta-7 release line, existing finance-news refresh settings below 30 minutes are automatically upgraded to 30 minutes. This keeps default `openrouter/free` usage under the documented low free-tier daily request limit during continuous all-day runs.
+Starting with the OpenRouter-ready beta7-to-1.0 line, existing finance-news refresh settings below 30 minutes are automatically upgraded to 30 minutes. This keeps default `openrouter/free` usage under the documented low free-tier daily request limit during continuous all-day runs.

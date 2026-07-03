@@ -317,7 +317,7 @@ public sealed class DesktopShellMigrationTests
 
         Assert.Contains("Source=\"/Assets/Branding/dnppv-icon-rev-3-splash.png\"", xaml, StringComparison.Ordinal);
         Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER", xaml, StringComparison.Ordinal);
-        Assert.DoesNotContain("BETA-7 desktop baseline", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("desktop baseline", xaml, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Publisher: {AppIdentity.PublisherName}", code, StringComparison.Ordinal);
         Assert.Contains("Author: {AppIdentity.AuthorName}", code, StringComparison.Ordinal);
         Assert.Contains("License: {AppIdentity.LicenseName}", code, StringComparison.Ordinal);

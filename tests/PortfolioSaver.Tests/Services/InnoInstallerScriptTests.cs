@@ -48,6 +48,16 @@ public sealed class InnoInstallerScriptTests
         Assert.Contains("CR-133: the public installer creates a standard all-users desktop shortcut by default.", script, StringComparison.Ordinal);
         Assert.Contains("ScaleY(6)", script, StringComparison.Ordinal);
         Assert.Contains("ScaleX(112)", script, StringComparison.Ordinal);
+        Assert.Contains("procedure CurPageChanged(CurPageID: Integer);", script, StringComparison.Ordinal);
+        Assert.Contains("AiChoiceLayoutNormalized: Boolean;", script, StringComparison.Ordinal);
+        Assert.Contains("AiSetupLayoutNormalized: Boolean;", script, StringComparison.Ordinal);
+        string normalizedScript = script.ReplaceLineEndings("\n");
+        int initializeWizardIndex = normalizedScript.IndexOf("procedure InitializeWizard();", StringComparison.Ordinal);
+        int curPageChangedIndex = normalizedScript.IndexOf("procedure CurPageChanged(CurPageID: Integer);", StringComparison.Ordinal);
+        int setupNormalizeCallIndex = normalizedScript.IndexOf("NormalizeAiSetupPageLayout();", curPageChangedIndex, StringComparison.Ordinal);
+        Assert.True(initializeWizardIndex >= 0);
+        Assert.True(curPageChangedIndex > initializeWizardIndex);
+        Assert.True(setupNormalizeCallIndex > curPageChangedIndex);
         Assert.Contains("\"NewsRefreshMinutes\": 30", script, StringComparison.Ordinal);
         Assert.Contains(@"Name: ""desktopicon""; Description: ""Create a desktop shortcut""", script, StringComparison.Ordinal);
         Assert.DoesNotContain(@"Name: ""desktopicon""; Description: ""Create a desktop shortcut""; GroupDescription: ""Additional shortcuts:""; Flags: unchecked", script, StringComparison.Ordinal);

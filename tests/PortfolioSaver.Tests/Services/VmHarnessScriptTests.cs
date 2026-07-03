@@ -26,7 +26,7 @@ public sealed class VmHarnessScriptTests
             "vm",
             "Run-VmUxValidation.ps1");
 
-        Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-7", script, StringComparison.Ordinal);
+        Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER Config - 1.0", script, StringComparison.Ordinal);
         Assert.Contains("Select-Tab -Window $window -Name 'Advanced'", script, StringComparison.Ordinal);
         Assert.Contains("Select-Tab -Window $window -Name 'General'", script, StringComparison.Ordinal);
         Assert.Contains("function Capture-WindowByScreenCrop", script, StringComparison.Ordinal);
@@ -473,7 +473,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Remove-Item Env:DNPPV_YFINANCE_FAULT_PROFILE_PATH", script, StringComparison.Ordinal);
         Assert.Contains("Visual host did not enter true fullscreen after long-run soak relaunch.", script, StringComparison.Ordinal);
         Assert.Contains("$summary.ScreensaverVersionCheck = \"SoftFailed\"", script, StringComparison.Ordinal);
-        Assert.Contains("Screensaver version element containing the expected beta marker was not detected during long-run soak; continuing.", script, StringComparison.Ordinal);
+        Assert.Contains("Screensaver version element containing the expected 1.0 marker was not detected during long-run soak; continuing.", script, StringComparison.Ordinal);
         Assert.Contains("$nextCaptureAt = $frameStartedAt.AddSeconds($effectiveCaptureIntervalSeconds)", script, StringComparison.Ordinal);
         Assert.Contains("Start-Sleep -Seconds $sleepSeconds", script, StringComparison.Ordinal);
         Assert.Contains("if ($isLongRunSoak) {\n                $summary.ScreensaverShots++\n            }", script.ReplaceLineEndings("\n"), StringComparison.Ordinal);

@@ -16,7 +16,7 @@ param(
     [ValidatePattern('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')]
     [string]$Repository = 'tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER',
     [ValidatePattern('^[A-Za-z0-9._-]+$')]
-    [string]$Tag = 'v0.9.0-beta7',
+    [string]$Tag = 'v1.0.0',
     [string]$InstallerAssetPattern = 'DoNotPanicPortfolioVisualizerSetup-*.exe',
     [string]$OutputDirectory,
     [ValidateRange(20, 3600)]
@@ -35,6 +35,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+Write-Warning 'Release 1.0 distribution is frozen until development is complete and explicitly approved; do not publish VirusTotal reports for unpublished development installers.'
 
 function Get-RepoRoot {
     $root = & git rev-parse --show-toplevel 2>$null

@@ -28,6 +28,7 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
     private static readonly TimeSpan ReceiveLoopDrainTimeout = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan GoodbyeTimeout = TimeSpan.FromSeconds(1);
     private const int MaxCanceledRequestOperations = 2048;
+    private const int PreWriteReconnectRetryLimit = 1;
     private readonly SemaphoreSlim _connectGate = new(1, 1);
     private readonly SemaphoreSlim _writeGate = new(1, 1);
     private readonly YFinanceServerConnectionOptions _options;
@@ -43,6 +44,7 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
     private long _requestSequence;
     private int _disposeStarted;
     private int _disposed;
+    private HelloRequestDto? _helloRequest;
     private bool _helloSent;
 
     public YFinanceServerClient(YFinanceServerConnectionOptions? options = null)
@@ -87,6 +89,7 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
 
     public async Task ConnectAsync(HelloRequestDto helloRequest, CancellationToken cancellationToken = default)
     {
+        Volatile.Write(ref _helloRequest, helloRequest);
         await EnsureConnectedAsync(cancellationToken).ConfigureAwait(false);
         await _connectGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -105,8 +108,21 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
 
     private async Task<TResponse> SendAsync<TRequest, TResponse>(string operation, TRequest payload, CancellationToken cancellationToken)
     {
-        await EnsureConnectedAsync(cancellationToken).ConfigureAwait(false);
-        return await SendCoreAsync<TRequest, TResponse>(operation, payload, cancellationToken).ConfigureAwait(false);
+        for (int attempt = 0; ; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await EnsureConnectedAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return await SendCoreAsync<TRequest, TResponse>(operation, payload, cancellationToken).ConfigureAwait(false);
+            }
+            catch (ConnectionLostBeforeWriteException) when (attempt < PreWriteReconnectRetryLimit)
+            {
+                // SendCore has already left its finally block and released _writeGate
+                // before this outer catch runs, so fault cleanup cannot self-deadlock.
+                await MarkConnectionFaultedAsync().ConfigureAwait(false);
+            }
+        }
     }
 
     private async Task<TResponse> SendCoreAsync<TRequest, TResponse>(string operation, TRequest payload, CancellationToken cancellationToken, bool allowDisposed = false)
@@ -131,6 +147,7 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
             new("payload_checksum", request.PayloadChecksum)
         ]);
 
+        bool requestWritten = false;
         await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -140,15 +157,23 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
             NetworkStream stream;
             lock (_connectionStateGate)
             {
-                stream = _stream ?? throw new InvalidOperationException("YFinance server client is not connected.");
+                // Snapshot the current stream while write serialization is held; later
+                // fault/dispose paths detach state through MarkConnectionFaultedAsync.
+                stream = _stream ?? throw new NotConnectedException();
             }
 
             await LengthPrefixedProtocolStream.WriteAsync(stream, ProtocolJson.Serialize(request), cancellationToken).ConfigureAwait(false);
+            requestWritten = true;
         }
         catch (Exception ex)
         {
             _pendingRequests.TryRemove(requestId, out _);
             pending.TrySetException(ex);
+            if (!requestWritten && IsPreWriteConnectionFailure(ex))
+            {
+                throw new ConnectionLostBeforeWriteException(ex);
+            }
+
             throw;
         }
         finally
@@ -169,6 +194,28 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
             }
         });
         return await pending.Task.ConfigureAwait(false);
+    }
+
+    private static bool IsPreWriteConnectionFailure(Exception ex)
+        => ex is NotConnectedException ||
+           ex is IOException ||
+           ex is SocketException ||
+           ex.InnerException is SocketException;
+
+    private sealed class NotConnectedException : InvalidOperationException
+    {
+        public NotConnectedException()
+            : base("YFinance server client is not connected.")
+        {
+        }
+    }
+
+    private sealed class ConnectionLostBeforeWriteException : IOException
+    {
+        public ConnectionLostBeforeWriteException(Exception innerException)
+            : base("YFinance server connection was lost before the request could be written.", innerException)
+        {
+        }
     }
 
     private async Task EnsureConnectedAsync(CancellationToken cancellationToken)
@@ -197,6 +244,13 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
             _receiveLoopTask = Task.Run(() => ReceiveLoopAsync(_connectionCts.Token), _connectionCts.Token);
             _helloSent = false;
             _options.TraceSink.Info("ClientConnectComplete", [new("host", _options.Host), new("port", _options.Port)]);
+
+            HelloRequestDto? helloRequest = Volatile.Read(ref _helloRequest);
+            if (helloRequest is not null)
+            {
+                await SendCoreAsync<HelloRequestDto, HelloResponseDto>(ProtocolOperations.Hello, helloRequest, cancellationToken).ConfigureAwait(false);
+                _helloSent = true;
+            }
         }
         finally
         {
@@ -346,6 +400,8 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
         if (Volatile.Read(ref _disposeStarted) != 0)
             return;
 
+        // DetachConnectionState is the single owner-transfer path for stale
+        // sockets; concurrent fault/dispose paths get nulls and cannot double-dispose.
         await _writeGate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
 
         ConnectionSnapshot snapshot;

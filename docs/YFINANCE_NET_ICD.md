@@ -18,7 +18,7 @@ patent, trademark, and governing-law provisions.
 
 Document status: Initial revision 0.1  
 Applies to ticket: `NB-031`  
-Baseline: `BETA-7`
+Baseline: `1.0`
 
 ## 1. Purpose
 This Interface Control Document (ICD) defines the product-owned wire protocol and lifecycle contract between the PortfolioSaver UI client and the standalone `YFinance.NET` server process.
@@ -254,6 +254,8 @@ Suggested response payload:
 - `capabilities`
 - `listenerPort`
 - `mode`
+
+`hello` is idempotent per TCP connection and across reconnects for the same logical UI client. A client that reconnects after transport loss may send the same `hello` payload again before resuming ordinary requests. The server must answer repeated `hello` requests with current server metadata and must not treat a repeated `hello` as an error, duplicate client registration, or market-data request.
 
 ### 9.2 `goodbye`
 Purpose:
@@ -508,7 +510,7 @@ The wire protocol must include `protocolVersion` in every message.
 ### 18.2 Breaking changes
 Breaking wire changes require a protocol version increment and an ICD update.
 
-BETA-7 listener security hardening is a runtime behavior breaking change for non-local clients: the YFinance.NET server no longer binds to all network interfaces by default. Remote or shared-server deployments must explicitly pass `--bind-address 0.0.0.0`, another concrete non-loopback bind address, or the IPv4-only `--allow-remote` convenience switch. Owned UI startup remains loopback-only.
+Listener security hardening is a runtime behavior breaking change for non-local clients: the YFinance.NET server no longer binds to all network interfaces by default. Remote or shared-server deployments must explicitly pass `--bind-address 0.0.0.0`, another concrete non-loopback bind address, or the IPv4-only `--allow-remote` convenience switch. Owned UI startup remains loopback-only.
 
 ### 18.3 Backward compatibility
 No backward compatibility guarantee is assumed until explicitly declared in a later ICD revision.

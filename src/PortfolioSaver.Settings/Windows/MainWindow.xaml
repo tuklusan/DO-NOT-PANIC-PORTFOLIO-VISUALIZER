@@ -22,7 +22,7 @@
         xmlns:vm="clr-namespace:PortfolioSaver.Config.ViewModels"
         xmlns:enums="clr-namespace:PortfolioSaver.Core.Enums;assembly=PortfolioSaver.Core"
         mc:Ignorable="d"
-        Title="DO NOT PANIC PORTFOLIO VISUALIZER Config - BETA-7"
+        Title="DO NOT PANIC PORTFOLIO VISUALIZER Config - 1.0"
         Width="940"
         Height="620"
         MinWidth="640"
