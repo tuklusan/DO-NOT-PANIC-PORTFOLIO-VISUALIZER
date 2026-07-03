@@ -98,13 +98,13 @@ public sealed class Nb048BehaviorTests
     private static string GetRepositoryRoot()
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "PortfolioScreensaver.sln")))
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "DoNotPanicPortfolioVisualizer.sln")))
         {
             directory = directory.Parent;
         }
 
         if (directory is null)
-            throw new DirectoryNotFoundException("PortfolioScreensaver.sln not found from test base directory.");
+            throw new DirectoryNotFoundException("DoNotPanicPortfolioVisualizer.sln not found from test base directory.");
 
         return directory.FullName;
     }

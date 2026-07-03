@@ -407,7 +407,7 @@ public sealed class YFinanceCircularTraceSinkTests
             DirectoryInfo? directory = new(startDirectory);
             while (directory is not null)
             {
-                if (File.Exists(Path.Combine(directory.FullName, "PortfolioScreensaver.sln")))
+                if (File.Exists(Path.Combine(directory.FullName, "DoNotPanicPortfolioVisualizer.sln")))
                     return directory.FullName;
 
                 directory = directory.Parent;

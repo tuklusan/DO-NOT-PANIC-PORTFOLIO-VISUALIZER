@@ -119,7 +119,7 @@ public sealed class VirusTotalReleaseReportScriptTests
         string current = AppContext.BaseDirectory;
         while (!string.IsNullOrWhiteSpace(current))
         {
-            if (File.Exists(Path.Combine(current, "PortfolioScreensaver.sln")))
+            if (File.Exists(Path.Combine(current, "DoNotPanicPortfolioVisualizer.sln")))
             {
                 return File.ReadAllText(Path.Combine(new[] { current }.Concat(relativeParts).ToArray()));
             }

@@ -187,13 +187,13 @@ public sealed class InnoInstallerScriptTests
     private static string FindRepoRoot()
     {
         string? overrideRoot = Environment.GetEnvironmentVariable("REPO_ROOT");
-        if (!string.IsNullOrWhiteSpace(overrideRoot) && File.Exists(Path.Combine(overrideRoot, "PortfolioScreensaver.sln")))
+        if (!string.IsNullOrWhiteSpace(overrideRoot) && File.Exists(Path.Combine(overrideRoot, "DoNotPanicPortfolioVisualizer.sln")))
             return Path.GetFullPath(overrideRoot);
 
         string? directory = AppContext.BaseDirectory;
         while (!string.IsNullOrWhiteSpace(directory))
         {
-            if (File.Exists(Path.Combine(directory, "PortfolioScreensaver.sln")))
+            if (File.Exists(Path.Combine(directory, "DoNotPanicPortfolioVisualizer.sln")))
                 return directory;
 
             directory = Directory.GetParent(directory)?.FullName;

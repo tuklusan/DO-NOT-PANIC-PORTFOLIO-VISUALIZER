@@ -169,8 +169,8 @@ try {
     Assert-VmTargetConfigured
     Invoke-DeepSeekGate
     Invoke-ValidationCheckpoint
-    Invoke-CheckedCommand -FilePath 'dotnet' -Arguments @('restore','.\PortfolioScreensaver.sln','--disable-parallel','--nologo') -Label 'Local restore'
-    Invoke-CheckedCommand -FilePath 'dotnet' -Arguments @('build','.\PortfolioScreensaver.sln','-c','Release','--nologo','--no-restore') -Label 'Local Release build'
+    Invoke-CheckedCommand -FilePath 'dotnet' -Arguments @('restore','.\DoNotPanicPortfolioVisualizer.sln','--disable-parallel','--nologo') -Label 'Local restore'
+    Invoke-CheckedCommand -FilePath 'dotnet' -Arguments @('build','.\DoNotPanicPortfolioVisualizer.sln','-c','Release','--nologo','--no-restore') -Label 'Local Release build'
     if (-not $SkipLocalTests) { Invoke-CheckedCommand -FilePath 'dotnet' -Arguments @('test','.\tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj','-c','Release','--nologo','--no-build') -Label 'Local Release tests' }
     $cycles = New-Object System.Collections.Generic.List[object]
     $consecutiveClean = 0

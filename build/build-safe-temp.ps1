@@ -133,7 +133,7 @@ if (Test-Path $tempRoot) {
 }
 New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
 
-Copy-Item -LiteralPath (Join-Path $repoRoot "PortfolioScreensaver.sln") -Destination $tempRoot -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot "DoNotPanicPortfolioVisualizer.sln") -Destination $tempRoot -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "Directory.Build.props") -Destination $tempRoot -Force
 if (Test-Path (Join-Path $repoRoot "NuGet.Config")) {
     Copy-Item -LiteralPath (Join-Path $repoRoot "NuGet.Config") -Destination $tempRoot -Force
@@ -177,7 +177,7 @@ foreach ($assetFile in $assetFiles) {
 Write-Host "Building solution in temp workspace (timeout=$TimeoutSeconds sec)..."
 Invoke-ProcessWithTimeout `
     -FilePath $dotnetCli `
-    -Arguments "build .\PortfolioScreensaver.sln -c $Configuration --no-restore -m:1 -nodeReuse:false -v minimal" `
+    -Arguments "build .\DoNotPanicPortfolioVisualizer.sln -c $Configuration --no-restore -m:1 -nodeReuse:false -v minimal" `
     -WorkingDirectory $tempRoot `
     -TimeoutSeconds $TimeoutSeconds
 

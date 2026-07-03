@@ -172,7 +172,7 @@ public sealed class ReleaseManifestValidatorTests
         string directory = AppContext.BaseDirectory;
         while (!string.IsNullOrWhiteSpace(directory))
         {
-            if (File.Exists(Path.Combine(directory, "PortfolioScreensaver.sln")))
+            if (File.Exists(Path.Combine(directory, "DoNotPanicPortfolioVisualizer.sln")))
                 return directory;
 
             directory = Directory.GetParent(directory)?.FullName ?? string.Empty;

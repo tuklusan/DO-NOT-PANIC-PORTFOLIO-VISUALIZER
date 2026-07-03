@@ -43,7 +43,7 @@
       ]
     },
     "build": {
-      "command": "dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore",
+      "command": "dotnet build .\\DoNotPanicPortfolioVisualizer.sln -c Release --nologo --no-restore",
       "result": "passed"
     },
     "publish": {
@@ -674,7 +674,7 @@
         "Replace the presentation ExchangeMarketCalendarService with a thin data-layer YFinance timing adapter and remove the old service entirely.",
         "Keep the countdown semantics unchanged for regular, pre-market, after-hours, and next-open status text while sourcing the windows from the new YFinance timing feature.",
         "Resolved on 2026-05-20 by adding YFinance.NET.Features.History.MarketTimingService and YFinance.NET.Models.MarketTimingSnapshot, exposing Ticker.GetMarketTimingAsync / Tickers.GetMarketTimingsAsync, moving the app adapter to PortfolioSaver.Data.Services.YFinanceExchangeTimingService, and deleting the old presentation ExchangeMarketCalendarService.",
-        "Validation: dotnet build .\\\\PortfolioScreensaver.sln -c Release --nologo passed; dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo passed 168 / 168; a live proof run resolved all 26 canonical symbols through the new public GetMarketTimingAsync path with regular trading windows present for 26 / 26 symbols."
+        "Validation: dotnet build .\\\\DoNotPanicPortfolioVisualizer.sln -c Release --nologo passed; dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo passed 168 / 168; a live proof run resolved all 26 canonical symbols through the new public GetMarketTimingAsync path with regular trading windows present for 26 / 26 symbols."
       ],
       "acceptance": [],
       "resolution": [],
@@ -809,7 +809,7 @@
         "Add trace evidence for news-refresh start, fetch complete, parse complete, cache hit or miss, and UI patch complete so VM analysis can confirm the lane is non-blocking.",
         "Acceptance requires VM-visible proof that the news scroller continues updating while the rest of the dashboard remains responsive and that a news refresh does not coincide with a full-screen layout stall.",
         "Resolved on 2026-06-01 by removing live news fetches from StartupCoordinator.BuildSceneAsync, keeping scene builds on cached headlines only, adding a dedicated background news-refresh loop in ScreensaverSceneControl, and patching only NewsFlasherViewModel on the UI thread via SyncNews rather than routing ordinary news refreshes through ApplySceneState.",
-        "Validation: dotnet build .\\\\PortfolioScreensaver.sln -c Release --nologo passed; dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo passed 189 / 189 including new Nb048BehaviorTests.",
+        "Validation: dotnet build .\\\\DoNotPanicPortfolioVisualizer.sln -c Release --nologo passed; dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo passed 189 / 189 including new Nb048BehaviorTests.",
         "VM proof bundle ux-deep-rss-nb048-20260601-000807 captured the full independent RSS path: NewsRefreshStart at 20:08:47Z, FinanceNewsService NewsCacheMiss at 20:08:48Z, NewsParseComplete and NewsFetchComplete at 20:08:52Z, and NewsUiPatchComplete at 20:08:52Z.",
         "The same RSS-seeded VM proof shows no ApplySceneState between the startup structural refresh and the NewsUiPatchComplete event; the next ApplySceneState does not occur until 20:09:34Z, about 42 seconds later, which demonstrates the news patch was not coupled to a scene-wide layout pass.",
         "The same VM proof also shows ordinary quote work continuing independently with RuntimeQuoteRequestQueued at 20:09:30Z and RuntimeQuoteApplied events beginning at 20:09:31Z while the news lane remains separate, confirming the dashboard stays responsive during background news updates.",
@@ -842,7 +842,7 @@
         "Maintain standalone traces for macro request start, response receive, cache age if exposed, and macro-card UI patch completion so jitter analysis can isolate macro behavior.",
         "Acceptance requires VM-visible proof that macro cards continue updating independently and that macro refreshes no longer correlate with whole-screen lock-ups or unrelated tape/news redraws.",
         "Resolved on 2026-06-01 by adding a dedicated macro background lane in ScreensaverSceneControl driven by a coalesced semaphore signal, moving macro preparation into BuildMacroLaneSnapshotAsync and applying only the macro-card view-model patch on the UI thread through ApplyMacroLaneSnapshot.",
-        "Validation: dotnet build .\\\\PortfolioScreensaver.sln -c Release --nologo passed; dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo passed 191 / 191 including the new Nb049BehaviorTests contract coverage.",
+        "Validation: dotnet build .\\\\DoNotPanicPortfolioVisualizer.sln -c Release --nologo passed; dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo passed 191 / 191 including the new Nb049BehaviorTests contract coverage.",
         "VM proof bundle ux-deep-ssh-20260601-074415 shows the independent macro lane in the desktop UI trace: MacroRefreshStart at 03:52:05Z and MacroUiPatchComplete at 03:52:06Z before the first live quote population, then recurring macro-only updates later such as 03:57:00Z through 03:57:06Z with quote_count=57 and missing_count=0.",
         "The same VM trace shows those macro lane patches interleaving with ordinary RuntimeQuoteApplied events rather than full scene rebuilds, which demonstrates that macro cards are being refreshed surgically instead of driving unrelated tape/news/background redraw work."
       ],
@@ -903,7 +903,7 @@
         "Add trace evidence for world-markets refresh start, fetch complete, timing-state merge complete, cache hit or miss where applicable, and UI patch complete so VM analysis can confirm the lane is non-blocking.",
         "Acceptance requires VM-visible proof that the World Markets ribbon continues updating while the rest of the dashboard remains responsive and that a ribbon refresh does not coincide with a full-screen layout stall.",
         "Resolved on 2026-06-01 by moving world-markets ownership into a dedicated background lane in ScreensaverSceneControl, capturing a snapshot of quotes, weather, market-timing, and clock-city state off the UI thread in BuildWorldMarketsLaneSnapshotAsync, and applying only the floating-clock/world-ribbon patch on the UI thread via ApplyWorldMarketsLaneSnapshot.",
-        "Validation: dotnet build .\\\\PortfolioScreensaver.sln -c Release --nologo passed; dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo passed 191 / 191 including the new Nb051BehaviorTests contract coverage.",
+        "Validation: dotnet build .\\\\DoNotPanicPortfolioVisualizer.sln -c Release --nologo passed; dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo passed 191 / 191 including the new Nb051BehaviorTests contract coverage.",
         "VM proof bundle ux-deep-ssh-20260601-074415 captured the full independent lane: WorldMarketsRefreshStart at 03:52:05Z, WorldMarketsFetchComplete and WorldMarketsMergeComplete at 03:52:19Z, and WorldMarketsUiPatchComplete at 03:52:19Z, followed by repeated quote-driven WorldMarketsUiPatchComplete events such as 03:56:53Z and 03:56:59Z once all 18 exchanges were populated.",
         "The same VM trace shows only the expected startup ApplySceneState structural refreshes while later world-markets updates are emitted as WorldMarketsUiPatchComplete without accompanying scene-wide ApplySceneState calls, which verifies the ribbon refresh is independent of the rest of the dashboard."
       ],
@@ -1464,7 +1464,7 @@
         "Shutdown should not deadlock the dispatcher; use bounded async shutdown with logging or a documented safe fire-and-forget path.",
         "Add tests or harness evidence that owned server startup/shutdown no longer blocks UI responsiveness.",
         "Resolved on 2026-06-05 in implementation commit 971f472 by converting Config, Desktop, and Screensaver startup to await owned YFinance server startup asynchronously before continuing WPF startup, with logged fail-fast shutdown on startup failure. Shutdown keeps WPF's synchronous OnExit contract, wraps the owned-server stop in explicit exception logging, and always invokes base.OnExit.",
-        "Validation: DeepSeek focused code review reported no actionable findings after the OnExit correction; dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 241/241 tests."
+        "Validation: DeepSeek focused code review reported no actionable findings after the OnExit correction; dotnet build .\\DoNotPanicPortfolioVisualizer.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 241/241 tests."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
@@ -1495,7 +1495,7 @@
         "Update docs/YFINANCE_NET_ICD.md and implementation docs to lock the secure default.",
         "Add tests or startup trace evidence proving owned mode uses loopback.",
         "Resolved on 2026-06-05 in implementation commit b8a9b6e by adding explicit YFinance.NET server bind-address parsing, defaulting to IPAddress.Loopback, requiring remote exposure to opt in with --bind-address or IPv4-only --allow-remote, rejecting non-loopback bind addresses in owned mode, tracing bind_address at startup/duplicate-reject paths, and documenting the BETA-6 runtime breaking change in docs/YFINANCE_NET_ICD.md.",
-        "Validation: DeepSeek pre-commit review completed with no blockers or significant findings; dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 245/245 tests including new bind-address behavior coverage."
+        "Validation: DeepSeek pre-commit review completed with no blockers or significant findings; dotnet build .\\DoNotPanicPortfolioVisualizer.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 245/245 tests including new bind-address behavior coverage."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
@@ -1526,7 +1526,7 @@
         "Add regression coverage with mixed valid and invalid symbols.",
         "Verify UI traces show valid symbols continue updating when one symbol fails.",
         "Resolved on 2026-06-05 in implementation commit 1bb3ec3 by making app-owned YahooFinanceQuoteProvider instances opt into partial-success behavior, returning successfully resolved quotes while logging missing symbols, preserving the legacy PartialQuoteResultException path behind throwOnPartial for compatibility, and keeping the startup/runtime coordinator partial-exception salvage path as defensive compatibility armor.",
-        "Validation: DeepSeek pre-commit review completed with no actionable findings; dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 251/251 tests including new mixed valid/invalid quote-provider coverage."
+        "Validation: DeepSeek pre-commit review completed with no actionable findings; dotnet build .\\DoNotPanicPortfolioVisualizer.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 251/251 tests including new mixed valid/invalid quote-provider coverage."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
@@ -1557,7 +1557,7 @@
         "Ensure FinanceNewsService resolves the API key only at the point of outbound use and never logs it.",
         "Add tests that intentionally trace secret-like fields and assert redaction.",
         "Resolved on 2026-06-05 in implementation commit fdbaadc by adding a shared SensitiveDataRedactor, applying key-name and bearer/key-value pattern redaction to both TraceLog and YFinanceCircularTraceSink circular trace output, preserving the existing protected provider-secrets storage path, and adding tests that prove DeepSeek/API-key, authorization, token, password, credential, and comma-containing secret values are redacted.",
-        "Validation: DeepSeek pre-commit review completed with no high-severity findings; dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 253/253 tests including app and YFinance circular trace redaction coverage."
+        "Validation: DeepSeek pre-commit review completed with no high-severity findings; dotnet build .\\DoNotPanicPortfolioVisualizer.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 253/253 tests including app and YFinance circular trace redaction coverage."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
@@ -1588,7 +1588,7 @@
         "Normalize and bound headline text before inclusion in prompts.",
         "Add tests covering malicious/instruction-like headlines.",
         "Resolved on 2026-06-05 in implementation commits 42a91ac and 00fe7dc by fencing RSS headline text inside an explicit untrusted-headline data block, JSON-quoting each normalized headline datum, warning the model not to follow instruction-like headline text, bounding prompt headline length safely, and updating captured-prompt tests to parse the outbound DeepSeek payload and assert the secured user prompt.",
-        "Validation: DeepSeek pre-commit reviews completed with no blocking findings after the test-payload assertion correction; dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 255/255 tests including malicious/instruction-like headline coverage."
+        "Validation: DeepSeek pre-commit reviews completed with no blocking findings after the test-payload assertion correction; dotnet build .\\DoNotPanicPortfolioVisualizer.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 255/255 tests including malicious/instruction-like headline coverage."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
@@ -1619,7 +1619,7 @@
         "Update config docs/tests so obsolete controls are removed or behavior is accurate.",
         "Add regression tests for configured refresh values and displayed cadence text.",
         "Resolved on 2026-06-05 in implementation commit ea54cd3 by making QuoteRefreshPolicy distinguish the fixed one-second UI dispatch cadence from a settings-aware configured freshness window, preserving the legacy hard-stale threshold formula/API, documenting that configured windows must not drive scheduling, and confirming no production callers use GetConfiguredRefreshWindow for timers.",
-        "Validation: DeepSeek pre-commit review completed with no high-severity findings after preserving hard-stale compatibility; dotnet build .\\PortfolioScreensaver.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 265/265 tests including quote refresh policy coverage."
+        "Validation: DeepSeek pre-commit review completed with no high-severity findings after preserving hard-stale compatibility; dotnet build .\\DoNotPanicPortfolioVisualizer.sln -c Release --nologo --no-restore passed with 0 warnings/errors; dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo --no-restore passed 265/265 tests including quote refresh policy coverage."
       ],
       "acceptance": [
         "Implementation is complete with focused automated coverage where practical.",
@@ -1643,8 +1643,8 @@
       "evidence": [
         "DeepSeek review gate passed with no blocking/high findings for the owned-server launch path and validation build changes on 2026-06-05.",
         "Committed and pushed implementation commits dac822c, fdeec81, and cb4c175 before local validation runs.",
-        "dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
-        "dotnet test PortfolioScreensaver.sln -c Release --no-build passed 270/270 on 2026-06-05."
+        "dotnet build DoNotPanicPortfolioVisualizer.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
+        "dotnet test DoNotPanicPortfolioVisualizer.sln -c Release --no-build passed 270/270 on 2026-06-05."
       ],
       "notes": [
         "Remove repo-root walking and broad candidate search from release runtime server resolution.",
@@ -1678,8 +1678,8 @@
       "evidence": [
         "DeepSeek review gate passed with no high-severity blocking findings after VM harness credential hardening on 2026-06-05.",
         "Committed and pushed implementation commit d5d594c before local validation runs.",
-        "dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
-        "dotnet test PortfolioScreensaver.sln -c Release --no-build passed 271/271 on 2026-06-05."
+        "dotnet build DoNotPanicPortfolioVisualizer.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
+        "dotnet test DoNotPanicPortfolioVisualizer.sln -c Release --no-build passed 271/271 on 2026-06-05."
       ],
       "notes": [
         "Evaluate replacing Winlogon DefaultPassword with LSA secrets, scheduled-task credentials, SSH key flow, or other safer automation.",
@@ -1712,8 +1712,8 @@
       "evidence": [
         "DeepSeek review gate passed with no high-severity blocking findings after VM harness credential hardening on 2026-06-05.",
         "Committed and pushed implementation commit d5d594c before local validation runs.",
-        "dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
-        "dotnet test PortfolioScreensaver.sln -c Release --no-build passed 271/271 on 2026-06-05."
+        "dotnet build DoNotPanicPortfolioVisualizer.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
+        "dotnet test DoNotPanicPortfolioVisualizer.sln -c Release --no-build passed 271/271 on 2026-06-05."
       ],
       "notes": [
         "Replace PsExec password argument with a safer launch mechanism such as scheduled task, SSH key, temporary protected credential file, or agent-managed launch.",
@@ -1746,8 +1746,8 @@
       "evidence": [
         "DeepSeek review gate passed with no high-severity findings after async startup quote pipeline updates on 2026-06-05.",
         "Committed and pushed implementation commit fa934a1 before local validation runs.",
-        "dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
-        "dotnet test PortfolioScreensaver.sln -c Release --no-build passed 271/271 on 2026-06-05."
+        "dotnet build DoNotPanicPortfolioVisualizer.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
+        "dotnet test DoNotPanicPortfolioVisualizer.sln -c Release --no-build passed 271/271 on 2026-06-05."
       ],
       "notes": [
         "Refactor QueueQuotePipelineRequests/DrainCompletedQuotePipeline to use await instead of .GetAwaiter().GetResult().",
@@ -1781,8 +1781,8 @@
       "evidence": [
         "DeepSeek review gate passed with no high-severity findings after NTP timeout updates on 2026-06-05.",
         "Committed and pushed implementation commit f9a799b before local validation runs.",
-        "dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
-        "dotnet test PortfolioScreensaver.sln -c Release --no-build passed 272/272 on 2026-06-05."
+        "dotnet build DoNotPanicPortfolioVisualizer.sln -c Release passed with 0 warnings and 0 errors on 2026-06-05.",
+        "dotnet test DoNotPanicPortfolioVisualizer.sln -c Release --no-build passed 272/272 on 2026-06-05."
       ],
       "notes": [
         "Wrap DNS resolution in a short bounded timeout and/or cancellation-aware path.",
@@ -1819,7 +1819,7 @@
         "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md",
         "Resolved on 2026-06-05 by lazy-loading the provider budget ledger inside the service lock, centralizing guarded entry access, replacing direct File.WriteAllText persistence with same-directory temp-file write/flush/File.Move overwrite, and adding concurrent reservation persistence coverage.",
         "DeepSeek review gates completed with no high-severity findings: build/deepseek-review/deepseek-review-20260605-172751.md and build/deepseek-review/deepseek-review-20260605-173101.md.",
-        "Validation after pre-test commits: dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors; dotnet test PortfolioScreensaver.sln -c Release --no-build passed 273/273."
+        "Validation after pre-test commits: dotnet build DoNotPanicPortfolioVisualizer.sln -c Release passed with 0 warnings and 0 errors; dotnet test DoNotPanicPortfolioVisualizer.sln -c Release --no-build passed 273/273."
       ],
       "notes": [
         "Audit constructor-time LoadLedger and move to first guarded access if needed.",
@@ -1852,7 +1852,7 @@
         "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md",
         "Resolved on 2026-06-05 by adding a bounded summarized-news external-call budget, retry backoff tracing, retry handling for transient HTTP and JSON failures, budget-aware cancellation handling, and non-sleeping automated tests for retry/backoff/fallback paths.",
         "DeepSeek review gates completed with no blocking findings after corrections: build/deepseek-review/deepseek-review-20260605-173943.md and build/deepseek-review/deepseek-review-20260605-174346.md.",
-        "Validation after pre-test commits: dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors; dotnet test PortfolioScreensaver.sln -c Release --no-build passed 275/275."
+        "Validation after pre-test commits: dotnet build DoNotPanicPortfolioVisualizer.sln -c Release passed with 0 warnings and 0 errors; dotnet test DoNotPanicPortfolioVisualizer.sln -c Release --no-build passed 275/275."
       ],
       "notes": [
         "Add short exponential backoff between empty/failed DeepSeek response retries.",
@@ -1885,7 +1885,7 @@
         "Full review document: docs/DEEPSEEK_FULL_RC_REVIEW_2026-06-05.md",
         "Resolved on 2026-06-11 by serializing SettingsFileService Load/Save on the same instance, adding an optional explicit settings-path override, and replacing direct settings writes with a same-directory temp-file write/flush/File.Move overwrite path.",
         "DeepSeek review gate completed with no high-severity findings on final form: build/deepseek-review/deepseek-review-20260611-084240.md; assertion cleanup also reviewed cleanly in build/deepseek-review/deepseek-review-20260611-084639.md.",
-        "Validation after pre-test commits: dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors; dotnet test PortfolioScreensaver.sln -c Release --no-build passed 279/279."
+        "Validation after pre-test commits: dotnet build DoNotPanicPortfolioVisualizer.sln -c Release passed with 0 warnings and 0 errors; dotnet test DoNotPanicPortfolioVisualizer.sln -c Release --no-build passed 279/279."
       ],
       "notes": [
         "Write settings to a temporary file in the same directory, flush, then atomically replace/move into place.",
@@ -1915,16 +1915,16 @@
       "severity": "Critical",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-1: UI thread blocked by synchronous InternetProbeService probe every second.",
-        "`Settings/MainWindowViewModel.OnStateTimerTickAsync` → `UpdateConnectivityState` → `InternetProbeService.IsInternetAvailable()`; `Shared/Services/InternetProbeService.cs` – `ProbeInternet` uses sync `HttpClient.Send` + `Thread.Sleep`.",
+        "`Settings/MainWindowViewModel.OnStateTimerTickAsync` \u2192 `UpdateConnectivityState` \u2192 `InternetProbeService.IsInternetAvailable()`; `Shared/Services/InternetProbeService.cs` \u2013 `ProbeInternet` uses sync `HttpClient.Send` + `Thread.Sleep`.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438",
         "Resolved by making InternetProbeService async, replacing sync HttpClient.Send/Thread.Sleep with SendAsync/Task.Delay, adding single-flight cache-miss behavior, and moving config UI timer/retry/validation connectivity paths to async probing.",
         "Implementation commits: 4af62fc Make internet connectivity probing async; 408d519 Observe background connectivity updates.",
         "DeepSeek post-commit review passed with no findings: build/deepseek-review/postcommit-review-20260611-100557.md.",
-        "Validation: dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors; dotnet test PortfolioScreensaver.sln -c Release --no-build passed 280/280."
+        "Validation: dotnet build DoNotPanicPortfolioVisualizer.sln -c Release passed with 0 warnings and 0 errors; dotnet test DoNotPanicPortfolioVisualizer.sln -c Release --no-build passed 280/280."
       ],
       "notes": [
-        "Dispatcher timer ticks every 1 s; worst‑case blocks WPF dispatcher up to 6 s, making the config window unresponsive.",
+        "Dispatcher timer ticks every 1 s; worst\u2011case blocks WPF dispatcher up to 6 s, making the config window unresponsive.",
         "Suggested verification: Mock HTTP handler with 2 s delay; confirm UI buttons are clickable while probe runs. Use `DispatcherTimer` + `async Task` probe.",
         "CR-035 single-flight cache-expiry behavior was also materially improved by the same InternetProbeService change, but CR-035 remains open until separately verified/closed in priority order."
       ],
@@ -1949,13 +1949,13 @@
       "severity": "Critical",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-2: Process output stream deadlock in `Invoke-ProcessWithTimeout`.",
-        "`build/build-safe-temp.ps1`, function `Invoke-ProcessWithTimeout` (reads stdout/stderr *after* `WaitForExit`, causing full‑pipe block).",
+        "`build/build-safe-temp.ps1`, function `Invoke-ProcessWithTimeout` (reads stdout/stderr *after* `WaitForExit`, causing full\u2011pipe block).",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438",
         "Resolved by starting asynchronous stdout/stderr process reads immediately after process start, replacing post-WaitForExit ReadToEnd calls, and capturing output through thread-safe ConcurrentQueue instances with ManualResetEventSlim end-of-stream synchronization.",
         "Implementation commits: 32d2c16 Drain safe-temp build process output asynchronously; 227bd7f Make safe-temp output capture thread-safe.",
         "DeepSeek post-commit review passed with no findings: build/deepseek-review/postcommit-review-20260611-101413.md.",
-        "Validation: dotnet build PortfolioScreensaver.sln -c Release passed with 0 warnings and 0 errors; dotnet test PortfolioScreensaver.sln -c Release --no-build passed 281/281."
+        "Validation: dotnet build DoNotPanicPortfolioVisualizer.sln -c Release passed with 0 warnings and 0 errors; dotnet test DoNotPanicPortfolioVisualizer.sln -c Release --no-build passed 281/281."
       ],
       "notes": [
         "Classic deadlock; child process hangs, build spuriously fails.",
@@ -1982,12 +1982,12 @@
       "severity": "Critical",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-3: Race condition in quote pipeline dictionary access.",
-        "`Presentation/Services/StartupCoordinator.cs` – `_pendingQuotePipeline` (`Dictionary<string, PendingQuoteRequest>`) modified without locking by `LoadQuotesAsync`, `DrainCompletedQuotePipelineAsync`, `QueueQuotePipelineRequests`.",
+        "`Presentation/Services/StartupCoordinator.cs` \u2013 `_pendingQuotePipeline` (`Dictionary<string, PendingQuoteRequest>`) modified without locking by `LoadQuotesAsync`, `DrainCompletedQuotePipelineAsync`, `QueueQuotePipelineRequests`.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
-        "Overlapping scene builds cause `InvalidOperationException` during enumeration, data loss, or double‑processing.",
+        "Overlapping scene builds cause `InvalidOperationException` during enumeration, data loss, or double\u2011processing.",
         "Suggested verification: Stress test with rapid concurrent build triggers, assert no `InvalidOperationException`."
       ],
       "acceptance": [
@@ -2007,8 +2007,8 @@
       "validation": [
         "Implementation commits pushed: c9accff Serialize quote pipeline access; cec5445 Add behavioral quote pipeline concurrency test; 47ccd10 Harden quote pipeline concurrency tests; 4108f4f Use countdown gate in quote pipeline concurrency test; 41cfffd Complete quote pipeline test provider contract.",
         "DeepSeek post-commit review build/deepseek-review/postcommit-review-20260611-102823.md reported no blocking correctness findings after the start-gated behavioral tests and partial-completion lifecycle test were added.",
-        "Local validation on 2026-06-11: dotnet build PortfolioScreensaver.sln -c Release succeeded with 0 warnings and 0 errors.",
-        "Local validation on 2026-06-11: dotnet test PortfolioScreensaver.sln -c Release --no-build passed 284/284 tests."
+        "Local validation on 2026-06-11: dotnet build DoNotPanicPortfolioVisualizer.sln -c Release succeeded with 0 warnings and 0 errors.",
+        "Local validation on 2026-06-11: dotnet test DoNotPanicPortfolioVisualizer.sln -c Release --no-build passed 284/284 tests."
       ]
     },
     {
@@ -2016,13 +2016,13 @@
       "tracking_number": "CR-018",
       "priority": 1,
       "area": "Concurrency / Resource management",
-      "title": "`YFinanceRuntimeClientFactory` reset tears down in‑flight operations",
+      "title": "`YFinanceRuntimeClientFactory` reset tears down in\u2011flight operations",
       "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Critical",
       "evidence": [
-        "DeepSeek threading/parallelism review candidate CR-4: `YFinanceRuntimeClientFactory` reset tears down in‑flight operations.",
-        "`Data/Services/YFinanceRuntimeClientFactory.cs` – `ResetConnectionState` called on any exception, disposes shared client while other callers still use it.",
+        "DeepSeek threading/parallelism review candidate CR-4: `YFinanceRuntimeClientFactory` reset tears down in\u2011flight operations.",
+        "`Data/Services/YFinanceRuntimeClientFactory.cs` \u2013 `ResetConnectionState` called on any exception, disposes shared client while other callers still use it.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -2047,8 +2047,8 @@
       "validation": [
         "Implementation commits pushed: c695fb0 Retire failed YFinance clients after active operations; 4c73fae Route YFinance reset through active client accounting.",
         "DeepSeek post-commit review build/deepseek-review/postcommit-review-20260611-104648.md reported no blocking findings; advisory notes were non-blocking and the hello retirement catch is scoped to ConnectAsync.",
-        "Local validation on 2026-06-11: dotnet build PortfolioScreensaver.sln -c Release succeeded with 0 warnings and 0 errors.",
-        "Local validation on 2026-06-11: dotnet test PortfolioScreensaver.sln -c Release --no-build passed 286/286 tests."
+        "Local validation on 2026-06-11: dotnet build DoNotPanicPortfolioVisualizer.sln -c Release succeeded with 0 warnings and 0 errors.",
+        "Local validation on 2026-06-11: dotnet test DoNotPanicPortfolioVisualizer.sln -c Release --no-build passed 286/286 tests."
       ]
     },
     {
@@ -2056,13 +2056,13 @@
       "tracking_number": "CR-019",
       "priority": 1,
       "area": "Async / Shutdown",
-      "title": "Screensaver `App.OnExit` sync‑over‑async deadlock",
+      "title": "Screensaver `App.OnExit` sync\u2011over\u2011async deadlock",
       "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Critical",
       "evidence": [
-        "DeepSeek threading/parallelism review candidate CR-5: Screensaver `App.OnExit` sync‑over‑async deadlock.",
-        "`Screensaver/App.xaml.cs` – `OnExit` calls `StopOwnedServerAsync().GetAwaiter().GetResult()` on UI thread; inner await may not consistently use `ConfigureAwait(false)`.",
+        "DeepSeek threading/parallelism review candidate CR-5: Screensaver `App.OnExit` sync\u2011over\u2011async deadlock.",
+        "`Screensaver/App.xaml.cs` \u2013 `OnExit` calls `StopOwnedServerAsync().GetAwaiter().GetResult()` on UI thread; inner await may not consistently use `ConfigureAwait(false)`.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -2086,8 +2086,8 @@
       "validation": [
         "Implementation commit pushed: 8b2e53e Make screensaver owned-server shutdown nonblocking.",
         "DeepSeek post-commit review build/deepseek-review/postcommit-review-20260611-105340.md reported no findings.",
-        "Local validation on 2026-06-11: dotnet build PortfolioScreensaver.sln -c Release succeeded with 0 warnings and 0 errors.",
-        "Local validation on 2026-06-11: dotnet test PortfolioScreensaver.sln -c Release --no-build passed 286/286 tests."
+        "Local validation on 2026-06-11: dotnet build DoNotPanicPortfolioVisualizer.sln -c Release succeeded with 0 warnings and 0 errors.",
+        "Local validation on 2026-06-11: dotnet test DoNotPanicPortfolioVisualizer.sln -c Release --no-build passed 286/286 tests."
       ]
     },
     {
@@ -2101,7 +2101,7 @@
       "severity": "High",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-6: `TraceLog` static constructor blocks first caller on DNS resolution.",
-        "`Shared/Diagnostics/TraceLog.cs` – static fields `HostName`, `LocalIp` invoke `Dns.GetHostName()` / `Dns.GetHostAddresses()` synchronously in static initializer.",
+        "`Shared/Diagnostics/TraceLog.cs` \u2013 static fields `HostName`, `LocalIp` invoke `Dns.GetHostName()` / `Dns.GetHostAddresses()` synchronously in static initializer.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -2125,8 +2125,8 @@
       "validation": [
         "Implementation commits pushed: 4963fb3 Resolve trace network metadata asynchronously; 9cef917 Publish trace network metadata atomically.",
         "DeepSeek post-commit review build/deepseek-review/postcommit-review-20260611-110112.md reported no findings.",
-        "Local validation on 2026-06-11: dotnet build PortfolioScreensaver.sln -c Release succeeded with 0 warnings and 0 errors.",
-        "Local validation on 2026-06-11: dotnet test PortfolioScreensaver.sln -c Release --no-build passed 287/287 tests."
+        "Local validation on 2026-06-11: dotnet build DoNotPanicPortfolioVisualizer.sln -c Release succeeded with 0 warnings and 0 errors.",
+        "Local validation on 2026-06-11: dotnet test DoNotPanicPortfolioVisualizer.sln -c Release --no-build passed 287/287 tests."
       ]
     },
     {
@@ -2134,19 +2134,19 @@
       "tracking_number": "CR-021",
       "priority": 2,
       "area": "UI performance",
-      "title": "Incremental graph additions cause repeated full visual‑tree rebuild, stalling UI",
+      "title": "Incremental graph additions cause repeated full visual\u2011tree rebuild, stalling UI",
       "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "High",
       "evidence": [
-        "DeepSeek threading/parallelism review candidate CR-7: Incremental graph additions cause repeated full visual‑tree rebuild, stalling UI.",
-        "`ScreensaverSceneControl.ApplyOrUpdateGraph` → `SyncGraphVisuals` clears all children and rebuilds every `FloatingGraphControl` on each graph arrival during warm‑up.",
+        "DeepSeek threading/parallelism review candidate CR-7: Incremental graph additions cause repeated full visual\u2011tree rebuild, stalling UI.",
+        "`ScreensaverSceneControl.ApplyOrUpdateGraph` \u2192 `SyncGraphVisuals` clears all children and rebuilds every `FloatingGraphControl` on each graph arrival during warm\u2011up.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
-        "With 16+ graphs, visible flicker and UI‑thread blocking on startup.",
-        "Suggested verification: Run 16‑graph warm‑up, verify single `SyncGraphVisuals` call and no frame drops."
+        "With 16+ graphs, visible flicker and UI\u2011thread blocking on startup.",
+        "Suggested verification: Run 16\u2011graph warm\u2011up, verify single `SyncGraphVisuals` call and no frame drops."
       ],
       "acceptance": [
         "`SyncGraphVisuals` called once per batch; no visual flicker; incremental updates replace only affected control.",
@@ -2171,7 +2171,7 @@
       "severity": "High",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-8: Synchronous file write on UI thread after symbol validation.",
-        "`Settings/ViewModels/MainWindowViewModel.SaveTrustedSymbolProfiles` → synchronous `_symbolProfileStore.Save(...)`.",
+        "`Settings/ViewModels/MainWindowViewModel.SaveTrustedSymbolProfiles` \u2192 synchronous `_symbolProfileStore.Save(...)`.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -2233,13 +2233,13 @@
       "severity": "Medium",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-10: Config/Desktop `App.OnExit` blocks UI thread with synchronous wait on async shutdown.",
-        "`Config/App.xaml.cs` and `Desktop/App.xaml.cs` `OnExit` → `StopOwnedServerAsync().GetAwaiter().GetResult()`.",
+        "`Config/App.xaml.cs` and `Desktop/App.xaml.cs` `OnExit` \u2192 `StopOwnedServerAsync().GetAwaiter().GetResult()`.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
         "UI thread blocked for duration of network close; may appear hung (seconds).",
-        "Suggested verification: High‑latency remote server; measure window close time."
+        "Suggested verification: High\u2011latency remote server; measure window close time."
       ],
       "acceptance": [
         "Window closes within 500 ms regardless of server response.",
@@ -2264,7 +2264,7 @@
       "severity": "Medium",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-11: Missing cancellation propagation in `ExchangePhotoCacheService` background download.",
-        "`Media/Services/ExchangePhotoCacheService.StartDefaultManifestWarmup` → `Task.Run(…, CancellationToken.None)`.",
+        "`Media/Services/ExchangePhotoCacheService.StartDefaultManifestWarmup` \u2192 `Task.Run(\u2026, CancellationToken.None)`.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -2326,12 +2326,12 @@
       "severity": "Medium",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-13: `HistoricalCacheService.PurgeExpiredAsync` runs synchronous I/O on calling thread.",
-        "`Data/Services/HistoricalCacheService.PurgeExpiredAsync` – synchronous `foreach` with `FileInfo` and `TryDelete`. Called on every history fetch.",
+        "`Data/Services/HistoricalCacheService.PurgeExpiredAsync` \u2013 synchronous `foreach` with `FileInfo` and `TryDelete`. Called on every history fetch.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
-        "May cause UI stalls if called from UI‑bound context; especially problematic on slow network drives.",
+        "May cause UI stalls if called from UI\u2011bound context; especially problematic on slow network drives.",
         "Suggested verification: Create 10k dummy cache files; call from UI thread, ensure no freeze."
       ],
       "acceptance": [
@@ -2351,12 +2351,12 @@
       "tracking_number": "CR-028",
       "priority": 3,
       "area": "Startup / Performance",
-      "title": "Synchronous SHA‑256 hashing during release‑manifest validation at startup",
+      "title": "Synchronous SHA\u2011256 hashing during release\u2011manifest validation at startup",
       "status": "closed",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
-        "DeepSeek threading/parallelism review candidate CR-14: Synchronous SHA‑256 hashing during release‑manifest validation at startup.",
+        "DeepSeek threading/parallelism review candidate CR-14: Synchronous SHA\u2011256 hashing during release\u2011manifest validation at startup.",
         "`Shared/Integrity/ReleaseManifestValidator.ValidateDirectory` called on startup thread.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
@@ -2388,7 +2388,7 @@
       "severity": "Medium",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-15: Synchronous file read in UI recovery path (`ScreensaverSceneControl.TryRecoverActiveBackgroundSource`).",
-        "`ScreensaverSceneControl.cs` – `TryRecoverActiveBackgroundSource` calls `File.ReadAllBytes(path)` synchronously on UI thread.",
+        "`ScreensaverSceneControl.cs` \u2013 `TryRecoverActiveBackgroundSource` calls `File.ReadAllBytes(path)` synchronously on UI thread.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -2419,13 +2419,13 @@
       "severity": "Medium",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-16: Expensive JSON serialisation on every editor property change.",
-        "`Settings/ViewModels/MainWindowViewModel.OnEditorChanged` → `BuildCandidateSettings` → `JsonSerializer.Serialize(settings)`.",
+        "`Settings/ViewModels/MainWindowViewModel.OnEditorChanged` \u2192 `BuildCandidateSettings` \u2192 `JsonSerializer.Serialize(settings)`.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
         "Every keystroke triggers full serialization; causes visible lag with many symbols.",
-        "Suggested verification: Max configuration (4 groups × 8 tickers), hold down a key in a symbol textbox; UI must stay smooth."
+        "Suggested verification: Max configuration (4 groups \u00d7 8 tickers), hold down a key in a symbol textbox; UI must stay smooth."
       ],
       "acceptance": [
         "Smooth typing; fingerprint computation debounced (e.g., 300 ms).",
@@ -2452,13 +2452,13 @@
       "severity": "Medium",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-17: Dispatcher timer in `NewsFlasherControl` causing rendering jitter due to heavy text measurement.",
-        "`Render/Controls/NewsFlasherControl.xaml.cs` – `OnPlaybackTick` → `StepScrolling` → `MeasureHeadlineHeight` (allocates `FormattedText` each tick).",
+        "`Render/Controls/NewsFlasherControl.xaml.cs` \u2013 `OnPlaybackTick` \u2192 `StepScrolling` \u2192 `MeasureHeadlineHeight` (allocates `FormattedText` each tick).",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
         "40 ms timer + allocation jitter worsens tape animation smoothness.",
-        "Suggested verification: Frame‑time profiler or visual inspection during news updates."
+        "Suggested verification: Frame\u2011time profiler or visual inspection during news updates."
       ],
       "acceptance": [
         "Headline heights cached; `FormattedText` not created on each tick; smooth scrolling.",
@@ -2479,18 +2479,18 @@
       "tracking_number": "CR-032",
       "priority": 3,
       "area": "Performance / Memory",
-      "title": "High‑frequency heap allocations for mini‑graph points",
+      "title": "High\u2011frequency heap allocations for mini\u2011graph points",
       "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
-        "DeepSeek threading/parallelism review candidate CR-18: High‑frequency heap allocations for mini‑graph points.",
-        "`ScreensaverSceneControl.BuildMiniGraphPoints` creates new `PointCollection` and `Point` instances every market‑data refresh (~every minute).",
+        "DeepSeek threading/parallelism review candidate CR-18: High\u2011frequency heap allocations for mini\u2011graph points.",
+        "`ScreensaverSceneControl.BuildMiniGraphPoints` creates new `PointCollection` and `Point` instances every market\u2011data refresh (~every minute).",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
-        "GC pressure and binding churn cause frame‑time jitter on lower‑end hardware.",
+        "GC pressure and binding churn cause frame\u2011time jitter on lower\u2011end hardware.",
         "Suggested verification: Memory profiler during refresh cycle; confirm minimal allocations."
       ],
       "acceptance": [
@@ -2518,7 +2518,7 @@
       "severity": "Medium",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-19: `CompositionTarget.Rendering` handler fires when not needed.",
-        "`Render/Services/TapeAnimationController.cs` – `OnRendering` performs float arithmetic even when tape is invisible or zero‑width.",
+        "`Render/Services/TapeAnimationController.cs` \u2013 `OnRendering` performs float arithmetic even when tape is invisible or zero\u2011width.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -2545,13 +2545,13 @@
       "tracking_number": "CR-034",
       "priority": 3,
       "area": "Thread safety",
-      "title": "`ProviderHealthService` is not thread‑safe",
+      "title": "`ProviderHealthService` is not thread\u2011safe",
       "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
-        "DeepSeek threading/parallelism review candidate CR-20: `ProviderHealthService` is not thread‑safe.",
-        "`Data/Services/ProviderHealthService.cs` – `MarkSuccess`/`MarkFailure` write to shared `_snapshot` fields without synchronization.",
+        "DeepSeek threading/parallelism review candidate CR-20: `ProviderHealthService` is not thread\u2011safe.",
+        "`Data/Services/ProviderHealthService.cs` \u2013 `MarkSuccess`/`MarkFailure` write to shared `_snapshot` fields without synchronization.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -2584,7 +2584,7 @@
       "severity": "Medium",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-21: `InternetProbeService` cache expiry race condition.",
-        "`Shared/Services/InternetProbeService.cs` – cache read under lock, but probe runs outside lock; multiple threads can both probe after expiry.",
+        "`Shared/Services/InternetProbeService.cs` \u2013 cache read under lock, but probe runs outside lock; multiple threads can both probe after expiry.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -2644,19 +2644,19 @@
       "tracking_number": "CR-037",
       "priority": 3,
       "area": "Build / Cancellation",
-      "title": "Missing `CancellationToken` support for long‑running remote/local operations in build scripts",
+      "title": "Missing `CancellationToken` support for long\u2011running remote/local operations in build scripts",
       "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
-        "DeepSeek threading/parallelism review candidate CR-23: Missing `CancellationToken` support for long‑running remote/local operations in build scripts.",
-        "`build/vm/VmSshCommon.ps1`, `Invoke-VmBuildTest.ps1`, `Guest-UxDeepExercise.ps1` – all synchronous, only timeout.",
+        "DeepSeek threading/parallelism review candidate CR-23: Missing `CancellationToken` support for long\u2011running remote/local operations in build scripts.",
+        "`build/vm/VmSshCommon.ps1`, `Invoke-VmBuildTest.ps1`, `Guest-UxDeepExercise.ps1` \u2013 all synchronous, only timeout.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
-        "Ctrl‑C leaves orphaned remote processes; can corrupt result bundles.",
-        "Suggested verification: Start long soak and press Ctrl‑C; verify remote processes terminated, no corruption."
+        "Ctrl\u2011C leaves orphaned remote processes; can corrupt result bundles.",
+        "Suggested verification: Start long soak and press Ctrl\u2011C; verify remote processes terminated, no corruption."
       ],
       "acceptance": [
         "Clean abort kills remote processes, leaves valid (or marked) bundle.",
@@ -2683,12 +2683,12 @@
       "severity": "Medium",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-24: Unobserved background receive loop exception in `YFinanceServerClient` dispose path.",
-        "`YFinance.NET.Client/YFinanceServerClient.cs` – `DisposeSocket` cancels token, disposes stream without awaiting `_receiveLoopTask`; the background fault is unobserved.",
+        "`YFinance.NET.Client/YFinanceServerClient.cs` \u2013 `DisposeSocket` cancels token, disposes stream without awaiting `_receiveLoopTask`; the background fault is unobserved.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
-        "Risk of unhandled exception on older runtimes; non‑deterministic teardown order.",
+        "Risk of unhandled exception on older runtimes; non\u2011deterministic teardown order.",
         "Suggested verification: Unit test: disconnect while streaming, confirm clean exit, no unhandled exception event."
       ],
       "acceptance": [
@@ -2710,18 +2710,18 @@
       "tracking_number": "CR-039",
       "priority": 3,
       "area": "Thread safety",
-      "title": "Thread‑safe initialization of `YFinanceCircularTraceSink` not verified",
+      "title": "Thread\u2011safe initialization of `YFinanceCircularTraceSink` not verified",
       "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
-        "DeepSeek threading/parallelism review candidate CR-25: Thread‑safe initialization of `YFinanceCircularTraceSink` not verified.",
-        "`tests/…/YFinanceCircularTraceSinkTests.cs` relies on singleton, but no concurrency test.",
+        "DeepSeek threading/parallelism review candidate CR-25: Thread\u2011safe initialization of `YFinanceCircularTraceSink` not verified.",
+        "`tests/\u2026/YFinanceCircularTraceSinkTests.cs` relies on singleton, but no concurrency test.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
-        "If `Instance` not thread‑safe, concurrent access could create multiple sinks or cause corruption.",
+        "If `Instance` not thread\u2011safe, concurrent access could create multiple sinks or cause corruption.",
         "Suggested verification: 100 parallel tasks writing markers; check circular log for consistency."
       ],
       "acceptance": [
@@ -2749,7 +2749,7 @@
       "severity": "Medium",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-26: `NewsFlasherControl` may use zero width causing layout errors.",
-        "`Render/Controls/NewsFlasherControl.xaml.cs` – `ActualWidth` used before layout; zero leads to `FormattedText` exceptions or infinite height.",
+        "`Render/Controls/NewsFlasherControl.xaml.cs` \u2013 `ActualWidth` used before layout; zero leads to `FormattedText` exceptions or infinite height.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -2782,7 +2782,7 @@
       "severity": "Medium",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-27: `GlobalMarketsTapeControl` swallows exceptions for missing flag images.",
-        "`Render/Controls/GlobalMarketsTapeControl.xaml.cs` – `GetFlagImageSource` catches and returns null without logging.",
+        "`Render/Controls/GlobalMarketsTapeControl.xaml.cs` \u2013 `GetFlagImageSource` catches and returns null without logging.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -2815,7 +2815,7 @@
       "severity": "Low",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-28: `YFinanceRuntimeClientFactory` `AsyncLocal` test suppression may leak across parallel tests.",
-        "`Data/Services/YFinanceRuntimeClientFactory.cs` – `SuppressServerStartupForTests` uses `AsyncLocal`; parallel tests in same process may interfere.",
+        "`Data/Services/YFinanceRuntimeClientFactory.cs` \u2013 `SuppressServerStartupForTests` uses `AsyncLocal`; parallel tests in same process may interfere.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -2875,22 +2875,22 @@
       "tracking_number": "CR-044",
       "priority": 4,
       "area": "Performance / Concurrency",
-      "title": "`HybridHistoricalDataProvider` fetches symbols one‑by‑one",
+      "title": "`HybridHistoricalDataProvider` fetches symbols one\u2011by\u2011one",
       "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
-        "DeepSeek threading/parallelism review candidate CR-30: `HybridHistoricalDataProvider` fetches symbols one‑by‑one.",
-        "`Data/Providers/HybridHistoricalDataProvider.GetHistoryAsync` – sequential `foreach` over pending symbols.",
+        "DeepSeek threading/parallelism review candidate CR-30: `HybridHistoricalDataProvider` fetches symbols one\u2011by\u2011one.",
+        "`Data/Providers/HybridHistoricalDataProvider.GetHistoryAsync` \u2013 sequential `foreach` over pending symbols.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
-        "Total latency equals sum of individual fetches; parallelizing up to 2‑3 cuts time significantly.",
-        "Suggested verification: 8 symbols, measure wall‑clock time; ensure improvement with limited concurrency."
+        "Total latency equals sum of individual fetches; parallelizing up to 2\u20113 cuts time significantly.",
+        "Suggested verification: 8 symbols, measure wall\u2011clock time; ensure improvement with limited concurrency."
       ],
       "acceptance": [
-        "Parallelism via `SemaphoreSlim`; total time ≤ ~⅓ of sequential.",
+        "Parallelism via `SemaphoreSlim`; total time \u2264 ~\u2153 of sequential.",
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
@@ -2914,13 +2914,13 @@
       "severity": "Low",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-31: `TickerInfoService` resolves summaries sequentially.",
-        "`Features/Quotes/TickerInfoService.GetInfosAsync` – `foreach` over unresolved symbols with sequential `GetSummaryAsync`.",
+        "`Features/Quotes/TickerInfoService.GetInfosAsync` \u2013 `foreach` over unresolved symbols with sequential `GetSummaryAsync`.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
         "Cold cache multiplies load time by symbol count.",
-        "Suggested verification: Cold start top‑100 exerciser, measure info resolution time before/after."
+        "Suggested verification: Cold start top\u2011100 exerciser, measure info resolution time before/after."
       ],
       "acceptance": [
         "Limited concurrency (e.g., 4) reduces total latency.",
@@ -2941,22 +2941,22 @@
       "tracking_number": "CR-046",
       "priority": 4,
       "area": "Thread safety",
-      "title": "`RateLimitGuard` not thread‑safe when shared",
+      "title": "`RateLimitGuard` not thread\u2011safe when shared",
       "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
-        "DeepSeek threading/parallelism review candidate CR-32: `RateLimitGuard` not thread‑safe when shared.",
-        "`Data/Services/RateLimitGuard.cs` – `WaitIfNeededAsync` reads/writes `_lastRunUtc` without synchronization.",
+        "DeepSeek threading/parallelism review candidate CR-32: `RateLimitGuard` not thread\u2011safe when shared.",
+        "`Data/Services/RateLimitGuard.cs` \u2013 `WaitIfNeededAsync` reads/writes `_lastRunUtc` without synchronization.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
-        "Shared instance would violate rate limit; currently used single‑consumer but fragile.",
+        "Shared instance would violate rate limit; currently used single\u2011consumer but fragile.",
         "Suggested verification: If shared, concurrent calls must enforce minimum interval."
       ],
       "acceptance": [
-        "Documented as single‑consumer; or add `SemaphoreSlim` for safety.",
+        "Documented as single\u2011consumer; or add `SemaphoreSlim` for safety.",
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
@@ -2980,7 +2980,7 @@
       "severity": "Low",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-33: `SaveLedger` writes occur inside a lock, potentially blocking other threads.",
-        "`ProviderBudgetLedgerService.SaveLedger` – JSON serialization + disk flush inside `lock(_sync)`.",
+        "`ProviderBudgetLedgerService.SaveLedger` \u2013 JSON serialization + disk flush inside `lock(_sync)`.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -3079,16 +3079,16 @@
       "severity": "Low",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-36: Static flag image cache not guarded against concurrent access.",
-        "`Render/Controls/GlobalMarketsTapeControl.xaml.cs` – `FlagImageCache` (static) read/written without lock.",
+        "`Render/Controls/GlobalMarketsTapeControl.xaml.cs` \u2013 `FlagImageCache` (static) read/written without lock.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
-        "Currently UI‑thread only, but future background access could corrupt.",
-        "Suggested verification: Multi‑threaded stress setting `FlagCode` properties; assert no `NullReferenceException`."
+        "Currently UI\u2011thread only, but future background access could corrupt.",
+        "Suggested verification: Multi\u2011threaded stress setting `FlagCode` properties; assert no `NullReferenceException`."
       ],
       "acceptance": [
-        "Document as UI‑only or use `ImmutableDictionary`/`Lazy` pattern.",
+        "Document as UI\u2011only or use `ImmutableDictionary`/`Lazy` pattern.",
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
@@ -3112,7 +3112,7 @@
       "severity": "Low",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-37: Aggressive connection teardown on a single integrity failure.",
-        "`YFinance.NET.Client/YFinanceServerClient.ReceiveLoopAsync` – `VerifyEnvelope` throws `IOException`, terminating whole loop.",
+        "`YFinance.NET.Client/YFinanceServerClient.ReceiveLoopAsync` \u2013 `VerifyEnvelope` throws `IOException`, terminating whole loop.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -3145,13 +3145,13 @@
       "severity": "Low",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-38: Server does not await active client handlers before process exit.",
-        "`YFinance.NET.Server/Hosting/YFinanceServerProgram.RunAsync` – after `listener.Stop()`, does not await client tasks.",
+        "`YFinance.NET.Server/Hosting/YFinanceServerProgram.RunAsync` \u2013 after `listener.Stop()`, does not await client tasks.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
-        "In‑flight connections reset; resources released ungracefully.",
-        "Suggested verification: Connect several clients with long‑running requests, send shutdown; observe graceful disconnects."
+        "In\u2011flight connections reset; resources released ungracefully.",
+        "Suggested verification: Connect several clients with long\u2011running requests, send shutdown; observe graceful disconnects."
       ],
       "acceptance": [
         "All client handlers awaited with timeout after cancellation; orderly connection finish.",
@@ -3172,19 +3172,19 @@
       "tracking_number": "CR-053",
       "priority": 4,
       "area": "Test harness",
-      "title": "UI Automation Fixed‑Delay Sleeps in `Guest-UxDeepExercise` increase flakiness",
+      "title": "UI Automation Fixed\u2011Delay Sleeps in `Guest-UxDeepExercise` increase flakiness",
       "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
-        "DeepSeek threading/parallelism review candidate CR-39: UI Automation Fixed‑Delay Sleeps in `Guest-UxDeepExercise` increase flakiness.",
-        "`build/vm/Guest-UxDeepExercise.ps1` – numerous fixed `Start-Sleep` calls.",
+        "DeepSeek threading/parallelism review candidate CR-39: UI Automation Fixed\u2011Delay Sleeps in `Guest-UxDeepExercise` increase flakiness.",
+        "`build/vm/Guest-UxDeepExercise.ps1` \u2013 numerous fixed `Start-Sleep` calls.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
         "Wastes time on fast machines, too short on slow VMs; serial execution inflates cycle time.",
-        "Suggested verification: Run on fast and slow VM; measure total time and zero “element not found” errors."
+        "Suggested verification: Run on fast and slow VM; measure total time and zero \u201celement not found\u201d errors."
       ],
       "acceptance": [
         "Replace with `Wait-UIAutomationCondition` polling loops; duration decreases when system responsive.",
@@ -3211,16 +3211,16 @@
       "severity": "Low",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-40: Remote Polling Loop Blocks Host Pipeline.",
-        "`build/vm/Invoke-VmBuildTest.ps1` – `do-while` loop that performs full SSH session each 15 s.",
+        "`build/vm/Invoke-VmBuildTest.ps1` \u2013 `do-while` loop that performs full SSH session each 15 s.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
-        "Host thread blocked for SSH round‑trip, unresponsive to Ctrl‑C.",
-        "Suggested verification: Run long soak; confirm console accepts Ctrl‑C promptly."
+        "Host thread blocked for SSH round\u2011trip, unresponsive to Ctrl\u2011C.",
+        "Suggested verification: Run long soak; confirm console accepts Ctrl\u2011C promptly."
       ],
       "acceptance": [
-        "Polling uses non‑blocking interval with local sleep, or lighter check.",
+        "Polling uses non\u2011blocking interval with local sleep, or lighter check.",
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
@@ -3238,13 +3238,13 @@
       "tracking_number": "CR-055",
       "priority": 4,
       "area": "Build robustness",
-      "title": "File‑Replacement Atomicity retry loop excessive",
+      "title": "File\u2011Replacement Atomicity retry loop excessive",
       "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
-        "DeepSeek threading/parallelism review candidate CR-41: File‑Replacement Atomicity retry loop excessive.",
-        "`build/vm/Guest-UxDeepExercise.ps1` – `Write-TextFileWithRetry` retries up to 20 times with 80 ms sleep.",
+        "DeepSeek threading/parallelism review candidate CR-41: File\u2011Replacement Atomicity retry loop excessive.",
+        "`build/vm/Guest-UxDeepExercise.ps1` \u2013 `Write-TextFileWithRetry` retries up to 20 times with 80 ms sleep.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -3277,7 +3277,7 @@
       "severity": "Low",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-42: Redundant `Get-AvailableDisplayModes` enumeration.",
-        "`build/vm/Guest-UxDeepExercise.ps1` – multiple calls to `Get-CimSupportedDisplayModes` and `Get-AvailableDisplayModes` on each resolution change attempt.",
+        "`build/vm/Guest-UxDeepExercise.ps1` \u2013 multiple calls to `Get-CimSupportedDisplayModes` and `Get-AvailableDisplayModes` on each resolution change attempt.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -3304,13 +3304,13 @@
       "tracking_number": "CR-057",
       "priority": 4,
       "area": "Performance",
-      "title": "`TraceLog.WriteCircular` holds lock during synchronous index‑file I/O",
+      "title": "`TraceLog.WriteCircular` holds lock during synchronous index\u2011file I/O",
       "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
-        "DeepSeek threading/parallelism review candidate CR-43: `TraceLog.WriteCircular` holds lock during synchronous index‑file I/O.",
-        "`Shared/Diagnostics/TraceLog.cs` – `WriteCircular` inside `lock(FileSync)` performs `File.ReadAllText`/`File.WriteAllText`.",
+        "DeepSeek threading/parallelism review candidate CR-43: `TraceLog.WriteCircular` holds lock during synchronous index\u2011file I/O.",
+        "`Shared/Diagnostics/TraceLog.cs` \u2013 `WriteCircular` inside `lock(FileSync)` performs `File.ReadAllText`/`File.WriteAllText`.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -3319,7 +3319,7 @@
         "Suggested verification: Stress test with 10k concurrent writes, monitor lock wait times."
       ],
       "acceptance": [
-        "Index kept in‑memory and flushed asynchronously; or separate lock; no stall >few ms under 10k concurrent writes.",
+        "Index kept in\u2011memory and flushed asynchronously; or separate lock; no stall >few ms under 10k concurrent writes.",
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
@@ -3343,7 +3343,7 @@
       "severity": "Low",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-44: Repeated synchronous `File.ReadAllText` in test fixtures slows test suite.",
-        "`tests/…/ScreensaverRenderBehaviorTests.cs`, `VmHarnessScriptTests.cs`, source‑reading tests.",
+        "`tests/\u2026/ScreensaverRenderBehaviorTests.cs`, `VmHarnessScriptTests.cs`, source\u2011reading tests.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
@@ -3352,7 +3352,7 @@
         "Suggested verification: Run affected tests with stopwatch; confirm reduced disk reads."
       ],
       "acceptance": [
-        "Contents cached via `Lazy<string>`; wall‑clock time reduced by ≥20% on HDD.",
+        "Contents cached via `Lazy<string>`; wall\u2011clock time reduced by \u226520% on HDD.",
         "DeepSeek pre-commit code review gate reports no blocking findings for the change.",
         "Local build/test validation passes.",
         "VM validation is completed when the affected behavior is UI/runtime/harness-visible.",
@@ -3370,18 +3370,18 @@
       "tracking_number": "CR-059",
       "priority": 4,
       "area": "Test quality",
-      "title": "Race condition in concurrent `ProviderBudgetLedger` reservation test may mask thread‑safety issues",
+      "title": "Race condition in concurrent `ProviderBudgetLedger` reservation test may mask thread\u2011safety issues",
       "status": "resolved",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
-        "DeepSeek threading/parallelism review candidate CR-45: Race condition in concurrent `ProviderBudgetLedger` reservation test may mask thread‑safety issues.",
-        "`tests/…/Nb040BehaviorTests.cs` – test spawns 8 tasks without a barrier; thread pool may serialise them, hiding races.",
+        "DeepSeek threading/parallelism review candidate CR-45: Race condition in concurrent `ProviderBudgetLedger` reservation test may mask thread\u2011safety issues.",
+        "`tests/\u2026/Nb040BehaviorTests.cs` \u2013 test spawns 8 tasks without a barrier; thread pool may serialise them, hiding races.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
-        "Test may pass even if service not thread‑safe.",
+        "Test may pass even if service not thread\u2011safe.",
         "Suggested verification: Run test repeatedly under high load, ensure consistent result."
       ],
       "acceptance": [
@@ -3409,12 +3409,12 @@
       "severity": "Low",
       "evidence": [
         "DeepSeek threading/parallelism review candidate CR-46: Blocking `.GetAwaiter().GetResult()` in test HTTP handler risks deadlock under `SynchronizationContext`.",
-        "`tests/…/FinanceNewsServiceTests.cs` – `FakeHttpMessageHandler.SendAsync` uses `.GetResult()` on `ReadAsStringAsync`.",
+        "`tests/\u2026/FinanceNewsServiceTests.cs` \u2013 `FakeHttpMessageHandler.SendAsync` uses `.GetResult()` on `ReadAsStringAsync`.",
         "Full review document: docs/DEEPSEEK_THREADING_OPTIMIZATION_REVIEW_2026-06-11.md",
         "Artifact directory: build/deepseek-review/threading-optimization-20260611-090438"
       ],
       "notes": [
-        "Fragile if test runner ever uses a sync context; can cause hard‑to‑debug hangs."
+        "Fragile if test runner ever uses a sync context; can cause hard\u2011to\u2011debug hangs."
       ],
       "acceptance": [
         "Handler made `async` and content read with `await`.",
@@ -7467,7 +7467,7 @@
         "Use the supplied Yahoo suffix and benchmark mapping background as reference context for future exchange-level symbol work, including suffix behavior such as BT-A.L for symbols that contain local dots.",
         "Implementation should include code review, test/debug passes, and harness-visible validation so the ticket can be closed with confidence.",
         "Resolved on 2026-05-20 by deriving Global Exchanges card market status from YFinance.NET quote MarketSession with exchange-calendar fallback, reusing the pinned NewYorkNasdaq card update path for the top-left NYC market band, and removing the obsolete standalone NewYorkMarketStatusService path.",
-        "Validation: dotnet build PortfolioScreensaver.sln -c Release succeeded; dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --no-build passed 156/156 after adding dedicated yfinance.circular.log coverage and VM harness assertions for dual-trace artifact export."
+        "Validation: dotnet build DoNotPanicPortfolioVisualizer.sln -c Release succeeded; dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --no-build passed 156/156 after adding dedicated yfinance.circular.log coverage and VM harness assertions for dual-trace artifact export."
       ],
       "acceptance": [],
       "resolution": [],
@@ -7490,7 +7490,7 @@
         "Use YFinance chart metadata currentTradingPeriod plus marketState/session fields to derive open, pre-market, after-hours, closed, and countdown timing behaviors.",
         "Cached market-timing state may be retained only if it was originally sourced from YFinance; no independent API or hardcoded exchange-hour source should remain in the active timing path.",
         "Resolved on 2026-05-20 by extending YFinance.NET HistoryMetadata to parse currentTradingPeriod and regularMarketTime, replacing ExchangeMarketCalendarService fallback hour logic with YFinance-derived session windows and cached YFinance timing data, and updating the UI countdown text so after-hours uses Yahoo session-end timing instead of local next-open math.",
-        "Validation: dotnet build PortfolioScreensaver.sln -c Release succeeded and dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --no-build passed 160/160, including focused ExchangeMarketCalendarServiceTests covering Yahoo-driven regular, pre-market, after-hours, and next-window countdown behavior."
+        "Validation: dotnet build DoNotPanicPortfolioVisualizer.sln -c Release succeeded and dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --no-build passed 160/160, including focused ExchangeMarketCalendarServiceTests covering Yahoo-driven regular, pre-market, after-hours, and next-window countdown behavior."
       ],
       "acceptance": [],
       "resolution": [],
@@ -8087,7 +8087,7 @@
         "Affected surface: Help -> About desktop window, including any tests/documentation that assert About text content.",
         "Implemented in src/PortfolioSaver.Desktop/Windows/AboutWindow.xaml: the two old pre-license paragraphs were replaced with one concise feature/disclaimer paragraph.",
         "Regression coverage updated in tests/PortfolioSaver.Tests/Services/DesktopShellMigrationTests.cs to assert the new About description and removal of the old Beta/revision copy.",
-        "dotnet test PortfolioScreensaver.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run",
+        "dotnet test DoNotPanicPortfolioVisualizer.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run",
         "DeepSeek closure review reports no blocking findings: build/deepseek-review/deepseek-review-20260630-214904.md"
       ],
       "notes": [
@@ -8125,7 +8125,7 @@
         "Implemented explicit saved-key precedence over environment fallback in src/PortfolioSaver.Core/Services/AppSettingsNormalizer.cs; README documents saved key > environment variable behavior.",
         "Implemented MainWindowViewModel AI-validation lifecycle: first summarized-news validation in a settings window probes AI access; subsequent validations skip the AI probe when AI fields are unchanged; AI field/mode changes still force validation.",
         "Added/updated tests in MainWindowViewModelValidationTests and AppSettingsNormalizerTests covering explicit pasted-key precedence, RSS-to-AI validation, first summarized validation, and tape-only edits after successful AI validation.",
-        "dotnet test PortfolioScreensaver.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run",
+        "dotnet test DoNotPanicPortfolioVisualizer.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run",
         "DeepSeek closure review reports no blocking findings: build/deepseek-review/deepseek-review-20260630-214904.md"
       ],
       "notes": [
@@ -8161,7 +8161,7 @@
         "Implemented immediate config-resume background catalog refresh in src/PortfolioSaver.Presentation/Controls/ScreensaverSceneControl.xaml.cs.",
         "RefreshBackgroundCatalogFromSettings now rescans the active settings catalog, invalidates stale current backgrounds, clears both image layers for no-image fallback, traces BackgroundCatalogRescanned, and re-arms timers.",
         "Added background decision tests in ScreensaverRenderBehaviorTests for invalid current path, expanded catalog with current still valid, and unchanged catalog behavior.",
-        "dotnet test PortfolioScreensaver.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run",
+        "dotnet test DoNotPanicPortfolioVisualizer.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run",
         "DeepSeek closure review reports no blocking findings: build/deepseek-review/deepseek-review-20260630-214904.md"
       ],
       "notes": [
@@ -8196,7 +8196,7 @@
         "Removed unused src/PortfolioSaver.Settings/Infrastructure/BindablePasswordBox.cs after verifying no remaining active BoundPassword/infra references.",
         "Added plain-text exposure tooltip and README note so the screenshot/screen-share privacy tradeoff is explicit.",
         "Regression coverage updated in ConfigTextConsistencyTests to assert no PasswordBox and to assert the plain TextBox API-key binding.",
-        "dotnet test PortfolioScreensaver.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run.",
+        "dotnet test DoNotPanicPortfolioVisualizer.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run.",
         "DeepSeek closure review reports no actionable findings: build/deepseek-review/deepseek-review-20260630-222109.md"
       ],
       "notes": [
@@ -8232,7 +8232,7 @@
         "OpenRouter endpoint/model defaults remain populated and DeepSeekApiKey remains empty for shipped defaults.",
         "FinanceNewsService AI-access tests now explicitly opt into SummarizedFinancialNews, preserving AI-path coverage after the default switched to RSS.",
         "SettingsValidatorTests now assert the shipped default is RSS with empty key and default OpenRouter endpoint/model.",
-        "dotnet test PortfolioScreensaver.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run.",
+        "dotnet test DoNotPanicPortfolioVisualizer.sln --configuration Release --no-restore => passed, 594/594 tests, 2026-06-30 local run.",
         "DeepSeek closure review reports no actionable findings: build/deepseek-review/deepseek-review-20260630-222109.md"
       ],
       "notes": [
@@ -8898,7 +8898,7 @@
       "notes": [
         "Active release packaging now contains desktop/config/agent/server payloads only; no .scr artifact is built or copied.",
         "Historical audit/review documents and modern presentation type names may still mention Screensaver until their dedicated follow-up CRs are processed.",
-        "Validation passed: dotnet build PortfolioScreensaver.sln --configuration Release --nologo; focused dotnet test filter for InnoInstallerScriptTests, VmHarnessScriptTests, YFinanceClientServerProtocolTests, DesktopShellMigrationTests, ReleaseManifestValidatorTests, LocalAppDataStorageScriptTests, and ScreensaverRenderBehaviorTests; build/publish-safe-temp.ps1 -Configuration Release -TimeoutSeconds 900."
+        "Validation passed: dotnet build DoNotPanicPortfolioVisualizer.sln --configuration Release --nologo; focused dotnet test filter for InnoInstallerScriptTests, VmHarnessScriptTests, YFinanceClientServerProtocolTests, DesktopShellMigrationTests, ReleaseManifestValidatorTests, LocalAppDataStorageScriptTests, and ScreensaverRenderBehaviorTests; build/publish-safe-temp.ps1 -Configuration Release -TimeoutSeconds 900."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -8910,7 +8910,7 @@
       ],
       "closed_at": "2026-07-03",
       "validation": [
-        "dotnet build PortfolioScreensaver.sln --configuration Release --nologo",
+        "dotnet build DoNotPanicPortfolioVisualizer.sln --configuration Release --nologo",
         "dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --configuration Release --nologo --filter FullyQualifiedName~InnoInstallerScriptTests|FullyQualifiedName~VmHarnessScriptTests|FullyQualifiedName~YFinanceClientServerProtocolTests|FullyQualifiedName~DesktopShellMigrationTests|FullyQualifiedName~ReleaseManifestValidatorTests|FullyQualifiedName~LocalAppDataStorageScriptTests|FullyQualifiedName~ScreensaverRenderBehaviorTests",
         ".\\build\\publish-safe-temp.ps1 -Configuration Release -TimeoutSeconds 900"
       ]
@@ -8973,16 +8973,22 @@
       "priority": 3,
       "area": "repo-structure",
       "title": "Rename solution and remaining project artefacts away from PortfolioScreensaver legacy identity",
-      "status": "open",
+      "status": "closed",
       "source": "cr-176-consistency-scan",
       "severity": "Low",
       "evidence": [
-        "The canonical solution file is still named PortfolioScreensaver.sln and many tests/scripts search for that filename as the repository root marker.",
-        "The name is not active screensaver support, but it is inconsistent with the 1.0 desktop visualizer baseline."
+        "The canonical solution file is still named DoNotPanicPortfolioVisualizer.sln and many tests/scripts search for that filename as the repository root marker.",
+        "The name is not active screensaver support, but it is inconsistent with the 1.0 desktop visualizer baseline.",
+        "Renamed the canonical solution file from the legacy screensaver-era name to DoNotPanicPortfolioVisualizer.sln.",
+        "Updated build scripts, VM validation scripts, documentation, and test repo-root discovery helpers to use DoNotPanicPortfolioVisualizer.sln.",
+        "Repository scan confirmed no remaining references to the legacy solution filename after the rename.",
+        "Validation passed on 2026-07-03: dotnet build .\\DoNotPanicPortfolioVisualizer.sln --configuration Release --nologo; focused root-marker/script suite passed 58/58.",
+        "Restored lean desktop-era sandbox validation entry scripts so tracked Windows Sandbox launchers no longer point at missing legacy scripts."
       ],
       "notes": [
         "Rename the solution and update repo-root discovery/tests/scripts in a dedicated pass.",
-        "Avoid bundling this with CR-176 so the fallback-host removal remains easy to review."
+        "Avoid bundling this with CR-176 so the fallback-host removal remains easy to review.",
+        "Closed on 2026-07-03 as the 1.0 baseline solution/root-marker rename; deeper project/namespace naming debt remains tracked separately under CR-177/CR-178."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -8991,7 +8997,8 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "updated": "2026-07-03"
     },
     {
       "id": "CR-180",
@@ -9169,13 +9176,13 @@
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "High",
       "evidence": [
-        "DeepSeek clean full-codebase optimization synthesis: `_httpClient` created without custom `Timeout` (default 100 s); a slow response can freeze the UI if awaited on dispatcher thread.",
+        "DeepSeek clean full-codebase optimization synthesis: `_httpClient` created without custom `Timeout` (default 100\u202fs); a slow response can freeze the UI if awaited on dispatcher thread.",
         "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
         "Implemented P1 YFinance runtime/server/cache hardening slice: serialized shared YFinanceServerClient access; reference-safe retired client disposal; per-client server request throttling; serialized Yahoo consent handling; explicit Yahoo HttpClient timeout; asynchronous PersistentTtlCache file streams.",
         "Updated behavioral tests for serialized shared-client scheduling and new server/YFinance options."
       ],
       "notes": [
-        "Recommendation: Apply a configurable timeout (e.g., 30 s) via `_options.HttpTimeout`.",
+        "Recommendation: Apply a configurable timeout (e.g., 30\u202fs) via `_options.HttpTimeout`.",
         "Acceptance criteria: When the Yahoo endpoint stalls beyond the timeout, the HTTP call is cancelled and the application remains responsive; the timeout is user-configurable.",
         "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
         "Validation passed locally for focused YFinance runtime/server protocol/cache tests."
@@ -9242,7 +9249,7 @@
       ],
       "notes": [
         "Recommendation: Use a single `dotnet restore` on the solution; remove `--disable-parallel` from publish calls.",
-        "Acceptance criteria: Build time reduces by ≥30%; timeout risk on slow machines is mitigated.",
+        "Acceptance criteria: Build time reduces by \u226530%; timeout risk on slow machines is mitigated.",
         "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
       ],
       "acceptance": [
@@ -9323,7 +9330,7 @@
       ],
       "notes": [
         "Recommendation: Use `ForEach-Object -Parallel 3` or `Start-ThreadJob` with a throttle limit.",
-        "Acceptance criteria: Total installation time reduces by ≥50%; no increase in package installation failures due to contention.",
+        "Acceptance criteria: Total installation time reduces by \u226550%; no increase in package installation failures due to contention.",
         "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
       ],
       "acceptance": [
@@ -9345,12 +9352,12 @@
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
-        "DeepSeek clean full-codebase optimization synthesis: `Get-ChildItem -Recurse` over `Program Files` and user profile takes 2-5 minutes.",
+        "DeepSeek clean full-codebase optimization synthesis: `Get-ChildItem -Recurse` over `Program Files` and user profile takes 2-5\u202fminutes.",
         "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
       ],
       "notes": [
         "Recommendation: Use `Test-Path` on known install directories.",
-        "Acceptance criteria: VM inventory scripts complete in <30 s; no access-denied errors.",
+        "Acceptance criteria: VM inventory scripts complete in <30\u202fs; no access-denied errors.",
         "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
       ],
       "acceptance": [
@@ -9453,7 +9460,7 @@
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
-        "DeepSeek clean full-codebase optimization synthesis: Tests create real temp directories and use `DeleteDirectoryWithRetry` (up to 2 s per call).",
+        "DeepSeek clean full-codebase optimization synthesis: Tests create real temp directories and use `DeleteDirectoryWithRetry` (up to 2\u202fs per call).",
         "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
       ],
       "notes": [
@@ -9480,7 +9487,7 @@
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
-        "DeepSeek clean full-codebase optimization synthesis: Empties the queue every 25 ms via polling, wasting CPU.",
+        "DeepSeek clean full-codebase optimization synthesis: Empties the queue every 25\u202fms via polling, wasting CPU.",
         "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
         "Replaced TraceLog idle polling with a QueueSignal SemaphoreSlim that is released on enqueue and awaited by the background trace worker.",
         "Validation passed on 2026-07-03: dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --no-restore --filter \"FullyQualifiedName~TraceLogTests\" (9 passed)."
@@ -9510,7 +9517,7 @@
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
-        "DeepSeek clean full-codebase optimization synthesis: `CreateProbeClient()` creates a new `HttpClient` (with shared handler) every 10 s.",
+        "DeepSeek clean full-codebase optimization synthesis: `CreateProbeClient()` creates a new `HttpClient` (with shared handler) every 10\u202fs.",
         "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
         "Changed InternetProbeService default path to reuse one static HttpClient with the existing shared SocketsHttpHandler; custom test handlers still use disposable clients.",
         "Moved probe timeout enforcement from per-client HttpClient.Timeout to linked per-request CancellationTokenSource so the shared client can safely use Timeout.InfiniteTimeSpan.",
@@ -9546,7 +9553,7 @@
       ],
       "notes": [
         "Recommendation: Replace with `System.IO.Hashing.XxHash64` or `Crc32`.",
-        "Acceptance criteria: CPU time per checksum reduces by 10×; functional tests with the new hash continue to detect corruption.",
+        "Acceptance criteria: CPU time per checksum reduces by 10\u00d7; functional tests with the new hash continue to detect corruption.",
         "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
       ],
       "acceptance": [
@@ -9573,7 +9580,7 @@
       ],
       "notes": [
         "Recommendation: Rent buffers from `ArrayPool<byte>.Shared` and return to pool.",
-        "Acceptance criteria: Under sustained load (100 quote/s), gen0 collections reduce by ≥30%; no buffer leaks.",
+        "Acceptance criteria: Under sustained load (100 quote/s), gen0 collections reduce by \u226530%; no buffer leaks.",
         "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
       ],
       "acceptance": [
@@ -9680,7 +9687,7 @@
         "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
       ],
       "notes": [
-        "Recommendation: Merge into a single 33 ms timer with internal scheduled action checks.",
+        "Recommendation: Merge into a single 33\u202fms timer with internal scheduled action checks.",
         "Acceptance criteria: Dispatcher queue depth decreases; UI rendering remains smooth under load.",
         "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
       ],
@@ -9708,7 +9715,7 @@
       ],
       "notes": [
         "Recommendation: Defer `UpdateLayout()` to after the batch or use `InvalidateVisual()`.",
-        "Acceptance criteria: Graph population does not cause visible stutter; initial card layout completes within 2 s.",
+        "Acceptance criteria: Graph population does not cause visible stutter; initial card layout completes within 2\u202fs.",
         "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
       ],
       "acceptance": [
@@ -9865,7 +9872,7 @@
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "High",
       "evidence": [
-        "DeepSeek clean full-codebase optimization synthesis: `PrepareHeadline` runs synchronously inside a 40 ms `DispatcherTimer` tick - creates `FormattedText` and regex.",
+        "DeepSeek clean full-codebase optimization synthesis: `PrepareHeadline` runs synchronously inside a 40\u202fms `DispatcherTimer` tick - creates `FormattedText` and regex.",
         "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
       ],
       "notes": [
@@ -9892,7 +9899,7 @@
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
-        "DeepSeek clean full-codebase optimization synthesis: Called on every tick (25 Hz) - thousands of trace lines per minute.",
+        "DeepSeek clean full-codebase optimization synthesis: Called on every tick (25\u202fHz) - thousands of trace lines per minute.",
         "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
       ],
       "notes": [
@@ -9950,7 +9957,7 @@
         "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
       ],
       "notes": [
-        "Recommendation: Stop and restart playback timer on change; debounce multiple rapid changes (500 ms window).",
+        "Recommendation: Stop and restart playback timer on change; debounce multiple rapid changes (500\u202fms window).",
         "Acceptance criteria: Rapid headline updates do not cause UI lag; stale headlines are not displayed.",
         "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
       ],
@@ -9977,7 +9984,7 @@
         "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
       ],
       "notes": [
-        "Recommendation: Subscribe to `NetworkChange.NetworkAvailabilityChanged`; fallback to 30 s interval if event unavailable.",
+        "Recommendation: Subscribe to `NetworkChange.NetworkAvailabilityChanged`; fallback to 30\u202fs interval if event unavailable.",
         "Acceptance criteria: No periodic network poll; connectivity state updates immediately on network change.",
         "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
       ],
@@ -10027,7 +10034,7 @@
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
-        "DeepSeek clean full-codebase optimization synthesis: `ChunkSymbols` uses `symbols.Skip(index).Take(size).ToList()` - O(N²) enumerators.",
+        "DeepSeek clean full-codebase optimization synthesis: `ChunkSymbols` uses `symbols.Skip(index).Take(size).ToList()` - O(N\u00b2) enumerators.",
         "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
       ],
       "notes": [
@@ -10108,12 +10115,12 @@
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Low",
       "evidence": [
-        "DeepSeek clean full-codebase optimization synthesis: 18 sequential independent scenarios take 30-60 s.",
+        "DeepSeek clean full-codebase optimization synthesis: 18 sequential independent scenarios take 30-60\u202fs.",
         "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
       ],
       "notes": [
         "Recommendation: Parallelise with fallback to sequential if PS7 unavailable.",
-        "Acceptance criteria: Wall-clock time reduces by ≥3×;",
+        "Acceptance criteria: Wall-clock time reduces by \u22653\u00d7;",
         "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
       ],
       "acceptance": [

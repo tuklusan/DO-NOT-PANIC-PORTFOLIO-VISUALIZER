@@ -147,7 +147,7 @@ Installer upgrades preserve existing custom AI endpoint URLs and model IDs, incl
 
 ## Recommended workflow
 
-1. Open `PortfolioScreensaver.sln` in Visual Studio 2022.
+1. Open `DoNotPanicPortfolioVisualizer.sln` in Visual Studio 2022.
 2. Select `Debug | x64` for development.
 3. Rebuild solution.
 4. Use startup project:

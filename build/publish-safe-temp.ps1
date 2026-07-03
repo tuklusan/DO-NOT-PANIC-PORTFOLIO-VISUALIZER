@@ -99,7 +99,7 @@ if (Test-Path $tempRoot) {
 }
 New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
 
-Copy-Item -LiteralPath (Join-Path $repoRoot "PortfolioScreensaver.sln") -Destination $tempRoot -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot "DoNotPanicPortfolioVisualizer.sln") -Destination $tempRoot -Force
 foreach ($requiredRepositoryItem in @(
     "Directory.Build.props",
     "Directory.Build.targets",

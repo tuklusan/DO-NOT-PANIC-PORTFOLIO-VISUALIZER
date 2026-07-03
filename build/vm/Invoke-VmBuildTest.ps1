@@ -148,10 +148,10 @@ try {
     Get-Process PortfolioSaver.VmAgent,PortfolioSaver.Config,PortfolioSaver.Desktop -ErrorAction SilentlyContinue |
         Stop-Process -Force -ErrorAction SilentlyContinue
 
-    & dotnet restore .\PortfolioScreensaver.sln --disable-parallel --nologo
+    & dotnet restore .\DoNotPanicPortfolioVisualizer.sln --disable-parallel --nologo
     if (`$LASTEXITCODE -ne 0) { throw 'dotnet restore failed.' }
 
-    & dotnet build .\PortfolioScreensaver.sln -c Release --nologo --no-restore
+    & dotnet build .\DoNotPanicPortfolioVisualizer.sln -c Release --nologo --no-restore
     if (`$LASTEXITCODE -ne 0) { throw 'dotnet build failed.' }
 
     & dotnet test .\tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj -c Release --nologo --no-build

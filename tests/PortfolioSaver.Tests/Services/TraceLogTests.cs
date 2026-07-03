@@ -472,7 +472,7 @@ public sealed class TraceLogTests
         DirectoryInfo? current = new(AppContext.BaseDirectory);
         while (current is not null)
         {
-            if (File.Exists(Path.Combine(current.FullName, "PortfolioScreensaver.sln")))
+            if (File.Exists(Path.Combine(current.FullName, "DoNotPanicPortfolioVisualizer.sln")))
                 return current.FullName;
 
             current = current.Parent;

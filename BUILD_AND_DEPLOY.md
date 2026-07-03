@@ -32,7 +32,7 @@ Install **PowerShell 7 (`pwsh`)** on the local developer machine; the mandatory 
 
 ## First session checklist
 
-1. Open `PortfolioScreensaver.sln` in Visual Studio 2022.
+1. Open `DoNotPanicPortfolioVisualizer.sln` in Visual Studio 2022.
 2. Set solution configuration to `Debug`.
 3. Set solution platform to `x64`.
 4. Run `Clean Solution`.

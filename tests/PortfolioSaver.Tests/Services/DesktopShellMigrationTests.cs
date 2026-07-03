@@ -300,7 +300,7 @@ public sealed class DesktopShellMigrationTests
     public void LegacyScreensaverHost_IsRemovedFromDesktopOnlyProduct()
     {
         string repoRoot = GetRepoRoot();
-        string solution = File.ReadAllText(Path.Combine(repoRoot, "PortfolioScreensaver.sln"));
+        string solution = File.ReadAllText(Path.Combine(repoRoot, "DoNotPanicPortfolioVisualizer.sln"));
         string innoPublisher = File.ReadAllText(Path.Combine(repoRoot, "build", "publish-inno-installer.ps1"));
 
         Assert.False(Directory.Exists(Path.Combine(repoRoot, "src", "PortfolioSaver.Screensaver")));
@@ -334,7 +334,7 @@ public sealed class DesktopShellMigrationTests
         DirectoryInfo? current = new(AppContext.BaseDirectory);
         while (current is not null)
         {
-            string candidate = Path.Combine(current.FullName, "PortfolioScreensaver.sln");
+            string candidate = Path.Combine(current.FullName, "DoNotPanicPortfolioVisualizer.sln");
             if (File.Exists(candidate))
                 return current.FullName;
 

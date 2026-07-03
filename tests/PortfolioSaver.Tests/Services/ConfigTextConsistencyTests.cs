@@ -314,7 +314,7 @@ public sealed class ConfigTextConsistencyTests
         DirectoryInfo? current = new(AppContext.BaseDirectory);
         while (current is not null)
         {
-            string candidate = Path.Combine(current.FullName, "PortfolioScreensaver.sln");
+            string candidate = Path.Combine(current.FullName, "DoNotPanicPortfolioVisualizer.sln");
             if (File.Exists(candidate))
                 return current.FullName;
 
