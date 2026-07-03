@@ -94,6 +94,11 @@ For settings work:
 ### Preview mode
 - `/p` renders the real scene, not a placeholder stub.
 
+### Degraded UX contract
+- Offline, stale, unavailable, fallback, and recovery validation must be checked against `docs/DEGRADED_UX_CONTRACT.md`.
+- Scenario coverage and degraded-mode harness profiles are cataloged in `docs/ANOMALY_DEGRADATION_TEST_PLAN.md` and `docs/DEGRADED_MODE_VALIDATION_HARNESS.md`.
+- Validators should create a CR when traces or screenshots show a mismatch between visible behavior and the degraded UX contract.
+
 ## Release 1.0 development freeze
 
 The active development lane is `1.0`, but public distribution remains frozen until 1.0 development is complete and explicitly approved. During this phase, do not publish or replace GitHub Release assets, mirror builds to Itch.io, retag `v0.9.0-beta7`, or publish VirusTotal reports for unpublished development installers. Local and VM installer builds are allowed only as private validation artifacts.

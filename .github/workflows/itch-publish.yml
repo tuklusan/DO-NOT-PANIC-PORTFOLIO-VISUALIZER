@@ -26,6 +26,8 @@ jobs:
       ITCH_USER: tuklusan
       ITCH_INSTALLER_CHANNEL: windows
       ITCH_SHA256_CHANNEL: windows-sha256
+      # MD5 is generated only as an Itch.io convenience artifact. SHA-256 from
+      # the GitHub Release remains the canonical installer checksum.
       ITCH_MD5_CHANNEL: windows-md5
       ITCH_VIRUSTOTAL_CHANNEL: windows-virustotal-report
       PACKAGE_DIR: build/windows
@@ -39,6 +41,9 @@ jobs:
       DNPPV_RELEASE_DISTRIBUTION_FROZEN: ${{ vars.DNPPV_RELEASE_DISTRIBUTION_FROZEN || 'true' }}
       # Release asset contract: one public Windows installer, one matching SHA-256 file,
       # and one VirusTotal advisory report are published to the GitHub Release.
+      # Butler update workflow: choose a Butler GitHub Release, set BUTLER_VERSION
+      # and BUTLER_ASSET together, download that exact asset, compute sha256sum,
+      # then update BUTLER_SHA256 in the same commit.
       BUTLER_VERSION: v15.27.0
       BUTLER_ASSET: butler-linux-amd64.zip
       BUTLER_SHA256: b78ca81ed566c2daa54d68b7e300dd32888168163212293909ce90f16e0ec75d

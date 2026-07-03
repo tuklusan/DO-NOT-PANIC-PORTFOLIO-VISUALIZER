@@ -97,14 +97,16 @@ Only revisit the harness when:
 
 ## Canonical host scripts
 
-- [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Push-VmWorkspace.ps1](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Push-VmWorkspace.ps1)
-- [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Invoke-VmBuildTest.ps1](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Invoke-VmBuildTest.ps1)
-- [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Pull-VmResults.ps1](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Pull-VmResults.ps1)
-- [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\VmSshCommon.ps1](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\VmSshCommon.ps1)
-- [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-BootstrapVmRemoteTools.ps1](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-BootstrapVmRemoteTools.ps1)
-- [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-ConfigureDesktopAutomation.ps1](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-ConfigureDesktopAutomation.ps1)
-- [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-ApplyTestSecrets.ps1](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-ApplyTestSecrets.ps1)
-- [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-UxDeepExercise.ps1](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\Guest-UxDeepExercise.ps1)
+Run these from the repository root; paths below are repository-relative so the runbook is portable across developer machines:
+
+- `./build/vm/Push-VmWorkspace.ps1`
+- `./build/vm/Invoke-VmBuildTest.ps1`
+- `./build/vm/Pull-VmResults.ps1`
+- `./build/vm/VmSshCommon.ps1`
+- `./build/vm/Guest-BootstrapVmRemoteTools.ps1`
+- `./build/vm/Guest-ConfigureDesktopAutomation.ps1`
+- `./build/vm/Guest-ApplyTestSecrets.ps1`
+- `./build/vm/Guest-UxDeepExercise.ps1`
 
 ## Workspace layout on the remote Windows target
 

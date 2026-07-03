@@ -10155,17 +10155,19 @@
       "priority": 2,
       "area": "VM documentation",
       "title": "Replace hardcoded absolute paths in VM operations runbook",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_documentation_consistency_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek documentation consistency synthesis: build/vm/VM_OPERATIONS_RUNBOOK.md contains canonical host script examples with D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\... absolute paths.",
-        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md",
+        "Replaced machine-specific absolute VM host script links in build/vm/VM_OPERATIONS_RUNBOOK.md with repository-relative commands."
       ],
       "notes": [
         "Recommendation: Replace absolute paths with relative repository-root references or mark them clearly as local examples.",
         "Acceptance criteria: A developer cloning the repo can follow the VM runbook without machine-specific path edits.",
-        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking."
+        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking.",
+        "Closed on 2026-07-03 as part of the documentation/workflow consistency cleanup slice. Validation: targeted grep confirmed the canonical VM script list no longer uses machine-specific paths; workflow comments now document Butler and MD5 maintenance intent."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10182,17 +10184,19 @@
       "priority": 2,
       "area": "Documentation consistency",
       "title": "Cross-link degraded UX contract from build and validation docs",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_documentation_consistency_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek documentation consistency synthesis: docs/ANOMALY_DEGRADATION_TEST_PLAN.md and docs/DEGRADED_UX_CONTRACT.md define expected degraded-state visuals, but BUILD_AND_DEPLOY.md and AGENTS.md do not clearly point validators to them.",
-        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md",
+        "Added degraded UX contract cross-links to BUILD_AND_DEPLOY.md manual validation checklist, including anomaly and harness documents."
       ],
       "notes": [
         "Recommendation: Add visible links from build/deploy and validation workflow docs to the degraded UX contract.",
         "Acceptance criteria: Manual validation instructions make the expected degraded/offline visual behavior easy to locate.",
-        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking."
+        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking.",
+        "Closed on 2026-07-03 as part of the documentation/workflow consistency cleanup slice. Validation: targeted grep confirmed the canonical VM script list no longer uses machine-specific paths; workflow comments now document Butler and MD5 maintenance intent."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10209,17 +10213,19 @@
       "priority": 3,
       "area": "Itch workflow maintainability",
       "title": "Document or automate Butler checksum update workflow",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_documentation_consistency_review_2026_07_03",
       "severity": "Low",
       "evidence": [
         "DeepSeek documentation consistency synthesis: .github/workflows/itch-publish.yml pins BUTLER_VERSION and BUTLER_SHA256 without explaining how to update the checksum safely.",
-        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md",
+        "Documented the Butler version/checksum update workflow inline in .github/workflows/itch-publish.yml."
       ],
       "notes": [
         "Recommendation: Add comments with checksum update instructions or automate checksum lookup/verification.",
         "Acceptance criteria: A maintainer can update Butler without reverse-engineering the checksum process.",
-        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking."
+        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking.",
+        "Closed on 2026-07-03 as part of the documentation/workflow consistency cleanup slice. Validation: targeted grep confirmed the canonical VM script list no longer uses machine-specific paths; workflow comments now document Butler and MD5 maintenance intent."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10236,17 +10242,19 @@
       "priority": 3,
       "area": "Itch workflow clarity",
       "title": "Clarify or remove Itch.io generated MD5 channel",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_documentation_consistency_review_2026_07_03",
       "severity": "Low",
       "evidence": [
         "DeepSeek documentation consistency synthesis: .github/workflows/itch-publish.yml defines ITCH_MD5_CHANNEL=windows-md5 for an MD5 generated by the workflow rather than a canonical GitHub Release asset, without explanation.",
-        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md",
+        "Clarified that the Itch.io MD5 channel is a generated convenience artifact and SHA-256 remains canonical."
       ],
       "notes": [
         "Recommendation: Remove the MD5 channel or add a comment explaining that it is an Itch-only convenience artifact.",
         "Acceptance criteria: Workflow comments or structure make clear whether MD5 is canonical or Itch-only.",
-        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking."
+        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking.",
+        "Closed on 2026-07-03 as part of the documentation/workflow consistency cleanup slice. Validation: targeted grep confirmed the canonical VM script list no longer uses machine-specific paths; workflow comments now document Butler and MD5 maintenance intent."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10334,4 +10342,3 @@
     }
   ]
 }
-
