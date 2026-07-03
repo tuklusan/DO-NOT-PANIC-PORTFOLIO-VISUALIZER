@@ -110,6 +110,23 @@ public sealed class VmHarnessScriptTests
     }
 
     [Fact]
+    public void BuildSafeTemp_UsesFreshRestoreInsteadOfCopiedObjAssets()
+    {
+        string script = ReadRepoText("build",
+            "build-safe-temp.ps1");
+
+        Assert.Contains("Directory.Build.targets", script, StringComparison.Ordinal);
+        Assert.Contains("global.json", script, StringComparison.Ordinal);
+        Assert.Contains("YFinance.net", script, StringComparison.Ordinal);
+        Assert.Contains("YFinanceServer.targets", script, StringComparison.Ordinal);
+        Assert.Contains("build .\\DoNotPanicPortfolioVisualizer.sln -c $Configuration -nodeReuse:false -v minimal", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("Seeding NuGet restore assets", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("project.assets.json", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("--no-restore", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("-m:1", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PublishSafeTemp_SeedsImportedYFinanceServerTargets()
     {
         string script = ReadRepoText("build",
@@ -120,7 +137,11 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$yfinanceServerTargets = Join-Path (Join-Path $repoRoot \"build\") \"YFinanceServer.targets\"", script, StringComparison.Ordinal);
         Assert.Contains("Copy-Item -LiteralPath $yfinanceServerTargets -Destination $tempBuildRoot -Force", script, StringComparison.Ordinal);
         Assert.True(File.Exists(Path.Combine(GetRepoRoot(), "build", "YFinanceServer.targets")));
-        Assert.Contains("restore $serverProject -r $RuntimeIdentifier", script, StringComparison.Ordinal);
+        Assert.Contains("restore .\\DoNotPanicPortfolioVisualizer.sln -r $RuntimeIdentifier", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("Seeding local obj restore assets", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("project.assets.json", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("--disable-parallel", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("-m:1", script, StringComparison.Ordinal);
     }
 
     [Fact]

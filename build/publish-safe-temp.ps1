@@ -134,34 +134,6 @@ if ($yfinanceCopyExit -gt 7) {
     throw "Workspace mirror failed. robocopy exit: yfinance=$yfinanceCopyExit"
 }
 
-Write-Step "Seeding local obj restore assets"
-$assetPatterns = @(
-    "project.assets.json",
-    "project.nuget.cache",
-    "*.nuget.dgspec.json",
-    "*.nuget.g.props",
-    "*.nuget.g.targets"
-)
-
-$assetFiles = Get-ChildItem -Path @(
-    (Join-Path $repoRoot "src"),
-    (Join-Path $repoRoot "YFinance.net")
-) -Recurse -File | Where-Object {
-    $name = $_.Name
-    foreach ($pattern in $assetPatterns) {
-        if ($name -like $pattern) { return $true }
-    }
-    return $false
-}
-
-foreach ($assetFile in $assetFiles) {
-    $relativePath = Get-RelativePathLegacy -BasePath $repoRoot -TargetPath $assetFile.FullName
-    $destinationPath = Join-Path $tempRoot $relativePath
-    $destinationDir = Split-Path -Path $destinationPath -Parent
-    New-Item -ItemType Directory -Force -Path $destinationDir | Out-Null
-    Copy-Item -LiteralPath $assetFile.FullName -Destination $destinationPath -Force
-}
-
 if (Test-Path $publishRoot) {
     Remove-Item -LiteralPath $publishRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
@@ -178,44 +150,29 @@ $serverTempPublish = ".\YFinance.net\YFinance.NET.Server\bin\$Configuration\net1
 
 Push-Location $tempRoot
 try {
-    Test-Deadline -Deadline $deadline -NextStep "restore config"
-    Write-Step "Restoring config project"
-    & $dotnetCli restore $configProject -r $RuntimeIdentifier --disable-parallel --ignore-failed-sources -m:1 -v minimal
-    if ($LASTEXITCODE -ne 0) { throw "Restore failed for config" }
-
-    Test-Deadline -Deadline $deadline -NextStep "restore desktop"
-    Write-Step "Restoring desktop project"
-    & $dotnetCli restore $desktopProject -r $RuntimeIdentifier --disable-parallel --ignore-failed-sources -m:1 -v minimal
-    if ($LASTEXITCODE -ne 0) { throw "Restore failed for desktop" }
-
-    Test-Deadline -Deadline $deadline -NextStep "restore agent"
-    Write-Step "Restoring VM agent project"
-    & $dotnetCli restore $agentProject -r $RuntimeIdentifier --disable-parallel --ignore-failed-sources -m:1 -v minimal
-    if ($LASTEXITCODE -ne 0) { throw "Restore failed for agent" }
-
-    Test-Deadline -Deadline $deadline -NextStep "restore yfinance server"
-    Write-Step "Restoring YFinance server project"
-    & $dotnetCli restore $serverProject -r $RuntimeIdentifier --disable-parallel --ignore-failed-sources -m:1 -v minimal
-    if ($LASTEXITCODE -ne 0) { throw "Restore failed for YFinance server" }
+    Test-Deadline -Deadline $deadline -NextStep "restore solution"
+    Write-Step "Restoring solution"
+    & $dotnetCli restore .\DoNotPanicPortfolioVisualizer.sln -r $RuntimeIdentifier --ignore-failed-sources -v minimal
+    if ($LASTEXITCODE -ne 0) { throw "Restore failed for solution" }
 
     Test-Deadline -Deadline $deadline -NextStep "publish config"
     Write-Step "Publishing config app"
-    & $dotnetCli publish $configProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore --disable-parallel -m:1 -v minimal
+    & $dotnetCli publish $configProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore -v minimal
     if ($LASTEXITCODE -ne 0) { throw "Publish failed for config" }
 
     Test-Deadline -Deadline $deadline -NextStep "publish desktop"
     Write-Step "Publishing desktop app"
-    & $dotnetCli publish $desktopProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore --disable-parallel -m:1 -v minimal
+    & $dotnetCli publish $desktopProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore -v minimal
     if ($LASTEXITCODE -ne 0) { throw "Publish failed for desktop" }
 
     Test-Deadline -Deadline $deadline -NextStep "publish agent"
     Write-Step "Publishing VM agent"
-    & $dotnetCli publish $agentProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore --disable-parallel -m:1 -v minimal
+    & $dotnetCli publish $agentProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore -v minimal
     if ($LASTEXITCODE -ne 0) { throw "Publish failed for agent" }
 
     Test-Deadline -Deadline $deadline -NextStep "publish yfinance server"
     Write-Step "Publishing YFinance server"
-    & $dotnetCli publish $serverProject -c $Configuration --self-contained false --no-restore --disable-parallel -m:1 -v minimal
+    & $dotnetCli publish $serverProject -c $Configuration --self-contained false --no-restore -v minimal
     if ($LASTEXITCODE -ne 0) { throw "Publish failed for YFinance server" }
 
     foreach ($pair in @(

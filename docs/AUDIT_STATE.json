@@ -9260,12 +9260,14 @@
       "priority": 2,
       "area": "Build pipeline throughput",
       "title": "Parallelize restore and publish in build/publish-safe-temp.ps1",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: Each project is restored and published sequentially with `--disable-parallel`.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Validation passed on 2026-07-03: focused dotnet test for VmHarnessScriptTests, YFinance publish launcher contract, and InnoInstallerScriptTests passed 25/25; build/validation/Test-ValidationScripts.ps1 reported VALIDATION_SCRIPT_SMOKE_TEST=Passed.",
+        "DeepSeek pre-commit review 20260703-112719 reported no critical correctness, security, privacy, or test adequacy bugs; remaining comments were low-severity operational advisories."
       ],
       "notes": [
         "Recommendation: Use a single `dotnet restore` on the solution; remove `--disable-parallel` from publish calls.",
@@ -9279,6 +9281,10 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "updated_utc": "2026-07-03T15:28:43.055391+00:00",
+      "resolution": [
+        "Parallelized safe-temp publish at the MSBuild/NuGet level by replacing four serialized forced-single-thread project restores with one solution restore and removing --disable-parallel/-m:1 from publish calls while keeping --no-restore after the solution restore."
       ]
     },
     {
@@ -9287,12 +9293,14 @@
       "priority": 2,
       "area": "Build reliability",
       "title": "Remove stale restore-asset copying in build-safe-temp.ps1 and enable full restore",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "High",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: Copies `project.assets.json` from original repo and uses `--no-restore` without verifying freshness.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Validation passed on 2026-07-03: focused dotnet test for VmHarnessScriptTests, YFinance publish launcher contract, and InnoInstallerScriptTests passed 25/25; build/validation/Test-ValidationScripts.ps1 reported VALIDATION_SCRIPT_SMOKE_TEST=Passed.",
+        "DeepSeek pre-commit review 20260703-112719 reported no critical correctness, security, privacy, or test adequacy bugs; remaining comments were low-severity operational advisories."
       ],
       "notes": [
         "Recommendation: Replace with a full `dotnet restore` in the temp workspace.",
@@ -9306,6 +9314,10 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "updated_utc": "2026-07-03T15:28:43.055391+00:00",
+      "resolution": [
+        "Removed stale local obj restore-asset seeding from build-safe-temp.ps1 and enabled a fresh solution build/restore from a complete mirrored workspace including Directory.Build.targets, global.json, YFinance.net, YFinanceServer.targets, and LICENSE."
       ]
     },
     {

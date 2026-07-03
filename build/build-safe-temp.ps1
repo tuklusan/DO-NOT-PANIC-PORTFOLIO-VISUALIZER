@@ -135,8 +135,12 @@ New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
 
 Copy-Item -LiteralPath (Join-Path $repoRoot "DoNotPanicPortfolioVisualizer.sln") -Destination $tempRoot -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "Directory.Build.props") -Destination $tempRoot -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot "Directory.Build.targets") -Destination $tempRoot -Force
 if (Test-Path (Join-Path $repoRoot "NuGet.Config")) {
     Copy-Item -LiteralPath (Join-Path $repoRoot "NuGet.Config") -Destination $tempRoot -Force
+}
+if (Test-Path (Join-Path $repoRoot "global.json")) {
+    Copy-Item -LiteralPath (Join-Path $repoRoot "global.json") -Destination $tempRoot -Force
 }
 
 $srcTarget = Join-Path $tempRoot "src"
@@ -145,39 +149,25 @@ $null = robocopy (Join-Path $repoRoot "src") $srcTarget /E /XD bin obj
 $srcCopyExit = $LASTEXITCODE
 $null = robocopy (Join-Path $repoRoot "tests") $testsTarget /E /XD bin obj
 $testsCopyExit = $LASTEXITCODE
-if ($srcCopyExit -gt 7 -or $testsCopyExit -gt 7) {
-    throw "Workspace mirror failed. robocopy exits: src=$srcCopyExit tests=$testsCopyExit"
+$yfinanceTarget = Join-Path $tempRoot "YFinance.net"
+$null = robocopy (Join-Path $repoRoot "YFinance.net") $yfinanceTarget /E /XD bin obj
+$yfinanceCopyExit = $LASTEXITCODE
+if ($srcCopyExit -gt 7 -or $testsCopyExit -gt 7 -or $yfinanceCopyExit -gt 7) {
+    throw "Workspace mirror failed. robocopy exits: src=$srcCopyExit tests=$testsCopyExit yfinance=$yfinanceCopyExit"
 }
 
-Write-Host "Seeding NuGet restore assets from local obj caches..."
-$assetPatterns = @(
-    "project.assets.json",
-    "project.nuget.cache",
-    "*.nuget.dgspec.json",
-    "*.nuget.g.props",
-    "*.nuget.g.targets"
-)
-
-$assetFiles = Get-ChildItem -Path (Join-Path $repoRoot "src"),(Join-Path $repoRoot "tests") -Recurse -File | Where-Object {
-    $name = $_.Name
-    foreach ($pattern in $assetPatterns) {
-        if ($name -like $pattern) { return $true }
-    }
-    return $false
-}
-
-foreach ($assetFile in $assetFiles) {
-    $relativePath = Get-RelativePathLegacy -BasePath $repoRoot -TargetPath $assetFile.FullName
-    $destinationPath = Join-Path $tempRoot $relativePath
-    $destinationDir = Split-Path -Path $destinationPath -Parent
-    New-Item -ItemType Directory -Force -Path $destinationDir | Out-Null
-    Copy-Item -LiteralPath $assetFile.FullName -Destination $destinationPath -Force
+$tempBuildRoot = Join-Path $tempRoot "build"
+New-Item -ItemType Directory -Force -Path $tempBuildRoot | Out-Null
+$yfinanceServerTargets = Join-Path (Join-Path $repoRoot "build") "YFinanceServer.targets"
+Copy-Item -LiteralPath $yfinanceServerTargets -Destination $tempBuildRoot -Force
+if (Test-Path (Join-Path $repoRoot "LICENSE")) {
+    Copy-Item -LiteralPath (Join-Path $repoRoot "LICENSE") -Destination $tempRoot -Force
 }
 
 Write-Host "Building solution in temp workspace (timeout=$TimeoutSeconds sec)..."
 Invoke-ProcessWithTimeout `
     -FilePath $dotnetCli `
-    -Arguments "build .\DoNotPanicPortfolioVisualizer.sln -c $Configuration --no-restore -m:1 -nodeReuse:false -v minimal" `
+    -Arguments "build .\DoNotPanicPortfolioVisualizer.sln -c $Configuration -nodeReuse:false -v minimal" `
     -WorkingDirectory $tempRoot `
     -TimeoutSeconds $TimeoutSeconds
 
