@@ -10072,6 +10072,141 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-220",
+      "tracking_number": "CR-220",
+      "priority": 1,
+      "area": "Release workflow",
+      "title": "Guard Itch.io publishing during 1.0 development freeze",
+      "status": "open",
+      "source": "deepseek_documentation_consistency_review_2026_07_03",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek documentation consistency synthesis: BUILD_AND_DEPLOY.md says no distribution updates during 1.0 development freeze, but .github/workflows/itch-publish.yml still allows manual workflow_dispatch without a freeze check.",
+        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Add an explicit abort condition early in the workflow, such as a repository variable freeze check, or remove workflow_dispatch until freeze is lifted.",
+        "Acceptance criteria: Itch publish workflow fails gracefully with explanatory message when freeze is active; disabling the freeze is explicit.",
+        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-221",
+      "tracking_number": "CR-221",
+      "priority": 2,
+      "area": "VM documentation",
+      "title": "Replace hardcoded absolute paths in VM operations runbook",
+      "status": "open",
+      "source": "deepseek_documentation_consistency_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek documentation consistency synthesis: build/vm/VM_OPERATIONS_RUNBOOK.md contains canonical host script examples with D:\\Users\\vagab\\Documents\\SOFTWARE-DEV\\... absolute paths.",
+        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Replace absolute paths with relative repository-root references or mark them clearly as local examples.",
+        "Acceptance criteria: A developer cloning the repo can follow the VM runbook without machine-specific path edits.",
+        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-222",
+      "tracking_number": "CR-222",
+      "priority": 2,
+      "area": "Documentation consistency",
+      "title": "Cross-link degraded UX contract from build and validation docs",
+      "status": "open",
+      "source": "deepseek_documentation_consistency_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek documentation consistency synthesis: docs/ANOMALY_DEGRADATION_TEST_PLAN.md and docs/DEGRADED_UX_CONTRACT.md define expected degraded-state visuals, but BUILD_AND_DEPLOY.md and AGENTS.md do not clearly point validators to them.",
+        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Add visible links from build/deploy and validation workflow docs to the degraded UX contract.",
+        "Acceptance criteria: Manual validation instructions make the expected degraded/offline visual behavior easy to locate.",
+        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-223",
+      "tracking_number": "CR-223",
+      "priority": 3,
+      "area": "Itch workflow maintainability",
+      "title": "Document or automate Butler checksum update workflow",
+      "status": "open",
+      "source": "deepseek_documentation_consistency_review_2026_07_03",
+      "severity": "Low",
+      "evidence": [
+        "DeepSeek documentation consistency synthesis: .github/workflows/itch-publish.yml pins BUTLER_VERSION and BUTLER_SHA256 without explaining how to update the checksum safely.",
+        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Add comments with checksum update instructions or automate checksum lookup/verification.",
+        "Acceptance criteria: A maintainer can update Butler without reverse-engineering the checksum process.",
+        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-224",
+      "tracking_number": "CR-224",
+      "priority": 3,
+      "area": "Itch workflow clarity",
+      "title": "Clarify or remove Itch.io generated MD5 channel",
+      "status": "open",
+      "source": "deepseek_documentation_consistency_review_2026_07_03",
+      "severity": "Low",
+      "evidence": [
+        "DeepSeek documentation consistency synthesis: .github/workflows/itch-publish.yml defines ITCH_MD5_CHANNEL=windows-md5 for an MD5 generated by the workflow rather than a canonical GitHub Release asset, without explanation.",
+        "Review artifact: build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Remove the MD5 channel or add a comment explaining that it is an Itch-only convenience artifact.",
+        "Acceptance criteria: Workflow comments or structure make clear whether MD5 is canonical or Itch-only.",
+        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
@@ -10129,6 +10264,24 @@
       "medium_count": 25,
       "low_count": 2,
       "status": "crs_created"
+    }
+  ],
+  "documentation_review_records": [
+    {
+      "id": "deepseek-documentation-consistency-review-2026-07-03",
+      "date": "2026-07-03",
+      "reviewer": "DeepSeek v4-flash",
+      "scope": "Tracked project documentation cross-document consistency, release sanity, accuracy, maintainability, and user-facing clarity review.",
+      "versioned_document": "docs/DEEPSEEK_DOCUMENTATION_CONSISTENCY_REVIEW_2026-07-03.md",
+      "artifact_directory": "build/deepseek-review/docs-consistency-20260703-093111",
+      "packet_manifest": "build/deepseek-review/docs-consistency-20260703-093111/packet-manifest.json",
+      "final_synthesis": "build/deepseek-review/docs-consistency-20260703-093111/FINAL_SYNTHESIS.md",
+      "verdict": "5 actionable documentation/workflow consistency CR candidates created as CR-220 through CR-224.",
+      "high_count": 1,
+      "medium_count": 2,
+      "low_count": 2,
+      "status": "crs_created",
+      "tracked_manifest": "build/deepseek-review/docs-consistency-20260703-093111/document-manifest.json"
     }
   ]
 }
