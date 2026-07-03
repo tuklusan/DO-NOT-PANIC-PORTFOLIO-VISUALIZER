@@ -55,7 +55,7 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
 - Real-time and apply-time symbol validation flow
 - Auto-name support for symbols when provider metadata resolves display names
 - Bundled help/about/license reference content shipped with the config app assets
-- Revision-3 branding assets are now wired into desktop/config/screensaver icons and the desktop About dialog splash surface
+- Revision-3 branding assets are now wired into desktop/config icons and the desktop About dialog splash surface
 
 ## Installer and Licensing UX
 
@@ -118,12 +118,10 @@ Installer upgrades preserve existing custom AI endpoint URLs and model IDs, incl
 - fullscreen toggle from `View -> Full Screen` targets the current monitor
 - double-clicking anywhere in the main desktop visualization window toggles fullscreen mode
 - `Esc` exits fullscreen back to windowed mode
-- legacy screensaver `/s`, `/c`, and `/p <HWND>` paths remain for compatibility
 
 ## Project Structure
 
 - `src/PortfolioSaver.Desktop` - primary desktop executable host
-- `src/PortfolioSaver.Screensaver` - legacy screensaver compatibility host
 - `src/PortfolioSaver.Config` - thin configuration launcher
 - `src/PortfolioSaver.Settings` - shared settings window, view models, services, and content
 - `src/PortfolioSaver.Presentation` - reusable scene host and runtime presentation services
@@ -155,7 +153,6 @@ Installer upgrades preserve existing custom AI endpoint URLs and model IDs, incl
 4. Use startup project:
    - `PortfolioSaver.Desktop` for runtime/visual behavior
    - `PortfolioSaver.Config` for settings work
-5. For legacy screensaver argument testing only, set command args to `/s`, `/c`, or `/p 12345`.
 
 Project workflow hard stop: DeepSeek API access is mandatory before commit, push, local validation, VM validation, or automated workflow execution. Verify access with:
 
@@ -176,7 +173,7 @@ Use the scripts under `build/` for publish and packaging workflows, especially:
 
 `build/publish-safe-temp.ps1` is the canonical publish proof path. It mirrors the repository into a temporary workspace before invoking `dotnet publish`, which avoids MSBuild item-transform quoting hazards when a developer's repository path contains apostrophes or other awkward shell characters. Do not use ad-hoc publish output directories under such paths for release validation.
 
-`build/publish-inno-installer.ps1` assembles the safe-temp desktop/config/screensaver payload and compiles the primary public Inno Setup installer when `ISCC.exe` is available. Automated install/uninstall validation uses `build/installer/Test-InnoInstallCycle.ps1` from an already elevated administrator context; UAC prompts are intentionally not bypassed from a non-elevated process.
+`build/publish-inno-installer.ps1` assembles the safe-temp desktop/config payload and compiles the primary public Inno Setup installer when `ISCC.exe` is available. Automated install/uninstall validation uses `build/installer/Test-InnoInstallCycle.ps1` from an already elevated administrator context; UAC prompts are intentionally not bypassed from a non-elevated process.
 
 ## Current Baseline
 

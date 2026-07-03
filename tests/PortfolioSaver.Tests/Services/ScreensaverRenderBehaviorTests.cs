@@ -1832,12 +1832,18 @@ public sealed class ScreensaverRenderBehaviorTests
             "PortfolioSaver.Presentation",
             "Controls",
             "ScreensaverSceneControl.xaml.cs"));
-        string fullScreenWindowCode = File.ReadAllText(Path.Combine(
+        string desktopWindowCode = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
-            "PortfolioSaver.Screensaver",
+            "PortfolioSaver.Desktop",
             "Windows",
-            "FullScreenHostWindow.xaml.cs"));
+            "MainWindow.xaml.cs"));
+        string desktopWindowXaml = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Desktop",
+            "Windows",
+            "MainWindow.xaml"));
         string statusBarXaml = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
@@ -1874,9 +1880,9 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("AutomationProperties.SetAutomationId(VersionWatermark, \"ScreensaverVersionWatermark\");", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(VersionWatermark, $\"Version {PortfolioVersion.Version}\");", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetHelpText(VersionWatermark, PortfolioVersion.Version);", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("Title = $\"Portfolio Screensaver {PortfolioVersion.Version}\";", fullScreenWindowCode, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.SetAutomationId(this, \"ScreensaverHostWindow\");", fullScreenWindowCode, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.SetHelpText(this, PortfolioVersion.Version);", fullScreenWindowCode, StringComparison.Ordinal);
+        Assert.Contains("Title=\"DO NOT PANIC PORTFOLIO VISUALIZER\"", desktopWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetAutomationId(this, \"DesktopMainWindow\");", desktopWindowCode, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetHelpText(this, PortfolioVersion.Version);", desktopWindowCode, StringComparison.Ordinal);
         Assert.Contains("StableClockFont", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("StableClockFont", floatingClockXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("SevenSegmentDigitConverter", statusBarXaml, StringComparison.Ordinal);

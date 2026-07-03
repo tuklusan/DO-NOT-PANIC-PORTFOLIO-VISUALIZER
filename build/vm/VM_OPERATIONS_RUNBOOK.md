@@ -72,7 +72,6 @@ Only revisit the harness when:
 - Primary product host: `PortfolioSaver.Desktop`
 - Shared scene/runtime library: `PortfolioSaver.Presentation`
 - Shared settings library: `PortfolioSaver.Settings`
-- Legacy compatibility host: `PortfolioSaver.Screensaver`
 - Remote desktop-session helper: `PortfolioSaver.VmAgent`
 - Current pinned SDK in repo: `.NET 10.0.201`
 
@@ -341,7 +340,6 @@ Before and after each run, the harness should ensure no stale instances remain f
 
 - `PortfolioSaver.Config`
 - `PortfolioSaver.Desktop`
-- `PortfolioSaver.Screensaver`
 - `PortfolioSaver.VmAgent`
 - `WinAppDriver`
 

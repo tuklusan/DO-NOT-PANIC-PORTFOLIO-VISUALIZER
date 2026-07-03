@@ -383,7 +383,7 @@ internal static class Program
 
         private void StopPortfolioSaverProcesses()
         {
-            foreach (string processName in new[] { "PortfolioSaver.Desktop", "PortfolioSaver.Config", "PortfolioSaver.Screensaver", "pwsh", "powershell" })
+            foreach (string processName in new[] { "PortfolioSaver.Desktop", "PortfolioSaver.Config", "pwsh", "powershell" })
             {
                 foreach (Process process in Process.GetProcessesByName(processName))
                 {

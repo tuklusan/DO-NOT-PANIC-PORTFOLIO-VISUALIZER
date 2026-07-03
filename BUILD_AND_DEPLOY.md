@@ -39,7 +39,6 @@ Install **PowerShell 7 (`pwsh`)** on the local developer machine; the mandatory 
 5. Run `Rebuild Solution`.
 6. Start `PortfolioSaver.Desktop`.
 7. Start `PortfolioSaver.Config`.
-8. If validating legacy screensaver compatibility, also test `/s`, `/c`, and `/p 12345`.
 
 ## Suggested startup configuration
 
@@ -49,21 +48,12 @@ For implementation work:
 For settings work:
 - startup project: `PortfolioSaver.Config`
 
-For legacy screensaver behavior:
-- startup project: `PortfolioSaver.Screensaver`
-- command line args: `/s`
-
-For legacy parser/config routing checks:
-- command line args: `/c`
-- command line args: `/p 12345`
-
 ## Manual validation checklist
 
 ### Basic compile
 - Core, Shared, Data, Media, Render compile.
 - Config app starts.
 - Desktop app starts.
-- Legacy screensaver host starts.
 
 ### Config app
 - Settings window opens.
@@ -121,8 +111,7 @@ Preferred path:
    - `build\publish-inno-installer.ps1`
 3. Publish `PortfolioSaver.Desktop` for `win-x64`.
 4. Publish `PortfolioSaver.Config` as a normal `.exe`.
-5. Publish `PortfolioSaver.Screensaver` only if legacy compatibility is still needed.
-6. Test desktop + config locally before deployment.
+5. Test desktop + config locally before deployment.
 
 ## Remote Windows validation secrets
 
@@ -160,7 +149,7 @@ Acceptance for the current YFinance.NET lane:
 ### Final Windows integration
 - Treat the Inno Setup package produced by `build\publish-inno-installer.ps1` as the primary public distribution method. Public binaries are published as GitHub Release assets, not committed into a source-tree `RELEASE` directory.
 - The installer requires administrative privileges, shows the root `LICENSE` as the required license-agreement page, and uses a fixed public install location at `%PROGRAMFILES%\SANYALnet Labs\DoNotPanicPortfolioVisualizer`.
-- The installer includes the desktop app, config app, legacy screensaver host, owned YFinance.NET server bundle, root `LICENSE`, `THIRD-PARTY-NOTICES.md`, and `THIRD-PARTY-LICENSES`.
+- The installer includes the desktop app, config app, owned YFinance.NET server bundle, root `LICENSE`, `THIRD-PARTY-NOTICES.md`, and `THIRD-PARTY-LICENSES`.
 - Automated install/uninstall validation must run from an already elevated administrator context using `build\installer\Test-InnoInstallCycle.ps1`; Windows UAC prompts are not safely auto-accepted from a non-elevated process.
 
 ## Remote validation policy
@@ -223,7 +212,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\build\installer\Test-InnoInstall
 
 The automated Inno install/uninstall cycle above remains the canonical scripted installer regression check. For a supplementary human-facing smoke test, copy the fresh setup executable from `build\artifacts\inno\output` to the target machine, run it elevated, accept the SANYALnet Labs Non-Commercial License page, confirm the Start Menu and desktop shortcuts are created, launch the desktop app, then uninstall from Windows Apps/Programs. After uninstall, verify that `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer` no longer exists for the tested profile and that the Start Menu and desktop shortcuts are gone.
 
-Legacy Windows Sandbox files under `build\sandbox` are retained only for old screensaver-installer archaeology. They are not the release gate for the current Inno installer.
+Legacy Windows Sandbox files under `build\sandbox` are retained only for old installer archaeology. They are not the release gate for the current Inno installer.
 
 ## Important note
 

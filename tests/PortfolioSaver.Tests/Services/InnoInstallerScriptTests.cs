@@ -111,7 +111,7 @@ public sealed class InnoInstallerScriptTests
         Assert.Contains("local-name()=\"PortfolioSaverVersion\"", script, StringComparison.Ordinal);
         Assert.Contains("PortfolioSaver.Desktop.exe", script, StringComparison.Ordinal);
         Assert.Contains("PortfolioSaver.Config.exe", script, StringComparison.Ordinal);
-        Assert.Contains("PortfolioSaver.Screensaver.scr", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortfolioSaver.Screensaver.scr", script, StringComparison.Ordinal);
         Assert.Contains("THIRD-PARTY-LICENSES\\APACHE-2.0.txt", script, StringComparison.Ordinal);
         Assert.Contains("$serverRoot = Join-Path $safeTempRoot 'server'", script, StringComparison.Ordinal);
         Assert.Contains("Copy-DirectoryContents -Source $serverRoot -Destination (Join-Path $payloadRoot 'YFinanceServer')", script, StringComparison.Ordinal);

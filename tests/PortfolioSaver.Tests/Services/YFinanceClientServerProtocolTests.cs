@@ -122,7 +122,6 @@ public sealed class YFinanceClientServerProtocolTests
         string repoRoot = GetRepoRoot();
         string desktopApp = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Desktop", "App.xaml.cs"));
         string configApp = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Config", "App.xaml.cs"));
-        string screensaverApp = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Screensaver", "App.xaml.cs"));
         string shutdownQueue = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Shared", "Services", "OwnedServerShutdownQueue.cs"));
 
         Assert.Contains("YFinanceServerProcessManager.EnsureOwnedServerAsync(\"PortfolioSaver.Desktop\")", desktopApp, StringComparison.Ordinal);
@@ -131,9 +130,7 @@ public sealed class YFinanceClientServerProtocolTests
         Assert.Contains("YFinanceServerProcessManager.EnsureOwnedServerAsync(\"PortfolioSaver.Config\")", configApp, StringComparison.Ordinal);
         Assert.Contains("OwnedServerShutdownQueue.QueueShutdown(\"Config.App\")", configApp, StringComparison.Ordinal);
         Assert.DoesNotContain("StopOwnedServerAsync().GetAwaiter().GetResult()", configApp, StringComparison.Ordinal);
-        Assert.Contains("YFinanceServerProcessManager.EnsureOwnedServerAsync(\"PortfolioSaver.Screensaver\")", screensaverApp, StringComparison.Ordinal);
-        Assert.Contains("OwnedServerShutdownQueue.QueueShutdown(\"Screensaver.App\")", screensaverApp, StringComparison.Ordinal);
-        Assert.DoesNotContain("StopOwnedServerAsync().GetAwaiter().GetResult()", screensaverApp, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(Path.Combine(repoRoot, "src", "PortfolioSaver.Screensaver")));
         Assert.Contains("YFinanceServerProcessManager.StopOwnedServerAsync(timeout.Token)", shutdownQueue, StringComparison.Ordinal);
         Assert.Contains("IsBackground = false", shutdownQueue, StringComparison.Ordinal);
         Assert.DoesNotContain("Task.Run", shutdownQueue, StringComparison.Ordinal);
@@ -342,15 +339,14 @@ public sealed class YFinanceClientServerProtocolTests
         Assert.Contains("$serverOut = Join-Path $publishRoot \"server\"", publishScript, StringComparison.Ordinal);
         Assert.Contains("$serverProject = \".\\YFinance.net\\YFinance.NET.Server\\YFinance.NET.Server.csproj\"", publishScript, StringComparison.Ordinal);
         Assert.Contains("$serverTempPublish = \".\\YFinance.net\\YFinance.NET.Server\\bin\\$Configuration\\net10.0\\publish\"", publishScript, StringComparison.Ordinal);
+        Assert.Contains("& $manifestScript -PublishDir $serverOut", publishScript, StringComparison.Ordinal);
+        Assert.Contains("Manifest generation failed for $serverOut", publishScript, StringComparison.Ordinal);
         string desktopProject = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Desktop", "PortfolioSaver.Desktop.csproj"));
         string configProject = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Config", "PortfolioSaver.Config.csproj"));
-        string screensaverProject = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Screensaver", "PortfolioSaver.Screensaver.csproj"));
-
         string serverTargets = File.ReadAllText(Path.Combine(repoRoot, "build", "YFinanceServer.targets"));
 
         Assert.Contains("../../build/YFinanceServer.targets", desktopProject, StringComparison.Ordinal);
         Assert.Contains("../../build/YFinanceServer.targets", configProject, StringComparison.Ordinal);
-        Assert.Contains("../../build/YFinanceServer.targets", screensaverProject, StringComparison.Ordinal);
         Assert.Contains("CopyOwnedYFinanceServerToOutput", serverTargets, StringComparison.Ordinal);
         Assert.Contains("CopyOwnedYFinanceServerToPublish", serverTargets, StringComparison.Ordinal);
         Assert.Contains("<OwnedYFinanceServerBundleFolder>YFinanceServer\\</OwnedYFinanceServerBundleFolder>", serverTargets, StringComparison.Ordinal);

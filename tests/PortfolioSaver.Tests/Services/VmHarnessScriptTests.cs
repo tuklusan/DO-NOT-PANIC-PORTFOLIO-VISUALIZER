@@ -248,10 +248,9 @@ public sealed class VmHarnessScriptTests
 
         Assert.Contains("Start-Transcript -Path $logPath -Force", script, StringComparison.Ordinal);
         Assert.Contains("ConfigPhaseStatus", script, StringComparison.Ordinal);
-        Assert.Contains("ScreensaverPhaseStatus", script, StringComparison.Ordinal);
+        Assert.Contains("RuntimePhaseStatus", script, StringComparison.Ordinal);
         Assert.Contains("ConfigVersionCheck", script, StringComparison.Ordinal);
-        Assert.Contains("ScreensaverVersionCheck", script, StringComparison.Ordinal);
-        Assert.Contains("ScreensaverHostWindow", script, StringComparison.Ordinal);
+        Assert.Contains("RuntimeVersionCheck", script, StringComparison.Ordinal);
         Assert.Contains("DesktopMainWindow", script, StringComparison.Ordinal);
         Assert.Contains("MainWindowTitleFallback", script, StringComparison.Ordinal);
         Assert.Contains("OptionsMenuRoot", script, StringComparison.Ordinal);
@@ -463,21 +462,20 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("$severityLabel = if ($lastCaptureIndex -lt [Math]::Floor($targetFrames * 0.5)) { 'blocking' } else { 'low coverage' }", script, StringComparison.Ordinal);
         Assert.Contains("capture loop remained wall-clock bounded", script, StringComparison.Ordinal);
         Assert.Contains("Capture interval raised from $CaptureIntervalSeconds to $effectiveCaptureIntervalSeconds seconds for long-run soak stability.", script, StringComparison.Ordinal);
-        Assert.Contains("$screensaverExe = Join-Path $root 'publish\\screensaver\\PortfolioSaver.Screensaver.exe'", script, StringComparison.Ordinal);
-        Assert.Contains("Long-run soak mode enabled; fullscreen soak will switch to the legacy screensaver host after config apply.", script, StringComparison.Ordinal);
-        Assert.Contains("$desktop = Start-Process -FilePath $screensaverExe -ArgumentList '/s' -PassThru", script, StringComparison.Ordinal);
-        Assert.Contains("$summary.ScreensaverPhaseStatus = \"Running\"", script, StringComparison.Ordinal);
+        Assert.Contains("Long-run soak mode enabled; desktop visualizer remains the fullscreen runtime host.", script, StringComparison.Ordinal);
+        Assert.Contains("$summary.RuntimePhaseStatus = \"Running\"", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortfolioSaver.Screensaver", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("$screensaverExe", script, StringComparison.Ordinal);
         Assert.Contains("$env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = '1'", script, StringComparison.Ordinal);
-        Assert.Contains("$summary.Notes += \"Fullscreen soak host launched from PortfolioSaver.Screensaver with input-exit disabled.\"", script, StringComparison.Ordinal);
         Assert.Contains("Remove-Item Env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT", script, StringComparison.Ordinal);
         Assert.Contains("Remove-Item Env:DNPPV_YFINANCE_FAULT_PROFILE_PATH", script, StringComparison.Ordinal);
-        Assert.Contains("Visual host did not enter true fullscreen after long-run soak relaunch.", script, StringComparison.Ordinal);
-        Assert.Contains("$summary.ScreensaverVersionCheck = \"SoftFailed\"", script, StringComparison.Ordinal);
-        Assert.Contains("Screensaver version element containing the expected 1.0 marker was not detected during long-run soak; continuing.", script, StringComparison.Ordinal);
+        Assert.Contains("Visual host did not enter true fullscreen during long-run soak.", script, StringComparison.Ordinal);
+        Assert.Contains("$summary.RuntimeVersionCheck = \"SoftFailed\"", script, StringComparison.Ordinal);
+        Assert.Contains("Runtime version element containing the expected 1.0 marker was not detected during long-run soak; continuing.", script, StringComparison.Ordinal);
         Assert.Contains("$nextCaptureAt = $frameStartedAt.AddSeconds($effectiveCaptureIntervalSeconds)", script, StringComparison.Ordinal);
         Assert.Contains("Start-Sleep -Seconds $sleepSeconds", script, StringComparison.Ordinal);
-        Assert.Contains("if ($isLongRunSoak) {\n                $summary.ScreensaverShots++\n            }", script.ReplaceLineEndings("\n"), StringComparison.Ordinal);
-        Assert.True(script.Split("$summary.ScreensaverShots++", StringSplitOptions.None).Length - 1 >= 2);
+        Assert.Contains("if ($isLongRunSoak) {\n                $summary.RuntimeShots++\n            }", script.ReplaceLineEndings("\n"), StringComparison.Ordinal);
+        Assert.True(script.Split("$summary.RuntimeShots++", StringSplitOptions.None).Length - 1 >= 2);
         Assert.Contains("desktop-after-recovery-clear-{0:D3}.png", script, StringComparison.Ordinal);
         Assert.Contains("$script:screenCaptureManifestPath = Join-Path $results 'screen-captures.jsonl'", script, StringComparison.Ordinal);
         Assert.Contains("Set-Content -LiteralPath $script:screenCaptureManifestPath -Value '' -Encoding UTF8", script, StringComparison.Ordinal);
@@ -785,3 +783,6 @@ public sealed class VmHarnessScriptTests
     }
 
 }
+
+
+

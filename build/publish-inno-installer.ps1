@@ -264,9 +264,8 @@ if (-not $SkipPublish) {
 
 $desktopRoot = Join-Path $safeTempRoot 'desktop'
 $configRoot = Join-Path $safeTempRoot 'config'
-$screensaverRoot = Join-Path $safeTempRoot 'screensaver'
 $serverRoot = Join-Path $safeTempRoot 'server'
-foreach ($requiredSafeTempRoot in @($desktopRoot, $configRoot, $screensaverRoot, $serverRoot)) {
+foreach ($requiredSafeTempRoot in @($desktopRoot, $configRoot, $serverRoot)) {
     if (-not (Test-Path -LiteralPath $requiredSafeTempRoot -PathType Container)) {
         $hint = if ($SkipPublish) {
             'Run without -SkipPublish or run build/publish-safe-temp.ps1 first.'
@@ -285,9 +284,7 @@ New-InstallerLicenseDisplayFile -SourceLicensePath $licensePath -DestinationLice
 Write-Step 'Assembling Inno Program Files payload'
 Copy-DirectoryContents -Source $desktopRoot -Destination $payloadRoot
 Copy-DirectoryContents -Source $configRoot -Destination $payloadRoot
-Copy-DirectoryContents -Source $screensaverRoot -Destination $payloadRoot
 Copy-DirectoryContents -Source $serverRoot -Destination (Join-Path $payloadRoot 'YFinanceServer')
-Copy-RequiredFile -Source (Join-Path $screensaverRoot 'PortfolioSaver.Screensaver.exe') -Destination (Join-Path $payloadRoot 'PortfolioSaver.Screensaver.scr')
 Copy-RequiredFile -Source $cleanupScript -Destination (Join-Path $payloadRoot 'Installer\Cleanup-DoNotPanicPortfolioVisualizer.ps1')
 Get-ChildItem -LiteralPath $payloadRoot -Recurse -File -Include '*.pdb','*.nupkg' -ErrorAction SilentlyContinue |
     Remove-Item -Force -ErrorAction SilentlyContinue
@@ -295,7 +292,6 @@ Get-ChildItem -LiteralPath $payloadRoot -Recurse -File -Include '*.pdb','*.nupkg
 foreach ($requiredPayloadFile in @(
     'PortfolioSaver.Desktop.exe',
     'PortfolioSaver.Config.exe',
-    'PortfolioSaver.Screensaver.scr',
     'LICENSE',
     'THIRD-PARTY-NOTICES.md',
     'THIRD-PARTY-LICENSES\APACHE-2.0.txt',

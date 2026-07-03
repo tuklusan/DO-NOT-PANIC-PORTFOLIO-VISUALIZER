@@ -22,7 +22,6 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using PortfolioSaver.Shared;
 using PortfolioSaver.Shared.Diagnostics;
-using PortfolioSaver.Screensaver.Services;
 using SettingsWindow = PortfolioSaver.Config.Windows.MainWindow;
 
 namespace PortfolioSaver.Desktop.Windows;
@@ -31,6 +30,12 @@ public partial class MainWindow : Window
 {
     private const double RestoredWindowWidth = 1180d;
     private const double RestoredWindowHeight = 720d;
+    private static readonly bool DisableFullScreenInputExit =
+        string.Equals(
+            Environment.GetEnvironmentVariable("PORTFOLIOSAVER_DISABLE_INPUT_EXIT"),
+            "1",
+            StringComparison.OrdinalIgnoreCase);
+
     private bool _isFullScreen;
     private bool _suppressWindowConstraint;
     private WindowState _previousWindowState;
@@ -73,6 +78,9 @@ public partial class MainWindow : Window
     {
         if (_isFullScreen)
         {
+            if (DisableFullScreenInputExit)
+                return;
+
             ExitFullScreen();
         }
         else
@@ -132,6 +140,10 @@ public partial class MainWindow : Window
     public void ExitFullScreen()
     {
         if (!_isFullScreen)
+        {
+            return;
+        }
+        if (DisableFullScreenInputExit)
         {
             return;
         }
@@ -547,3 +559,4 @@ public partial class MainWindow : Window
         public readonly int Bottom;
     }
 }
+

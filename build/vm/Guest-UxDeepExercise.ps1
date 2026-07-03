@@ -194,7 +194,6 @@ public static class NativeDisplaySettings {
 
 $root = $RootPath
 $desktopExe = Join-Path $root 'publish\desktop\PortfolioSaver.Desktop.exe'
-$screensaverExe = Join-Path $root 'publish\screensaver\PortfolioSaver.Screensaver.exe'
 if ([string]::IsNullOrWhiteSpace($ResultRootPath)) {
     $ResultRootPath = Join-Path $root 'results'
 }
@@ -1107,17 +1106,17 @@ $summary = [ordered]@{
     StartedAt = (Get-Date).ToString('o')
     ResultsPath = $results
     ConfigShots = 0
-    ScreensaverShots = 0
+    RuntimeShots = 0
     DesktopShots = 0
     ConfigPhaseStatus = "Pending"
     DesktopPhaseStatus = "Pending"
-    ScreensaverPhaseStatus = "LegacyNotRun"
+    RuntimePhaseStatus = "Pending"
     ConfigVersionCheck = "Pending"
     DesktopVersionCheck = "Pending"
-    ScreensaverVersionCheck = "LegacyNotRun"
+    RuntimeVersionCheck = "Pending"
     FullScreenToggleStatus = "Pending"
     Notes = @()
-    PlannedScreensaverDurationMinutes = $ScreensaverDurationMinutes
+    PlannedRuntimeDurationMinutes = $ScreensaverDurationMinutes
     IsLongRunSoak = $isLongRunSoak
     RequestedCaptureIntervalSeconds = $CaptureIntervalSeconds
     EffectiveCaptureIntervalSeconds = $effectiveCaptureIntervalSeconds
@@ -1132,7 +1131,7 @@ if ($effectiveCaptureIntervalSeconds -ne $CaptureIntervalSeconds) {
     $summary.Notes += "Capture interval raised from $CaptureIntervalSeconds to $effectiveCaptureIntervalSeconds seconds for long-run soak stability."
 }
 if ($isLongRunSoak) {
-    $summary.Notes += "Long-run soak mode enabled; fullscreen soak will switch to the legacy screensaver host after config apply."
+    $summary.Notes += "Long-run soak mode enabled; desktop visualizer remains the fullscreen runtime host."
 }
 
 $summaryPath = Join-Path $results 'ux-deep-summary.json'
@@ -3417,7 +3416,7 @@ try {
         $summary.Notes += "Requested display resolution ${DisplayWidth}x${DisplayHeight} applied before UX run."
     }
     Write-SummaryFiles
-    Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     $desktop = $null
     $window = $null
     $configClosedNaturally = $false
@@ -3425,6 +3424,10 @@ try {
     try {
         $configPhaseStartedAt = [datetime]::UtcNow
         $configInteractionStartedAt = $null
+        if ($isLongRunSoak) {
+            $previousDisableInputExit = $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT
+            $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = '1'
+        }
         $desktop = Start-Process -FilePath $desktopExe -PassThru
         $desktopWindow = Wait-ProcessWindowElementWithFallback `
             -Process $desktop `
@@ -3578,34 +3581,7 @@ try {
         $summary.ConfigPhaseStatus = "Completed"
         Write-SummaryFiles
 
-        if ($isLongRunSoak) {
-            try {
-                if ($null -ne $desktop -and -not $desktop.HasExited) {
-                    $desktop.CloseMainWindow() | Out-Null
-                    [void](Wait-UIAutomationCondition -TimeoutSeconds 5 -PollMilliseconds 100 -TraceEvent 'DesktopCloseBeforeSoakWait' -Condition {
-                        $desktop.Refresh()
-                        return $desktop.HasExited
-                    })
-                    if (-not $desktop.HasExited) {
-                        Stop-Process -Id $desktop.Id -Force -ErrorAction SilentlyContinue
-                    }
-                }
-            }
-            catch {}
-
-            $previousDisableInputExit = $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT
-            $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = '1'
-            if ($FaultProfile -in @('offline-during-runtime', 'offline-then-recover-runtime')) {
-                Set-YFinanceFaultProfile -Profile 'offline'
-            }
-            $desktop = Start-Process -FilePath $screensaverExe -ArgumentList '/s' -PassThru
-            [void](Wait-UIAutomationCondition -TimeoutSeconds 10 -PollMilliseconds 100 -TraceEvent 'ScreensaverWindowWait' -Condition {
-                $desktop.Refresh()
-                return ($desktop.MainWindowHandle -ne [IntPtr]::Zero)
-            })
-            $summary.ScreensaverPhaseStatus = "Running"
-            $summary.Notes += "Fullscreen soak host launched from PortfolioSaver.Screensaver with input-exit disabled."
-        }
+        $summary.RuntimePhaseStatus = "Running"
     }
     catch {
         $summary.ConfigPhaseStatus = "Failed"
@@ -3644,7 +3620,7 @@ try {
         [void](Focus-ProcessWindow -Process $desktop)
         $versionMatch = Find-ElementMetadataByProcessId `
             -ProcessId $desktop.Id `
-            -AutomationIds @('ScreensaverVersionWatermark', 'ScreensaverHostWindow', 'DesktopMainWindow', 'MainWindowTitle') `
+            -AutomationIds @('ScreensaverVersionWatermark', 'DesktopMainWindow', 'MainWindowTitle') `
             -NameFragments @('Version 1.0', '1.0', 'DO NOT PANIC PORTFOLIO VISUALIZER 1.0') `
             -TimeoutSeconds 10
         if ($null -eq $versionMatch) {
@@ -3659,7 +3635,7 @@ try {
         }
         if ($null -ne $versionMatch) {
             if ($isLongRunSoak) {
-                $summary.ScreensaverVersionCheck = "Passed"
+                $summary.RuntimeVersionCheck = "Passed"
             }
             else {
                 $summary.DesktopVersionCheck = "Passed"
@@ -3671,8 +3647,8 @@ try {
         }
         else {
             if ($isLongRunSoak) {
-                $summary.ScreensaverVersionCheck = "SoftFailed"
-                $summary.Notes += "Screensaver version element containing the expected 1.0 marker was not detected during long-run soak; continuing."
+                $summary.RuntimeVersionCheck = "SoftFailed"
+                $summary.Notes += "Runtime version element containing the expected 1.0 marker was not detected during long-run soak; continuing."
             }
             else {
                 $summary.DesktopVersionCheck = "Failed"
@@ -3684,6 +3660,14 @@ try {
         if ($isLongRunSoak) {
             Start-Sleep -Seconds 1
             [void](Focus-ProcessWindow -Process $desktop)
+            $fullScreenMenuItem = Find-DescendantByAutomationId -Root $desktopWindow -AutomationId 'ViewFullScreenMenuItem'
+            $fullScreenInvoked = $false
+            if ($null -ne $fullScreenMenuItem) {
+                $fullScreenInvoked = Invoke-AutomationElement -Element $fullScreenMenuItem
+            }
+            if (-not $fullScreenInvoked) {
+                try { [System.Windows.Forms.SendKeys]::SendWait('{F11}') } catch {}
+            }
             $fullScreenDeadline = (Get-Date).AddSeconds(12)
             do {
                 Start-Sleep -Milliseconds 350
@@ -3692,10 +3676,10 @@ try {
             $desktopFull = Join-Path $results 'desktop-fullscreen-entry.png'
             Capture-Screen -Path $desktopFull
             $summary.DesktopShots++
-            $summary.ScreensaverShots++
+            $summary.RuntimeShots++
             Write-RuntimeFreshnessSnapshot -CaptureIndex 0 -Phase 'fullscreen-entry' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop -IncludeVisibleFreshness
             if (-not $enteredFullScreen) {
-                throw "Visual host did not enter true fullscreen after long-run soak relaunch."
+                throw "Visual host did not enter true fullscreen during long-run soak."
             }
             $summary.FullScreenToggleStatus = "Completed"
             Write-SummaryFiles
@@ -3790,7 +3774,7 @@ try {
                 $postRecoveryPath = Join-Path $results ("desktop-after-recovery-clear-{0:D3}.png" -f $i)
                 Capture-Screen -Path $postRecoveryPath
                 if ($isLongRunSoak) {
-                    $summary.ScreensaverShots++
+                    $summary.RuntimeShots++
                 }
                 $summary.DesktopShots++
                 Write-RuntimeFreshnessSnapshot -CaptureIndex $i -Phase 'after-recovery-clear' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop -IncludeVisibleFreshness
@@ -3814,7 +3798,7 @@ try {
             $includeVisibleFreshnessForCapture = $true
             Write-RuntimeFreshnessSnapshot -CaptureIndex $i -Phase 'capture' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop -IncludeVisibleFreshness:$includeVisibleFreshnessForCapture
             if ($isLongRunSoak) {
-                $summary.ScreensaverShots++
+                $summary.RuntimeShots++
             }
             $summary.DesktopShots++
             $lastCaptureIndex = $i
@@ -3836,7 +3820,7 @@ try {
             $postRecoveryPath = Join-Path $results ("desktop-after-recovery-clear-{0:D3}.png" -f $lastCaptureIndex)
             Capture-Screen -Path $postRecoveryPath
             if ($isLongRunSoak) {
-                $summary.ScreensaverShots++
+                $summary.RuntimeShots++
             }
             $summary.DesktopShots++
             Write-RuntimeFreshnessSnapshot -CaptureIndex $lastCaptureIndex -Phase 'after-recovery-clear' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop -IncludeVisibleFreshness
@@ -3857,14 +3841,14 @@ try {
 
         $summary.DesktopPhaseStatus = "Completed"
         if ($isLongRunSoak) {
-            $summary.ScreensaverPhaseStatus = "Completed"
+            $summary.RuntimePhaseStatus = "Completed"
         }
         Write-SummaryFiles
     }
     catch {
         $summary.DesktopPhaseStatus = "Failed"
-        if ($isLongRunSoak -and $summary.ScreensaverPhaseStatus -eq "Running") {
-            $summary.ScreensaverPhaseStatus = "Failed"
+        if ($isLongRunSoak -and $summary.RuntimePhaseStatus -eq "Running") {
+            $summary.RuntimePhaseStatus = "Failed"
         }
         $summary.Notes += "Desktop phase error: $($_.Exception.Message)"
         Write-SummaryFiles
@@ -3872,15 +3856,7 @@ try {
     finally {
         try { [System.Windows.Forms.SendKeys]::SendWait('{ESC}') } catch {}
         Start-Sleep -Seconds 1
-        if ($isLongRunSoak) {
-            if ($null -eq $previousDisableInputExit) {
-                Remove-Item Env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT -ErrorAction SilentlyContinue
-            }
-            else {
-                $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = $previousDisableInputExit
-            }
-        }
-        Get-Process PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        Get-Process PortfolioSaver.Desktop -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     }
 }
 finally {
@@ -3904,6 +3880,12 @@ finally {
     else {
         $env:DNPPV_YFINANCE_FAULT_PROFILE = $previousFaultProfile
     }
+    if ($null -eq $previousDisableInputExit) {
+        Remove-Item Env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = $previousDisableInputExit
+    }
     try {
         $localTraceTarget = Join-Path $results 'trace'
         New-Item -ItemType Directory -Force -Path $localTraceTarget | Out-Null
@@ -3920,3 +3902,6 @@ finally {
     Write-Output "RESULTS=$results"
     Write-Output "SUMMARY=$summaryPath"
 }
+
+
+

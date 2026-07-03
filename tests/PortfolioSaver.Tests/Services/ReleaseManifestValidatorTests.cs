@@ -90,8 +90,7 @@ public sealed class ReleaseManifestValidatorTests
         foreach (string appPath in new[]
                  {
                      Path.Combine(repoRoot, "src", "PortfolioSaver.Desktop", "App.xaml.cs"),
-                     Path.Combine(repoRoot, "src", "PortfolioSaver.Config", "App.xaml.cs"),
-                     Path.Combine(repoRoot, "src", "PortfolioSaver.Screensaver", "App.xaml.cs")
+                     Path.Combine(repoRoot, "src", "PortfolioSaver.Config", "App.xaml.cs")
                  })
         {
             string source = File.ReadAllText(appPath);

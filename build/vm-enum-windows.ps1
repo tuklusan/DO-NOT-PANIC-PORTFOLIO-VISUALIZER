@@ -34,7 +34,7 @@ public static class Win32Enum
 }
 "@
 
-$target = Get-Process PortfolioSaver.Screensaver -ErrorAction SilentlyContinue
+$target = Get-Process PortfolioSaver.Desktop -ErrorAction SilentlyContinue
 if (-not $target) {
     Write-Output "NO_PROCESS"
     exit 0
@@ -63,3 +63,4 @@ if ($rows.Count -eq 0) {
 } else {
     $rows
 }
+

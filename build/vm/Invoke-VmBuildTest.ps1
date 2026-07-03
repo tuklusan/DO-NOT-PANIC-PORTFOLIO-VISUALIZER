@@ -145,7 +145,7 @@ try {
 }
 Push-Location `$repoRoot
 try {
-    Get-Process PortfolioSaver.VmAgent,PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue |
+    Get-Process PortfolioSaver.VmAgent,PortfolioSaver.Config,PortfolioSaver.Desktop -ErrorAction SilentlyContinue |
         Stop-Process -Force -ErrorAction SilentlyContinue
 
     & dotnet restore .\PortfolioScreensaver.sln --disable-parallel --nologo
@@ -331,7 +331,7 @@ schtasks /Delete /TN "PortfolioSaverVmAgent" /F >`$null 2>&1
 
         if ((Get-Date) -ge $deadline) {
             $statusCommand = @"
-Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver,pwsh,powershell -ErrorAction SilentlyContinue |
+Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,pwsh,powershell -ErrorAction SilentlyContinue |
     Select-Object ProcessName,Id,SessionId,StartTime |
     ConvertTo-Json -Compress
 "@
@@ -371,3 +371,4 @@ finally {
         Remove-Item -LiteralPath $localAgentCommandPath -Force -ErrorAction SilentlyContinue
     }
 }
+

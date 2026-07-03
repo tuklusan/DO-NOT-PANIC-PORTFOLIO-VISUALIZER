@@ -213,7 +213,6 @@ function Invoke-VmHarnessAbortCleanup {
     'PortfolioSaver.VmAgent',
     'PortfolioSaver.Config',
     'PortfolioSaver.Desktop',
-    'PortfolioSaver.Screensaver',
     'WinAppDriver'
 )
 Get-Process -Name `$processNames -ErrorAction SilentlyContinue |
@@ -334,7 +333,7 @@ function Invoke-VmWorkspaceCleanup {
     )
 
     $command = @"
-Get-Process PortfolioSaver.VmAgent,PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver,WinAppDriver -ErrorAction SilentlyContinue |
+Get-Process PortfolioSaver.VmAgent,PortfolioSaver.Config,PortfolioSaver.Desktop,WinAppDriver -ErrorAction SilentlyContinue |
     Stop-Process -Force -ErrorAction SilentlyContinue
 
 `$targets = @(
@@ -466,3 +465,5 @@ function New-VmWorkspaceArchive {
         }
     }
 }
+
+

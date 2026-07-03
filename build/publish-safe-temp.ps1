@@ -85,7 +85,6 @@ $manifestScript = Join-Path $PSScriptRoot "generate-release-manifest.ps1"
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 
 $publishRoot = Join-Path $repoRoot "build\artifacts\publish-safe-temp"
-$screensaverOut = Join-Path $publishRoot "screensaver"
 $configOut = Join-Path $publishRoot "config"
 $desktopOut = Join-Path $publishRoot "desktop"
 $agentOut = Join-Path $publishRoot "agent"
@@ -166,14 +165,12 @@ foreach ($assetFile in $assetFiles) {
 if (Test-Path $publishRoot) {
     Remove-Item -LiteralPath $publishRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
-New-Item -ItemType Directory -Force -Path $screensaverOut,$configOut,$desktopOut,$agentOut,$serverOut | Out-Null
+New-Item -ItemType Directory -Force -Path $configOut,$desktopOut,$agentOut,$serverOut | Out-Null
 
-$screensaverProject = ".\src\PortfolioSaver.Screensaver\PortfolioSaver.Screensaver.csproj"
 $configProject = ".\src\PortfolioSaver.Config\PortfolioSaver.Config.csproj"
 $desktopProject = ".\src\PortfolioSaver.Desktop\PortfolioSaver.Desktop.csproj"
 $agentProject = ".\src\PortfolioSaver.VmAgent\PortfolioSaver.VmAgent.csproj"
 $serverProject = ".\YFinance.net\YFinance.NET.Server\YFinance.NET.Server.csproj"
-$screensaverTempPublish = ".\src\PortfolioSaver.Screensaver\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
 $configTempPublish = ".\src\PortfolioSaver.Config\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
 $desktopTempPublish = ".\src\PortfolioSaver.Desktop\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
 $agentTempPublish = ".\src\PortfolioSaver.VmAgent\bin\$Configuration\net10.0-windows\$RuntimeIdentifier\publish"
@@ -181,11 +178,6 @@ $serverTempPublish = ".\YFinance.net\YFinance.NET.Server\bin\$Configuration\net1
 
 Push-Location $tempRoot
 try {
-    Test-Deadline -Deadline $deadline -NextStep "restore screensaver"
-    Write-Step "Restoring screensaver project with $dotnetCli"
-    & $dotnetCli restore $screensaverProject -r $RuntimeIdentifier --disable-parallel --ignore-failed-sources -m:1 -v minimal
-    if ($LASTEXITCODE -ne 0) { throw "Restore failed for screensaver" }
-
     Test-Deadline -Deadline $deadline -NextStep "restore config"
     Write-Step "Restoring config project"
     & $dotnetCli restore $configProject -r $RuntimeIdentifier --disable-parallel --ignore-failed-sources -m:1 -v minimal
@@ -205,11 +197,6 @@ try {
     Write-Step "Restoring YFinance server project"
     & $dotnetCli restore $serverProject -r $RuntimeIdentifier --disable-parallel --ignore-failed-sources -m:1 -v minimal
     if ($LASTEXITCODE -ne 0) { throw "Restore failed for YFinance server" }
-
-    Test-Deadline -Deadline $deadline -NextStep "publish screensaver"
-    Write-Step "Publishing screensaver"
-    & $dotnetCli publish $screensaverProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-restore --disable-parallel -m:1 -v minimal
-    if ($LASTEXITCODE -ne 0) { throw "Publish failed for screensaver" }
 
     Test-Deadline -Deadline $deadline -NextStep "publish config"
     Write-Step "Publishing config app"
@@ -232,7 +219,6 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Publish failed for YFinance server" }
 
     foreach ($pair in @(
-        @{ From = $screensaverTempPublish; To = $screensaverOut },
         @{ From = $configTempPublish; To = $configOut },
         @{ From = $desktopTempPublish; To = $desktopOut },
         @{ From = $agentTempPublish; To = $agentOut },
@@ -255,10 +241,6 @@ finally {
 
 Test-Deadline -Deadline $deadline -NextStep "manifest generation"
 Write-Step "Generating release manifests"
-& $manifestScript -PublishDir $screensaverOut
-if (-not (Test-Path (Join-Path $screensaverOut "release-manifest.json"))) {
-    throw "Manifest generation failed for $screensaverOut"
-}
 & $manifestScript -PublishDir $configOut
 if (-not (Test-Path (Join-Path $configOut "release-manifest.json"))) {
     throw "Manifest generation failed for $configOut"
@@ -270,6 +252,10 @@ if (-not (Test-Path (Join-Path $desktopOut "release-manifest.json"))) {
 & $manifestScript -PublishDir $agentOut
 if (-not (Test-Path (Join-Path $agentOut "release-manifest.json"))) {
     throw "Manifest generation failed for $agentOut"
+}
+& $manifestScript -PublishDir $serverOut
+if (-not (Test-Path (Join-Path $serverOut "release-manifest.json"))) {
+    throw "Manifest generation failed for $serverOut"
 }
 
 Write-Step "SAFE_TEMP_PUBLISH_OK output=$publishRoot"

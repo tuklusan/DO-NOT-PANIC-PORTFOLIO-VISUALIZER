@@ -117,6 +117,10 @@ public sealed class DesktopShellMigrationTests
         Assert.DoesNotContain("MaxHeight = SystemParameters.WorkArea.Height;", code, StringComparison.Ordinal);
         Assert.Contains("MainMenu.Visibility = Visibility.Collapsed;", code, StringComparison.Ordinal);
         Assert.Contains("MainMenu.Visibility = Visibility.Visible;", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("using PortfolioSaver.Screensaver.Services;", code, StringComparison.Ordinal);
+        Assert.Contains("PORTFOLIOSAVER_DISABLE_INPUT_EXIT", code, StringComparison.Ordinal);
+        Assert.Contains("private static readonly bool DisableFullScreenInputExit", code, StringComparison.Ordinal);
+        Assert.Contains("if (DisableFullScreenInputExit)", code, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetAutomationId(this, \"DesktopMainWindow\")", code, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetHelpText(this, PortfolioVersion.Version)", code, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(OptionsMenuItem, \"Options\")", code, StringComparison.Ordinal);
@@ -293,20 +297,16 @@ public sealed class DesktopShellMigrationTests
     }
 
     [Fact]
-    public void LegacyScreensaverHost_UsesPresentationAssembly()
+    public void LegacyScreensaverHost_IsRemovedFromDesktopOnlyProduct()
     {
-        string fullScreenXaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Screensaver", "Windows", "FullScreenHostWindow.xaml"));
-        string previewXaml = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Screensaver", "Windows", "PreviewHostWindow.xaml"));
-        string csproj = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Screensaver", "PortfolioSaver.Screensaver.csproj"));
+        string repoRoot = GetRepoRoot();
+        string solution = File.ReadAllText(Path.Combine(repoRoot, "PortfolioScreensaver.sln"));
+        string innoPublisher = File.ReadAllText(Path.Combine(repoRoot, "build", "publish-inno-installer.ps1"));
 
-        Assert.Contains("assembly=PortfolioSaver.Presentation", fullScreenXaml, StringComparison.Ordinal);
-        Assert.Contains("assembly=PortfolioSaver.Presentation", previewXaml, StringComparison.Ordinal);
-        Assert.Contains("<Grid Background=\"Transparent\">", File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Presentation", "Controls", "ScreensaverSceneControl.xaml")), StringComparison.Ordinal);
-        Assert.DoesNotContain("Icon=\"", fullScreenXaml, StringComparison.Ordinal);
-        Assert.DoesNotContain("Icon=\"", previewXaml, StringComparison.Ordinal);
-        Assert.Contains("<ApplicationIcon>..\\PortfolioSaver.Shared\\Assets\\Branding\\dnppv-icon-rev-3.ico</ApplicationIcon>", csproj, StringComparison.Ordinal);
-        Assert.Contains("<Resource Include=\"..\\PortfolioSaver.Shared\\Assets\\Branding\\dnppv-icon-rev-3.ico\" Link=\"Assets\\Branding\\dnppv-icon-rev-3.ico\" />", csproj, StringComparison.Ordinal);
-        Assert.Contains("PortfolioSaver.Presentation", csproj, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(Path.Combine(repoRoot, "src", "PortfolioSaver.Screensaver")));
+        Assert.DoesNotContain("PortfolioSaver.Screensaver", solution, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortfolioSaver.Screensaver.scr", innoPublisher, StringComparison.Ordinal);
+        Assert.Contains("<Grid Background=\"Transparent\">", File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Presentation", "Controls", "ScreensaverSceneControl.xaml")), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -344,3 +344,4 @@ public sealed class DesktopShellMigrationTests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 }
+

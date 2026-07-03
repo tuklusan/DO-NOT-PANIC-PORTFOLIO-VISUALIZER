@@ -21,7 +21,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Stop-ProductProcesses {
-    $processes = @(Get-Process PortfolioSaver.Desktop,PortfolioSaver.Config,PortfolioSaver.Screensaver,YFinance.NET.Server -ErrorAction SilentlyContinue)
+    $processes = @(Get-Process PortfolioSaver.Desktop,PortfolioSaver.Config,YFinance.NET.Server -ErrorAction SilentlyContinue)
     $serverHosts = @(Get-CimInstance Win32_Process -Filter "Name = 'dotnet.exe'" -ErrorAction SilentlyContinue |
         Where-Object {
             $_.CommandLine -like '*\YFinanceServer\YFinance.NET.Server.dll*' -or
@@ -260,3 +260,4 @@ $installRoot = Split-Path -Parent $PSScriptRoot
 Start-DelayedInstallRootCleanup -Path $installRoot
 
 Write-Host 'DO NOT PANIC PORTFOLIO VISUALIZER uninstall cleanup complete.'
+

@@ -334,7 +334,7 @@ if ($window -ne $null -and (Invoke-Button -Window $window -Name 'Preview')) {
     Start-Sleep -Seconds 1
 }
 
-Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Get-Process PortfolioSaver.Config,PortfolioSaver.Desktop -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
 $desktop = Start-Process -FilePath $desktopExe -PassThru
 Start-Sleep -Seconds 6
@@ -374,7 +374,7 @@ $desktop54 = Join-Path $results 'desktop-54s.png'
 Capture-Screen -Path $desktop54
 $summary.Captures += $desktop54
 
-Get-Process PortfolioSaver.Desktop,PortfolioSaver.Screensaver -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Get-Process PortfolioSaver.Desktop -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
 $summary.FinishedAt = (Get-Date).ToString('o')
 $summaryPath = Join-Path $results 'vm-ux-summary.json'
@@ -382,3 +382,4 @@ $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $summaryPath -Enco
 
 Write-Output "RESULTS=$results"
 Write-Output "SUMMARY=$summaryPath"
+
