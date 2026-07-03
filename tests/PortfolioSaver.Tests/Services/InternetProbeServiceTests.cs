@@ -77,6 +77,17 @@ public sealed class InternetProbeServiceTests
         Assert.Equal(new[] { "https://example.com" }, GetPrivateField<string[]>(service, "_probeUrls"));
     }
 
+
+    [Fact]
+    public void DefaultProbePath_ReusesSharedHttpClient()
+    {
+        HttpClient first = InternetProbeService.SharedProbeClientForTests;
+        HttpClient second = InternetProbeService.SharedProbeClientForTests;
+
+        Assert.Same(first, second);
+        Assert.Equal(Timeout.InfiniteTimeSpan, first.Timeout);
+    }
+
     [Fact]
     public async Task IsInternetAvailableAsync_CollapsesConcurrentCacheMissesToSingleProbe()
     {

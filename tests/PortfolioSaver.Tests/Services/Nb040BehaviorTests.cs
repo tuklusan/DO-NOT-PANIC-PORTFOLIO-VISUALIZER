@@ -525,6 +525,8 @@ public sealed class Nb040BehaviorTests
 
         SocketsHttpHandler probeHandler = InternetProbeService.SharedProbeHandlerForTests;
         Assert.Same(probeHandler, InternetProbeService.SharedProbeHandlerForTests);
+        Assert.Same(InternetProbeService.SharedProbeClientForTests, InternetProbeService.SharedProbeClientForTests);
+        Assert.Equal(Timeout.InfiniteTimeSpan, InternetProbeService.SharedProbeClientForTests.Timeout);
         Assert.Equal(TimeSpan.FromMinutes(5), probeHandler.PooledConnectionLifetime);
         Assert.Equal(TimeSpan.FromSeconds(30), probeHandler.PooledConnectionIdleTimeout);
 

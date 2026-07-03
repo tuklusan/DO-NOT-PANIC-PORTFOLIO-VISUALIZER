@@ -9503,17 +9503,21 @@
       "priority": 2,
       "area": "Memory/socket efficiency",
       "title": "Reuse a single `HttpClient` instance in `InternetProbeService` instead of creating a new one per probe",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: `CreateProbeClient()` creates a new `HttpClient` (with shared handler) every 10 s.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Changed InternetProbeService default path to reuse one static HttpClient with the existing shared SocketsHttpHandler; custom test handlers still use disposable clients.",
+        "Moved probe timeout enforcement from per-client HttpClient.Timeout to linked per-request CancellationTokenSource so the shared client can safely use Timeout.InfiniteTimeSpan.",
+        "Validation passed on 2026-07-03: dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --no-restore --filter \"FullyQualifiedName~InternetProbeServiceTests|FullyQualifiedName~Nb040BehaviorTests.DefaultHttpClients_ReuseSharedHandlers\"."
       ],
       "notes": [
         "Recommendation: Store a static `HttpClient` instance.",
         "Acceptance criteria: `ProbeInternetAsync` does not allocate a new `HttpClient`; object allocations per probe drop by >10.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Closed on 2026-07-03. The default probe path no longer allocates a new HttpClient per probe while preserving injected-handler testability and per-request cancellation semantics."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",

@@ -24,7 +24,13 @@ public sealed class InternetProbeService
         PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30)
     };
 
+    private static readonly HttpClient SharedProbeClient = new(SharedProbeHandler, disposeHandler: false)
+    {
+        Timeout = Timeout.InfiniteTimeSpan
+    };
+
     internal static SocketsHttpHandler SharedProbeHandlerForTests => SharedProbeHandler;
+    internal static HttpClient SharedProbeClientForTests => SharedProbeClient;
     private static readonly string[] DefaultProbeUrls =
     [
         "https://www.msftconnecttest.com/connecttest.txt",
@@ -106,13 +112,15 @@ public sealed class InternetProbeService
 
     private async Task<bool> ProbeInternetAsync(CancellationToken cancellationToken)
     {
-        using HttpClient client = CreateProbeClient();
+        using HttpClient? disposableClient = _messageHandlerFactory is null ? null : CreateProbeClient();
+        HttpClient client = disposableClient ?? SharedProbeClient;
+        TimeSpan requestTimeout = TimeSpan.FromMilliseconds(_timeoutMilliseconds);
 
         for (int attempt = 0; attempt < _attempts; attempt++)
         {
             foreach (string probeUrl in _probeUrls)
             {
-                if (await TryProbeUrlAsync(client, probeUrl, cancellationToken).ConfigureAwait(false))
+                if (await TryProbeUrlAsync(client, probeUrl, requestTimeout, cancellationToken).ConfigureAwait(false))
                     return true;
             }
 
@@ -124,17 +132,19 @@ public sealed class InternetProbeService
     }
 
     private HttpClient CreateProbeClient()
-        => _messageHandlerFactory is null
-            // The shared handler reuses sockets while bounded pooling lifetimes let network/DNS changes recover.
-            ? new HttpClient(SharedProbeHandler, disposeHandler: false) { Timeout = TimeSpan.FromMilliseconds(_timeoutMilliseconds) }
-            : new HttpClient(_messageHandlerFactory()) { Timeout = TimeSpan.FromMilliseconds(_timeoutMilliseconds) };
+        => new(_messageHandlerFactory!())
+        {
+            Timeout = Timeout.InfiniteTimeSpan
+        };
 
-    private static async Task<bool> TryProbeUrlAsync(HttpClient client, string probeUrl, CancellationToken cancellationToken)
+    private static async Task<bool> TryProbeUrlAsync(HttpClient client, string probeUrl, TimeSpan requestTimeout, CancellationToken cancellationToken)
     {
         try
         {
+            using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(requestTimeout);
             using HttpRequestMessage request = new(HttpMethod.Get, probeUrl);
-            using HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            using HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
             int statusCode = (int)response.StatusCode;
             return statusCode >= 200 && statusCode < 500;
         }
