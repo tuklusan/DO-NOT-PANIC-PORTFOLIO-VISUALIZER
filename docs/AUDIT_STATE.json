@@ -8992,6 +8992,1086 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-180",
+      "tracking_number": "CR-180",
+      "priority": 1,
+      "area": "Multithreading / data corruption",
+      "title": "Fix shared-client concurrency hazard in YFinanceRuntimeClientFactory",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Critical",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `RentSharedClient()` returns the same singleton without exclusive lock; multiple concurrent callers can corrupt protocol connection state.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Introduce a `SemaphoreSlim` to serialize all operations through the shared client or use a dedicated `Channel`.",
+        "Acceptance criteria: All concurrent calls to `RunAsync`/`RunSerializedAsync` are serialized; no data races in protocol state; existing integration tests pass.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-181",
+      "tracking_number": "CR-181",
+      "priority": 1,
+      "area": "Resource leak / memory",
+      "title": "Eliminate shared-client reference leak and retirement race",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `RetireConnectionState()` sets `_sharedClient = null` without tracking outstanding operations; old clients are never disposed and can be leaked.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Replace hand-rolled reference counting with a `ConcurrentDictionary<YFinanceServerClient, int>` or create a new client per operation (pooled).",
+        "Acceptance criteria: After a fault, all references to the old client are released and it is disposed exactly once; no client resource leak after 1000 simulated faults.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-182",
+      "tracking_number": "CR-182",
+      "priority": 1,
+      "area": "Server concurrency / thread-pool starvation",
+      "title": "Add per-client request concurrency throttling in YFinanceServer",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `HandleClientAsync` launches requests with `Task.Run` without any limit; a single client can exhaust thread pool.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Add a per-client `SemaphoreSlim` (e.g., max concurrency = 8) inside `HandleClientAsync`.",
+        "Acceptance criteria: When a client sends >8 concurrent requests, additional requests are queued; under a 100-request burst the server CPU usage stays below 80%; other clients are not starved.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-183",
+      "tracking_number": "CR-183",
+      "priority": 1,
+      "area": "Concurrency / cookie corruption",
+      "title": "Fix concurrent consent handling without synchronization in YahooSessionManager",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `SendAsync` and `SendSimpleGetAsync` both call `AcceptConsentFormAsync` without a lock; `HttpClient` and `CookieContainer` are not thread-safe for modifications.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Serialize consent acceptance using the existing `_refreshLock` or a dedicated `SemaphoreSlim`.",
+        "Acceptance criteria: When two threads simultaneously trigger a consent redirect, only one consent POST is sent and cookie state remains consistent; no `AccessViolationException` observed.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-184",
+      "tracking_number": "CR-184",
+      "priority": 1,
+      "area": "Test reliability / CI false positives",
+      "title": "Replace source-file string-matching tests with behavioral tests",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Nb048-Nb051 tests use `Assert.Contains(\"StartNewsRefreshLoop();\", source)` - break on any formatting or comment change.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Replace with actual behavior-based integration tests or remove if coverage exists elsewhere.",
+        "Acceptance criteria: All source-file string-match tests are replaced or removed; no test breaks on whitespace-only or comment-only production changes.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-185",
+      "tracking_number": "CR-185",
+      "priority": 1,
+      "area": "Network / UI freeze",
+      "title": "Set explicit HttpClient timeout in YahooSessionManager to prevent indefinite hang",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `_httpClient` created without custom `Timeout` (default 100 s); a slow response can freeze the UI if awaited on dispatcher thread.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Apply a configurable timeout (e.g., 30 s) via `_options.HttpTimeout`.",
+        "Acceptance criteria: When the Yahoo endpoint stalls beyond the timeout, the HTTP call is cancelled and the application remains responsive; the timeout is user-configurable.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-186",
+      "tracking_number": "CR-186",
+      "priority": 1,
+      "area": "Thread-pool / scalability",
+      "title": "Convert PersistentTtlCache file I/O to async to avoid thread-pool starvation",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `GetAsync` and `SetAsync` use synchronous `File.OpenRead`/`File.Create` on thread-pool threads.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Use `new FileStream(..., FileOptions.Asynchronous)` for async file opening.",
+        "Acceptance criteria: Under concurrent metadata requests, no thread-pool stall occurs; `GetAsync`/`SetAsync` complete without blocking a thread during the OS open call.\n\n### Priority 2 (Medium/High, material improvement in throughput, reliability, or maintainability)",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-187",
+      "tracking_number": "CR-187",
+      "priority": 2,
+      "area": "Build pipeline throughput",
+      "title": "Parallelize restore and publish in build/publish-safe-temp.ps1",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Each project is restored and published sequentially with `--disable-parallel`.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Use a single `dotnet restore` on the solution; remove `--disable-parallel` from publish calls.",
+        "Acceptance criteria: Build time reduces by ≥30%; timeout risk on slow machines is mitigated.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-188",
+      "tracking_number": "CR-188",
+      "priority": 2,
+      "area": "Build reliability",
+      "title": "Remove stale restore-asset copying in build-safe-temp.ps1 and enable full restore",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Copies `project.assets.json` from original repo and uses `--no-restore` without verifying freshness.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Replace with a full `dotnet restore` in the temp workspace.",
+        "Acceptance criteria: After a package version change, the temp build uses the correct assets; no silent dependency drift.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-189",
+      "tracking_number": "CR-189",
+      "priority": 2,
+      "area": "Build/release reliability",
+      "title": "Make package install scripts idempotent and add retry error handling",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `install-choco.ps1` uses `Invoke-Expression` without retry; `install-vm-qa-tools.ps1` installs packages even if present.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Add `-WhatIf` checks, `try/catch` with retry (3 attempts), and exit-code verification.",
+        "Acceptance criteria: Re-running the script on a provisioned VM skips already-installed packages; transient download failures are retried without failing the pipeline.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-190",
+      "tracking_number": "CR-190",
+      "priority": 2,
+      "area": "Pipeline throughput",
+      "title": "Parallelize VM package installation with throttled concurrency",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `install-vm-qa-tools.ps1` installs 10+ choco packages sequentially.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Use `ForEach-Object -Parallel 3` or `Start-ThreadJob` with a throttle limit.",
+        "Acceptance criteria: Total installation time reduces by ≥50%; no increase in package installation failures due to contention.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-191",
+      "tracking_number": "CR-191",
+      "priority": 2,
+      "area": "I/O / pipeline variability",
+      "title": "Replace recursive file system scans with targeted `Test-Path` calls in VM inventory scripts",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `Get-ChildItem -Recurse` over `Program Files` and user profile takes 2-5 minutes.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Use `Test-Path` on known install directories.",
+        "Acceptance criteria: VM inventory scripts complete in <30 s; no access-denied errors.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-192",
+      "tracking_number": "CR-192",
+      "priority": 2,
+      "area": "Process management",
+      "title": "Add structured cancellation and cleanup hooks to host scripts (Invoke-VmBuildTest.ps1 etc.)",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: No `CancellationToken` propagation; Ctrl+C may leave orphaned guest processes.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Add `trap`/`Register-EngineEvent` and remote cleanup command on exit.",
+        "Acceptance criteria: On host script termination, the remote harness is always aborted; no stale Config/Desktop/agent processes remain after cancellation.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-193",
+      "tracking_number": "CR-193",
+      "priority": 2,
+      "area": "Test throughput",
+      "title": "Enable test parallelism by removing global `DisableTestParallelization = true` and fixing environmental dependencies",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Environment-dependent tests force serialisation; CI test time is double.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Refactor tests to use `EnvironmentScope` or injectable config; remove assembly-level parallelization ban.",
+        "Acceptance criteria: All tests that modified environment variables are refactored; parallel execution is enabled; test suite completes in <50% of current time.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-194",
+      "tracking_number": "CR-194",
+      "priority": 2,
+      "area": "Test maintainability",
+      "title": "Reduce reflection-based private method testing using `InternalsVisibleTo` or extracted interfaces",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Multiple test files use `InvokePrivate`/`BindingFlags.NonPublic` for private methods.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Add `[assembly: InternalsVisibleTo(\"PortfolioSaver.Tests\")]` and change target methods to `internal`; or extract interfaces.",
+        "Acceptance criteria: All reflection tests are replaced with direct calls; no test breaks on method signature changes.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-195",
+      "tracking_number": "CR-195",
+      "priority": 2,
+      "area": "Test speed/flakiness",
+      "title": "Replace real file I/O in unit tests with an `IFileSystem` abstraction",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Tests create real temp directories and use `DeleteDirectoryWithRetry` (up to 2 s per call).",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Introduce an `IFileSystem` interface; use in-memory implementation in tests.",
+        "Acceptance criteria: File-based unit tests run without touching disk; `DeleteDirectoryWithRetry` is removed; test execution time decreases by >20%.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-196",
+      "tracking_number": "CR-196",
+      "priority": 2,
+      "area": "CPU efficiency",
+      "title": "Replace repeated `Task.Delay` polling in `TraceLog.ProcessQueueAsync` with a signaling mechanism",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Empties the queue every 25 ms via polling, wasting CPU.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Use a `SemaphoreSlim` signaled on enqueue.",
+        "Acceptance criteria: Idle trace worker uses zero CPU (<1% per core); enqueue releases the worker immediately.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-197",
+      "tracking_number": "CR-197",
+      "priority": 2,
+      "area": "Memory/socket efficiency",
+      "title": "Reuse a single `HttpClient` instance in `InternetProbeService` instead of creating a new one per probe",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `CreateProbeClient()` creates a new `HttpClient` (with shared handler) every 10 s.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Store a static `HttpClient` instance.",
+        "Acceptance criteria: `ProbeInternetAsync` does not allocate a new `HttpClient`; object allocations per probe drop by >10.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-198",
+      "tracking_number": "CR-198",
+      "priority": 2,
+      "area": "CPU/GC overhead",
+      "title": "Replace SHA256 with a fast non-cryptographic hash for protocol payload checksum",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `ProtocolIntegrity.ComputePayloadChecksum` uses `SHA256` - heavy for corruption detection only.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Replace with `System.IO.Hashing.XxHash64` or `Crc32`.",
+        "Acceptance criteria: CPU time per checksum reduces by 10×; functional tests with the new hash continue to detect corruption.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-199",
+      "tracking_number": "CR-199",
+      "priority": 2,
+      "area": "Memory/GC",
+      "title": "Use `ArrayPool` in `LengthPrefixedProtocolStream` to reduce allocation rate",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `ReadExactAsync` allocates a new `byte[]` per read.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Rent buffers from `ArrayPool<byte>.Shared` and return to pool.",
+        "Acceptance criteria: Under sustained load (100 quote/s), gen0 collections reduce by ≥30%; no buffer leaks.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-200",
+      "tracking_number": "CR-200",
+      "priority": 2,
+      "area": "Resource leak",
+      "title": "Add idle timeout for server client connections",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: No timeout; zombie connections consume memory and sockets indefinitely.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Use `CancellationTokenSource.CreateLinkedTokenSource` with a resetting timeout per message.",
+        "Acceptance criteria: A client that stays idle for the configured timeout is disconnected; after reconnect, it works normally.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-201",
+      "tracking_number": "CR-201",
+      "priority": 2,
+      "area": "Memory leak",
+      "title": "Add capacity limit to `MemoryTtlCache` to prevent unbounded growth",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Only TTL expiration; no maximum size.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Add a configurable capacity with LRU eviction or use `IMemoryCache`.",
+        "Acceptance criteria: Cache size never exceeds the configured maximum; eviction does not increase cache miss rate significantly.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-202",
+      "tracking_number": "CR-202",
+      "priority": 2,
+      "area": "Network resilience",
+      "title": "Add retry with exponential backoff and jitter to `RetryPolicyService`",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Linear backoff without jitter increases contention under transient failures.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Use `TimeSpan.FromMilliseconds(Math.Min(1000 * Math.Pow(2, attempt - 1), maxDelay)) + Random.Next(0, 200)`.",
+        "Acceptance criteria: Retry storms are eliminated; average success rate under transient failures improves.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-203",
+      "tracking_number": "CR-203",
+      "priority": 2,
+      "area": "UI fluidity",
+      "title": "Consolidate multiple `DispatcherTimer` instances in `ScreensaverSceneControl` into one",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: 11 separate timers cause dispatcher pressure.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Merge into a single 33 ms timer with internal scheduled action checks.",
+        "Acceptance criteria: Dispatcher queue depth decreases; UI rendering remains smooth under load.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-204",
+      "tracking_number": "CR-204",
+      "priority": 2,
+      "area": "UI jitter",
+      "title": "Batch `UpdateLayout()` calls in graph warmup to prevent per-graph spikes",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `ApplyOrUpdateGraph` calls `UpdateLayout()` synchronously for each of up to 16 graphs.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Defer `UpdateLayout()` to after the batch or use `InvalidateVisual()`.",
+        "Acceptance criteria: Graph population does not cause visible stutter; initial card layout completes within 2 s.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-205",
+      "tracking_number": "CR-205",
+      "priority": 2,
+      "area": "Network latency",
+      "title": "Fetch RSS feeds in parallel in `FinanceNewsService`",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Three feeds fetched sequentially.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Use `Task.WhenAll` with a global timeout and per-feed cancellation.",
+        "Acceptance criteria: News refresh wall-clock time reduces from sum of latencies to the slowest single feed.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-206",
+      "tracking_number": "CR-206",
+      "priority": 2,
+      "area": "Multithreading",
+      "title": "Simplify `ProviderBudgetLedgerService` locking to a single lock to avoid deadlock",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Two-lock pattern (`_sync` and `_saveSync`) is fragile.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Use a single `lock` or `AsyncLock` for both state and save.",
+        "Acceptance criteria: No deadlock possible; ledger operations remain correct under concurrent calls.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-207",
+      "tracking_number": "CR-207",
+      "priority": 2,
+      "area": "UI dispatcher congestion",
+      "title": "Add `ConfigureAwait(false)` to async calls in `StartupCoordinator` that do not need UI continuation",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Many `await` without `ConfigureAwait(false)` marshal back to UI thread unnecessarily.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Add `ConfigureAwait(false)` to all non-UI continuations.",
+        "Acceptance criteria: WPF dispatcher queue utilization reduces; startup scene setup completes faster.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-208",
+      "tracking_number": "CR-208",
+      "priority": 2,
+      "area": "UI startup responsiveness",
+      "title": "Convert `ScreensaverSettingsService.Load` to async to avoid UI thread blocking",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `File.ReadAllText` and `JsonSerializer.Deserialize` synchronous calls called from UI thread.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Use `File.ReadAllTextAsync` and `JsonSerializer.DeserializeAsync`; make callers async.",
+        "Acceptance criteria: Settings load does not block the UI thread; startup scene appears immediately.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-209",
+      "tracking_number": "CR-209",
+      "priority": 2,
+      "area": "Network latency",
+      "title": "Parallelize weather city fetch in `WorldWeatherService`",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Cities fetched sequentially.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Use `Task.WhenAll` with a concurrency limit (SemaphoreSlim 5).",
+        "Acceptance criteria: Total weather retrieval time reduces to ~max single city latency; no rate limit violations.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-210",
+      "tracking_number": "CR-210",
+      "priority": 2,
+      "area": "UI jitter",
+      "title": "Offload `NewsFlasherControl` headline preparation from UI tick to background thread",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `PrepareHeadline` runs synchronously inside a 40 ms `DispatcherTimer` tick - creates `FormattedText` and regex.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Use `Task.Run` for word wrapping and measurement, dispatch result to UI.",
+        "Acceptance criteria: Ticker playback does not drop frames; headline preparation completes before the next segment.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-211",
+      "tracking_number": "CR-211",
+      "priority": 2,
+      "area": "Performance / IO",
+      "title": "Gate `TraceLog.InfoState` calls in hot ticker path behind debug condition",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Called on every tick (25 Hz) - thousands of trace lines per minute.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Mark with `[Conditional(\"DEBUG\")]` or sample at low rate.",
+        "Acceptance criteria: Release builds produce <10 trace lines per ticker cycle; disk I/O from tracing is negligible.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-212",
+      "tracking_number": "CR-212",
+      "priority": 2,
+      "area": "UI fluidity",
+      "title": "Use `VirtualizingStackPanel` and cached measurements in `TickerTapeControl` to avoid full rebuild",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `RefreshMotionMetrics` calls `UpdateLayout()` and re-measures all items synchronously.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Replace manual canvas with an `ItemsControl` + `VirtualizingStackPanel`; cache item widths.",
+        "Acceptance criteria: Window resize and data updates do not cause frame drops; memory usage remains stable.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-213",
+      "tracking_number": "CR-213",
+      "priority": 2,
+      "area": "UI responsiveness under burst",
+      "title": "Add cancellation and debouncing to `NewsFlasherControl` headline changes",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: No cancellation when `Headlines` collection changes; can accumulate pending work.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Stop and restart playback timer on change; debounce multiple rapid changes (500 ms window).",
+        "Acceptance criteria: Rapid headline updates do not cause UI lag; stale headlines are not displayed.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-214",
+      "tracking_number": "CR-214",
+      "priority": 2,
+      "area": "UI / network",
+      "title": "Replace 1-s connectivity polling timer with `NetworkChange.NetworkAvailabilityChanged` event",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "High",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `_stateTimer` ticks every second and calls `IsInternetAvailableAsync` possibly making HTTP request.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Subscribe to `NetworkChange.NetworkAvailabilityChanged`; fallback to 30 s interval if event unavailable.",
+        "Acceptance criteria: No periodic network poll; connectivity state updates immediately on network change.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-215",
+      "tracking_number": "CR-215",
+      "priority": 2,
+      "area": "UI fluidity",
+      "title": "Aggregate per-symbol progress reports in symbol validation to reduce dispatcher load",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `ValidateAsync` reports progress for every symbol, flooding dispatcher with up to 200 posts.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Throttle to ~10 updates/second or report only on state changes.",
+        "Acceptance criteria: Validation UI remains responsive; no jitter during validation of 500 symbols.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-216",
+      "tracking_number": "CR-216",
+      "priority": 3,
+      "area": "Allocation/performance",
+      "title": "Use `ArrayPool` or slice instead of LINQ `Skip/Take` for symbol batching",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `ChunkSymbols` uses `symbols.Skip(index).Take(size).ToList()` - O(N²) enumerators.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Use `symbols.GetRange(index, count)` or span slicing.",
+        "Acceptance criteria: Allocation for batching 500 symbols drops by factor >10; no change in batch boundaries.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-217",
+      "tracking_number": "CR-217",
+      "priority": 2,
+      "area": "Memory/performance",
+      "title": "Replace `MemoryTtlCache<JsonDocument>` with raw string storage to avoid cloning and disposal risk",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Medium",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: `GetCachedJsonAsync` clones via `JsonDocument.Parse(cached.RootElement.GetRawText())` on every cache hit.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Store the raw JSON string; parse into `JsonDocument` on retrieval.",
+        "Acceptance criteria: Per-cache-hit allocation reduces by ~50%; no risk of accessing a disposed `JsonDocument`.\n\n### Priority 3 (Low severity or impact, still testable and worth fixing)",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-218",
+      "tracking_number": "CR-218",
+      "priority": 3,
+      "area": "Uninstall reliability",
+      "title": "Fix process leak in delayed cleanup spawned via `Start-DelayedInstallRootCleanup`",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Low",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: Spawned background process may survive uninstall termination.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Move retry loop into main script and rely on `waituntilterminated`.",
+        "Acceptance criteria: After uninstall completes, no orphaned cleanup processes remain; removal eventually succeeds.",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-219",
+      "tracking_number": "CR-219",
+      "priority": 3,
+      "area": "Test throughput",
+      "title": "Run smoke test scenarios in parallel using `ForEach-Object -Parallel`",
+      "status": "open",
+      "source": "deepseek_full_optimization_review_2026_07_03",
+      "severity": "Low",
+      "evidence": [
+        "DeepSeek clean full-codebase optimization synthesis: 18 sequential independent scenarios take 30-60 s.",
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+      ],
+      "notes": [
+        "Recommendation: Parallelise with fallback to sequential if PS7 unavailable.",
+        "Acceptance criteria: Wall-clock time reduces by ≥3×;",
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
@@ -9032,8 +10112,23 @@
       "critical_count": 5,
       "high_count": 4,
       "status": "crs_created"
+    },
+    {
+      "id": "deepseek-full-optimization-review-2026-07-03",
+      "date": "2026-07-03",
+      "reviewer": "DeepSeek v4-flash",
+      "scope": "Full tracked code and documentation review focused on optimization, multithreading, multiprocessing, parallel processing, async scheduling, UI fluidity, network cadence, build/test throughput, and QA-process reliability.",
+      "versioned_document": "docs/DEEPSEEK_FULL_OPTIMIZATION_REVIEW_2026-07-03.md",
+      "artifact_directory": "build/deepseek-review/full-optimization-20260703-085440",
+      "tracked_manifest": "build/deepseek-review/full-optimization-20260703-085440/tracked-text-manifest.json",
+      "packet_manifest": "build/deepseek-review/full-optimization-20260703-085440/packet-manifest.json",
+      "final_synthesis": "build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+      "verdict": "40 actionable optimization/concurrency/performance CR candidates created as CR-180 through CR-219.",
+      "critical_count": 1,
+      "high_count": 12,
+      "medium_count": 25,
+      "low_count": 2,
+      "status": "crs_created"
     }
   ]
 }
-
-
