@@ -19,7 +19,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:scene="clr-namespace:PortfolioSaver.Screensaver.Controls;assembly=PortfolioSaver.Presentation"
+        xmlns:scene="clr-namespace:PortfolioSaver.Presentation.Controls;assembly=PortfolioSaver.Presentation"
         xmlns:vm="clr-namespace:PortfolioSaver.Desktop.ViewModels"
         mc:Ignorable="d"
         Title="DO NOT PANIC PORTFOLIO VISUALIZER"
@@ -62,6 +62,6 @@
             </MenuItem>
         </Menu>
 
-        <scene:ScreensaverSceneControl x:Name="SceneHost" />
+        <scene:VisualizerSceneControl x:Name="SceneHost" />
     </DockPanel>
 </Window>

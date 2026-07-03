@@ -19,7 +19,7 @@ using PortfolioSaver.Data.Services;
 using PortfolioSaver.Render.ViewModels;
 using PortfolioSaver.Shared.Helpers;
 
-namespace PortfolioSaver.Screensaver.Services;
+namespace PortfolioSaver.Presentation.Services;
 
 public sealed class WorldWeatherService
 {

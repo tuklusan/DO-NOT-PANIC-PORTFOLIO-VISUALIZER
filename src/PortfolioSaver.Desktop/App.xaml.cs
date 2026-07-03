@@ -22,7 +22,7 @@ using PortfolioSaver.Shared.Diagnostics;
 using PortfolioSaver.Shared.Integrity;
 using PortfolioSaver.Shared.Services;
 using PortfolioSaver.Desktop.Windows;
-using PortfolioSaver.Screensaver.Services;
+using PortfolioSaver.Presentation.Services;
 
 namespace PortfolioSaver.Desktop;
 

@@ -15,9 +15,9 @@ using System;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Render.ViewModels;
 
-namespace PortfolioSaver.Screensaver.Services;
+namespace PortfolioSaver.Presentation.Services;
 
-public sealed class ScreensaverSceneState
+public sealed class VisualizerSceneState
 {
     public AppSettings Settings { get; init; } = new();
     public IReadOnlyDictionary<string, QuoteSnapshot> Quotes { get; init; } = new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase);

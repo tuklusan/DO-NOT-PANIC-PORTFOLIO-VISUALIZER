@@ -13,7 +13,7 @@
 // ============================================================================
 using PortfolioSaver.Shared.Services;
 
-namespace PortfolioSaver.Screensaver.Services;
+namespace PortfolioSaver.Presentation.Services;
 
 public sealed class NetworkAvailabilityService
 {

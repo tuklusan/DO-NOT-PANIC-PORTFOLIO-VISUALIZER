@@ -25,21 +25,21 @@ using PortfolioSaver.Core.Models;
 using PortfolioSaver.Render.Controls;
 using PortfolioSaver.Render.Services;
 using PortfolioSaver.Render.ViewModels;
-using PortfolioSaver.Screensaver.Controls;
-using PortfolioSaver.Screensaver.Services;
+using PortfolioSaver.Presentation.Controls;
+using PortfolioSaver.Presentation.Services;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
 
-public sealed class ScreensaverRenderBehaviorTests
+public sealed class VisualizerRenderBehaviorTests
 {
     [Fact]
     public void UpdateTapeItem_TriggersSingleFlashWhenLiveValueChanges()
     {
-        MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
             "UpdateTapeItem",
             BindingFlags.NonPublic | BindingFlags.Static)
-            ?? throw new InvalidOperationException("ScreensaverSceneControl.UpdateTapeItem not found.");
+            ?? throw new InvalidOperationException("VisualizerSceneControl.UpdateTapeItem not found.");
 
         TapeItemViewModel target = new()
         {
@@ -83,14 +83,14 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void ScreensaverSceneControl_SyncGraphVisualsUpdatesIncrementally()
+    public void VisualizerSceneControl_SyncGraphVisualsUpdatesIncrementally()
     {
         string codeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("_graphControlsByKey", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_graphControlsByKey.TryGetValue(graphKey", codeBehind, StringComparison.Ordinal);
@@ -110,13 +110,13 @@ public sealed class ScreensaverRenderBehaviorTests
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml"));
+            "VisualizerSceneControl.xaml"));
         string codeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("x:Name=\"NetworkWaitingHost\"", xaml, StringComparison.Ordinal);
         Assert.Contains("TitleText", xaml, StringComparison.Ordinal);
@@ -133,7 +133,7 @@ public sealed class ScreensaverRenderBehaviorTests
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml"));
+            "VisualizerSceneControl.xaml"));
         XDocument document = XDocument.Parse(xaml);
         XNamespace wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
@@ -154,7 +154,7 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new();
+            VisualizerSceneControl control = new();
             FloatingGraphViewModel graph = new()
             {
                 Symbol = "AAPL",
@@ -175,13 +175,13 @@ public sealed class ScreensaverRenderBehaviorTests
                 }
             };
 
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo latestQuotesField = typeof(VisualizerSceneControl).GetField(
                 "_latestQuotes",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_latestQuotes field not found.");
             latestQuotesField.SetValue(control, quotes);
 
-            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo applyQuoteMethod = typeof(VisualizerSceneControl).GetMethod(
                 "ApplyQuoteToGraph",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
@@ -273,7 +273,7 @@ public sealed class ScreensaverRenderBehaviorTests
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("_backgroundZoomTimer.Tick += (_, _) => StepBackgroundSlowZoom();", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void StepBackgroundSlowZoom()", codeBehind, StringComparison.Ordinal);
@@ -347,10 +347,10 @@ public sealed class ScreensaverRenderBehaviorTests
     [Fact]
     public void UpdateTapeItem_StaleToLiveRecovery_TriggersFlash()
     {
-        MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
             "UpdateTapeItem",
             BindingFlags.NonPublic | BindingFlags.Static)
-            ?? throw new InvalidOperationException("ScreensaverSceneControl.UpdateTapeItem not found.");
+            ?? throw new InvalidOperationException("VisualizerSceneControl.UpdateTapeItem not found.");
 
         TapeItemViewModel target = new()
         {
@@ -375,7 +375,7 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new();
+            VisualizerSceneControl control = new();
             FloatingGraphViewModel graph = new()
             {
                 Symbol = "AAPL",
@@ -396,13 +396,13 @@ public sealed class ScreensaverRenderBehaviorTests
                 }
             };
 
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo latestQuotesField = typeof(VisualizerSceneControl).GetField(
                 "_latestQuotes",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_latestQuotes field not found.");
             latestQuotesField.SetValue(control, quotes);
 
-            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo applyQuoteMethod = typeof(VisualizerSceneControl).GetMethod(
                 "ApplyQuoteToGraph",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
@@ -417,7 +417,7 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new();
+            VisualizerSceneControl control = new();
             FloatingGraphViewModel graph = new()
             {
                 Symbol = "AAPL",
@@ -439,13 +439,13 @@ public sealed class ScreensaverRenderBehaviorTests
                 }
             };
 
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo latestQuotesField = typeof(VisualizerSceneControl).GetField(
                 "_latestQuotes",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_latestQuotes field not found.");
             latestQuotesField.SetValue(control, quotes);
 
-            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo applyQuoteMethod = typeof(VisualizerSceneControl).GetMethod(
                 "ApplyQuoteToGraph",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
@@ -464,7 +464,7 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new();
+            VisualizerSceneControl control = new();
             FloatingGraphViewModel graph = new()
             {
                 Symbol = "AAPL",
@@ -486,13 +486,13 @@ public sealed class ScreensaverRenderBehaviorTests
                 }
             };
 
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo latestQuotesField = typeof(VisualizerSceneControl).GetField(
                 "_latestQuotes",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_latestQuotes field not found.");
             latestQuotesField.SetValue(control, quotes);
 
-            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo applyQuoteMethod = typeof(VisualizerSceneControl).GetMethod(
                 "ApplyQuoteToGraph",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
@@ -509,7 +509,7 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new();
+            VisualizerSceneControl control = new();
             FloatingGraphViewModel graph = new()
             {
                 Symbol = "AAPL",
@@ -528,13 +528,13 @@ public sealed class ScreensaverRenderBehaviorTests
                 }
             };
 
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo latestQuotesField = typeof(VisualizerSceneControl).GetField(
                 "_latestQuotes",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_latestQuotes field not found.");
             latestQuotesField.SetValue(control, quotes);
 
-            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo applyQuoteMethod = typeof(VisualizerSceneControl).GetMethod(
                 "ApplyQuoteToGraph",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
@@ -550,7 +550,7 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new();
+            VisualizerSceneControl control = new();
             FloatingGraphViewModel graph = new()
             {
                 Symbol = "AAPL",
@@ -573,13 +573,13 @@ public sealed class ScreensaverRenderBehaviorTests
                 }
             };
 
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo latestQuotesField = typeof(VisualizerSceneControl).GetField(
                 "_latestQuotes",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_latestQuotes field not found.");
             latestQuotesField.SetValue(control, quotes);
 
-            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo applyQuoteMethod = typeof(VisualizerSceneControl).GetMethod(
                 "ApplyQuoteToGraph",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
@@ -596,7 +596,7 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new()
+            VisualizerSceneControl control = new()
             {
                 Width = 800,
                 Height = 600
@@ -631,19 +631,19 @@ public sealed class ScreensaverRenderBehaviorTests
                 }
             };
 
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo latestQuotesField = typeof(VisualizerSceneControl).GetField(
                 "_latestQuotes",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_latestQuotes field not found.");
             latestQuotesField.SetValue(control, quotes);
 
-            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo applyQuoteMethod = typeof(VisualizerSceneControl).GetMethod(
                 "ApplyQuoteToGraph",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
             applyQuoteMethod.Invoke(control, [graph]);
 
-            MethodInfo boundsMethod = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo boundsMethod = typeof(VisualizerSceneControl).GetMethod(
                 "GetGraphMotionBounds",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("GetGraphMotionBounds method not found.");
@@ -661,7 +661,7 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new()
+            VisualizerSceneControl control = new()
             {
                 Width = 800,
                 Height = 600
@@ -696,19 +696,19 @@ public sealed class ScreensaverRenderBehaviorTests
                 }
             };
 
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo latestQuotesField = typeof(VisualizerSceneControl).GetField(
                 "_latestQuotes",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_latestQuotes field not found.");
             latestQuotesField.SetValue(control, quotes);
 
-            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo applyQuoteMethod = typeof(VisualizerSceneControl).GetMethod(
                 "ApplyQuoteToGraph",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
             applyQuoteMethod.Invoke(control, [graph]);
 
-            MethodInfo boundsMethod = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo boundsMethod = typeof(VisualizerSceneControl).GetMethod(
                 "GetGraphMotionBounds",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("GetGraphMotionBounds method not found.");
@@ -726,7 +726,7 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new()
+            VisualizerSceneControl control = new()
             {
                 Width = 800,
                 Height = 600
@@ -762,19 +762,19 @@ public sealed class ScreensaverRenderBehaviorTests
                 }
             };
 
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo latestQuotesField = typeof(VisualizerSceneControl).GetField(
                 "_latestQuotes",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_latestQuotes field not found.");
             latestQuotesField.SetValue(control, quotes);
 
-            FieldInfo suppressField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo suppressField = typeof(VisualizerSceneControl).GetField(
                 "_suppressGraphRefreshMotionCues",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_suppressGraphRefreshMotionCues field not found.");
             suppressField.SetValue(control, true);
 
-            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo applyQuoteMethod = typeof(VisualizerSceneControl).GetMethod(
                 "ApplyQuoteToGraph",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
@@ -813,7 +813,7 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new()
+            VisualizerSceneControl control = new()
             {
                 Width = 800,
                 Height = 600
@@ -854,13 +854,13 @@ public sealed class ScreensaverRenderBehaviorTests
                 }
             };
 
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo latestQuotesField = typeof(VisualizerSceneControl).GetField(
                 "_latestQuotes",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_latestQuotes field not found.");
             latestQuotesField.SetValue(control, quotes);
 
-            MethodInfo applyQuoteMethod = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo applyQuoteMethod = typeof(VisualizerSceneControl).GetMethod(
                 "ApplyQuoteToGraph",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("ApplyQuoteToGraph method not found.");
@@ -897,7 +897,7 @@ public sealed class ScreensaverRenderBehaviorTests
         };
         FloatingGraphViewModel target = new();
 
-        MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
             "CopyMotion",
             BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new InvalidOperationException("CopyMotion method not found.");
@@ -936,7 +936,7 @@ public sealed class ScreensaverRenderBehaviorTests
             RefreshTravelFlashStartedUtc = DateTimeOffset.UtcNow
         };
 
-        MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
             "CopyMotion",
             BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new InvalidOperationException("CopyMotion method not found.");
@@ -955,7 +955,7 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new();
+            VisualizerSceneControl control = new();
             control.ApplyTemplate();
             control.Measure(new Size(1280, 720));
             control.Arrange(new Rect(0, 0, 1280, 720));
@@ -973,7 +973,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 RefreshTravelFlashStartedUtc = DateTimeOffset.UtcNow
             };
 
-            FieldInfo graphsField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo graphsField = typeof(VisualizerSceneControl).GetField(
                 "_graphs",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_graphs field not found.");
@@ -981,7 +981,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 ?? throw new InvalidOperationException("_graphs value not found."));
             graphs.Add(graph);
 
-            MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
                 "SeedSpriteLayout",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("SeedSpriteLayout method not found.");
@@ -1007,7 +1007,7 @@ public sealed class ScreensaverRenderBehaviorTests
             RefreshTravelFlashStartedUtc = DateTimeOffset.UtcNow
         };
 
-        MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
             "ResetInvalidGraphRefreshImpulseIfNeeded",
             BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new InvalidOperationException("ResetInvalidGraphRefreshImpulseIfNeeded method not found.");
@@ -1077,7 +1077,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 IsRefreshTravelFlashActive = true
             };
 
-            MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
                 "ResetGraphRefreshImpulseIfNeeded",
                 BindingFlags.NonPublic | BindingFlags.Static)
                 ?? throw new InvalidOperationException("ResetGraphRefreshImpulseIfNeeded method not found.");
@@ -1096,7 +1096,7 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new();
+            VisualizerSceneControl control = new();
             FloatingGraphViewModel graph = new()
             {
                 Height = 84,
@@ -1107,7 +1107,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 IsRefreshTravelFlashActive = true
             };
 
-            MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
                 "ApplyGraphRefreshImpulse",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("ApplyGraphRefreshImpulse method not found.");
@@ -1136,7 +1136,7 @@ public sealed class ScreensaverRenderBehaviorTests
                 RefreshTravelFlashStartedUtc = DateTimeOffset.UtcNow.AddSeconds(-30)
             };
 
-            MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
                 "ResetGraphRefreshImpulseIfNeeded",
                 BindingFlags.NonPublic | BindingFlags.Static)
                 ?? throw new InvalidOperationException("ResetGraphRefreshImpulseIfNeeded method not found.");
@@ -1153,10 +1153,10 @@ public sealed class ScreensaverRenderBehaviorTests
     [Fact]
     public void UpdateTapeItem_SameValueWithNewerFetchToken_DoesNotTriggerFlash()
     {
-        MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
             "UpdateTapeItem",
             BindingFlags.NonPublic | BindingFlags.Static)
-            ?? throw new InvalidOperationException("ScreensaverSceneControl.UpdateTapeItem not found.");
+            ?? throw new InvalidOperationException("VisualizerSceneControl.UpdateTapeItem not found.");
 
         TapeItemViewModel target = new()
         {
@@ -1182,10 +1182,10 @@ public sealed class ScreensaverRenderBehaviorTests
     [Fact]
     public void MergeQuotes_PreservesCachedSymbolsWhileApplyingWarmupBatch()
     {
-        MethodInfo mergeMethod = typeof(ScreensaverSceneControl).GetMethod(
+        MethodInfo mergeMethod = typeof(VisualizerSceneControl).GetMethod(
             "MergeQuotes",
             BindingFlags.NonPublic | BindingFlags.Static)
-            ?? throw new InvalidOperationException("ScreensaverSceneControl.MergeQuotes not found.");
+            ?? throw new InvalidOperationException("VisualizerSceneControl.MergeQuotes not found.");
 
         IReadOnlyDictionary<string, QuoteSnapshot> existing = new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase)
         {
@@ -1208,20 +1208,20 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void ScreensaverLayout_UsesGlobalMarketsTapeAndWaitingBounds()
+    public void VisualizerLayout_UsesGlobalMarketsTapeAndWaitingBounds()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
         string sceneXaml = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml"));
+            "VisualizerSceneControl.xaml"));
         string globalTapeXaml = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
@@ -1248,7 +1248,7 @@ public sealed class ScreensaverRenderBehaviorTests
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.DoesNotContain("_networkWaitingViewModel.TitleText = \"Loading live market data\";", sceneCodeBehind, StringComparison.Ordinal);
     }
@@ -1258,20 +1258,20 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new();
-            MethodInfo configureTimers = typeof(ScreensaverSceneControl).GetMethod(
+            VisualizerSceneControl control = new();
+            MethodInfo configureTimers = typeof(VisualizerSceneControl).GetMethod(
                 "ConfigureTimers",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("ConfigureTimers method not found.");
-            MethodInfo stopLiveTimers = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo stopLiveTimers = typeof(VisualizerSceneControl).GetMethod(
                 "StopLiveTimers",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("StopLiveTimers method not found.");
-            FieldInfo settingsField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo settingsField = typeof(VisualizerSceneControl).GetField(
                 "_settings",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_settings field not found.");
-            FieldInfo refreshTimerField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo refreshTimerField = typeof(VisualizerSceneControl).GetField(
                 "_refreshTimer",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_refreshTimer field not found.");
@@ -1300,7 +1300,7 @@ public sealed class ScreensaverRenderBehaviorTests
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.DoesNotContain("private double GetRefreshSeconds()", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("_refreshTimer.Interval = TimeSpan.FromSeconds(GetRefreshSeconds())", sceneCodeBehind, StringComparison.Ordinal);
@@ -1314,7 +1314,7 @@ public sealed class ScreensaverRenderBehaviorTests
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("UpdateStatusFreshnessText();", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void UpdateStatusFreshnessText()", sceneCodeBehind, StringComparison.Ordinal);
@@ -1803,7 +1803,7 @@ public sealed class ScreensaverRenderBehaviorTests
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("x:Name=\"ViewportHost\"", tapeXaml, StringComparison.Ordinal);
         Assert.Contains("Margin=\"4,0,4,0\"", tapeXaml, StringComparison.Ordinal);
@@ -1818,20 +1818,20 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void ScreensaverScene_ShowsBrandedAppTitleVersionWatermark_AndClockUsesStableMonospaceClockFonts()
+    public void VisualizerScene_ShowsBrandedAppTitleVersionWatermark_AndClockUsesStableMonospaceClockFonts()
     {
         string sceneXaml = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml"));
+            "VisualizerSceneControl.xaml"));
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
         string desktopWindowCode = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
@@ -1877,7 +1877,7 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("FontSize=\"19\"", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("DropShadowEffect", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("VersionWatermark.Text = PortfolioVersion.Version;", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.SetAutomationId(VersionWatermark, \"ScreensaverVersionWatermark\");", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetAutomationId(VersionWatermark, \"VisualizerVersionWatermark\");", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(VersionWatermark, $\"Version {PortfolioVersion.Version}\");", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetHelpText(VersionWatermark, PortfolioVersion.Version);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Title=\"DO NOT PANIC PORTFOLIO VISUALIZER\"", desktopWindowXaml, StringComparison.Ordinal);
@@ -1892,8 +1892,8 @@ public sealed class ScreensaverRenderBehaviorTests
     [Fact]
     public void BackgroundCatalogRefreshDecision_InvalidCurrentPath_RotatesWithoutForceDifferent()
     {
-        ScreensaverSceneControl.BackgroundCatalogRefreshDecision decision =
-            ScreensaverSceneControl.DecideBackgroundCatalogRefresh(
+        VisualizerSceneControl.BackgroundCatalogRefreshDecision decision =
+            VisualizerSceneControl.DecideBackgroundCatalogRefresh(
                 @"C:\old\background.jpg",
                 [@"C:\old\background.jpg"],
                 [@"C:\new\background.jpg"]);
@@ -1907,8 +1907,8 @@ public sealed class ScreensaverRenderBehaviorTests
     [Fact]
     public void BackgroundCatalogRefreshDecision_CatalogChangedButCurrentStillValid_ForcesDifferentRotation()
     {
-        ScreensaverSceneControl.BackgroundCatalogRefreshDecision decision =
-            ScreensaverSceneControl.DecideBackgroundCatalogRefresh(
+        VisualizerSceneControl.BackgroundCatalogRefreshDecision decision =
+            VisualizerSceneControl.DecideBackgroundCatalogRefresh(
                 @"C:\shared\background.jpg",
                 [@"C:\shared\background.jpg"],
                 [@"C:\shared\background.jpg", @"C:\shared\second.jpg"]);
@@ -1922,8 +1922,8 @@ public sealed class ScreensaverRenderBehaviorTests
     [Fact]
     public void BackgroundCatalogRefreshDecision_UnchangedCatalogAndCurrentStillValid_DoesNotRotate()
     {
-        ScreensaverSceneControl.BackgroundCatalogRefreshDecision decision =
-            ScreensaverSceneControl.DecideBackgroundCatalogRefresh(
+        VisualizerSceneControl.BackgroundCatalogRefreshDecision decision =
+            VisualizerSceneControl.DecideBackgroundCatalogRefresh(
                 @"C:\shared\background.jpg",
                 [@"C:\shared\background.jpg", @"C:\shared\second.jpg"],
                 [@"C:\shared\background.jpg", @"C:\shared\second.jpg"]);
@@ -1935,14 +1935,14 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void ScreensaverScene_HostsGlobalMarketsTapeAboveNewsTicker()
+    public void VisualizerScene_HostsGlobalMarketsTapeAboveNewsTicker()
     {
         string sceneXaml = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml"));
+            "VisualizerSceneControl.xaml"));
 
         int globalMarketsIndex = sceneXaml.IndexOf("x:Name=\"GlobalMarketsTapeHost\"", StringComparison.Ordinal);
         int newsIndex = sceneXaml.IndexOf("x:Name=\"NewsFlasherHost\"", StringComparison.Ordinal);
@@ -1951,14 +1951,14 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void ScreensaverScene_LetsGraphCardsUseFullCanvasBehindForeground()
+    public void VisualizerScene_LetsGraphCardsUseFullCanvasBehindForeground()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("private Rect GetGraphMotionBounds()", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("=> GetFullCanvasBounds();", sceneCodeBehind, StringComparison.Ordinal);
@@ -2079,7 +2079,7 @@ public sealed class ScreensaverRenderBehaviorTests
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.DoesNotContain("GlobalMarketsWaitingGlyph", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new KeyValuePair<string, object?>(\"loading_exchange_count\", 0)", sceneCodeBehind, StringComparison.Ordinal);
@@ -2095,7 +2095,7 @@ public sealed class ScreensaverRenderBehaviorTests
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
         string floatingGraphXaml = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
@@ -2138,7 +2138,7 @@ public sealed class ScreensaverRenderBehaviorTests
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("EnsureMacroMetersInitialized();", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("_statusViewModel.MacroMeters.Clear();", sceneCodeBehind, StringComparison.Ordinal);
@@ -2173,7 +2173,7 @@ public sealed class ScreensaverRenderBehaviorTests
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("ItemsSource=\"{Binding MacroMeters}\"", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("HorizontalAlignment=\"Center\"", statusBarXaml, StringComparison.Ordinal);
@@ -2573,14 +2573,14 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void ScreensaverScene_EmitsDisplayedTapeSamplesForSoakComparison()
+    public void VisualizerScene_EmitsDisplayedTapeSamplesForSoakComparison()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("TraceDisplayedTapeSample();", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void TraceDisplayedTapeSample()", sceneCodeBehind, StringComparison.Ordinal);
@@ -2591,14 +2591,14 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void ScreensaverScene_SeparatesTitleLaneFromTopStatusBand()
+    public void VisualizerScene_SeparatesTitleLaneFromTopStatusBand()
     {
         string sceneXaml = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml"));
+            "VisualizerSceneControl.xaml"));
 
         Assert.Contains("SANYALnet Labs DO NOT PANIC Portfolio Visualizer", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("Margin=\"0,10,0,0\"", sceneXaml, StringComparison.Ordinal);
@@ -2611,10 +2611,10 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new();
+            VisualizerSceneControl control = new();
             MacroMeterViewModel meter = new();
 
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo latestQuotesField = typeof(VisualizerSceneControl).GetField(
                 "_latestQuotes",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_latestQuotes field not found.");
@@ -2632,7 +2632,7 @@ public sealed class ScreensaverRenderBehaviorTests
                     }
                 });
 
-            MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
                 "UpdateQuoteMeter",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("UpdateQuoteMeter method not found.");
@@ -2649,10 +2649,10 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new();
+            VisualizerSceneControl control = new();
             MacroMeterViewModel meter = new();
 
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo latestQuotesField = typeof(VisualizerSceneControl).GetField(
                 "_latestQuotes",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_latestQuotes field not found.");
@@ -2670,7 +2670,7 @@ public sealed class ScreensaverRenderBehaviorTests
                     }
                 });
 
-            MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
                 "UpdateQuoteMeter",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("UpdateQuoteMeter method not found.");
@@ -2687,10 +2687,10 @@ public sealed class ScreensaverRenderBehaviorTests
     {
         RunOnSta(() =>
         {
-            ScreensaverSceneControl control = new();
+            VisualizerSceneControl control = new();
             MacroMeterViewModel meter = new();
 
-            FieldInfo latestQuotesField = typeof(ScreensaverSceneControl).GetField(
+            FieldInfo latestQuotesField = typeof(VisualizerSceneControl).GetField(
                 "_latestQuotes",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_latestQuotes field not found.");
@@ -2708,7 +2708,7 @@ public sealed class ScreensaverRenderBehaviorTests
                     }
                 });
 
-            MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+            MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
                 "UpdateQuoteMeter",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("UpdateQuoteMeter method not found.");
@@ -2728,7 +2728,7 @@ public sealed class ScreensaverRenderBehaviorTests
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("private void UpdateClocks(bool forceAncillaryRefresh = false)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_lastClockAncillaryRefreshUtc", sceneCodeBehind, StringComparison.Ordinal);
@@ -2758,7 +2758,7 @@ public sealed class ScreensaverRenderBehaviorTests
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("private Rect GetGraphMotionBounds()", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("=> GetFullCanvasBounds();", sceneCodeBehind, StringComparison.Ordinal);
@@ -2772,7 +2772,7 @@ public sealed class ScreensaverRenderBehaviorTests
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("private Task? _graphWarmupTask;", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("if (preserveLayout && _graphWarmupTask is not null && !_graphWarmupTask.IsCompleted)", sceneCodeBehind, StringComparison.Ordinal);
@@ -2781,14 +2781,14 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void ScreensaverScene_ProvidesDeterministicDemoFlashPulses_ForVisualValidation()
+    public void VisualizerScene_ProvidesDeterministicDemoFlashPulses_ForVisualValidation()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("_demoFlashTimer", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StartDemoFlashSequence()", sceneCodeBehind, StringComparison.Ordinal);
@@ -2798,20 +2798,20 @@ public sealed class ScreensaverRenderBehaviorTests
     }
 
     [Fact]
-    public void ScreensaverScene_IncludesAnimatedMarketCritterOverlay()
+    public void VisualizerScene_IncludesAnimatedMarketCritterOverlay()
     {
         string sceneXaml = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml"));
+            "VisualizerSceneControl.xaml"));
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",
             "PortfolioSaver.Presentation",
             "Controls",
-            "ScreensaverSceneControl.xaml.cs"));
+            "VisualizerSceneControl.xaml.cs"));
         string critterViewModel = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
             "src",

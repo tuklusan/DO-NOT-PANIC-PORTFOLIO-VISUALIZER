@@ -14,7 +14,7 @@
 using System.Reflection;
 using System.Linq;
 using PortfolioSaver.Render.ViewModels;
-using PortfolioSaver.Screensaver.Services;
+using PortfolioSaver.Presentation.Services;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;

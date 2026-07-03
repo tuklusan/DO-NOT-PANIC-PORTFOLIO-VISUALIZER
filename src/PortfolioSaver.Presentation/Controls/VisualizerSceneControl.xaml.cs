@@ -33,14 +33,14 @@ using PortfolioSaver.Core.Services;
 using PortfolioSaver.Render.Controls;
 using PortfolioSaver.Render.Services;
 using PortfolioSaver.Render.ViewModels;
-using PortfolioSaver.Screensaver.Services;
+using PortfolioSaver.Presentation.Services;
 using PortfolioSaver.Shared.Diagnostics;
 using PortfolioSaver.Shared.Helpers;
 using PortfolioSaver.Shared;
 
-namespace PortfolioSaver.Screensaver.Controls;
+namespace PortfolioSaver.Presentation.Controls;
 
-public partial class ScreensaverSceneControl : UserControl
+public partial class VisualizerSceneControl : UserControl
 {
     // User feedback should turn truthful on the first counted failed lookup; transport resets stay conservative below.
     private const int RuntimeQuoteOfflineDisplayFailureThreshold = 1;
@@ -155,14 +155,14 @@ public partial class ScreensaverSceneControl : UserControl
     private int _worldMarketsQuoteDirty;
     private int _worldMarketsAncillaryDirty;
 
-    public ScreensaverSceneControl()
+    public VisualizerSceneControl()
     {
         InitializeComponent();
         _runtimeQuoteProvider = new YahooFinanceQuoteProvider(_runtimeQuoteHttpClient, throwOnPartial: false);
         if (VersionWatermark is not null)
         {
             VersionWatermark.Text = PortfolioVersion.Version;
-            AutomationProperties.SetAutomationId(VersionWatermark, "ScreensaverVersionWatermark");
+            AutomationProperties.SetAutomationId(VersionWatermark, "VisualizerVersionWatermark");
             AutomationProperties.SetName(VersionWatermark, $"Version {PortfolioVersion.Version}");
             AutomationProperties.SetHelpText(VersionWatermark, PortfolioVersion.Version);
         }
@@ -281,7 +281,7 @@ public partial class ScreensaverSceneControl : UserControl
         try
         {
             int currentRotationSeed = _graphRotationSeed;
-            ScreensaverSceneState state = await _startupCoordinator.BuildSceneAsync(currentRotationSeed);
+            VisualizerSceneState state = await _startupCoordinator.BuildSceneAsync(currentRotationSeed);
             if (_isValidationPaused)
             {
                 TraceScene("RefreshSceneAsync discarded fetched scene because validation pause became active.");
@@ -304,7 +304,7 @@ public partial class ScreensaverSceneControl : UserControl
         }
     }
 
-    private void ApplySceneState(ScreensaverSceneState state, bool preserveLayout, bool fullAncillaryRefresh = false)
+    private void ApplySceneState(VisualizerSceneState state, bool preserveLayout, bool fullAncillaryRefresh = false)
     {
         TraceScene($"ApplySceneState preserveLayout={preserveLayout} tapes={state.Tapes.Count} graphs={state.Graphs.Count} backgrounds={state.BackgroundPaths.Count} news={state.News.Headlines.Count} waiting={state.ShowNetworkWaitingOverlay}");
         bool structuralRefresh = !preserveLayout;
@@ -547,12 +547,12 @@ public partial class ScreensaverSceneControl : UserControl
 
     private static void TraceScene(string message)
     {
-        TraceLog.Info("Screensaver.Scene", message);
+        TraceLog.Info("Visualizer.Scene", message);
     }
 
     private static void TraceSceneState(string eventName, params KeyValuePair<string, object?>[] fields)
     {
-        TraceLog.InfoState("Screensaver.Scene", eventName, fields);
+        TraceLog.InfoState("Visualizer.Scene", eventName, fields);
     }
 
     private void TraceSceneStateSummary(string eventName, bool preserveLayout)
@@ -3759,7 +3759,7 @@ public partial class ScreensaverSceneControl : UserControl
         translate.BeginAnimation(TranslateTransform.YProperty, yAnimation, HandoffBehavior.SnapshotAndReplace);
     }
 
-    private void ApplyNetworkWaitingOverlay(ScreensaverSceneState state)
+    private void ApplyNetworkWaitingOverlay(VisualizerSceneState state)
     {
         if (!state.ShowNetworkWaitingOverlay)
         {

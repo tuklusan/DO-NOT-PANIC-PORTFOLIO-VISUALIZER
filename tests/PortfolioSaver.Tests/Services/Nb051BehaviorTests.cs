@@ -16,7 +16,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using PortfolioSaver.Core.Models;
-using PortfolioSaver.Screensaver.Controls;
+using PortfolioSaver.Presentation.Controls;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
@@ -24,9 +24,9 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class Nb051BehaviorTests
 {
     [Fact]
-    public void ScreensaverSceneControl_UsesIndependentWorldMarketsLane()
+    public void VisualizerSceneControl_UsesIndependentWorldMarketsLane()
     {
-        Type control = typeof(ScreensaverSceneControl);
+        Type control = typeof(VisualizerSceneControl);
         BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
 
         RequireMethod(control, flags, "StartWorldMarketsLane", typeof(void));
@@ -62,9 +62,9 @@ public sealed class Nb051BehaviorTests
     }
 
     [Fact]
-    public void ScreensaverSceneControl_DoesNotReintroduceClockMarketDataBatchPatchIntoRegularLoop()
+    public void VisualizerSceneControl_DoesNotReintroduceClockMarketDataBatchPatchIntoRegularLoop()
     {
-        string source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "PortfolioSaver.Presentation", "Controls", "ScreensaverSceneControl.xaml.cs"));
+        string source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "PortfolioSaver.Presentation", "Controls", "VisualizerSceneControl.xaml.cs"));
 
         Assert.DoesNotContain("ApplyClockMarketData(force: false)", source, StringComparison.Ordinal);
     }

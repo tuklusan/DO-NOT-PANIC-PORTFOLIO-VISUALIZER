@@ -17,7 +17,7 @@ using PortfolioSaver.Core.Models;
 using PortfolioSaver.Core.Services;
 using PortfolioSaver.Shared.Diagnostics;
 
-namespace PortfolioSaver.Screensaver.Services;
+namespace PortfolioSaver.Presentation.Services;
 
 internal static class QuoteRefreshPolicy
 {

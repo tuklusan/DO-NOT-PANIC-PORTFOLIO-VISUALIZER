@@ -306,7 +306,7 @@ public sealed class DesktopShellMigrationTests
         Assert.False(Directory.Exists(Path.Combine(repoRoot, "src", "PortfolioSaver.Screensaver")));
         Assert.DoesNotContain("PortfolioSaver.Screensaver", solution, StringComparison.Ordinal);
         Assert.DoesNotContain("PortfolioSaver.Screensaver.scr", innoPublisher, StringComparison.Ordinal);
-        Assert.Contains("<Grid Background=\"Transparent\">", File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Presentation", "Controls", "ScreensaverSceneControl.xaml")), StringComparison.Ordinal);
+        Assert.Contains("<Grid Background=\"Transparent\">", File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Presentation", "Controls", "VisualizerSceneControl.xaml")), StringComparison.Ordinal);
     }
 
     [Fact]

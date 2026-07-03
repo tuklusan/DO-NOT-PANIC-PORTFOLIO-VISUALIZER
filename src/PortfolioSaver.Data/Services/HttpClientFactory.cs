@@ -27,7 +27,7 @@ public static class HttpClientFactory
     {
         HttpClient client = new(SharedHandler, disposeHandler: false);
         client.Timeout = timeout;
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("PortfolioScreensaver/1.0");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("DoNotPanicPortfolioVisualizer/1.0");
         return client;
     }
 }

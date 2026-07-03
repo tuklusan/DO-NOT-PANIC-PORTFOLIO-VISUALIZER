@@ -17,8 +17,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Render.ViewModels;
-using PortfolioSaver.Screensaver.Controls;
-using PortfolioSaver.Screensaver.Services;
+using PortfolioSaver.Presentation.Controls;
+using PortfolioSaver.Presentation.Services;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
@@ -31,13 +31,13 @@ public sealed class Nb048BehaviorTests
         MethodInfo buildScene = RequirePublicMethod(
             typeof(StartupCoordinator),
             nameof(StartupCoordinator.BuildSceneAsync),
-            typeof(Task<ScreensaverSceneState>),
+            typeof(Task<VisualizerSceneState>),
             typeof(int),
             typeof(CancellationToken));
         MethodInfo buildBootstrap = RequirePublicMethod(
             typeof(StartupCoordinator),
             nameof(StartupCoordinator.BuildBootstrapScene),
-            typeof(ScreensaverSceneState));
+            typeof(VisualizerSceneState));
         MethodInfo buildNews = RequirePublicMethod(
             typeof(StartupCoordinator),
             nameof(StartupCoordinator.BuildNewsViewModelAsync),
@@ -52,9 +52,9 @@ public sealed class Nb048BehaviorTests
     }
 
     [Fact]
-    public void ScreensaverSceneControl_UsesIndependentBackgroundNewsRefreshLane()
+    public void VisualizerSceneControl_UsesIndependentBackgroundNewsRefreshLane()
     {
-        Type control = typeof(ScreensaverSceneControl);
+        Type control = typeof(VisualizerSceneControl);
         BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
 
         RequireMethod(control, flags, "StartNewsRefreshLoop", typeof(void));

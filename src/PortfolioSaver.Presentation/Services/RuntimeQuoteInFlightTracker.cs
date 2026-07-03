@@ -11,7 +11,7 @@
 // SANYALnet Labs." See LICENSE for full terms, warranty disclaimer, termination,
 // patent, trademark, and governing-law provisions.
 // ============================================================================
-namespace PortfolioSaver.Screensaver.Services;
+namespace PortfolioSaver.Presentation.Services;
 
 // This tracker is intentionally not thread-safe. The screensaver scene owns it
 // from the WPF dispatcher thread, including timeout pruning and completions.

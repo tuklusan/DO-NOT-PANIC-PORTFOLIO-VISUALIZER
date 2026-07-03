@@ -3621,7 +3621,7 @@ try {
         [void](Focus-ProcessWindow -Process $desktop)
         $versionMatch = Find-ElementMetadataByProcessId `
             -ProcessId $desktop.Id `
-            -AutomationIds @('ScreensaverVersionWatermark', 'DesktopMainWindow', 'MainWindowTitle') `
+            -AutomationIds @('VisualizerVersionWatermark', 'DesktopMainWindow', 'MainWindowTitle') `
             -NameFragments @('Version 1.0', '1.0', 'DO NOT PANIC PORTFOLIO VISUALIZER 1.0') `
             -TimeoutSeconds 10
         if ($null -eq $versionMatch) {

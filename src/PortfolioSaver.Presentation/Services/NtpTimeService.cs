@@ -15,7 +15,7 @@ using System.Net;
 using System.Net.Sockets;
 using PortfolioSaver.Shared.Diagnostics;
 
-namespace PortfolioSaver.Screensaver.Services;
+namespace PortfolioSaver.Presentation.Services;
 
 public sealed class NtpTimeService
 {

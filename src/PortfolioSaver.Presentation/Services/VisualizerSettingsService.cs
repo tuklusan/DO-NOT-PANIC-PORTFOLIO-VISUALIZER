@@ -20,9 +20,9 @@ using PortfolioSaver.Core.Services;
 using PortfolioSaver.Data.Services;
 using PortfolioSaver.Shared.Helpers;
 
-namespace PortfolioSaver.Screensaver.Services;
+namespace PortfolioSaver.Presentation.Services;
 
-public sealed class ScreensaverSettingsService
+public sealed class VisualizerSettingsService
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

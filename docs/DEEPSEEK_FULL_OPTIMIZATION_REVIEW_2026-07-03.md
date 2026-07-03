@@ -58,12 +58,12 @@ Codex accepted DeepSeek's clean synthesis as actionable project backlog material
 | CR-200 | P2 | Medium | Resource leak | Add idle timeout for server client connections | open |
 | CR-201 | P2 | Medium | Memory leak | Add capacity limit to `MemoryTtlCache` to prevent unbounded growth | open |
 | CR-202 | P2 | Medium | Network resilience | Add retry with exponential backoff and jitter to `RetryPolicyService` | open |
-| CR-203 | P2 | Medium | UI fluidity | Consolidate multiple `DispatcherTimer` instances in `ScreensaverSceneControl` into one | open |
+| CR-203 | P2 | Medium | UI fluidity | Consolidate multiple `DispatcherTimer` instances in `VisualizerSceneControl` into one | open |
 | CR-204 | P2 | High | UI jitter | Batch `UpdateLayout()` calls in graph warmup to prevent per-graph spikes | open |
 | CR-205 | P2 | Medium | Network latency | Fetch RSS feeds in parallel in `FinanceNewsService` | open |
 | CR-206 | P2 | Medium | Multithreading | Simplify `ProviderBudgetLedgerService` locking to a single lock to avoid deadlock | open |
 | CR-207 | P2 | Medium | UI dispatcher congestion | Add `ConfigureAwait(false)` to async calls in `StartupCoordinator` that do not need UI continuation | open |
-| CR-208 | P2 | Medium | UI startup responsiveness | Convert `ScreensaverSettingsService.Load` to async to avoid UI thread blocking | open |
+| CR-208 | P2 | Medium | UI startup responsiveness | Convert `VisualizerSettingsService.Load` to async to avoid UI thread blocking | open |
 | CR-209 | P2 | Medium | Network latency | Parallelize weather city fetch in `WorldWeatherService` | open |
 | CR-210 | P2 | High | UI jitter | Offload `NewsFlasherControl` headline preparation from UI tick to background thread | open |
 | CR-211 | P2 | Medium | Performance / IO | Gate `TraceLog.InfoState` calls in hot ticker path behind debug condition | open |
@@ -229,7 +229,7 @@ Codex accepted DeepSeek's clean synthesis as actionable project backlog material
     **Recommendation:** Use `TimeSpan.FromMilliseconds(Math.Min(1000 * Math.Pow(2, attempt - 1), maxDelay)) + Random.Next(0, 200)`.  
     **Acceptance criteria:** Retry storms are eliminated; average success rate under transient failures improves.
 
-24. **Title:** Consolidate multiple `DispatcherTimer` instances in `ScreensaverSceneControl` into one  
+24. **Title:** Consolidate multiple `DispatcherTimer` instances in `VisualizerSceneControl` into one  
     **Priority:** 2 | **Severity:** Medium | **Area:** UI fluidity  
     **Evidence:** 11 separate timers cause dispatcher pressure.  
     **Recommendation:** Merge into a single 33 ms timer with internal scheduled action checks.  
@@ -259,7 +259,7 @@ Codex accepted DeepSeek's clean synthesis as actionable project backlog material
     **Recommendation:** Add `ConfigureAwait(false)` to all non‑UI continuations.  
     **Acceptance criteria:** WPF dispatcher queue utilization reduces; startup scene setup completes faster.
 
-29. **Title:** Convert `ScreensaverSettingsService.Load` to async to avoid UI thread blocking  
+29. **Title:** Convert `VisualizerSettingsService.Load` to async to avoid UI thread blocking  
     **Priority:** 2 | **Severity:** Medium | **Area:** UI startup responsiveness  
     **Evidence:** `File.ReadAllText` and `JsonSerializer.Deserialize` synchronous calls called from UI thread.  
     **Recommendation:** Use `File.ReadAllTextAsync` and `JsonSerializer.DeserializeAsync`; make callers async.  

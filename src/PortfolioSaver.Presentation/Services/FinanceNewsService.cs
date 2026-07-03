@@ -26,7 +26,7 @@ using PortfolioSaver.Core.Services;
 using PortfolioSaver.Shared.Diagnostics;
 using PortfolioSaver.Shared.Helpers;
 
-namespace PortfolioSaver.Screensaver.Services;
+namespace PortfolioSaver.Presentation.Services;
 
 public sealed class FinanceNewsService
 {

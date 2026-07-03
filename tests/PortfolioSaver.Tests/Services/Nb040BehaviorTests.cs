@@ -26,7 +26,7 @@ using PortfolioSaver.Data.Services;
 using PortfolioSaver.Render.Services;
 using PortfolioSaver.Media.Services;
 using PortfolioSaver.Shared.Services;
-using PortfolioSaver.Screensaver.Services;
+using PortfolioSaver.Presentation.Services;
 using PortfolioSaver.Shared.Helpers;
 using Xunit;
 using YFinance.NET.Caching;
@@ -990,11 +990,11 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
-    public void ScreensaverRefreshTimer_UsesOneSecondAsyncQuoteDispatchPath()
+    public void VisualizerRefreshTimer_UsesOneSecondAsyncQuoteDispatchPath()
     {
         string controlPath = Path.Combine(
             GetRepoRoot(),
-            "src", "PortfolioSaver.Presentation", "Controls", "ScreensaverSceneControl.xaml.cs");
+            "src", "PortfolioSaver.Presentation", "Controls", "VisualizerSceneControl.xaml.cs");
         string source = File.ReadAllText(Path.GetFullPath(controlPath));
 
         Assert.Contains(

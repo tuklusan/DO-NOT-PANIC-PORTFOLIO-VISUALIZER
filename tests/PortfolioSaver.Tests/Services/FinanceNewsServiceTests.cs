@@ -20,7 +20,7 @@ using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Core.Services;
-using PortfolioSaver.Screensaver.Services;
+using PortfolioSaver.Presentation.Services;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;

@@ -17,7 +17,7 @@ using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Data.Services;
-using PortfolioSaver.Screensaver.Services;
+using PortfolioSaver.Presentation.Services;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
@@ -258,7 +258,7 @@ public sealed class SettingsFileServiceTests
             Assert.Equal(secretsJson, secretsJsonAfterSecondSave);
 
             AppSettings configLoaded = service.Load();
-            ScreensaverSettingsService runtimeService = new();
+            VisualizerSettingsService runtimeService = new();
             AppSettings runtimeLoaded = runtimeService.Load();
 
             Assert.Equal("placeholder-value", configLoaded.AiApiKey);

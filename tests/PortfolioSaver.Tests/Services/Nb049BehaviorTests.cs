@@ -16,7 +16,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using PortfolioSaver.Core.Models;
-using PortfolioSaver.Screensaver.Controls;
+using PortfolioSaver.Presentation.Controls;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
@@ -24,9 +24,9 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class Nb049BehaviorTests
 {
     [Fact]
-    public void ScreensaverSceneControl_UsesIndependentMacroRefreshLane()
+    public void VisualizerSceneControl_UsesIndependentMacroRefreshLane()
     {
-        Type control = typeof(ScreensaverSceneControl);
+        Type control = typeof(VisualizerSceneControl);
         BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
 
         RequireMethod(control, flags, "StartMacroLane", typeof(void));
@@ -61,9 +61,9 @@ public sealed class Nb049BehaviorTests
     }
 
     [Fact]
-    public void ScreensaverSceneControl_DoesNotReintroduceFullMacroMeterRefreshIntoQuoteLoop()
+    public void VisualizerSceneControl_DoesNotReintroduceFullMacroMeterRefreshIntoQuoteLoop()
     {
-        string source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "PortfolioSaver.Presentation", "Controls", "ScreensaverSceneControl.xaml.cs"));
+        string source = File.ReadAllText(Path.Combine(GetRepositoryRoot(), "src", "PortfolioSaver.Presentation", "Controls", "VisualizerSceneControl.xaml.cs"));
 
         Assert.DoesNotContain("UpdateStatusMacroMeters(force: true);", source, StringComparison.Ordinal);
     }

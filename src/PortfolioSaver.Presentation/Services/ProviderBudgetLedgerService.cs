@@ -18,7 +18,7 @@ using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Shared.Helpers;
 
-namespace PortfolioSaver.Screensaver.Services;
+namespace PortfolioSaver.Presentation.Services;
 
 public sealed class ProviderBudgetLedgerService
 {

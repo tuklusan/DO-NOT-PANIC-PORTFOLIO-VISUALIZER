@@ -32,7 +32,7 @@ using PortfolioSaver.Render.ViewModels;
 using PortfolioSaver.Shared.Diagnostics;
 using PortfolioSaver.Shared.Helpers;
 
-namespace PortfolioSaver.Screensaver.Services;
+namespace PortfolioSaver.Presentation.Services;
 
 public sealed class StartupCoordinator
 {
@@ -52,7 +52,7 @@ public sealed class StartupCoordinator
     private static int s_legacyRuntimeAiApiKeyEnvironmentWarningLogged;
     public static readonly TimeSpan LiveQuoteFeedMaximumAge = TimeSpan.FromMinutes(15);
 
-    private readonly ScreensaverSettingsService _settingsService = new();
+    private readonly VisualizerSettingsService _settingsService = new();
     private readonly ExchangePhotoCacheService _exchangePhotoCacheService = new();
     private readonly NetworkAvailabilityService _networkAvailabilityService = new();
     private readonly HistoricalGraphBuilder _historicalGraphBuilder = new();
@@ -84,7 +84,7 @@ public sealed class StartupCoordinator
         _exchangePhotoCacheService.BackgroundCacheWarmupCompleted += () => BackgroundCacheWarmupCompleted?.Invoke();
     }
 
-    public ScreensaverSceneState BuildBootstrapScene()
+    public VisualizerSceneState BuildBootstrapScene()
     {
         ConsumePendingRuntimeQuoteSeeds();
         AppSettings settings = _settingsService.Load();
@@ -110,7 +110,7 @@ public sealed class StartupCoordinator
 
         bool hasBootstrapUpdatedSymbol = TryGetLatestUpdatedSymbol(cachedQuotes, out string latestBootstrapSymbol, out DateTimeOffset latestBootstrapFetchUtc);
 
-        return new ScreensaverSceneState
+        return new VisualizerSceneState
         {
             Settings = settings,
             Quotes = cachedQuotes,
@@ -178,7 +178,7 @@ public sealed class StartupCoordinator
         IReadOnlyList<string> paths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
         return (paths, _exchangePhotoCacheService.GetFooterAttributionsForBackgrounds(paths));
     }
-    public async Task<ScreensaverSceneState> BuildSceneAsync(int graphRotationSeed = 0, CancellationToken cancellationToken = default)
+    public async Task<VisualizerSceneState> BuildSceneAsync(int graphRotationSeed = 0, CancellationToken cancellationToken = default)
     {
         ConsumePendingRuntimeQuoteSeeds();
         AppSettings settings = _settingsService.Load();
@@ -217,7 +217,7 @@ public sealed class StartupCoordinator
         return BuildSceneState(settings, quotes, backgroundPaths, headlines, networkAvailable);
     }
 
-    public async Task<ScreensaverSceneState> BuildProgressiveQuoteSceneAsync(int graphRotationSeed = 0, CancellationToken cancellationToken = default)
+    public async Task<VisualizerSceneState> BuildProgressiveQuoteSceneAsync(int graphRotationSeed = 0, CancellationToken cancellationToken = default)
     {
         ConsumePendingRuntimeQuoteSeeds();
         AppSettings settings = _settingsService.Load();
@@ -1217,7 +1217,7 @@ public sealed class StartupCoordinator
 
 
 
-    private ScreensaverSceneState BuildSceneState(
+    private VisualizerSceneState BuildSceneState(
         AppSettings settings,
         IReadOnlyDictionary<string, QuoteSnapshot> quotes,
         IReadOnlyList<string> backgroundPaths,
@@ -1249,7 +1249,7 @@ public sealed class StartupCoordinator
 
         bool showNetworkWaitingOverlay = !networkAvailable;
 
-        return new ScreensaverSceneState
+        return new VisualizerSceneState
         {
             Settings = settings,
             Quotes = new Dictionary<string, QuoteSnapshot>(quotes, StringComparer.OrdinalIgnoreCase),

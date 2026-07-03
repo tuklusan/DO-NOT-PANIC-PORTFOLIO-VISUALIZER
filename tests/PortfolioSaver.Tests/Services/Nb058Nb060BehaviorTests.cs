@@ -17,8 +17,8 @@ using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Data.Services;
 using PortfolioSaver.Render.Services;
-using PortfolioSaver.Screensaver.Controls;
-using PortfolioSaver.Screensaver.Services;
+using PortfolioSaver.Presentation.Controls;
+using PortfolioSaver.Presentation.Services;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
@@ -59,7 +59,7 @@ public sealed class Nb058Nb060BehaviorTests
     [Fact]
     public void FormatPinnedStatusCountdown_ReturnsBlank_WhenCountdownUnavailable()
     {
-        MethodInfo method = typeof(ScreensaverSceneControl).GetMethod(
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
             "FormatPinnedStatusCountdown",
             BindingFlags.Static | BindingFlags.NonPublic)
             ?? throw new InvalidOperationException("Could not find FormatPinnedStatusCountdown.");

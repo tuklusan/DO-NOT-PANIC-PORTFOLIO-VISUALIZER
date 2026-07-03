@@ -13,7 +13,7 @@
 // ============================================================================
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Core.Constants;
-using PortfolioSaver.Screensaver.Services;
+using PortfolioSaver.Presentation.Services;
 using Xunit;
 
 namespace PortfolioSaver.Tests.Services;
