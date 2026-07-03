@@ -62,6 +62,18 @@ public sealed class InternetProbeService
         _messageHandlerFactory = messageHandlerFactory;
     }
 
+    internal IReadOnlyList<string> ProbeUrlsForTests => _probeUrls;
+    internal int AttemptsForTests => _attempts;
+
+    internal void SetCacheForTests(DateTimeOffset lastProbeUtc, bool lastProbeResult)
+    {
+        lock (_sync)
+        {
+            _lastProbeUtc = lastProbeUtc;
+            _lastProbeResult = lastProbeResult;
+        }
+    }
+
     public bool IsInternetAvailable()
         => IsInternetAvailableAsync().GetAwaiter().GetResult();
 

@@ -715,7 +715,7 @@ public sealed class FinanceNewsService
             .ToList();
     }
 
-    private static string BuildSummarizedNewsPrompt(AiWritingStyle writingStyle, SummarizedNewsContext context)
+    internal static string BuildSummarizedNewsPrompt(AiWritingStyle writingStyle, SummarizedNewsContext context)
     {
         StringBuilder builder = new();
         builder.AppendLine("You are a dependable fiduciary and are presenting current financial news highlights to your customers.");
@@ -1375,7 +1375,7 @@ public sealed class FinanceNewsService
         TraceNewsState(eventName, new KeyValuePair<string, object?>(fieldName, detail));
     }
 
-    private sealed record SummarizedNewsContext(
+    internal sealed record SummarizedNewsContext(
         DateTimeOffset CapturedAtUtc,
         IReadOnlyList<string> Headlines);
 

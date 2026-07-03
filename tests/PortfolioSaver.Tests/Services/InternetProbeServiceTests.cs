@@ -12,7 +12,6 @@
 // patent, trademark, and governing-law provisions.
 // ============================================================================
 using System.Net;
-using System.Reflection;
 using PortfolioSaver.Shared.Services;
 using Xunit;
 
@@ -25,9 +24,9 @@ public sealed class InternetProbeServiceTests
     {
         InternetProbeService service = new();
 
-        Assert.Equal(2, GetPrivateField<int>(service, "_attempts"));
-        Assert.Equal(2, GetPrivateField<string[]>(service, "_probeUrls").Length);
-        Assert.Contains("https://www.msftconnecttest.com/connecttest.txt", GetPrivateField<string[]>(service, "_probeUrls"));
+        Assert.Equal(2, service.AttemptsForTests);
+        Assert.Equal(2, service.ProbeUrlsForTests.Count);
+        Assert.Contains("https://www.msftconnecttest.com/connecttest.txt", service.ProbeUrlsForTests);
     }
 
     [Fact]
@@ -39,8 +38,7 @@ public sealed class InternetProbeServiceTests
             timeoutMilliseconds: 250,
             cacheDuration: TimeSpan.FromHours(1));
 
-        SetPrivateField(service, "_lastProbeUtc", DateTimeOffset.UtcNow);
-        SetPrivateField(service, "_lastProbeResult", true);
+        service.SetCacheForTests(DateTimeOffset.UtcNow, lastProbeResult: true);
 
         bool available = service.IsInternetAvailable();
 
@@ -56,8 +54,7 @@ public sealed class InternetProbeServiceTests
             timeoutMilliseconds: 250,
             cacheDuration: TimeSpan.FromHours(1));
 
-        SetPrivateField(service, "_lastProbeUtc", DateTimeOffset.UtcNow);
-        SetPrivateField(service, "_lastProbeResult", true);
+        service.SetCacheForTests(DateTimeOffset.UtcNow, lastProbeResult: true);
 
         service.InvalidateCache();
         bool available = service.IsInternetAvailable();
@@ -74,7 +71,7 @@ public sealed class InternetProbeServiceTests
             timeoutMilliseconds: 250,
             cacheDuration: TimeSpan.FromHours(1));
 
-        Assert.Equal(new[] { "https://example.com" }, GetPrivateField<string[]>(service, "_probeUrls"));
+        Assert.Equal(new[] { "https://example.com" }, service.ProbeUrlsForTests);
     }
 
 
@@ -125,28 +122,12 @@ public sealed class InternetProbeServiceTests
                 await Task.Delay(100, cancellationToken);
                 return new HttpResponseMessage(HttpStatusCode.NoContent);
             }));
-        SetPrivateField(service, "_lastProbeUtc", DateTimeOffset.UtcNow.AddMinutes(-1));
-        SetPrivateField(service, "_lastProbeResult", false);
+        service.SetCacheForTests(DateTimeOffset.UtcNow.AddMinutes(-1), lastProbeResult: false);
 
         bool[] results = await Task.WhenAll(Enumerable.Range(0, 12).Select(_ => service.IsInternetAvailableAsync()));
 
         Assert.All(results, Assert.True);
         Assert.Equal(1, requestCount);
-    }
-
-    private static T GetPrivateField<T>(object instance, string fieldName)
-    {
-        FieldInfo? field = instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.NotNull(field);
-        object? value = field!.GetValue(instance);
-        return Assert.IsType<T>(value);
-    }
-
-    private static void SetPrivateField<T>(object instance, string fieldName, T value)
-    {
-        FieldInfo? field = instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.NotNull(field);
-        field!.SetValue(instance, value);
     }
 
     private sealed class FakeProbeHandler(

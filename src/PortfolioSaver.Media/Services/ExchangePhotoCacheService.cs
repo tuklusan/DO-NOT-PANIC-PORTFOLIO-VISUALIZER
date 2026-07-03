@@ -247,7 +247,7 @@ public sealed class ExchangePhotoCacheService
 
     // Full attribution lines are "Image title | Creator | License | Source URL".
     // The footer intentionally displays only "Creator, License"; the full source URL remains in the cache manifest.
-    private static string ToFooterAttribution(string? attributionLine)
+    internal static string ToFooterAttribution(string? attributionLine)
     {
         if (string.IsNullOrWhiteSpace(attributionLine))
             return "Unknown, Unknown license";

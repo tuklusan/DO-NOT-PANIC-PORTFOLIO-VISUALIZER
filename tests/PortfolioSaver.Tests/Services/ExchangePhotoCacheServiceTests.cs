@@ -13,7 +13,6 @@
 // ============================================================================
 using System.Net;
 using System.Net.Http;
-using System.Reflection;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Models;
 using PortfolioSaver.Media.Services;
@@ -306,13 +305,7 @@ public sealed class ExchangePhotoCacheServiceTests
         => [0xFF, 0xD8, 0xFF, 0xD9];
 
     private static string InvokeFooterAttributionFormatter(string? attributionLine)
-    {
-        // Reflection keeps the edge-case checks close to the private formatter without widening production API surface.
-        MethodInfo method = typeof(ExchangePhotoCacheService).GetMethod("ToFooterAttribution", BindingFlags.NonPublic | BindingFlags.Static)
-            ?? throw new InvalidOperationException("ToFooterAttribution formatter was not found.");
-
-        return Assert.IsType<string>(method.Invoke(null, [attributionLine]));
-    }
+        => ExchangePhotoCacheService.ToFooterAttribution(attributionLine);
 
     private sealed class StaticImageHandler(byte[]? responseBytes = null) : HttpMessageHandler
     {
