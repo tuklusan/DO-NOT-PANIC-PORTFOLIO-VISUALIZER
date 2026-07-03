@@ -9476,17 +9476,20 @@
       "priority": 2,
       "area": "CPU efficiency",
       "title": "Replace repeated `Task.Delay` polling in `TraceLog.ProcessQueueAsync` with a signaling mechanism",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: Empties the queue every 25 ms via polling, wasting CPU.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Replaced TraceLog idle polling with a QueueSignal SemaphoreSlim that is released on enqueue and awaited by the background trace worker.",
+        "Validation passed on 2026-07-03: dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --no-restore --filter \"FullyQualifiedName~TraceLogTests\" (9 passed)."
       ],
       "notes": [
         "Recommendation: Use a `SemaphoreSlim` signaled on enqueue.",
         "Acceptance criteria: Idle trace worker uses zero CPU (<1% per core); enqueue releases the worker immediately.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Closed on 2026-07-03. Idle trace worker now blocks on a signal instead of waking every 25 ms; the existing retry delay remains only for exception recovery."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",

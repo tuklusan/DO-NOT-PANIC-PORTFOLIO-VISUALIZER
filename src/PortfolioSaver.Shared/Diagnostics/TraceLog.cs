@@ -19,6 +19,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using Microsoft.Win32;
 using PortfolioSaver.Shared.Helpers;
 
@@ -34,6 +35,7 @@ public static class TraceLog
     // circular cursor behavior against the background trace worker.
     private static readonly object FileSync = new();
     private static readonly ConcurrentQueue<string> Queue = new();
+    private static readonly SemaphoreSlim QueueSignal = new(0);
     private static readonly string ProgramName = Process.GetCurrentProcess().ProcessName;
     private static NetworkMetadata _networkMetadata = new(Environment.MachineName, "127.0.0.1");
     private static int _circularWritePosition = -1;
@@ -52,9 +54,14 @@ public static class TraceLog
 
     internal static void ResetCircularStateForTests()
     {
+        // Test reset is intentionally called only from test setup before new trace producers start.
         lock (FileSync)
         {
             while (Queue.TryDequeue(out _))
+            {
+            }
+
+            while (QueueSignal.Wait(0))
             {
             }
 
@@ -131,6 +138,7 @@ public static class TraceLog
         NetworkMetadata metadata = Volatile.Read(ref _networkMetadata);
         string line = $"{DateTimeOffset.UtcNow:O} | {level} | program={ProgramName} | source={source} | function={functionText} | host={metadata.HostName} | ip={metadata.LocalIp} | pid={Environment.ProcessId} | tid={Environment.CurrentManagedThreadId} | {SanitizeValue(message, MaxLineLength)}{SanitizeValue(exceptionText, 240)}";
         Queue.Enqueue(line);
+        QueueSignal.Release();
     }
 
     private static string BuildStructuredMessage(string eventName, IEnumerable<KeyValuePair<string, object?>> fields)
@@ -253,13 +261,9 @@ public static class TraceLog
         {
             try
             {
-                if (!Queue.TryDequeue(out string? line))
-                {
-                    await Task.Delay(25).ConfigureAwait(false);
-                    continue;
-                }
+                await QueueSignal.WaitAsync().ConfigureAwait(false);
 
-                List<string> lines = [line];
+                List<string> lines = [];
                 while (lines.Count < MaxTraceBatchLines && Queue.TryDequeue(out string? nextLine))
                     lines.Add(nextLine);
 

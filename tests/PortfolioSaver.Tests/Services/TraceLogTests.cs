@@ -382,11 +382,16 @@ public sealed class TraceLogTests
         string repoRoot = GetRepoRoot();
         string source = File.ReadAllText(Path.Combine(repoRoot, "src", "PortfolioSaver.Shared", "Diagnostics", "TraceLog.cs"));
 
+        Assert.Contains("private static readonly SemaphoreSlim QueueSignal = new(0);", source, StringComparison.Ordinal);
+        Assert.Contains("QueueSignal.Release();", source, StringComparison.Ordinal);
+        Assert.Contains("Test reset is intentionally called only from test setup before new trace producers start.", source, StringComparison.Ordinal);
+        Assert.Contains("await QueueSignal.WaitAsync().ConfigureAwait(false);", source, StringComparison.Ordinal);
         Assert.Contains("await Task.Delay(250).ConfigureAwait(false);", source, StringComparison.Ordinal);
         Assert.Contains("private const int MaxTraceBatchLines = 512;", source, StringComparison.Ordinal);
         Assert.Contains("private const int TraceIndexCheckpointLines = 64;", source, StringComparison.Ordinal);
         Assert.Contains("while (lines.Count < MaxTraceBatchLines && Queue.TryDequeue(out string? nextLine))", source, StringComparison.Ordinal);
         Assert.Contains("WriteCircularBatch(lines);", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("await Task.Delay(25).ConfigureAwait(false);", source, StringComparison.Ordinal);
         Assert.DoesNotContain("stream.Flush(true)", source, StringComparison.Ordinal);
     }
 
