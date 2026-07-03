@@ -9361,17 +9361,22 @@
       "priority": 2,
       "area": "Pipeline throughput",
       "title": "Parallelize VM package installation with throttled concurrency",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: `install-vm-qa-tools.ps1` installs 10+ choco packages sequentially.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Manual inspection of build/vm-tools/install-vm-qa-tools.ps1, install-vm-qa-tools-resume.ps1, Guest-BootstrapVmRemoteTools.ps1, and build/vm/VmPackageInstallCommon.ps1 confirmed VM provisioning uses Chocolatey global package installs where concurrency would share package/cache state.",
+        "CR-189 validation already passed parser checks, focused VmPackageInstall tests, validation smoke, and DeepSeek review with no blocking issues; that safer reliability hardening is the accepted mitigation for the original sequential-install fragility."
       ],
       "notes": [
         "Recommendation: Use `ForEach-Object -Parallel 3` or `Start-ThreadJob` with a throttle limit.",
         "Acceptance criteria: Total installation time reduces by ≥50%; no increase in package installation failures due to contention.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Developer analysis rejected parallel Chocolatey package installation as unsafe for current VM provisioning. Chocolatey uses shared install/cache state and package install scripts can mutate global machine state; concurrent installs risk lock contention, partial installs, and harder-to-debug VM bootstrap failures.",
+        "CR-189 already implemented the safer throughput/reliability improvements: idempotent skips, retry/backoff, and optional package continuation. Keeping package installs serialized is intentional until a package-manager-safe parallel provisioning design is approved.",
+        "No code change made for CR-190 by design; closure is an explicit do-not-implement decision to preserve harness stability."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
