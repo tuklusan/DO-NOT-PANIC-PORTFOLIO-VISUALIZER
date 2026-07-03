@@ -9379,12 +9379,8 @@
         "No code change made for CR-190 by design; closure is an explicit do-not-implement decision to preserve harness stability."
       ],
       "acceptance": [
-        "Root cause is identified from traces, screenshots, or code inspection.",
-        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
-        "DeepSeek code review gate reports no blocking findings for code changes.",
-        "Local build/test validation passes when the change affects code.",
-        "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+        "Decision: do-not-implement. Parallel Chocolatey installation is rejected as unsafe for current VM provisioning because package installs share global cache/machine state.",
+        "Acceptance criteria for implementation, local validation, and VM validation are intentionally not applicable to this closure; CR-189 provides the accepted safer reliability mitigation."
       ]
     },
     {
