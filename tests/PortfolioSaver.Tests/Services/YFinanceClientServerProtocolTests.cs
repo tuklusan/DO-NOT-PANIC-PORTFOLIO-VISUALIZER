@@ -15,6 +15,7 @@ using System.IO;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text.Json;
 using PortfolioSaver.Shared.Services;
 using YFinance.NET.Client;
@@ -45,8 +46,61 @@ public sealed class YFinanceClientServerProtocolTests
         ProtocolIntegrity.Stamp(request, request.Payload);
 
         Assert.False(string.IsNullOrWhiteSpace(request.PayloadChecksum));
+        Assert.Equal(16, request.PayloadChecksum.Length);
         Assert.Equal(DateTimeOffset.Now.Offset, request.Timestamp.Offset);
         Assert.True(ProtocolIntegrity.Verify(request, request.Payload));
+        Assert.False(ProtocolIntegrity.Verify(request, new GetQuoteRequestDto("AAPL")));
+    }
+
+    [Fact]
+    public void ProtocolIntegrity_VerifiesLegacySha256ChecksumForRollingCompatibility()
+    {
+        GetQuoteRequestDto payload = new("^IXIC");
+        ProtocolRequest<GetQuoteRequestDto> request = new()
+        {
+            RequestId = "req-legacy-sha",
+            Operation = "get_quote",
+            Payload = payload,
+            PayloadChecksum = Convert.ToHexString(SHA256.HashData(ProtocolJson.Serialize(payload)))
+        };
+
+        Assert.Equal(64, request.PayloadChecksum.Length);
+        Assert.True(ProtocolIntegrity.Verify(request, request.Payload));
+        Assert.False(ProtocolIntegrity.Verify(request, new GetQuoteRequestDto("AAPL")));
+    }
+
+    [Fact]
+    public void ProtocolIntegrity_VerifyReturnsFalseForMissingChecksum()
+    {
+        ProtocolRequest<GetQuoteRequestDto> request = new()
+        {
+            RequestId = "req-missing-checksum",
+            Operation = "get_quote",
+            Payload = new GetQuoteRequestDto("^IXIC"),
+            PayloadChecksum = " "
+        };
+
+        Assert.False(ProtocolIntegrity.Verify(request, request.Payload));
+
+        request.PayloadChecksum = null!;
+        Assert.False(ProtocolIntegrity.Verify(request, request.Payload));
+    }
+
+    [Fact]
+    public void ProtocolIntegrity_VerifyReturnsFalseForMalformedChecksums()
+    {
+        ProtocolRequest<GetQuoteRequestDto> request = new()
+        {
+            RequestId = "req-malformed-checksum",
+            Operation = "get_quote",
+            Payload = new GetQuoteRequestDto("^IXIC"),
+            PayloadChecksum = new string('Z', 64)
+        };
+
+        Assert.False(ProtocolIntegrity.Verify(request, request.Payload));
+
+        request.PayloadChecksum = "NOTACHECKSUMBADD";
+        Assert.False(ProtocolIntegrity.Verify(request, request.Payload));
     }
 
     [Fact]

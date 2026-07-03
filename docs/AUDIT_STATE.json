@@ -9624,17 +9624,23 @@
       "priority": 2,
       "area": "CPU/GC overhead",
       "title": "Replace SHA256 with a fast non-cryptographic hash for protocol payload checksum",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
-        "DeepSeek clean full-codebase optimization synthesis: `ProtocolIntegrity.ComputePayloadChecksum` uses `SHA256` - heavy for corruption detection only.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Replaced normal outbound protocol payload checksums with deterministic FNV-1a 64-bit uppercase hex strings for the product-owned local YFinance.NET protocol.",
+        "Kept inbound verification compatibility for legacy 64-character SHA-256 payload checksums so older in-flight envelopes are not rejected during same-machine startup/shutdown transitions.",
+        "Updated docs/YFINANCE_NET_ICD.md to define the active FNV-1a64 checksum, the inbound-only SHA-256 compatibility fallback, and the explicit non-cryptographic/non-authentication threat model.",
+        "Added protocol tests proving 16-character fast checksum stamping, payload mismatch rejection, legacy SHA-256 acceptance, missing checksum rejection, and malformed checksum rejection.",
+        "Validation passed on 2026-07-03: dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --configuration Release --nologo --verbosity minimal --filter \"FullyQualifiedName~YFinanceClientServerProtocolTests|FullyQualifiedName~YFinanceServerClientPipelineTests\" (49 passed).",
+        "Validation passed on 2026-07-03: dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --configuration Release --nologo --verbosity minimal --filter \"FullyQualifiedName!~NoSuchImpossibleFilterMarker\" (626 passed).",
+        "DeepSeek review gate passed on 2026-07-03 with no critical/high/medium findings in build/deepseek-review/deepseek-review-20260703-150114.md."
       ],
       "notes": [
-        "Recommendation: Replace with `System.IO.Hashing.XxHash64` or `Crc32`.",
-        "Acceptance criteria: CPU time per checksum reduces by 10×; functional tests with the new hash continue to detect corruption.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Recommendation: replace SHA-256 in ProtocolIntegrity.ComputePayloadChecksum with a faster non-cryptographic checksum because the field is used for accidental payload corruption detection, not security.",
+        "Decision: accepted with guardrails. New outbound envelopes use FNV-1a64; inbound verification also accepts the old SHA-256 form for legacy in-flight compatibility.",
+        "Mixed-version client/server operation remains unsupported because the desktop client and owned server are shipped as one product bundle; the ICD now documents that old binaries cannot consume new checksum envelopes.",
+        "Closed on 2026-07-03 after protocol-focused tests, full tests, ICD update, and DeepSeek review."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10436,4 +10442,3 @@
     }
   ]
 }
-

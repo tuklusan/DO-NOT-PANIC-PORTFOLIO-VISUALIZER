@@ -133,7 +133,11 @@ All protocol messages must carry a common envelope. The envelope timestamp must 
 - `protocolVersion` : integer
 - `messageType` : string
 - `timestamp` : ISO 8601 local timestamp string with UTC offset
-- `payloadChecksum` : uppercase SHA-256 checksum of the serialized JSON payload section only
+- `payloadChecksum` : uppercase FNV-1a 64-bit checksum, encoded as 16 hexadecimal characters, of the serialized JSON payload section only
+
+The payload checksum is a non-cryptographic corruption detector for the product-owned local protocol. It is not an authentication mechanism, not a tamper-proof signature, and not a substitute for transport security in any future remote-listener deployment.
+
+Compatibility note: Release 1.0 stamps new outbound envelopes with FNV-1a64 checksums. For inbound compatibility only, the verifier also accepts the prior 64-character SHA-256 payload checksum form so an older in-flight message is not rejected during same-machine startup or shutdown. The desktop client and owned server are distributed as one bundle; mixed-version client/server deployments are not a supported operating mode. Old binaries cannot consume new 16-character checksum envelopes without being upgraded.
 
 ### 6.2 Request/response correlation
 Request-scoped messages must also carry:
@@ -156,7 +160,7 @@ A request message must follow this shape:
   "messageType": "request",
   "requestId": "req-000001",
   "timestamp": "2026-05-30T16:34:56+04:00",
-  "payloadChecksum": "44136FA355B3678A1146AD16F7E8649E94FB4FC21F8DD0F2B3A6D3D4B0716F8A",
+  "payloadChecksum": "D4212F0B6D8F3A51",
   "operation": "get_quote",
   "payload": {}
 }
@@ -171,7 +175,7 @@ A response message must follow this shape:
   "messageType": "response",
   "requestId": "req-000001",
   "timestamp": "2026-05-30T16:34:56+04:00",
-  "payloadChecksum": "44136FA355B3678A1146AD16F7E8649E94FB4FC21F8DD0F2B3A6D3D4B0716F8A",
+  "payloadChecksum": "D4212F0B6D8F3A51",
   "operation": "get_quote",
   "status": "ok",
   "payload": {}
@@ -187,7 +191,7 @@ A request-scoped error must still be a `response` message:
   "messageType": "response",
   "requestId": "req-000001",
   "timestamp": "2026-05-30T16:34:56+04:00",
-  "payloadChecksum": "44136FA355B3678A1146AD16F7E8649E94FB4FC21F8DD0F2B3A6D3D4B0716F8A",
+  "payloadChecksum": "D4212F0B6D8F3A51",
   "operation": "get_quote",
   "status": "error",
   "error": {
@@ -206,7 +210,7 @@ Async server events are allowed only for connection/server lifecycle conditions:
   "protocolVersion": 1,
   "messageType": "event",
   "timestamp": "2026-05-30T16:35:10+04:00",
-  "payloadChecksum": "D6C76C72C4C22D78B7B0B9345CEBB89D4B4DFB7B9D28F7F211B8B7D9CA9F725D",
+  "payloadChecksum": "8A7F7D12C6034ED9",
   "eventType": "server_shutting_down",
   "payload": {
     "reason": "service_stop"
