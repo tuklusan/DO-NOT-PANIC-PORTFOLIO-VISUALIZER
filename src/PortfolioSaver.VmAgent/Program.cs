@@ -269,7 +269,9 @@ internal static class Program
             string stdoutPath = Path.Combine(_agentLogsPath, $"{resultName}.stdout.log");
             string stderrPath = Path.Combine(_agentLogsPath, $"{resultName}.stderr.log");
             string launcherPath = Path.Combine(scriptsPath, $"agent-launch-{resultName}.cmd");
-            int duration = command.Payload?.ScreensaverDurationMinutes ?? 20;
+            int duration = command.Payload?.VisualizerRuntimeDurationMinutes
+                ?? command.Payload?.ScreensaverDurationMinutes
+                ?? 20;
             int captureInterval = command.Payload?.CaptureIntervalSeconds ?? 5;
             string validationCompletionMode = string.Equals(command.Payload?.ValidationCompletionMode, "Cancel", StringComparison.OrdinalIgnoreCase)
                 ? "Cancel"
@@ -301,7 +303,7 @@ internal static class Program
             {
                 "@echo off",
                 $"cd /d \"{_rootPath}\"",
-                $"\"{_pwshPath}\" -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"{_uxScript}\" -RootPath \"{_rootPath}\" -ResultName \"{resultName}\" -ResultRootPath \"{resultRoot}\" -ValidationCompletionMode \"{validationCompletionMode}\" -ScreensaverDurationMinutes {duration} -CaptureIntervalSeconds {captureInterval} -FaultProfile {Quote(faultProfile)}{displayArguments} 1>\"{stdoutPath}\" 2>\"{stderrPath}\""
+                $"\"{_pwshPath}\" -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"{_uxScript}\" -RootPath \"{_rootPath}\" -ResultName \"{resultName}\" -ResultRootPath \"{resultRoot}\" -ValidationCompletionMode \"{validationCompletionMode}\" -VisualizerRuntimeDurationMinutes {duration} -CaptureIntervalSeconds {captureInterval} -FaultProfile {Quote(faultProfile)}{displayArguments} 1>\"{stdoutPath}\" 2>\"{stderrPath}\""
             });
             File.WriteAllText(launcherPath, launcherContents);
 
@@ -478,6 +480,7 @@ internal static class Program
         public string? Arguments { get; set; }
         public string? ResultName { get; set; }
         public string? ResultRootPath { get; set; }
+        public int? VisualizerRuntimeDurationMinutes { get; set; }
         public int? ScreensaverDurationMinutes { get; set; }
         public int? CaptureIntervalSeconds { get; set; }
         public string? ValidationCompletionMode { get; set; }

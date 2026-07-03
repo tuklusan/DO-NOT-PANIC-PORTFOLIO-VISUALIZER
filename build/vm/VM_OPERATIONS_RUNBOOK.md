@@ -169,13 +169,13 @@ It then stages runnable artifacts under:
 ### 3. Configure desktop automation and start the agent
 
 ```powershell
-./build/vm/Invoke-VmBuildTest.ps1 -PushWorkspace -RunUxDeep -GuestScreensaverDurationMinutes 20 -CaptureIntervalSeconds 5
+./build/vm/Invoke-VmBuildTest.ps1 -PushWorkspace -RunUxDeep -GuestVisualizerRuntimeDurationMinutes 20 -CaptureIntervalSeconds 5
 ```
 
 Deterministic degraded-mode profiles can be applied without cutting the VM control channel:
 
 ```powershell
-./build/vm/Invoke-VmBuildTest.ps1 -PushWorkspace -RunUxDeep -GuestScreensaverDurationMinutes 30 -FaultProfile offline-during-runtime
+./build/vm/Invoke-VmBuildTest.ps1 -PushWorkspace -RunUxDeep -GuestVisualizerRuntimeDurationMinutes 30 -FaultProfile offline-during-runtime
 ```
 
 The profile is written into the pulled UX artifact bundle as `yfinance-fault-profile.json` and `fault-injection-events.log`; server-side application is traced in `trace\yfinance.circular.log`. See `docs\DEGRADED_MODE_VALIDATION_HARNESS.md`.
@@ -357,8 +357,13 @@ Do **not** kill the remote shell owner during cleanup. In practice that means:
 - `ConfigVersionCheck = Passed`
 - `DesktopVersionCheck = Passed`
 - `FullScreenToggleStatus = Completed`
-- `ScreensaverPhaseStatus = LegacyNotRun`
+- `RuntimePhaseStatus = Completed`
 - `FinishedAt` present
+
+Runtime-duration fields now use visualizer terminology. New summaries use
+`guestVisualizerRuntimeDurationMinutes` and also dual-write the older
+`guestScreensaverDurationMinutes` field for compatibility during the 1.0
+migration window. New consumers should read the visualizer-named field.
 
 ## Result locations
 
@@ -375,7 +380,7 @@ Do **not** kill the remote shell owner during cleanup. In practice that means:
 If you are already logged into the remote Windows desktop and want to run the deep exercise locally there, use:
 
 ```powershell
-& 'C:\vmharness\portfolio-saver\repo\build\vm\Guest-UxDeepExercise.ps1' -RootPath 'C:\vmharness\portfolio-saver' -ScreensaverDurationMinutes 20 -CaptureIntervalSeconds 5
+& 'C:\vmharness\portfolio-saver\repo\build\vm\Guest-UxDeepExercise.ps1' -RootPath 'C:\vmharness\portfolio-saver' -VisualizerRuntimeDurationMinutes 20 -CaptureIntervalSeconds 5
 ```
 
 This is a debugging convenience only. The canonical harness path is still the host-driven SSH flow mediated by `PortfolioSaver.VmAgent`.

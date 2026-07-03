@@ -8947,16 +8947,23 @@
       "priority": 2,
       "area": "vm-harness",
       "title": "Rename VM harness runtime duration and summary fields away from Screensaver wording",
-      "status": "open",
+      "status": "closed",
       "source": "cr-176-consistency-scan",
       "severity": "Medium",
       "evidence": [
-        "Guest-UxDeepExercise.ps1 and Invoke-VmBuildTest.ps1 still expose parameters such as ScreensaverDurationMinutes and GuestScreensaverDurationMinutes even though long runs now execute only the desktop visualizer.",
-        "The old names are no longer a functional fallback path, but they make trace summaries and documentation harder to trust."
+        "Guest-UxDeepExercise.ps1 and Invoke-VmBuildTest.ps1 exposed legacy screensaver-era runtime-duration parameter names even though long runs now execute only the desktop visualizer.",
+        "The old names are no longer a functional fallback path, but they make trace summaries and documentation harder to trust.",
+        "Renamed VM harness duration parameters and summary fields to VisualizerRuntimeDurationMinutes / GuestVisualizerRuntimeDurationMinutes / guestVisualizerRuntimeDurationMinutes.",
+        "Preserved backward-compatible PowerShell aliases and VM-agent JSON fallback for the old duration field names so existing automation can migrate safely.",
+        "Updated VM runbook and validation docs to reference runtime/visualizer terminology instead of screensaver-phase terminology.",
+        "Validation passed on 2026-07-03: dotnet build src\\PortfolioSaver.VmAgent\\PortfolioSaver.VmAgent.csproj --configuration Release --nologo; dotnet test tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --configuration Release --filter \"FullyQualifiedName~VmHarnessScriptTests\" (20 passed).",
+        "Autonomous validation summaries dual-write guestVisualizerRuntimeDurationMinutes and the legacy guestScreensaverDurationMinutes field during the 1.0 migration window.",
+        "VM agent command payloads dual-send VisualizerRuntimeDurationMinutes and ScreensaverDurationMinutes so older target agents do not silently fall back to the default duration."
       ],
       "notes": [
         "Introduce visualizer/runtime duration names and update docs/tests.",
-        "Consider temporary aliases only if needed for existing automation stability."
+        "Consider temporary aliases only if needed for existing automation stability.",
+        "Closed on 2026-07-03 with compatibility aliases retained intentionally; remaining old duration-name hits are only explicit compatibility aliases/fallbacks and the CR historical evidence text."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -8965,7 +8972,8 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "updated": "2026-07-03"
     },
     {
       "id": "CR-179",

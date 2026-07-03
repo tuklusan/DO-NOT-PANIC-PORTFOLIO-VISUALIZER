@@ -20,8 +20,9 @@ param(
     [switch]$RunUxDeep,
     [ValidateSet('Apply', 'Cancel')]
     [string]$ValidationCompletionMode = 'Apply',
+    [Alias('GuestScreensaverDurationMinutes')]
     [ValidateRange(1, 10080)]
-    [int]$GuestScreensaverDurationMinutes = 20,
+    [int]$GuestVisualizerRuntimeDurationMinutes = 20,
     [ValidateRange(1, 3600)]
     [int]$CaptureIntervalSeconds = 5,
     [int]$DisplayWidth,
@@ -48,8 +49,8 @@ $uxResultName = 'ux-deep-ssh-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
 $runCompleted = $false
 $runFailureReason = $null
 $vmCredParts = Get-VmSshCredentialPartsFromEnv
-$effectiveCaptureIntervalSeconds = if ($GuestScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }
-$effectiveUxTimeoutSeconds = [Math]::Max($UxTimeoutSeconds, ($GuestScreensaverDurationMinutes * 60) + 1800)
+$effectiveCaptureIntervalSeconds = if ($GuestVisualizerRuntimeDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }
+$effectiveUxTimeoutSeconds = [Math]::Max($UxTimeoutSeconds, ($GuestVisualizerRuntimeDurationMinutes * 60) + 1800)
 
 function Read-VmSharedJsonViaSftp {
     param(
@@ -286,7 +287,8 @@ schtasks /Delete /TN "PortfolioSaverVmAgent" /F >`$null 2>&1
             Payload = [ordered]@{
                 ResultName = $uxResultName
                 ResultRootPath = (Join-Path $RootPath 'results')
-                ScreensaverDurationMinutes = $GuestScreensaverDurationMinutes
+                VisualizerRuntimeDurationMinutes = $GuestVisualizerRuntimeDurationMinutes
+                ScreensaverDurationMinutes = $GuestVisualizerRuntimeDurationMinutes
                 CaptureIntervalSeconds = $effectiveCaptureIntervalSeconds
                 ValidationCompletionMode = $ValidationCompletionMode
                 DisplayWidth = if ($DisplayWidth -gt 0) { $DisplayWidth } else { $null }

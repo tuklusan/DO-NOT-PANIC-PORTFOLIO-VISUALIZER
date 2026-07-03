@@ -24,7 +24,7 @@ This suite exercises every user-configurable surface in the configuration UI and
 
 1. Run the desktop-first VM harness:
    - `build\vm\Push-VmWorkspace.ps1 -Bootstrap -IncludePublishArtifacts`
-   - `build\vm\Invoke-VmBuildTest.ps1 -RunUxDeep -GuestScreensaverDurationMinutes 20 -TreatUxIssuesAsWarnings`
+   - `build\vm\Invoke-VmBuildTest.ps1 -RunUxDeep -GuestVisualizerRuntimeDurationMinutes 20 -TreatUxIssuesAsWarnings`
 2. Review the pulled result bundle under:
    - `build\vm\artifacts\ssh-runs\<result-name>`
 3. Pair the visual/control sweep with local focused validation tests that cover edge cases the harness touches only indirectly.

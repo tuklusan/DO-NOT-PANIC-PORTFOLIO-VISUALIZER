@@ -233,7 +233,7 @@ Do not spend time re-optimizing or re-architecting the working harness glue unle
 For unattended visual and logic validation, use:
 
 ```powershell
-.\build\validation\Invoke-AutonomousVisualValidation.ps1 -VmHost 192.168.56.102 -VmCycles 2 -RequiredConsecutiveCleanRuns 2 -GuestScreensaverDurationMinutes 30 -CaptureIntervalSeconds 10 -CreateChangeRequests -CommitBeforeValidation -PushBeforeValidation -AcknowledgeExternalReviewSecretScan
+.\build\validation\Invoke-AutonomousVisualValidation.ps1 -VmHost 192.168.56.102 -VmCycles 2 -RequiredConsecutiveCleanRuns 2 -GuestVisualizerRuntimeDurationMinutes 30 -CaptureIntervalSeconds 10 -CreateChangeRequests -CommitBeforeValidation -PushBeforeValidation -AcknowledgeExternalReviewSecretScan
 ```
 
 This wrapper runs the mandatory DeepSeek review gate, local Release restore/build/tests, optionally commits and pushes declared pending changes before VM validation, executes the SSH-first UX harness, scans pulled screenshots and trace files, and appends project-native CRs for detected anomalies. The default VM path uses 30-minute runs and the guest harness' 120-second background interval so background rotation can be observed without a multi-hour soak.

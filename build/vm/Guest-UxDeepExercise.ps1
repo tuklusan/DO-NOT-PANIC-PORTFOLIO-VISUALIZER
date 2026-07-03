@@ -12,8 +12,9 @@
 # patent, trademark, and governing-law provisions.
 # ============================================================================
 param(
+    [Alias('ScreensaverDurationMinutes')]
     [ValidateRange(1, 10080)]
-    [int]$ScreensaverDurationMinutes = 6,
+    [int]$VisualizerRuntimeDurationMinutes = 6,
     [ValidateRange(1, 3600)]
     [int]$CaptureIntervalSeconds = 5,
     [int]$DisplayWidth,
@@ -208,15 +209,15 @@ foreach ($orphanedSummaryTempPath in [System.IO.Directory]::EnumerateFiles($resu
     [System.IO.File]::Delete($orphanedSummaryTempPath)
 }
 
-$isLongRunSoak = $ScreensaverDurationMinutes -ge 120
+$isLongRunSoak = $VisualizerRuntimeDurationMinutes -ge 120
 $script:vmBackgroundChangeSeconds = 120
-$effectiveCaptureIntervalSeconds = if ($ScreensaverDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }
+$effectiveCaptureIntervalSeconds = if ($VisualizerRuntimeDurationMinutes -ge 120 -and $CaptureIntervalSeconds -lt 30) { 30 } else { $CaptureIntervalSeconds }
 # Informational estimate for summaries/analyzers; the actual capture loop is
 # wall-clock bounded so slow screenshots cannot extend the VM run indefinitely.
-$targetFrames = [Math]::Max(1, [int][Math]::Ceiling(($ScreensaverDurationMinutes * 60.0) / $effectiveCaptureIntervalSeconds))
+$targetFrames = [Math]::Max(1, [int][Math]::Ceiling(($VisualizerRuntimeDurationMinutes * 60.0) / $effectiveCaptureIntervalSeconds))
 
-if ($ScreensaverDurationMinutes -le 0) {
-    throw "ScreensaverDurationMinutes must be greater than zero."
+if ($VisualizerRuntimeDurationMinutes -le 0) {
+    throw "VisualizerRuntimeDurationMinutes (or ScreensaverDurationMinutes alias) must be greater than zero."
 }
 $previousDisableInputExit = $null
 $previousFaultProfilePath = $null
@@ -1116,7 +1117,7 @@ $summary = [ordered]@{
     RuntimeVersionCheck = "Pending"
     FullScreenToggleStatus = "Pending"
     Notes = @()
-    PlannedRuntimeDurationMinutes = $ScreensaverDurationMinutes
+    PlannedRuntimeDurationMinutes = $VisualizerRuntimeDurationMinutes
     IsLongRunSoak = $isLongRunSoak
     RequestedCaptureIntervalSeconds = $CaptureIntervalSeconds
     EffectiveCaptureIntervalSeconds = $effectiveCaptureIntervalSeconds
@@ -3756,8 +3757,8 @@ try {
         # The VM can spend variable time in screenshot capture. Keep the soak
         # duration wall-clock bounded and recover near the time midpoint.
         $captureLoopStartedAt = Get-Date
-        $captureDeadline = $captureLoopStartedAt.AddMinutes($ScreensaverDurationMinutes)
-        $recoveryAt = $captureLoopStartedAt.AddSeconds(($ScreensaverDurationMinutes * 60.0) / 2.0)
+        $captureDeadline = $captureLoopStartedAt.AddMinutes($VisualizerRuntimeDurationMinutes)
+        $recoveryAt = $captureLoopStartedAt.AddSeconds(($VisualizerRuntimeDurationMinutes * 60.0) / 2.0)
         $recoveryApplied = $false
         $i = 1
         $lastCaptureIndex = 0

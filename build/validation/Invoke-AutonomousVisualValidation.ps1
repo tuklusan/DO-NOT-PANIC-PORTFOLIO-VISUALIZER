@@ -15,7 +15,8 @@
 param(
     [ValidateRange(1, 100)][int]$VmCycles = 2,
     [ValidateRange(1, 100)][int]$RequiredConsecutiveCleanRuns = 2,
-    [ValidateRange(1, 10080)][int]$GuestScreensaverDurationMinutes = 30,
+    [Alias('GuestScreensaverDurationMinutes')]
+    [ValidateRange(1, 10080)][int]$GuestVisualizerRuntimeDurationMinutes = 30,
     [ValidateRange(1, 3600)][int]$CaptureIntervalSeconds = 10,
     [ValidateSet('none', 'offline-at-start', 'offline-during-config-validation', 'offline-during-runtime', 'offline-then-recover-runtime', 'high-latency-yfinance', 'upstream-throttled', 'timeout')]
     [string[]]$FaultProfiles = @('none'),
@@ -150,7 +151,8 @@ function Save-ValidationCycleSummary {
         requiredConsecutiveCleanRuns = $RequiredConsecutiveCleanRuns
         consecutiveCleanRuns = $ConsecutiveClean
         vmCyclesRequested = $VmCycles
-        guestScreensaverDurationMinutes = $GuestScreensaverDurationMinutes
+        guestVisualizerRuntimeDurationMinutes = $GuestVisualizerRuntimeDurationMinutes
+        guestScreensaverDurationMinutes = $GuestVisualizerRuntimeDurationMinutes
         captureIntervalSeconds = $CaptureIntervalSeconds
         faultProfiles = @($FaultProfiles)
         completed = ($ConsecutiveClean -ge $RequiredConsecutiveCleanRuns)
@@ -179,7 +181,7 @@ try {
         $cycleFaultProfile = $FaultProfiles[($cycle - 1) % $FaultProfiles.Count]
         Write-Host "[$(Get-Date -Format o)] VM UX validation cycle $cycle of $VmCycles using FaultProfile=$cycleFaultProfile"
         $started = Get-Date
-        $vmOutput = & .\build\vm\Invoke-VmBuildTest.ps1 -VmHost $VmHost -VmPort $VmPort -RootPath $RootPath -PushWorkspace -RunUxDeep -GuestScreensaverDurationMinutes $GuestScreensaverDurationMinutes -CaptureIntervalSeconds $CaptureIntervalSeconds -FaultProfile $cycleFaultProfile -UxTimeoutSeconds ([Math]::Max(2400, ($GuestScreensaverDurationMinutes * 60) + 1800))
+        $vmOutput = & .\build\vm\Invoke-VmBuildTest.ps1 -VmHost $VmHost -VmPort $VmPort -RootPath $RootPath -PushWorkspace -RunUxDeep -GuestVisualizerRuntimeDurationMinutes $GuestVisualizerRuntimeDurationMinutes -CaptureIntervalSeconds $CaptureIntervalSeconds -FaultProfile $cycleFaultProfile -UxTimeoutSeconds ([Math]::Max(2400, ($GuestVisualizerRuntimeDurationMinutes * 60) + 1800))
         if ($LASTEXITCODE -ne 0) { throw "VM UX validation cycle $cycle failed with exit code $LASTEXITCODE." }
         $resultLine = [string[]]@($vmOutput | Where-Object { $_ -like 'LOCAL_RESULT_DIR=*' } | Select-Object -Last 1)
         if ($resultLine.Count -eq 0) { throw "VM UX validation cycle $cycle did not report LOCAL_RESULT_DIR." }

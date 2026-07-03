@@ -89,7 +89,7 @@ Recovery:
 ## Example
 
 ```powershell
-.\build\vm\Invoke-VmBuildTest.ps1 -RunUxDeep -GuestScreensaverDurationMinutes 30 -FaultProfile offline-during-runtime
+.\build\vm\Invoke-VmBuildTest.ps1 -RunUxDeep -GuestVisualizerRuntimeDurationMinutes 30 -FaultProfile offline-during-runtime
 ```
 
 Autonomous matrix example:
@@ -98,7 +98,7 @@ Autonomous matrix example:
 .\build\validation\Invoke-AutonomousVisualValidation.ps1 `
   -VmCycles 7 `
   -RequiredConsecutiveCleanRuns 7 `
-  -GuestScreensaverDurationMinutes 30 `
+  -GuestVisualizerRuntimeDurationMinutes 30 `
   -FaultProfiles none,offline-at-start,offline-during-config-validation,offline-during-runtime,offline-then-recover-runtime,high-latency-yfinance,upstream-throttled `
   -AcknowledgeExternalReviewSecretScan
 ```
@@ -115,7 +115,7 @@ Current fields:
 - `requiredConsecutiveCleanRuns`: clean-run threshold requested by the caller.
 - `consecutiveCleanRuns`: clean-run streak achieved by the loop.
 - `vmCyclesRequested`: total VM cycles requested by the caller.
-- `guestScreensaverDurationMinutes`: requested guest runtime per VM cycle.
+- `guestVisualizerRuntimeDurationMinutes`: requested guest runtime per VM cycle.
 - `captureIntervalSeconds`: screenshot capture cadence used by the VM harness.
 - `faultProfiles`: ordered list supplied to `-FaultProfiles`; cycles use this list by modulo rotation.
 - `completed`: `true` only when the clean-run threshold was reached.
