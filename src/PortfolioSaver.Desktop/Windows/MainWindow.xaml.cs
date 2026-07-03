@@ -49,7 +49,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         AutomationProperties.SetAutomationId(this, "DesktopMainWindow");
         AutomationProperties.SetName(this, PortfolioVersion.DisplayName);
-        AutomationProperties.SetHelpText(this, PortfolioVersion.SemanticVersion);
+        AutomationProperties.SetHelpText(this, PortfolioVersion.Version);
         if (FullScreenMenuItem is not null)
         {
             AutomationProperties.SetName(FullScreenMenuItem, "Full Screen");

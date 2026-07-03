@@ -118,7 +118,7 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("MainMenu.Visibility = Visibility.Collapsed;", code, StringComparison.Ordinal);
         Assert.Contains("MainMenu.Visibility = Visibility.Visible;", code, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetAutomationId(this, \"DesktopMainWindow\")", code, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.SetHelpText(this, PortfolioVersion.SemanticVersion)", code, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetHelpText(this, PortfolioVersion.Version)", code, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(OptionsMenuItem, \"Options\")", code, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(SettingsMenuItem, \"Settings\")", code, StringComparison.Ordinal);
         Assert.Contains("window.ValidationActivityChanged += OnValidationActivityChanged;", code, StringComparison.Ordinal);

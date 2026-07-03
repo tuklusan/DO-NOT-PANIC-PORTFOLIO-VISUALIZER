@@ -161,10 +161,10 @@ public partial class ScreensaverSceneControl : UserControl
         _runtimeQuoteProvider = new YahooFinanceQuoteProvider(_runtimeQuoteHttpClient, throwOnPartial: false);
         if (VersionWatermark is not null)
         {
-            VersionWatermark.Text = PortfolioVersion.SemanticVersion;
+            VersionWatermark.Text = PortfolioVersion.Version;
             AutomationProperties.SetAutomationId(VersionWatermark, "ScreensaverVersionWatermark");
-            AutomationProperties.SetName(VersionWatermark, $"Version {PortfolioVersion.SemanticVersion}");
-            AutomationProperties.SetHelpText(VersionWatermark, PortfolioVersion.SemanticVersion);
+            AutomationProperties.SetName(VersionWatermark, $"Version {PortfolioVersion.Version}");
+            AutomationProperties.SetHelpText(VersionWatermark, PortfolioVersion.Version);
         }
         TapeItemsControl.ItemsSource = _tapes;
         NewsFlasherHost.Content = _newsViewModel;

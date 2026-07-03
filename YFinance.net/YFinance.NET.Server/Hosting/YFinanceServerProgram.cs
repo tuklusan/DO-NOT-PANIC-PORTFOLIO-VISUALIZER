@@ -31,7 +31,7 @@ namespace YFinance.NET.Server.Hosting;
 
 internal static class YFinanceServerProgram
 {
-    private const string ServerBaselineLabel = "1.0";
+    private const string ServerVersionLabel = "1.0";
 
     private static readonly TimeSpan ClientHandlerShutdownTimeout = TimeSpan.FromSeconds(5);
     private static readonly string TraceRoot = ResolveTraceRoot();
@@ -436,7 +436,7 @@ internal static class YFinanceServerProgram
                 ProtocolOperations.Hello => CreateOk(request, HandleHello(request.Payload.Deserialize<HelloRequestDto>(ProtocolJson.SerializerOptions), options, getActiveConnections())),
                 ProtocolOperations.Goodbye => CreateOk(request, new EmptyPayload()),
                 ProtocolOperations.Health => CreateOk(request, new HealthResponseDto("ok", (DateTimeOffset.UtcNow - startedUtc).TotalSeconds, getActiveConnections(), 0, options.OwnedMode ? "owned" : "standalone")),
-                ProtocolOperations.GetServerStatus => CreateOk(request, new ServerStatusResponseDto(ServerBaselineLabel, ProtocolConstants.Version, options.OwnedMode ? "owned" : "standalone", options.Port, getActiveConnections(), options.MaxConcurrentClients, 0, options.OwnerProcessId, Path.Combine(TraceRoot, "Trace", "yfinance.circular.log"))),
+                ProtocolOperations.GetServerStatus => CreateOk(request, new ServerStatusResponseDto(ServerVersionLabel, ProtocolConstants.Version, options.OwnedMode ? "owned" : "standalone", options.Port, getActiveConnections(), options.MaxConcurrentClients, 0, options.OwnerProcessId, Path.Combine(TraceRoot, "Trace", "yfinance.circular.log"))),
                 ProtocolOperations.GetQuote => CreateOk(request, await HandleGetQuoteAsync(request.Payload.Deserialize<GetQuoteRequestDto>(ProtocolJson.SerializerOptions), client, cancellationToken).ConfigureAwait(false)),
                 ProtocolOperations.GetQuotes => CreateOk(request, await HandleGetQuotesAsync(request.Payload.Deserialize<GetQuotesRequestDto>(ProtocolJson.SerializerOptions), client, cancellationToken).ConfigureAwait(false)),
                 ProtocolOperations.GetHistory => CreateOk(request, await HandleGetHistoryAsync(request.Payload.Deserialize<GetHistoryRequestDto>(ProtocolJson.SerializerOptions), client, cancellationToken).ConfigureAwait(false)),
@@ -452,7 +452,7 @@ internal static class YFinanceServerProgram
     }
 
     private static HelloResponseDto HandleHello(HelloRequestDto? payload, ServerOptions options, int activeConnections)
-        => new(ServerBaselineLabel, ProtocolConstants.Version, [ProtocolOperations.Hello, ProtocolOperations.Goodbye, ProtocolOperations.Health, ProtocolOperations.GetServerStatus, ProtocolOperations.GetQuote, ProtocolOperations.GetQuotes, ProtocolOperations.GetHistory, ProtocolOperations.GetMarketTiming, ProtocolOperations.GetTickerInfo], options.Port, options.OwnedMode ? "owned" : "standalone", activeConnections);
+        => new(ServerVersionLabel, ProtocolConstants.Version, [ProtocolOperations.Hello, ProtocolOperations.Goodbye, ProtocolOperations.Health, ProtocolOperations.GetServerStatus, ProtocolOperations.GetQuote, ProtocolOperations.GetQuotes, ProtocolOperations.GetHistory, ProtocolOperations.GetMarketTiming, ProtocolOperations.GetTickerInfo], options.Port, options.OwnedMode ? "owned" : "standalone", activeConnections);
 
     private static async Task<QuoteDto> HandleGetQuoteAsync(GetQuoteRequestDto? payload, YFinanceClient client, CancellationToken cancellationToken)
     {

@@ -185,7 +185,7 @@ public sealed class MainWindowViewModel : BindableBase
     public string PrimaryButtonText => _isApplying ? "Validating..." : "Validate";
     public bool ShowValidateButton => !IsValidated;
     public bool ShowValidatedActionButtons => IsValidated && !_isApplying;
-    public string VersionLabel => $"{PortfolioVersion.BaselineLabel} ({PortfolioVersion.SemanticVersion})";
+    public string VersionLabel => PortfolioVersion.Version;
     public string ValidationLogText
     {
         get => _validationLogText;
@@ -1335,7 +1335,7 @@ public sealed class MainWindowViewModel : BindableBase
         AppendValidationLog($"RUNTIME QUOTE SEED: {_validatedQuoteSeeds.Count} SYMBOL(S)");
         _settingsFileService.Save(_validatedCandidateSettings);
         _allowClose = true;
-        StatusMessage = $"{PortfolioVersion.BaselineLabel} saved at {DateTime.Now:T}.";
+        StatusMessage = $"{PortfolioVersion.Version} saved at {DateTime.Now:T}.";
         CloseRequested?.Invoke();
     }
 

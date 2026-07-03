@@ -22,9 +22,17 @@ public sealed class ConfigTextConsistencyTests
     [Fact]
     public void PortfolioVersion_UsesRelease10Labeling()
     {
-        Assert.Equal("1.0", PortfolioVersion.BaselineLabel);
-        Assert.Equal("1.0.0", PortfolioVersion.SemanticVersion);
+        Assert.Equal("1.0", PortfolioVersion.Version);
         Assert.Contains("1.0", PortfolioVersion.DisplayName, StringComparison.Ordinal);
+
+        string propsPath = Path.Combine(GetRepoRoot(), "Directory.Build.props");
+        XDocument props = XDocument.Load(propsPath);
+        string? buildVersion = props
+            .Descendants()
+            .FirstOrDefault(element => string.Equals(element.Name.LocalName, "PortfolioSaverVersion", StringComparison.Ordinal))
+            ?.Value;
+
+        Assert.Equal(PortfolioVersion.Version, buildVersion);
     }
 
     [Fact]
@@ -34,8 +42,7 @@ public sealed class ConfigTextConsistencyTests
         string baselineText = File.ReadAllText(baselinePath);
         string normalizedBaselineText = baselineText.Replace("`", string.Empty, StringComparison.Ordinal);
 
-        Assert.Contains("Product semantic version: 1.0.0", normalizedBaselineText, StringComparison.Ordinal);
-        Assert.Contains("Product/baseline display label: 1.0", normalizedBaselineText, StringComparison.Ordinal);
+        Assert.Contains("Product version: 1.0", normalizedBaselineText, StringComparison.Ordinal);
         Assert.Contains("Distribution status: frozen", normalizedBaselineText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Do not publish or replace GitHub Release assets.", baselineText, StringComparison.Ordinal);
         Assert.Contains("CR-174", baselineText, StringComparison.Ordinal);
@@ -56,7 +63,8 @@ public sealed class ConfigTextConsistencyTests
         Assert.False(File.Exists(Path.Combine(repoRoot, "docs", "BETA6_AUDIT_STATE.json")));
         Assert.Contains("\"title\": \"Release 1.0 Audit State\"", auditText, StringComparison.Ordinal);
         Assert.Contains("\"current_lane\": \"1.0\"", auditText, StringComparison.Ordinal);
-        Assert.Contains("\"semantic_version_lane\": \"1.0.0\"", auditText, StringComparison.Ordinal);
+        Assert.Contains("\"version_lane\": \"1.0\"", auditText, StringComparison.Ordinal);
+        Assert.DoesNotContain("semantic" + "_version_lane", auditText, StringComparison.Ordinal);
         Assert.Contains("\"current_baseline_label\": \"1.0\"", auditText, StringComparison.Ordinal);
         Assert.Contains("docs/AUDIT_STATE.json", readmeText, StringComparison.Ordinal);
         Assert.DoesNotContain("BETA6_AUDIT_STATE.json", readmeText, StringComparison.Ordinal);

@@ -95,7 +95,7 @@ public static class YFinanceRuntimeClientFactory
         string outcome = "success";
         try
         {
-            await EnsureServerReadyAsync("PortfolioSaver.Runtime", PortfolioVersion.SemanticVersion, cancellationToken).ConfigureAwait(false);
+            await EnsureServerReadyAsync("PortfolioSaver.Runtime", PortfolioVersion.Version, cancellationToken).ConfigureAwait(false);
             TraceLog.InfoState("YFinanceRuntimeClientFactory", "ClientOperationStart", [new("lane", lane), new("operation_id", operationId)]);
             YFinanceServerClient client = RentSharedClient();
             try

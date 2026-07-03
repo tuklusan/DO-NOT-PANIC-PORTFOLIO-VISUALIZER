@@ -16,15 +16,16 @@ patent, trademark, and governing-law provisions.
 
 # Release 1.0 Baseline
 
-This document establishes the internal project baseline for work toward the first non-prerelease `1.0.0` release of DO NOT PANIC PORTFOLIO VISUALIZER.
+This document establishes the internal project baseline for work toward the first non-prerelease `1.0` release of DO NOT PANIC PORTFOLIO VISUALIZER.
 
 ## Baseline Identity
 
-- Product semantic version: `1.0.0`
-- Product/baseline display label: `1.0`
+- Product version: `1.0`
 - Last public fallback release: `v0.9.0-beta7`
 - Starting Git baseline: the commit immediately after `v0.9.0-beta7` that deferred `CR-174` pending approval
 - Distribution status: frozen until 1.0 development is complete and explicitly approved for publication
+
+The project intentionally uses one project-owned version string, `1.0`, across build metadata, UI labels, audit state, validation harnesses, and release-script defaults.
 
 ## Release Freeze Rule
 
@@ -49,7 +50,7 @@ No Microsoft Store/MSIX migration work is part of the 1.0 baseline unless it is 
 
 The baseline is considered coherent when:
 
-- project version metadata reports `1.0.0`
+- project version metadata reports `1.0`
 - app-visible labels report `1.0`
 - living documentation identifies `v0.9.0-beta7` only as the current public fallback, not the active development lane
 - release documentation clearly states that no distribution channel is updated during 1.0 development

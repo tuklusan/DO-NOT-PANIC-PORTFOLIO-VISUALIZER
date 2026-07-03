@@ -34,7 +34,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         AutomationProperties.SetAutomationId(this, "ConfigMainWindow");
         AutomationProperties.SetName(this, Title);
-        AutomationProperties.SetHelpText(this, PortfolioVersion.SemanticVersion);
+        AutomationProperties.SetHelpText(this, PortfolioVersion.Version);
 
         if (DataContext is MainWindowViewModel viewModel)
         {

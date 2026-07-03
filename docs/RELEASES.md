@@ -18,7 +18,7 @@ patent, trademark, and governing-law provisions.
 
 ## Release 1.0 development freeze
 
-The active development lane is `1.0.0`, but public distribution remains frozen until 1.0 development is complete and explicitly approved. The current public fallback remains `v0.9.0-beta7`.
+The active development lane is `1.0`, but public distribution remains frozen until 1.0 development is complete and explicitly approved. The current public fallback remains `v0.9.0-beta7`.
 
 During the freeze:
 

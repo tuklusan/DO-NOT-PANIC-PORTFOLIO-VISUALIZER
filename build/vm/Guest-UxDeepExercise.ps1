@@ -3482,7 +3482,7 @@ try {
         Write-ConfigWindowTrace -Event 'ConfigWindowReacquired' -Details ("title={0}; automation_id={1}" -f [string]$window.Current.Name, [string]$window.Current.AutomationId)
         $configInteractionStartedAt = [datetime]::UtcNow
         if ([string]$window.Current.Name -like '*Config - 1.0*' -or
-            [string]$window.Current.HelpText -like '*1.0.0*') {
+            [string]$window.Current.HelpText -like '*1.0*') {
             $summary.ConfigVersionCheck = "Passed"
         }
         else {
@@ -3645,7 +3645,7 @@ try {
         $versionMatch = Find-ElementMetadataByProcessId `
             -ProcessId $desktop.Id `
             -AutomationIds @('ScreensaverVersionWatermark', 'ScreensaverHostWindow', 'DesktopMainWindow', 'MainWindowTitle') `
-            -NameFragments @('Version 1.0.0', '1.0.0', 'DO NOT PANIC PORTFOLIO VISUALIZER 1.0') `
+            -NameFragments @('Version 1.0', '1.0', 'DO NOT PANIC PORTFOLIO VISUALIZER 1.0') `
             -TimeoutSeconds 10
         if ($null -eq $versionMatch) {
             $desktop.Refresh()

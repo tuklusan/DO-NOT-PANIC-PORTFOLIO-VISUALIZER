@@ -23,10 +23,10 @@ public partial class FullScreenHostWindow : Window
     public FullScreenHostWindow()
     {
         InitializeComponent();
-        Title = $"Portfolio Screensaver {PortfolioVersion.SemanticVersion}";
+        Title = $"Portfolio Screensaver {PortfolioVersion.Version}";
         AutomationProperties.SetAutomationId(this, "ScreensaverHostWindow");
         AutomationProperties.SetName(this, Title);
-        AutomationProperties.SetHelpText(this, PortfolioVersion.SemanticVersion);
+        AutomationProperties.SetHelpText(this, PortfolioVersion.Version);
 
         InputExitMonitor inputExitMonitor = new(this);
         inputExitMonitor.Attach();

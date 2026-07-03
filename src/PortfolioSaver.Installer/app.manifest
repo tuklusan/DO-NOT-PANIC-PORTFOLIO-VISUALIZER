@@ -17,7 +17,7 @@
 -->
 
 
-  <assemblyIdentity version="1.0.0.0" name="PortfolioSaver.Installer.app"/>
+  <assemblyIdentity version="1.0" name="PortfolioSaver.Installer.app"/>
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>
       <requestedPrivileges>

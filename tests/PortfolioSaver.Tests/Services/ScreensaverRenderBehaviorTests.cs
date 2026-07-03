@@ -1870,13 +1870,13 @@ public sealed class ScreensaverRenderBehaviorTests
         Assert.Contains("TraceSceneState(\"BackgroundCleared\")", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("FontSize=\"19\"", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("DropShadowEffect", sceneXaml, StringComparison.Ordinal);
-        Assert.Contains("VersionWatermark.Text = PortfolioVersion.SemanticVersion;", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("VersionWatermark.Text = PortfolioVersion.Version;", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetAutomationId(VersionWatermark, \"ScreensaverVersionWatermark\");", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.SetName(VersionWatermark, $\"Version {PortfolioVersion.SemanticVersion}\");", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.SetHelpText(VersionWatermark, PortfolioVersion.SemanticVersion);", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("Title = $\"Portfolio Screensaver {PortfolioVersion.SemanticVersion}\";", fullScreenWindowCode, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(VersionWatermark, $\"Version {PortfolioVersion.Version}\");", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetHelpText(VersionWatermark, PortfolioVersion.Version);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Title = $\"Portfolio Screensaver {PortfolioVersion.Version}\";", fullScreenWindowCode, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetAutomationId(this, \"ScreensaverHostWindow\");", fullScreenWindowCode, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.SetHelpText(this, PortfolioVersion.SemanticVersion);", fullScreenWindowCode, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetHelpText(this, PortfolioVersion.Version);", fullScreenWindowCode, StringComparison.Ordinal);
         Assert.Contains("StableClockFont", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("StableClockFont", floatingClockXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("SevenSegmentDigitConverter", statusBarXaml, StringComparison.Ordinal);

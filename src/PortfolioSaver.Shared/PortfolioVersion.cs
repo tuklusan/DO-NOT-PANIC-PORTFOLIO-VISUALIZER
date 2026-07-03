@@ -16,7 +16,6 @@ namespace PortfolioSaver.Shared;
 public static class PortfolioVersion
 {
     public const string ProductName = AppIdentity.ApplicationName;
-    public const string SemanticVersion = "1.0.0";
-    public const string BaselineLabel = "1.0";
-    public const string DisplayName = ProductName + " " + BaselineLabel;
+    public const string Version = "1.0";
+    public const string DisplayName = ProductName + " " + Version;
 }

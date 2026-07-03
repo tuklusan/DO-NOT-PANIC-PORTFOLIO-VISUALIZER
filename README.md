@@ -181,7 +181,7 @@ Use the scripts under `build/` for publish and packaging workflows, especially:
 ## Current Baseline
 
 - Remote Git history has been intentionally rebased to start at the `BETA-5.4` baseline
-- Current development/version lane is release `1.0.0`
+- Current development/version lane is release `1.0`
 - Last public fallback release is `v0.9.0-beta7`; public distribution channels remain frozen until 1.0 development is complete and explicitly approved for publication
 - Product identity:
   - Application: **DO NOT PANIC PORTFOLIO VISUALIZER**

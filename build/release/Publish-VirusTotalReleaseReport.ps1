@@ -16,7 +16,7 @@ param(
     [ValidatePattern('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')]
     [string]$Repository = 'tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER',
     [ValidatePattern('^[A-Za-z0-9._-]+$')]
-    [string]$Tag = 'v1.0.0',
+    [string]$Tag = 'v1.0',
     [string]$InstallerAssetPattern = 'DoNotPanicPortfolioVisualizerSetup-*.exe',
     [string]$OutputDirectory,
     [ValidateRange(20, 3600)]
