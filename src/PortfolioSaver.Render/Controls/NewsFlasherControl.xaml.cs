@@ -15,6 +15,8 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -48,12 +50,17 @@ public partial class NewsFlasherControl : UserControl
     private bool _pendingRefresh;
     private IReadOnlyList<string> _wrappedLines = [];
     private readonly Dictionary<MeasurementCacheKey, double> _headlineWidthCache = [];
+    private readonly object _headlineWidthCacheGate = new();
     private string _displayTopLine = string.Empty;
     private string _displayBottomLine = string.Empty;
     private string _activeText = string.Empty;
     private Brush _activeForeground = Brushes.WhiteSmoke;
     private bool _awaitingViewport;
     private bool _layoutUpdatedSubscribed;
+    private int _headlinePreparationGeneration;
+    private Task? _headlinePreparationTask;
+    private CancellationTokenSource? _headlinePreparationCancellation;
+    private string? _headlinePreparationText;
 
     public NewsFlasherControl()
     {
@@ -63,6 +70,7 @@ public partial class NewsFlasherControl : UserControl
         Unloaded += OnUnloaded;
         SizeChanged += (_, _) =>
         {
+            CancelHeadlinePreparation();
             ClearMeasurementCache();
             RefreshLayoutForCurrentState();
             RecoverPlaybackWhenViewportReady();
@@ -87,6 +95,7 @@ public partial class NewsFlasherControl : UserControl
     {
         _playbackTimer.Stop();
         _awaitingViewport = false;
+        CancelHeadlinePreparation();
         UnsubscribeFromLayoutUpdated();
         UnsubscribeFromFlasher(_flasher);
     }
@@ -197,7 +206,10 @@ public partial class NewsFlasherControl : UserControl
         }
 
         if (_phase == PlaybackPhase.Idle)
-            PrepareHeadline(headlines[_headlineIndex % headlines.Count]);
+        {
+            StartHeadlinePreparation(headlines[_headlineIndex % headlines.Count]);
+            return;
+        }
 
         switch (_phase)
         {
@@ -234,11 +246,126 @@ public partial class NewsFlasherControl : UserControl
             return;
         }
 
-        _activeText = FormatHeadline(headline.Text);
-        ClearMeasurementCache();
-        _wrappedLines = BuildWrappedLines(_activeText);
+        CancelHeadlinePreparation();
+        PreparedHeadline prepared = BuildPreparedHeadline(
+            FormatHeadline(headline.Text),
+            CreatePreparationContext(),
+            _headlineWidthCache,
+            _headlineWidthCacheGate,
+            CancellationToken.None);
+        ApplyPreparedHeadline(prepared, headline.Foreground);
+    }
+
+    private void StartHeadlinePreparation(NewsHeadlineViewModel headline)
+    {
+        if (!IsViewportReady())
+            return;
+
+        string activeText = FormatHeadline(headline.Text);
+        if (_headlinePreparationTask is { IsCompleted: false } &&
+            string.Equals(_headlinePreparationText, activeText, StringComparison.Ordinal))
+            return;
+
+        CancelHeadlinePreparation();
+        int generation = ++_headlinePreparationGeneration;
+        Brush foreground = headline.Foreground;
+        HeadlinePreparationContext context = CreatePreparationContext();
+        CancellationTokenSource cancellationSource = new();
+        _headlinePreparationCancellation = cancellationSource;
+        _headlinePreparationText = activeText;
+        _headlinePreparationTask = PrepareHeadlineAsync(activeText, foreground, context, generation, cancellationSource);
+    }
+
+    private async Task PrepareHeadlineAsync(
+        string activeText,
+        Brush foreground,
+        HeadlinePreparationContext context,
+        int generation,
+        CancellationTokenSource cancellationSource)
+    {
+        CancellationToken cancellation = cancellationSource.Token;
+        try
+        {
+            PreparedHeadline prepared = await Task.Run(
+                () => BuildPreparedHeadline(activeText, context, _headlineWidthCache, _headlineWidthCacheGate, cancellation),
+                cancellation).ConfigureAwait(false);
+            await Dispatcher.InvokeAsync(() =>
+            {
+                if (generation != _headlinePreparationGeneration)
+                {
+                    cancellationSource.Dispose();
+                    return;
+                }
+
+                _headlinePreparationTask = null;
+                if (ReferenceEquals(_headlinePreparationCancellation, cancellationSource))
+                    _headlinePreparationCancellation = null;
+                if (string.Equals(_headlinePreparationText, prepared.ActiveText, StringComparison.Ordinal))
+                    _headlinePreparationText = null;
+                cancellationSource.Dispose();
+                ApplyPreparedHeadline(prepared, foreground);
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            try
+            {
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    if (generation == _headlinePreparationGeneration)
+                        _headlinePreparationTask = null;
+                    if (ReferenceEquals(_headlinePreparationCancellation, cancellationSource))
+                        _headlinePreparationCancellation = null;
+                    if (string.Equals(_headlinePreparationText, activeText, StringComparison.Ordinal))
+                        _headlinePreparationText = null;
+                    cancellationSource.Dispose();
+                });
+            }
+            catch
+            {
+                cancellationSource.Dispose();
+            }
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    if (generation == _headlinePreparationGeneration)
+                        _headlinePreparationTask = null;
+                    if (ReferenceEquals(_headlinePreparationCancellation, cancellationSource))
+                        _headlinePreparationCancellation = null;
+                    if (string.Equals(_headlinePreparationText, activeText, StringComparison.Ordinal))
+                        _headlinePreparationText = null;
+                    cancellationSource.Dispose();
+                    TraceLog.InfoState(
+                        "NewsFlasher",
+                        "PrepareHeadlineAsyncFailed",
+                        [new("error", ex.ToString())]);
+                });
+            }
+            catch
+            {
+                cancellationSource.Dispose();
+            }
+        }
+    }
+
+    private static PreparedHeadline BuildPreparedHeadline(
+        string activeText,
+        HeadlinePreparationContext context,
+        IDictionary<MeasurementCacheKey, double>? measurementCache,
+        object? measurementCacheGate,
+        CancellationToken cancellationToken)
+        => new(activeText, BuildWrappedLines(activeText, context, measurementCache, measurementCacheGate, cancellationToken));
+
+    private void ApplyPreparedHeadline(PreparedHeadline prepared, Brush foreground)
+    {
+        _activeText = prepared.ActiveText;
+        _wrappedLines = prepared.WrappedLines;
         _segmentIndex = 0;
-        _activeForeground = headline.Foreground;
+        _activeForeground = foreground;
         TraceLog.InfoState(
             "NewsFlasher",
             "PrepareHeadline",
@@ -249,6 +376,15 @@ public partial class NewsFlasherControl : UserControl
                 new("viewport_width", Math.Round(ViewportHost.ActualWidth, 1))
             ]);
         PrepareCurrentSegment();
+    }
+
+    private void CancelHeadlinePreparation()
+    {
+        _headlinePreparationCancellation?.Cancel();
+        _headlinePreparationCancellation = null;
+        _headlinePreparationTask = null;
+        _headlinePreparationText = null;
+        _headlinePreparationGeneration++;
     }
 
     private void PrepareCurrentSegment()
@@ -387,6 +523,7 @@ public partial class NewsFlasherControl : UserControl
         _activeText = string.Empty;
         _activeHeadlineHeight = 0d;
         _awaitingViewport = false;
+        CancelHeadlinePreparation();
         ClearMeasurementCache();
         ClearDisplay();
     }
@@ -426,7 +563,11 @@ public partial class NewsFlasherControl : UserControl
 
     private void RestartPlaybackForViewportChange()
     {
-        if (!_awaitingViewport || !IsViewportReady() || string.IsNullOrWhiteSpace(_activeText))
+        if (!_awaitingViewport || !IsViewportReady())
+            return;
+
+        CancelHeadlinePreparation();
+        if (string.IsNullOrWhiteSpace(_activeText))
             return;
 
         // A recovered viewport may have different wrapping; restart this headline rather than
@@ -485,13 +626,27 @@ public partial class NewsFlasherControl : UserControl
     }
 
     private List<string> BuildWrappedLines(string text)
+        => BuildWrappedLines(
+            text,
+            CreatePreparationContext(),
+            _headlineWidthCache,
+            _headlineWidthCacheGate,
+            CancellationToken.None);
+
+    private static List<string> BuildWrappedLines(
+        string text,
+        HeadlinePreparationContext context,
+        IDictionary<MeasurementCacheKey, double>? measurementCache,
+        object? measurementCacheGate,
+        CancellationToken cancellationToken)
     {
         List<string> lines = [];
-        double widthLimit = GetSafeViewportWidth();
+        double widthLimit = context.WidthLimit;
         string normalized = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
         string[] logicalLines = normalized.Split('\n', StringSplitOptions.None);
         foreach (string logicalLine in logicalLines)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string trimmedLogicalLine = logicalLine.Trim();
             if (string.IsNullOrWhiteSpace(trimmedLogicalLine))
                 continue;
@@ -504,11 +659,12 @@ public partial class NewsFlasherControl : UserControl
             string current = string.Empty;
             foreach (string word in words)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 string candidate = string.IsNullOrWhiteSpace(current)
                     ? word
                     : current + " " + word;
 
-                if (MeasureHeadlineWidth(candidate) <= widthLimit)
+                if (MeasureHeadlineWidth(candidate, context, measurementCache, measurementCacheGate) <= widthLimit)
                 {
                     current = candidate;
                     continue;
@@ -592,35 +748,53 @@ public partial class NewsFlasherControl : UserControl
     }
 
     private double MeasureHeadlineWidth(string text)
+        => MeasureHeadlineWidth(text, CreatePreparationContext(), _headlineWidthCache, _headlineWidthCacheGate);
+
+    private static double MeasureHeadlineWidth(
+        string text,
+        HeadlinePreparationContext context,
+        IDictionary<MeasurementCacheKey, double>? measurementCache,
+        object? measurementCacheGate)
     {
         if (string.IsNullOrWhiteSpace(text))
             return 0d;
 
-        MeasurementCacheKey key = CreateMeasurementCacheKey(text);
-        if (_headlineWidthCache.TryGetValue(key, out double cachedWidth))
-            return cachedWidth;
+        MeasurementCacheKey key = CreateMeasurementCacheKey(text, context);
+        if (measurementCache is not null && measurementCacheGate is not null)
+        {
+            lock (measurementCacheGate)
+            {
+                if (measurementCache.TryGetValue(key, out double cachedWidth))
+                    return cachedWidth;
+            }
+        }
 
         Typeface typeface = new(
-            ActiveHeadlineBlock.FontFamily,
-            ActiveHeadlineBlock.FontStyle,
-            ActiveHeadlineBlock.FontWeight,
-            ActiveHeadlineBlock.FontStretch);
+            new FontFamily(context.FontFamily),
+            context.FontStyle,
+            context.FontWeight,
+            context.FontStretch);
 
-        double dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
         FormattedText formatted = new(
             text,
             CultureInfo.InvariantCulture,
             FlowDirection.LeftToRight,
             typeface,
-            ActiveHeadlineBlock.FontSize,
+            context.FontSize,
             Brushes.White,
-            dpi);
+            context.PixelsPerDip);
 
         double width = Math.Ceiling(formatted.WidthIncludingTrailingWhitespace);
-        if (_headlineWidthCache.Count >= MaxWidthMeasurementCacheEntries)
-            _headlineWidthCache.Clear();
+        if (measurementCache is not null && measurementCacheGate is not null)
+        {
+            lock (measurementCacheGate)
+            {
+                if (measurementCache.Count >= MaxWidthMeasurementCacheEntries)
+                    measurementCache.Clear();
 
-        _headlineWidthCache[key] = width;
+                measurementCache[key] = width;
+            }
+        }
         return width;
     }
 
@@ -670,23 +844,38 @@ public partial class NewsFlasherControl : UserControl
         return double.IsFinite(width) && width > 0d ? Math.Max(1d, width) : 1d;
     }
 
-    private MeasurementCacheKey CreateMeasurementCacheKey(string text)
+    private HeadlinePreparationContext CreatePreparationContext()
     {
         double dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        return new HeadlinePreparationContext(
+            GetSafeViewportWidth(),
+            dpi,
+            ActiveHeadlineBlock.FontFamily?.Source ?? "Courier New",
+            ActiveHeadlineBlock.FontStyle,
+            ActiveHeadlineBlock.FontWeight,
+            ActiveHeadlineBlock.FontStretch,
+            ActiveHeadlineBlock.FontSize);
+    }
+
+    private static MeasurementCacheKey CreateMeasurementCacheKey(string text, HeadlinePreparationContext context)
+    {
         // DPI/font are part of the key so monitor/theme changes cannot reuse stale measurements.
         return new MeasurementCacheKey(
             text,
-            dpi,
-            ActiveHeadlineBlock.FontFamily?.Source ?? string.Empty,
-            ActiveHeadlineBlock.FontStyle.ToString(),
-            ActiveHeadlineBlock.FontWeight.ToOpenTypeWeight(),
-            ActiveHeadlineBlock.FontStretch.ToString(),
-            ActiveHeadlineBlock.FontSize);
+            context.PixelsPerDip,
+            context.FontFamily,
+            context.FontStyle.ToString(),
+            context.FontWeight.ToOpenTypeWeight(),
+            context.FontStretch.ToString(),
+            context.FontSize);
     }
 
     private void ClearMeasurementCache()
     {
-        _headlineWidthCache.Clear();
+        lock (_headlineWidthCacheGate)
+        {
+            _headlineWidthCache.Clear();
+        }
     }
 
     private void SetPhase(PlaybackPhase phase)
@@ -726,4 +915,19 @@ public partial class NewsFlasherControl : UserControl
         int FontWeight,
         string FontStretch,
         double FontSize);
+
+    private readonly record struct HeadlinePreparationContext(
+        double WidthLimit,
+        double PixelsPerDip,
+        string FontFamily,
+        FontStyle FontStyle,
+        FontWeight FontWeight,
+        FontStretch FontStretch,
+        double FontSize);
+
+    private readonly record struct PreparedHeadline(
+        string ActiveText,
+        IReadOnlyList<string> WrappedLines);
 }
+
+

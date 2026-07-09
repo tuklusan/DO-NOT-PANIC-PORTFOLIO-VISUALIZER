@@ -14,6 +14,7 @@
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -1391,6 +1392,17 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("MaxHeight=\"38\"", newsXaml, StringComparison.Ordinal);
         Assert.Contains("LineStackingStrategy=\"BlockLineHeight\"", newsXaml, StringComparison.Ordinal);
         Assert.Contains("FormatHeadline", newsCode, StringComparison.Ordinal);
+        Assert.Contains("StartHeadlinePreparation", newsCode, StringComparison.Ordinal);
+        Assert.Contains("PrepareHeadlineAsync", newsCode, StringComparison.Ordinal);
+        Assert.Contains("Task.Run(", newsCode, StringComparison.Ordinal);
+        Assert.Contains("CancelHeadlinePreparation", newsCode, StringComparison.Ordinal);
+        Assert.Contains("_headlinePreparationTask", newsCode, StringComparison.Ordinal);
+        Assert.Contains("generation != _headlinePreparationGeneration", newsCode, StringComparison.Ordinal);
+        Assert.Contains("private readonly object _headlineWidthCacheGate = new();", newsCode, StringComparison.Ordinal);
+        Assert.Contains("BuildPreparedHeadline(activeText, context, _headlineWidthCache, _headlineWidthCacheGate, cancellation)", newsCode, StringComparison.Ordinal);
+        Assert.Contains("CancellationTokenSource", newsCode, StringComparison.Ordinal);
+        Assert.Contains("cancellationToken.ThrowIfCancellationRequested();", newsCode, StringComparison.Ordinal);
+        Assert.Contains("lock (_headlineWidthCacheGate)", newsCode, StringComparison.Ordinal);
         Assert.Contains("normalized.Replace(\"\\r\\n\", \"\\n\", StringComparison.Ordinal).Replace('\\r', '\\n')", newsCode, StringComparison.Ordinal);
         Assert.Contains("Regex.Replace(line, @\"[\\u0000-\\u0009\\u000B-\\u001F\\u007F]+\", \" \")", newsCode, StringComparison.Ordinal);
         Assert.Contains("Regex.Replace(line, @\"[ \\t]+\", \" \")", newsCode, StringComparison.Ordinal);
@@ -1462,6 +1474,8 @@ public sealed class VisualizerRenderBehaviorTests
                     ?? throw new InvalidOperationException("ActiveHeadlineBlock not found."));
                 Assert.NotNull(activeHeadlineBlock);
                 tickMethod.Invoke(control, [null, EventArgs.Empty]);
+                PumpDispatcherUntil(() => !(bool)(awaitingViewportField.GetValue(control) ?? true) &&
+                                           !string.IsNullOrWhiteSpace(activeHeadlineBlock.Text), TimeSpan.FromSeconds(1));
                 Assert.False((bool)(awaitingViewportField.GetValue(control) ?? true));
                 Assert.False(string.IsNullOrWhiteSpace(activeHeadlineBlock.Text));
             }
@@ -1614,9 +1628,13 @@ public sealed class VisualizerRenderBehaviorTests
             for (int tick = 0; tick < 260; tick++)
             {
                 if (tick == 120)
+                {
                     viewModel.Headlines[0].Text = "This updated teleprinter item should finish the current step before refreshing into a new line pair.";
+                    PumpDispatcherUntil(() => pendingRefreshField.GetValue(control) is true, TimeSpan.FromMilliseconds(250));
+                }
 
                 tickMethod.Invoke(control, [control, EventArgs.Empty]);
+                PumpDispatcherUntil(() => !string.Equals(phaseField.GetValue(control)?.ToString(), "Idle", StringComparison.Ordinal), TimeSpan.FromSeconds(1));
                 string phaseName = phaseField.GetValue(control)?.ToString() ?? string.Empty;
                 if (string.Equals(phaseName, "Scrolling", StringComparison.Ordinal))
                     sawScrolling = true;
@@ -1728,6 +1746,7 @@ public sealed class VisualizerRenderBehaviorTests
             for (int tick = 0; tick < 120; tick++)
             {
                 tickMethod.Invoke(control, [control, EventArgs.Empty]);
+                PumpDispatcherUntil(() => !string.Equals(phaseField.GetValue(control)?.ToString(), "Idle", StringComparison.Ordinal), TimeSpan.FromSeconds(1));
                 string phaseName = phaseField.GetValue(control)?.ToString() ?? string.Empty;
                 if (string.Equals(phaseName, "PauseBetweenHeadlines", StringComparison.Ordinal))
                 {
@@ -2903,6 +2922,23 @@ public sealed class VisualizerRenderBehaviorTests
             ExceptionDispatchInfo.Capture(error).Throw();
     }
 
+    private static void PumpDispatcherUntil(Func<bool> condition)
+        => PumpDispatcherUntil(condition, TimeSpan.FromSeconds(2));
+
+    private static void PumpDispatcherUntil(Func<bool> condition, TimeSpan timeout)
+    {
+        DateTimeOffset deadline = DateTimeOffset.UtcNow + timeout;
+        while (!condition() && DateTimeOffset.UtcNow < deadline)
+        {
+            DispatcherFrame frame = new();
+            Dispatcher.CurrentDispatcher.BeginInvoke(
+                new Action(() => frame.Continue = false),
+                DispatcherPriority.Normal);
+            Dispatcher.PushFrame(frame);
+            Thread.Sleep(1);
+        }
+    }
+
     private static Window HostControlForLayout(FrameworkElement control, double width, double height)
     {
         Window window = new()
@@ -2993,3 +3029,5 @@ public sealed class VisualizerRenderBehaviorTests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 }
+
+

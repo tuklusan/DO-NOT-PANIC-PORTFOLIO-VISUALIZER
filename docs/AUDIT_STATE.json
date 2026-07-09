@@ -8948,7 +8948,7 @@
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "updated": "2026-07-03",
-      "updated_utc": "2026-07-03T15:22:27.363925+00:00",
+      "updated_utc": "2026-07-03T11:22:27.363925-04:00",
       "resolution": [
         "Renamed active presentation scene control/state/settings service/test types from Screensaver* to Visualizer* and moved active presentation namespaces to PortfolioSaver.Presentation.*; retained only intentional negative legacy assertions and historical compatibility references."
       ]
@@ -9282,7 +9282,7 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
-      "updated_utc": "2026-07-03T15:28:43.055391+00:00",
+      "updated_utc": "2026-07-03T11:28:43.055391-04:00",
       "resolution": [
         "Parallelized safe-temp publish at the MSBuild/NuGet level by replacing four serialized forced-single-thread project restores with one solution restore and removing --disable-parallel/-m:1 from publish calls while keeping --no-restore after the solution restore."
       ]
@@ -9315,7 +9315,7 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
-      "updated_utc": "2026-07-03T15:28:43.055391+00:00",
+      "updated_utc": "2026-07-03T11:28:43.055391-04:00",
       "resolution": [
         "Removed stale local obj restore-asset seeding from build-safe-temp.ps1 and enabled a fresh solution build/restore from a complete mirrored workspace including Directory.Build.targets, global.json, YFinance.net, YFinanceServer.targets, and LICENSE."
       ]
@@ -10029,7 +10029,15 @@
       "priority": 2,
       "area": "UI jitter",
       "title": "Offload `NewsFlasherControl` headline preparation from UI tick to background thread",
-      "status": "open",
+      "status": "closed",
+      "closed_utc": "2026-07-09T22:27:10Z",
+      "resolution": "NewsFlasherControl timer ticks now start asynchronous headline preparation and return immediately; headline normalization, wrapping, and width measurement run on a background task using captured font/DPI/viewport context, with the prepared segment applied back on the dispatcher. Existing synchronous PrepareHeadline remains only for direct internal/test invocation.",
+      "verification": [
+        "Focused render behavior test gate passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter \"FullyQualifiedName~VisualizerRenderBehaviorTests\" => 81/81 passed.",
+        "Full suite passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter \"FullyQualifiedName!~__NoSuchTestFilter__\" => 668/668 passed.",
+        "Regression guards assert StartHeadlinePreparation, PrepareHeadlineAsync, Task.Run, and CancelHeadlinePreparation remain in NewsFlasherControl.",
+        "Manual-tick render tests now pump the STA dispatcher so they verify the non-blocking async preparation contract rather than assuming synchronous preparation."
+      ],
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "High",
       "evidence": [
@@ -10039,7 +10047,9 @@
       "notes": [
         "Recommendation: Use `Task.Run` for word wrapping and measurement, dispatch result to UI.",
         "Acceptance criteria: Ticker playback does not drop frames; headline preparation completes before the next segment.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "",
+        "DeepSeek cache/cancellation findings addressed: headline measurement cache is now lock-protected and reused by sync/async paths; stale async headline work is cancelled via CancellationTokenSource; focused render behavior tests 81/81 and full suite 668/668 passed after final fix."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
