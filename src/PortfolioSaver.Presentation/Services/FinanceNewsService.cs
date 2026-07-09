@@ -672,36 +672,55 @@ public sealed class FinanceNewsService
         AppSettings settings,
         CancellationToken cancellationToken)
     {
-        List<string> mergedHeadlines = [];
-        foreach (string feedUrl in SummarizedNewsFeedUrls)
-        {
-            try
-            {
-                List<string> feedHeadlines = await FetchRssHeadlinesAsync(httpClient, feedUrl, cancellationToken);
-                foreach (string headline in feedHeadlines)
-                {
-                    if (mergedHeadlines.Contains(headline, StringComparer.OrdinalIgnoreCase))
-                        continue;
+        using CancellationTokenSource feedFetchCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Task<List<string>?>[] feedTasks = SummarizedNewsFeedUrls
+            .Select(feedUrl => FetchRssHeadlinesOrNullAsync(httpClient, feedUrl, feedFetchCancellation.Token))
+            .ToArray();
+        List<string>?[] feedResults = await Task.WhenAll(feedTasks).ConfigureAwait(false);
 
-                    mergedHeadlines.Add(headline);
-                    if (mergedHeadlines.Count >= 10)
-                        break;
-                }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        List<string> mergedHeadlines = [];
+        foreach (List<string>? feedHeadlines in feedResults)
+        {
+            if (feedHeadlines is null)
+                continue;
+
+            foreach (string headline in feedHeadlines)
             {
-                throw;
-            }
-            catch
-            {
-                // Ignore feed-specific failures and continue building a partial live context.
+                cancellationToken.ThrowIfCancellationRequested();
+                if (mergedHeadlines.Contains(headline, StringComparer.OrdinalIgnoreCase))
+                    continue;
+
+                mergedHeadlines.Add(headline);
+                if (mergedHeadlines.Count >= 10)
+                    break;
             }
 
             if (mergedHeadlines.Count >= 10)
                 break;
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         return new SummarizedNewsContext(DateTimeOffset.UtcNow, mergedHeadlines);
+    }
+
+    private static async Task<List<string>?> FetchRssHeadlinesOrNullAsync(
+        HttpClient httpClient,
+        string feedUrl,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await FetchRssHeadlinesAsync(httpClient, feedUrl, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            // Ignore feed-specific failures and continue building a partial live context.
+            return null;
+        }
     }
 
     private static List<string> ParseHeadlines(string xml)

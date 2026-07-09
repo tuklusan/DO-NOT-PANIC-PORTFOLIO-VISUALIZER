@@ -738,6 +738,167 @@ public sealed class FinanceNewsServiceTests
     }
 
     [Fact]
+    public async Task GetHeadlinesAsync_SummarizedContext_FetchesRssFeedsInParallel()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        int rssRequestCount = 0;
+        TaskCompletionSource allFeedsRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        FakeHttpMessageHandler handler = new(async (request, cancellationToken) =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                int currentCount = Interlocked.Increment(ref rssRequestCount);
+                if (currentCount == 3)
+                    allFeedsRequested.SetResult();
+
+                if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html")
+                    await allFeedsRequested.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+
+                string headline = requestUrl.Contains("cnbc", StringComparison.OrdinalIgnoreCase)
+                    ? "CNBC markets headline"
+                    : requestUrl.Contains("bbci", StringComparison.OrdinalIgnoreCase)
+                        ? "BBC business headline"
+                        : "NYT economy headline";
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent($"""
+                    <rss><channel><item><title>{headline}</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            throw new InvalidOperationException("AI provider HTTP should not be used without an API key.");
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            AiWritingStyle = AiWritingStyle.DouglasAdams,
+            NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
+            NewsRefreshMinutes = 15,
+            AiApiKey = string.Empty
+        };
+
+        IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(
+            client,
+            settings,
+            networkAvailable: true);
+
+        Assert.Equal(3, rssRequestCount);
+        Assert.Contains("CNBC markets headline", headlines[0], StringComparison.Ordinal);
+        Assert.Contains("BBC business headline", headlines[1], StringComparison.Ordinal);
+        Assert.Contains("NYT economy headline", headlines[2], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetHeadlinesAsync_SummarizedContext_UsesSuccessfulRssFeedsWhenOneFeedFails()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        int rssRequestCount = 0;
+        FakeHttpMessageHandler handler = new(request =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html")
+            {
+                Interlocked.Increment(ref rssRequestCount);
+                return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+            }
+
+            if (requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                Interlocked.Increment(ref rssRequestCount);
+                string headline = requestUrl.Contains("bbci", StringComparison.OrdinalIgnoreCase)
+                    ? "BBC partial fallback headline"
+                    : "NYT partial fallback headline";
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent($"""
+                    <rss><channel><item><title>{headline}</title></item></channel></rss>
+                    """, Encoding.UTF8, "application/xml")
+                };
+            }
+
+            throw new InvalidOperationException("AI provider HTTP should not be used without an API key.");
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            AiWritingStyle = AiWritingStyle.DouglasAdams,
+            NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
+            NewsRefreshMinutes = 15,
+            AiApiKey = string.Empty
+        };
+
+        IReadOnlyList<string> headlines = await service.GetHeadlinesAsync(
+            client,
+            settings,
+            networkAvailable: true);
+
+        Assert.Equal(3, rssRequestCount);
+        Assert.DoesNotContain(headlines, headline => headline.Contains("CNBC", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("BBC partial fallback headline", headlines[0], StringComparison.Ordinal);
+        Assert.Contains("NYT partial fallback headline", headlines[1], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetHeadlinesAsync_SummarizedContext_PropagatesCancellationDuringParallelRssFetch()
+    {
+        string cachePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "finance-news-cache.json");
+        int rssRequestCount = 0;
+        using CancellationTokenSource cancellation = new();
+        TaskCompletionSource allFeedsRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        FakeHttpMessageHandler handler = new(async (request, cancellationToken) =>
+        {
+            string requestUrl = request.RequestUri?.ToString() ?? string.Empty;
+            if (requestUrl == "https://www.cnbc.com/id/19832390/device/rss/rss.html" ||
+                requestUrl == "https://feeds.bbci.co.uk/news/business/rss.xml" ||
+                requestUrl == "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml")
+            {
+                int currentCount = Interlocked.Increment(ref rssRequestCount);
+                if (currentCount == 3)
+                    allFeedsRequested.SetResult();
+
+                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                throw new InvalidOperationException("The test should cancel before any feed completes.");
+            }
+
+            throw new InvalidOperationException("AI provider HTTP should not be used without an API key.");
+        });
+
+        using HttpClient client = new(handler);
+        FinanceNewsService service = new(cachePath, () => string.Empty);
+        AppSettings settings = new()
+        {
+            NewsScrollerMode = NewsScrollerMode.SummarizedFinancialNews,
+            AiWritingStyle = AiWritingStyle.DouglasAdams,
+            NewsFeedUrl = Defaults.DefaultNewsFeedUrl,
+            NewsRefreshMinutes = 15,
+            AiApiKey = string.Empty
+        };
+
+        Task<IReadOnlyList<string>> fetchTask = service.GetHeadlinesAsync(
+            client,
+            settings,
+            networkAvailable: true,
+            cancellation.Token);
+
+        await allFeedsRequested.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => fetchTask);
+        Assert.Equal(3, rssRequestCount);
+    }
+
+    [Fact]
     public void ParseSummarizedNewsItems_ExtractsJsonResponseFormat()
     {
         List<string> items = FinanceNewsService.ParseSummarizedNewsItems("""

@@ -9857,17 +9857,26 @@
       "priority": 2,
       "area": "Network latency",
       "title": "Fetch RSS feeds in parallel in `FinanceNewsService`",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: Three feeds fetched sequentially.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Implemented parallel summarized-news RSS context fetching via `Task.WhenAll`, preserving original feed priority when merging deduplicated headlines.",
+        "Added `FetchRssHeadlinesOrNullAsync` so individual feed failures still degrade to partial live context while caller cancellation continues to propagate.",
+        "Added `GetHeadlinesAsync_SummarizedContext_FetchesRssFeedsInParallel`, which blocks the first feed until all three RSS feeds are requested and would fail under sequential fetching.",
+        "DeepSeek review on 2026-07-09 requested merge-loop cancellation checks and partial-feed-failure coverage; both were implemented before commit.",
+        "Added `GetHeadlinesAsync_SummarizedContext_UsesSuccessfulRssFeedsWhenOneFeedFails` to prove one failed RSS feed still yields successful-feed headlines.",
+        "Second DeepSeek review on 2026-07-09 requested prompt aggregate cancellation propagation; implemented linked-token parallel child fetches and `GetHeadlinesAsync_SummarizedContext_PropagatesCancellationDuringParallelRssFetch`.",
+        "Validation passed on 2026-07-09: `dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --configuration Release --nologo --verbosity minimal --filter \"FullyQualifiedName~FinanceNewsServiceTests\"` (61 passed).",
+        "Full regression validation passed on 2026-07-09: `dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --configuration Release --nologo --verbosity minimal --filter \"FullyQualifiedName!~__NoSuchTestFilter__\"` (660 passed)."
       ],
       "notes": [
         "Recommendation: Use `Task.WhenAll` with a global timeout and per-feed cancellation.",
         "Acceptance criteria: News refresh wall-clock time reduces from sum of latencies to the slowest single feed.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking.",
+        "Closed on 2026-07-09. Summarized-news RSS context collection now waits on the slowest feed rather than the sum of all feed latencies while preserving partial-failure behavior."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
