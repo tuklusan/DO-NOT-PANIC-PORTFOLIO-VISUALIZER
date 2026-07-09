@@ -761,6 +761,37 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
+    public void YFinanceMemoryTtlCache_EvictsLeastRecentlyUsedEntryAtCapacity()
+    {
+        MemoryTtlCache<string> cache = new(maxEntries: 2);
+        cache.Set("quote:AAPL", "apple", TimeSpan.FromMinutes(10));
+        cache.Set("quote:MSFT", "microsoft", TimeSpan.FromMinutes(10));
+
+        Assert.True(cache.TryGet("quote:AAPL", out string? apple));
+        Assert.Equal("apple", apple);
+
+        cache.Set("quote:GOOG", "google", TimeSpan.FromMinutes(10));
+
+        Assert.Equal(2, cache.Count);
+        Assert.True(cache.TryGet("quote:AAPL", out _));
+        Assert.True(cache.TryGet("quote:GOOG", out _));
+        Assert.False(cache.TryGet("quote:MSFT", out _));
+    }
+
+    [Fact]
+    public void YFinanceMemoryTtlCache_ClampsCapacityToAtLeastOneEntry()
+    {
+        MemoryTtlCache<string> cache = new(maxEntries: 0);
+        cache.Set("quote:AAPL", "apple", TimeSpan.FromMinutes(10));
+        cache.Set("quote:MSFT", "microsoft", TimeSpan.FromMinutes(10));
+
+        Assert.Equal(1, cache.Count);
+        Assert.False(cache.TryGet("quote:AAPL", out _));
+        Assert.True(cache.TryGet("quote:MSFT", out string? microsoft));
+        Assert.Equal("microsoft", microsoft);
+    }
+
+    [Fact]
     public async Task YFinancePersistentTtlCache_DoesNotReturnExpiredEntries()
     {
         string cacheRoot = Path.Combine(Path.GetTempPath(), "dnppv-yfinance-cache-test-" + Guid.NewGuid().ToString("N"));

@@ -9723,17 +9723,23 @@
       "priority": 2,
       "area": "Memory leak",
       "title": "Add capacity limit to `MemoryTtlCache` to prevent unbounded growth",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: Only TTL expiration; no maximum size.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Implemented bounded MemoryTtlCache<TValue> with default max 1024 entries, constructor capacity clamp to at least 1, and least-recently-used eviction.",
+        "TryGet now refreshes LRU recency and removes expired entries; Set removes expired entries and trims to capacity.",
+        "Added tests for TTL expiration, LRU eviction at capacity, and capacity clamping.",
+        "Validation: focused YFinanceMemoryTtlCache tests passed 3/3; full Release suite passed 645/645.",
+        "DeepSeek code-review gate 2026-07-09 reported no critical or high-severity bugs, no security/privacy risks, and no actionable defects."
       ],
       "notes": [
         "Recommendation: Add a configurable capacity with LRU eviction or use `IMemoryCache`.",
         "Acceptance criteria: Cache size never exceeds the configured maximum; eviction does not increase cache miss rate significantly.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: implemented and closed by Codex developer on 2026-07-09.",
+        "Design note: lock-protected Dictionary plus LinkedList was chosen over IMemoryCache to keep YFinance.NET dependency-free and deterministic."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
