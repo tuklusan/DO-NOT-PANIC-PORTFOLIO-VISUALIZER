@@ -29,7 +29,6 @@ public sealed class ProviderBudgetLedgerService
 
     private readonly string _ledgerPath;
     private readonly object _sync = new();
-    private readonly object _saveSync = new();
     private ProviderBudgetLedger? _ledger;
     private long _ledgerVersion;
     private long _lastPersistedLedgerVersion;
@@ -158,7 +157,7 @@ public sealed class ProviderBudgetLedgerService
 
     private void SaveLedger(ProviderBudgetLedger ledger, long ledgerVersion)
     {
-        lock (_saveSync)
+        lock (_sync)
         {
             if (ledgerVersion <= _lastPersistedLedgerVersion)
                 return;
@@ -198,7 +197,8 @@ public sealed class ProviderBudgetLedgerService
 
     private static ProviderBudgetLedger CloneLedger(ProviderBudgetLedger ledger)
     {
-        // The ledger is intentionally tiny; cloning lets disk I/O happen without holding the state lock.
+        // The ledger is intentionally tiny; cloning keeps persistence snapshots independent
+        // while state mutation and disk writes intentionally share one lock.
         ProviderBudgetLedger clone = new();
         foreach ((DataSourceKind kind, ProviderBudgetEntry entry) in ledger.Entries)
         {

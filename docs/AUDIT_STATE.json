@@ -9893,17 +9893,24 @@
       "priority": 2,
       "area": "Multithreading",
       "title": "Simplify `ProviderBudgetLedgerService` locking to a single lock to avoid deadlock",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: Two-lock pattern (`_sync` and `_saveSync`) is fragile.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Removed `_saveSync`; `SaveLedger` now uses the same `_sync` lock as in-memory ledger state.",
+        "Existing concurrent reservation and stale snapshot persistence tests remain green.",
+        "Added reflection-based `ProviderBudgetLedgerService_UsesSingleLockForStateAndPersistence` to prevent reintroducing the split-lock pattern without brittle source text checks.",
+        "DeepSeek review on 2026-07-09 noted the intentional tradeoff: disk persistence now holds the state lock briefly, favoring deadlock-proof correctness over maximum concurrent throughput for this tiny ledger.",
+        "Validation passed on 2026-07-09: `dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --configuration Release --nologo --verbosity minimal --filter \"FullyQualifiedName~Nb040BehaviorTests\"` (57 passed).",
+        "Full regression validation passed on 2026-07-09: `dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --configuration Release --nologo --verbosity minimal --filter \"FullyQualifiedName!~__NoSuchTestFilter__\"` (661 passed)."
       ],
       "notes": [
         "Recommendation: Use a single `lock` or `AsyncLock` for both state and save.",
         "Acceptance criteria: No deadlock possible; ledger operations remain correct under concurrent calls.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking.",
+        "Closed on 2026-07-09. Ledger state and persistence now share a single lock, eliminating the prior two-lock ordering risk."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",

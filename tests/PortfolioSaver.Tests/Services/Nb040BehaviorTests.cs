@@ -1278,6 +1278,19 @@ public sealed class Nb040BehaviorTests
         }
     }
 
+    [Fact]
+    public void ProviderBudgetLedgerService_UsesSingleLockForStateAndPersistence()
+    {
+        // Deliberately enforce the CR-206 invariant: this tiny ledger uses one lock for state and persistence.
+        FieldInfo[] lockFields = typeof(ProviderBudgetLedgerService)
+            .GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+            .Where(field => field.FieldType == typeof(object))
+            .ToArray();
+
+        FieldInfo lockField = Assert.Single(lockFields);
+        Assert.Equal("_sync", lockField.Name);
+    }
+
     private static void DeleteDirectoryWithRetry(string path)
     {
         if (!Directory.Exists(path))
