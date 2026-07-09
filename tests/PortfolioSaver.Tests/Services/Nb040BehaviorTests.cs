@@ -909,10 +909,26 @@ public sealed class Nb040BehaviorTests
         Assert.Contains("List<PendingQuoteRequest> completedRequests = [];", source, StringComparison.Ordinal);
         Assert.Contains("completedRequests.Add(pending);", source, StringComparison.Ordinal);
         Assert.Contains("foreach (PendingQuoteRequest pending in completedRequests)", source, StringComparison.Ordinal);
-        Assert.Contains("IReadOnlyList<QuoteSnapshot> fetched = await pending.Task;", source, StringComparison.Ordinal);
+        Assert.Contains("IReadOnlyList<QuoteSnapshot> fetched = await pending.Task.ConfigureAwait(false);", source, StringComparison.Ordinal);
         Assert.Contains("QuotePipelineSnapshot pipelineSnapshot = SnapshotQuotePipeline(orderedSymbols);", source, StringComparison.Ordinal);
         Assert.Contains("private QuotePipelineSnapshot SnapshotQuotePipeline(IReadOnlyList<string> orderedSymbols)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("orderedSymbols.Except(_pendingQuotePipeline.Keys", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StartupCoordinator_NonUiAwaitsAvoidDispatcherContinuationCapture()
+    {
+        string coordinatorPath = Path.Combine(
+            GetRepoRoot(),
+            "src", "PortfolioSaver.Presentation", "Services", "StartupCoordinator.cs");
+        string source = File.ReadAllText(Path.GetFullPath(coordinatorPath));
+
+        Assert.Contains("await Task.WhenAll(quotesTask, backgroundsTask).ConfigureAwait(false);", source, StringComparison.Ordinal);
+        Assert.Contains("await LoadQuotesAsync(", source, StringComparison.Ordinal);
+        Assert.Contains("cancellationToken).ConfigureAwait(false);", source, StringComparison.Ordinal);
+        Assert.Contains("await _financeNewsService.GetHeadlinesAsync(", source, StringComparison.Ordinal);
+        Assert.Contains("await cacheService.LoadAsync(ticker.Symbol, cancellationToken).ConfigureAwait(false);", source, StringComparison.Ordinal);
+        Assert.Contains("await pending.Task.ConfigureAwait(false);", source, StringComparison.Ordinal);
     }
 
     [Fact]

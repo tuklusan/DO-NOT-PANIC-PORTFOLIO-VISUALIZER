@@ -9927,17 +9927,22 @@
       "priority": 2,
       "area": "UI dispatcher congestion",
       "title": "Add `ConfigureAwait(false)` to async calls in `StartupCoordinator` that do not need UI continuation",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: Many `await` without `ConfigureAwait(false)` marshal back to UI thread unnecessarily.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Added `ConfigureAwait(false)` to StartupCoordinator awaits that do not require UI continuation capture, including scene build quote/background tasks, news fetch, graph cache/history fetches, and completed quote pipeline observation.",
+        "Updated StartupCoordinator source guards so future edits preserve non-UI continuation behavior.",
+        "Validation passed on 2026-07-09: `dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --configuration Release --nologo --verbosity minimal --filter \"FullyQualifiedName~Nb040BehaviorTests|FullyQualifiedName~StartupCoordinator\"` (79 passed).",
+        "Full regression validation passed on 2026-07-09: `dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --configuration Release --nologo --verbosity minimal --filter \"FullyQualifiedName!~__NoSuchTestFilter__\"` (662 passed)."
       ],
       "notes": [
         "Recommendation: Add `ConfigureAwait(false)` to all non-UI continuations.",
         "Acceptance criteria: WPF dispatcher queue utilization reduces; startup scene setup completes faster.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking.",
+        "Closed on 2026-07-09. StartupCoordinator now avoids unnecessary dispatcher continuation capture for non-UI async work."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",

@@ -209,10 +209,10 @@ public sealed class StartupCoordinator
             cancellationToken);
         IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode, settings.AiWritingStyle);
 
-        await Task.WhenAll(quotesTask, backgroundsTask);
+        await Task.WhenAll(quotesTask, backgroundsTask).ConfigureAwait(false);
 
-        Dictionary<string, QuoteSnapshot> quotes = await quotesTask;
-        IReadOnlyList<string> backgroundPaths = await backgroundsTask;
+        Dictionary<string, QuoteSnapshot> quotes = await quotesTask.ConfigureAwait(false);
+        IReadOnlyList<string> backgroundPaths = await backgroundsTask.ConfigureAwait(false);
 
         return BuildSceneState(settings, quotes, backgroundPaths, headlines, networkAvailable);
     }
@@ -240,7 +240,7 @@ public sealed class StartupCoordinator
             networkAvailable,
             yahooFinanceProvider,
             graphRotationSeed,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         IReadOnlyList<string> backgroundPaths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
         IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode, settings.AiWritingStyle);
@@ -264,7 +264,7 @@ public sealed class StartupCoordinator
             httpClient,
             settings,
             networkAvailable,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         return BuildNews(headlines);
     }
 
@@ -294,7 +294,7 @@ public sealed class StartupCoordinator
             cancellationToken.ThrowIfCancellationRequested();
             TraceGraph($"Graph warmup checking {ticker.Symbol} on {group.Name}.");
 
-            TickerHistorySnapshot? cached = await cacheService.LoadAsync(ticker.Symbol, cancellationToken);
+            TickerHistorySnapshot? cached = await cacheService.LoadAsync(ticker.Symbol, cancellationToken).ConfigureAwait(false);
             if (cached is not null && cached.LookbackDays == graphLookbackDays && cached.Points.Count >= 2)
             {
                 cachedBySymbol[ticker.Symbol] = cached;
@@ -325,7 +325,7 @@ public sealed class StartupCoordinator
         IReadOnlyList<TickerHistorySnapshot> refreshedSnapshots = await historicalProvider.GetHistoryAsync(
             liveFetchSymbols,
             graphLookbackDays,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         Dictionary<string, TickerHistorySnapshot> refreshedBySymbol = refreshedSnapshots
             .Where(snapshot => snapshot.Points.Count >= 2)
             .GroupBy(snapshot => snapshot.Symbol, StringComparer.OrdinalIgnoreCase)
@@ -907,7 +907,7 @@ public sealed class StartupCoordinator
             try
             {
                 // The symbol list above only includes completed tasks; await observes exceptions without blocking.
-                IReadOnlyList<QuoteSnapshot> fetched = await pending.Task;
+                IReadOnlyList<QuoteSnapshot> fetched = await pending.Task.ConfigureAwait(false);
                 TraceRuntimeState(
                     "SequentialQuoteReturned",
                     new KeyValuePair<string, object?>("operation_id", pending.OperationId),
