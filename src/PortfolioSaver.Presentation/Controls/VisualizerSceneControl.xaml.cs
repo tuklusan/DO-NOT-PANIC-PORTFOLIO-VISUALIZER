@@ -60,6 +60,10 @@ public partial class VisualizerSceneControl : UserControl
     private static readonly TimeSpan RuntimeTapeStructuralSyncInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan GraphRefreshTravelFlashMaximumDuration = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan GraphRefreshTravelTargetDuration = TimeSpan.FromSeconds(1.4);
+    private static readonly TimeSpan SceneSchedulerInterval = TimeSpan.FromMilliseconds(33);
+    private static readonly TimeSpan BackgroundZoomInterval = TimeSpan.FromMilliseconds(120);
+    private static readonly TimeSpan WorldDataRefreshInterval = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan DemoFlashInterval = TimeSpan.FromSeconds(30);
     private const double GraphRefreshTravelMinimumVelocity = 260d;
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly Dictionary<string, FloatingGraphControl> _graphControlsByKey = new(StringComparer.OrdinalIgnoreCase);
@@ -68,18 +72,30 @@ public partial class VisualizerSceneControl : UserControl
     private readonly StartupCoordinator _startupCoordinator = new();
     private readonly FloatingSpriteMotionController _motionController = new();
     private readonly YFinanceExchangeTimingService _exchangeMarketCalendarService = new();
-    private readonly DispatcherTimer _clockTimer = new();
-    private readonly DispatcherTimer _refreshTimer = new();
-    private readonly DispatcherTimer _backgroundTimer = new();
-    private readonly DispatcherTimer _backgroundZoomTimer = new() { Interval = TimeSpan.FromMilliseconds(120) };
-    private readonly DispatcherTimer _worldDataTimer = new();
-    private DispatcherTimer? _backgroundTransitionCompletionTimer;
+    private readonly DispatcherTimer _sceneTimer = new() { Interval = SceneSchedulerInterval };
+    private TimeSpan _clockSchedulerInterval = TimeSpan.FromSeconds(1);
+    private TimeSpan _backgroundSchedulerInterval = TimeSpan.FromMinutes(5);
+    private DateTimeOffset _nextClockTickUtc = DateTimeOffset.MaxValue;
+    private DateTimeOffset _nextRuntimeQuoteTickUtc = DateTimeOffset.MaxValue;
+    private DateTimeOffset _nextBackgroundRotationTickUtc = DateTimeOffset.MaxValue;
+    private DateTimeOffset _nextBackgroundZoomTickUtc = DateTimeOffset.MaxValue;
+    private DateTimeOffset _nextWorldDataTickUtc = DateTimeOffset.MaxValue;
+    private DateTimeOffset _nextDemoFlashTickUtc = DateTimeOffset.MaxValue;
+    private DateTimeOffset? _backgroundTransitionCompletionDueUtc;
+    private BitmapImage? _backgroundTransitionCompletionBitmap;
+    private string? _backgroundTransitionCompletionPath;
+    private int _backgroundTransitionCompletionGeneration;
+    private bool _liveSchedulerRunning;
+    private bool _sceneSchedulerTickInProgress;
+    private bool _backgroundRotationEnabled;
+    private bool _backgroundZoomRunning;
+    private bool _backgroundRotationInFlight;
+    private int _backgroundRotationGeneration;
+    private CancellationTokenSource? _backgroundRotationCancellation;
     private bool _backgroundTransitionInFlight;
     private bool _backgroundRecoveryReloadInFlight;
     private int _backgroundRecoveryReloadGeneration;
     private int _backgroundTransitionGeneration;
-    private readonly DispatcherTimer _demoFlashTimer = new() { Interval = TimeSpan.FromSeconds(30) };
-    private readonly DispatcherTimer _motionTimer = new() { Interval = TimeSpan.FromMilliseconds(33) };
     private readonly Random _random = new();
     private readonly WorldWeatherService _worldWeatherService = new();
     private readonly NtpTimeService _ntpTimeService = new();
@@ -181,14 +197,8 @@ public partial class VisualizerSceneControl : UserControl
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         SizeChanged += OnSizeChanged;
-        _clockTimer.Tick += (_, _) => UpdateClocks();
-        _refreshTimer.Tick += (_, _) => DispatchNextRuntimeQuoteRequestSafe();
-        _backgroundTimer.Tick += async (_, _) => await RotateBackgroundAsync();
-        _backgroundZoomTimer.Tick += (_, _) => StepBackgroundSlowZoom();
-        _worldDataTimer.Tick += (_, _) => QueueWorldMarketsRefresh(refreshAncillary: true, reason: "timer");
+        _sceneTimer.Tick += OnSceneSchedulerTick;
         _startupCoordinator.BackgroundCacheWarmupCompleted += QueueBackgroundCatalogRescan;
-        _demoFlashTimer.Tick += (_, _) => RunDemoFlashPulse();
-        _motionTimer.Tick += (_, _) => StepMotion();
     }
 
 
@@ -215,7 +225,7 @@ public partial class VisualizerSceneControl : UserControl
             _activeBackgroundImage = BackgroundImageA;
             _inactiveBackgroundImage = BackgroundImageB;
             ApplySceneState(_startupCoordinator.BuildBootstrapScene(), preserveLayout: false);
-            _refreshTimer.Stop();
+            _nextRuntimeQuoteTickUtc = DateTimeOffset.MaxValue;
             RestartGraphWarmup(_graphRotationSeed, preserveLayout: false);
             await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);
             InitializeRuntimeQuoteLoop();
@@ -224,6 +234,7 @@ public partial class VisualizerSceneControl : UserControl
             StartWorldMarketsLane();
             StartCaptureSequenceIfRequested();
             StartDemoFlashSequence();
+            ConfigureTimers();
             TraceScene("OnLoaded completed.");
         }
         catch (Exception ex)
@@ -239,14 +250,9 @@ public partial class VisualizerSceneControl : UserControl
         CancelNewsRefreshLoop();
         CancelMacroLane();
         CancelWorldMarketsLane();
-        _clockTimer.Stop();
-        _refreshTimer.Stop();
-        _backgroundTimer.Stop();
-        _backgroundZoomTimer.Stop();
+        StopLiveTimers();
         CancelBackgroundRecoveryReload();
-        _worldDataTimer.Stop();
         StopDemoFlashSequence();
-        _motionTimer.Stop();
         CancelGraphWarmup();
         CancelCaptureSequence();
         _runtimeQuoteHttpClient.Dispose();
@@ -690,38 +696,207 @@ public partial class VisualizerSceneControl : UserControl
             return;
         }
 
-        _clockTimer.Interval = TimeSpan.FromSeconds(Math.Max(1, _settings.ClockRefreshSeconds));
-        _refreshTimer.Interval = RuntimeQuoteDispatchInterval;
-        _backgroundTimer.Interval = TimeSpan.FromSeconds(Math.Max(5, _settings.BackgroundChangeSeconds));
-        _worldDataTimer.Interval = TimeSpan.FromMinutes(10);
-        _clockTimer.Start();
-        _refreshTimer.Start();
-        _worldDataTimer.Start();
-        if (_backgroundPaths.Count > 1)
+        _clockSchedulerInterval = TimeSpan.FromSeconds(Math.Max(1, _settings.ClockRefreshSeconds));
+        _backgroundSchedulerInterval = TimeSpan.FromSeconds(Math.Max(5, _settings.BackgroundChangeSeconds));
+
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        _nextClockTickUtc = now + _clockSchedulerInterval;
+        _nextRuntimeQuoteTickUtc = now + RuntimeQuoteDispatchInterval;
+        _nextWorldDataTickUtc = now + WorldDataRefreshInterval;
+        _lastMotionTick = DateTime.UtcNow;
+        _backgroundRotationEnabled = _backgroundPaths.Count > 1;
+        if (_backgroundRotationEnabled)
         {
-            _backgroundTimer.Start();
+            _nextBackgroundRotationTickUtc = now + _backgroundSchedulerInterval;
             TraceSceneState(
                 "BackgroundTimerArmed",
-                new KeyValuePair<string, object?>("interval_seconds", _backgroundTimer.Interval.TotalSeconds),
+                new KeyValuePair<string, object?>("interval_seconds", _backgroundSchedulerInterval.TotalSeconds),
                 new KeyValuePair<string, object?>("background_count", _backgroundPaths.Count));
         }
         else
         {
-            _backgroundTimer.Stop();
+            _nextBackgroundRotationTickUtc = DateTimeOffset.MaxValue;
             TraceSceneState(
                 "BackgroundTimerNotArmed",
-                new KeyValuePair<string, object?>("interval_seconds", _backgroundTimer.Interval.TotalSeconds),
+                new KeyValuePair<string, object?>("interval_seconds", _backgroundSchedulerInterval.TotalSeconds),
                 new KeyValuePair<string, object?>("background_count", _backgroundPaths.Count));
         }
-        _lastMotionTick = DateTime.UtcNow;
-        _motionTimer.Start();
+
+        StartSceneScheduler();
         TraceSceneState(
             "TimersConfigured",
-            new KeyValuePair<string, object?>("clock_seconds", _clockTimer.Interval.TotalSeconds),
-            new KeyValuePair<string, object?>("refresh_seconds", _refreshTimer.Interval.TotalSeconds),
-            new KeyValuePair<string, object?>("background_seconds", _backgroundTimer.Interval.TotalSeconds),
-            new KeyValuePair<string, object?>("world_data_minutes", _worldDataTimer.Interval.TotalMinutes),
+            new KeyValuePair<string, object?>("scene_tick_milliseconds", SceneSchedulerInterval.TotalMilliseconds),
+            new KeyValuePair<string, object?>("clock_seconds", _clockSchedulerInterval.TotalSeconds),
+            new KeyValuePair<string, object?>("refresh_seconds", RuntimeQuoteDispatchInterval.TotalSeconds),
+            new KeyValuePair<string, object?>("background_seconds", _backgroundSchedulerInterval.TotalSeconds),
+            new KeyValuePair<string, object?>("world_data_minutes", WorldDataRefreshInterval.TotalMinutes),
             new KeyValuePair<string, object?>("background_rotation_enabled", _backgroundPaths.Count > 1));
+    }
+
+    private void StartSceneScheduler()
+    {
+        _liveSchedulerRunning = true;
+        if (!_sceneTimer.IsEnabled)
+        {
+            _sceneTimer.Start();
+            TraceSceneState(
+                "SceneSchedulerStarted",
+                new KeyValuePair<string, object?>("tick_milliseconds", SceneSchedulerInterval.TotalMilliseconds));
+        }
+    }
+
+    private void OnSceneSchedulerTick(object? sender, EventArgs e)
+    {
+        bool acquiredSchedulerTick = false;
+        try
+        {
+            if (!_liveSchedulerRunning || _isValidationPaused)
+                return;
+
+            _sceneTimer.Stop();
+            if (_sceneSchedulerTickInProgress)
+            {
+                TraceSceneState("SceneSchedulerTickSkipped", new KeyValuePair<string, object?>("reason", "previous-tick-in-progress"));
+                return;
+            }
+
+            _sceneSchedulerTickInProgress = true;
+            acquiredSchedulerTick = true;
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            RunScheduledSceneAction("motion", StepMotion);
+
+            if (now >= _nextClockTickUtc)
+            {
+                _nextClockTickUtc = GetNextScheduledDueUtc(_nextClockTickUtc, _clockSchedulerInterval, now);
+                RunScheduledSceneAction("clock", () => UpdateClocks());
+            }
+
+            if (now >= _nextRuntimeQuoteTickUtc)
+            {
+                _nextRuntimeQuoteTickUtc = GetNextScheduledDueUtc(_nextRuntimeQuoteTickUtc, RuntimeQuoteDispatchInterval, now);
+                RunScheduledSceneAction("runtime-quote", DispatchNextRuntimeQuoteRequestSafe);
+            }
+
+            if (now >= _nextWorldDataTickUtc)
+            {
+                _nextWorldDataTickUtc = GetNextScheduledDueUtc(_nextWorldDataTickUtc, WorldDataRefreshInterval, now);
+                RunScheduledSceneAction("world-data", () => QueueWorldMarketsRefresh(refreshAncillary: true, reason: "timer"));
+            }
+
+            if (_backgroundRotationEnabled && now >= _nextBackgroundRotationTickUtc)
+            {
+                _nextBackgroundRotationTickUtc = GetNextScheduledDueUtc(_nextBackgroundRotationTickUtc, _backgroundSchedulerInterval, now);
+                RunScheduledSceneAction("background-rotation", QueueBackgroundRotationFromScheduler);
+            }
+
+            if (_backgroundZoomRunning && now >= _nextBackgroundZoomTickUtc)
+            {
+                _nextBackgroundZoomTickUtc = GetNextScheduledDueUtc(_nextBackgroundZoomTickUtc, BackgroundZoomInterval, now);
+                RunScheduledSceneAction("background-zoom", StepBackgroundSlowZoom);
+            }
+
+            if (_backgroundTransitionCompletionDueUtc is { } transitionDueUtc && now >= transitionDueUtc)
+                RunScheduledSceneAction("background-transition-complete", CompleteScheduledBackgroundTransition);
+
+            if (_demoFlashTicks > 0 && now >= _nextDemoFlashTickUtc)
+            {
+                _nextDemoFlashTickUtc = GetNextScheduledDueUtc(_nextDemoFlashTickUtc, DemoFlashInterval, now);
+                RunScheduledSceneAction("demo-flash", RunDemoFlashPulse);
+            }
+        }
+        catch (Exception ex)
+        {
+            TraceSceneState(
+                "SceneSchedulerTickFailed",
+                new KeyValuePair<string, object?>("exception", ex.ToString()));
+        }
+        finally
+        {
+            if (acquiredSchedulerTick)
+                _sceneSchedulerTickInProgress = false;
+
+            if (_liveSchedulerRunning && !_isValidationPaused && !_sceneTimer.IsEnabled)
+                _sceneTimer.Start();
+        }
+    }
+
+    private void RunScheduledSceneAction(string actionName, Action action)
+    {
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        try
+        {
+            action();
+        }
+        catch (Exception ex)
+        {
+            TraceSceneState(
+                "SceneSchedulerActionFailed",
+                new KeyValuePair<string, object?>("action", actionName),
+                new KeyValuePair<string, object?>("exception", ex.ToString()));
+        }
+        finally
+        {
+            stopwatch.Stop();
+            if (stopwatch.Elapsed > TimeSpan.FromMilliseconds(15))
+            {
+                TraceSceneState(
+                    "SceneSchedulerActionSlow",
+                    new KeyValuePair<string, object?>("action", actionName),
+                    new KeyValuePair<string, object?>("elapsed_milliseconds", Math.Round(stopwatch.Elapsed.TotalMilliseconds, 1)));
+            }
+        }
+    }
+
+    private static DateTimeOffset GetNextScheduledDueUtc(DateTimeOffset currentDueUtc, TimeSpan interval, DateTimeOffset nowUtc)
+    {
+        if (currentDueUtc == DateTimeOffset.MaxValue)
+            return nowUtc + interval;
+
+        DateTimeOffset nextDueUtc = currentDueUtc + interval;
+        return nextDueUtc <= nowUtc ? nowUtc + interval : nextDueUtc;
+    }
+
+    private void QueueBackgroundRotationFromScheduler()
+    {
+        if (_backgroundRotationInFlight)
+            return;
+
+        // Background image loading is async and guarded separately so the scheduler tick never blocks on file IO or decoding.
+        int rotationGeneration = ++_backgroundRotationGeneration;
+        CancellationTokenSource cancellation = new();
+        _backgroundRotationCancellation?.Cancel();
+        _backgroundRotationCancellation = cancellation;
+        _backgroundRotationInFlight = true;
+        _ = RotateBackgroundFromSchedulerCoreAsync(rotationGeneration, cancellation);
+    }
+
+    private async Task RotateBackgroundFromSchedulerCoreAsync(int rotationGeneration, CancellationTokenSource cancellation)
+    {
+        try
+        {
+            await RotateBackgroundAsync(cancellationToken: cancellation.Token).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            TraceSceneState("BackgroundRotationSchedulerCanceled");
+        }
+        catch (Exception ex)
+        {
+            TraceSceneState(
+                "BackgroundRotationSchedulerFailed",
+                new KeyValuePair<string, object?>("message", ex.Message));
+        }
+        finally
+        {
+            if (rotationGeneration == _backgroundRotationGeneration)
+            {
+                _backgroundRotationInFlight = false;
+                if (ReferenceEquals(_backgroundRotationCancellation, cancellation))
+                    _backgroundRotationCancellation = null;
+            }
+
+            cancellation.Dispose();
+        }
     }
 
     private void InitializeRuntimeQuoteLoop()
@@ -1234,14 +1409,26 @@ public partial class VisualizerSceneControl : UserControl
 
     private void StopLiveTimers()
     {
+        _liveSchedulerRunning = false;
+        _sceneTimer.Stop();
+        _backgroundRotationEnabled = false;
+        _backgroundZoomRunning = false;
+        _nextClockTickUtc = DateTimeOffset.MaxValue;
+        _nextRuntimeQuoteTickUtc = DateTimeOffset.MaxValue;
+        _nextBackgroundRotationTickUtc = DateTimeOffset.MaxValue;
+        _nextBackgroundZoomTickUtc = DateTimeOffset.MaxValue;
+        _nextWorldDataTickUtc = DateTimeOffset.MaxValue;
+        _nextDemoFlashTickUtc = DateTimeOffset.MaxValue;
+        _backgroundRotationGeneration++;
+        _backgroundRotationCancellation?.Cancel();
+        _backgroundRotationCancellation = null;
+        _backgroundRotationInFlight = false;
+        _backgroundTransitionCompletionDueUtc = null;
+        _backgroundTransitionCompletionBitmap = null;
+        _backgroundTransitionCompletionPath = null;
+        _demoFlashTicks = 0;
         StopRuntimeQuoteLoop();
-        _clockTimer.Stop();
-        _refreshTimer.Stop();
-        _backgroundTimer.Stop();
-        _backgroundZoomTimer.Stop();
         CancelBackgroundRecoveryReload();
-        _worldDataTimer.Stop();
-        _motionTimer.Stop();
     }
 
     private void RefreshBackgroundCatalogFromSettings(string reason)
@@ -1320,6 +1507,9 @@ public partial class VisualizerSceneControl : UserControl
             }
 
             InitializeRuntimeQuoteLoop();
+            EnsureBackgroundSlowZoomRunning();
+            StartDemoFlashSequence();
+            StartSceneScheduler();
             _ = RefreshNewsLaneAsync(force: true, CancellationToken.None);
         }
         catch (Exception ex)
@@ -2869,8 +3059,7 @@ public partial class VisualizerSceneControl : UserControl
 
     private async Task LoadBackgroundAsync(string? path, CancellationToken cancellationToken = default)
     {
-        _backgroundTransitionCompletionTimer?.Stop();
-        _backgroundTransitionCompletionTimer = null;
+        ClearScheduledBackgroundTransition();
 
         if (!IsSupportedBackgroundReference(path))
         {
@@ -3160,14 +3349,14 @@ public partial class VisualizerSceneControl : UserControl
             ClampSpriteToBounds(_networkWaitingViewModel, graphBounds);
     }
 
-    private async Task RotateBackgroundAsync(bool forceDifferent = true)
+    private async Task RotateBackgroundAsync(bool forceDifferent = true, CancellationToken cancellationToken = default)
     {
         if (_backgroundTransitionInFlight)
             return;
 
         if (_backgroundPaths.Count == 0)
         {
-            await LoadBackgroundAsync(null).ConfigureAwait(true);
+            await LoadBackgroundAsync(null, cancellationToken).ConfigureAwait(true);
             _currentBackgroundPath = null;
             return;
         }
@@ -3183,6 +3372,7 @@ public partial class VisualizerSceneControl : UserControl
             ? candidates[_random.Next(candidates.Count)]
             : candidates[0];
 
+        cancellationToken.ThrowIfCancellationRequested();
         TraceSceneState(
             "BackgroundRotationChosen",
             new KeyValuePair<string, object?>("force_different", forceDifferent),
@@ -3190,7 +3380,7 @@ public partial class VisualizerSceneControl : UserControl
             new KeyValuePair<string, object?>("candidate_count", candidates.Count),
             new KeyValuePair<string, object?>("chosen_path", Path.GetFileName(nextPath)));
         _currentBackgroundPath = nextPath;
-        await LoadBackgroundAsync(nextPath).ConfigureAwait(true);
+        await LoadBackgroundAsync(nextPath, cancellationToken).ConfigureAwait(true);
     }
 
     private void BeginBackgroundTransition(string path, BitmapImage incomingBitmap)
@@ -3217,32 +3407,51 @@ public partial class VisualizerSceneControl : UserControl
         TimeSpan duration = TimeSpan.FromMilliseconds(450);
         AnimateBackgroundProperty(incoming, Image.OpacityProperty, 0d, _currentBackgroundOpacity, duration, ease);
 
-        _backgroundTransitionCompletionTimer?.Stop();
-        DispatcherTimer completionTimer = new() { Interval = duration + TimeSpan.FromMilliseconds(100) };
-        _backgroundTransitionCompletionTimer = completionTimer;
-        completionTimer.Tick += (_, _) =>
-        {
-            completionTimer.Stop();
-            if (!ReferenceEquals(_backgroundTransitionCompletionTimer, completionTimer) ||
-                transitionGeneration != _backgroundTransitionGeneration)
-            {
-                TraceSceneState(
-                    "BackgroundTransitionSkipped",
-                    new KeyValuePair<string, object?>("path", Path.GetFileName(path)),
-                    new KeyValuePair<string, object?>("transition_generation", transitionGeneration),
-                    new KeyValuePair<string, object?>("active_generation", _backgroundTransitionGeneration));
-                return;
-            }
+        _backgroundTransitionCompletionDueUtc = DateTimeOffset.UtcNow + duration + TimeSpan.FromMilliseconds(100);
+        _backgroundTransitionCompletionBitmap = incomingBitmap;
+        _backgroundTransitionCompletionPath = path;
+        _backgroundTransitionCompletionGeneration = transitionGeneration;
+        StartSceneScheduler();
+    }
 
-            CanonicalizeBackgroundLayers(incomingBitmap);
+    private void CompleteScheduledBackgroundTransition()
+    {
+        if (!_backgroundTransitionInFlight)
+        {
+            ClearScheduledBackgroundTransition();
+            return;
+        }
+
+        BitmapImage? incomingBitmap = _backgroundTransitionCompletionBitmap;
+        string? path = _backgroundTransitionCompletionPath;
+        int transitionGeneration = _backgroundTransitionCompletionGeneration;
+        ClearScheduledBackgroundTransition();
+        if (incomingBitmap is null ||
+            transitionGeneration != _backgroundTransitionGeneration)
+        {
             TraceSceneState(
-                "BackgroundTransitionComplete",
+                "BackgroundTransitionSkipped",
                 new KeyValuePair<string, object?>("path", Path.GetFileName(path)),
-                new KeyValuePair<string, object?>("zoom_scale", _backgroundZoomScale));
-            EnsureBackgroundSlowZoomRunning();
-            _backgroundTransitionCompletionTimer = null;
-        };
-        completionTimer.Start();
+                new KeyValuePair<string, object?>("transition_generation", transitionGeneration),
+                new KeyValuePair<string, object?>("active_generation", _backgroundTransitionGeneration));
+            return;
+        }
+
+        CanonicalizeBackgroundLayers(incomingBitmap);
+        TraceSceneState(
+            "BackgroundTransitionComplete",
+            new KeyValuePair<string, object?>("path", Path.GetFileName(path)),
+            new KeyValuePair<string, object?>("zoom_scale", _backgroundZoomScale));
+        EnsureBackgroundSlowZoomRunning();
+    }
+
+    private void ClearScheduledBackgroundTransition()
+    {
+        // Do not bump _backgroundTransitionGeneration here: BeginBackgroundTransition owns generation advancement,
+        // and completion validates against the captured generation before canonicalizing layers.
+        _backgroundTransitionCompletionDueUtc = null;
+        _backgroundTransitionCompletionBitmap = null;
+        _backgroundTransitionCompletionPath = null;
     }
 
     private void ResetBackgroundZoomState()
@@ -3414,8 +3623,7 @@ public partial class VisualizerSceneControl : UserControl
 
     private void FinalizeBackgroundTransition(Image activeImage, Image standbyImage, ImageSource source)
     {
-        _backgroundTransitionCompletionTimer?.Stop();
-        _backgroundTransitionCompletionTimer = null;
+        ClearScheduledBackgroundTransition();
         _backgroundTransitionInFlight = false;
         StopBackgroundAnimations(activeImage);
         StopBackgroundAnimations(standbyImage);
@@ -3440,12 +3648,14 @@ public partial class VisualizerSceneControl : UserControl
 
     private void SetBackgroundZoomRunning(bool enabled, string reason)
     {
-        bool isEnabled = _backgroundZoomTimer.IsEnabled;
+        bool isEnabled = _backgroundZoomRunning;
         if (enabled)
         {
             if (!isEnabled)
             {
-                _backgroundZoomTimer.Start();
+                _backgroundZoomRunning = true;
+                _nextBackgroundZoomTickUtc = DateTimeOffset.UtcNow + BackgroundZoomInterval;
+                StartSceneScheduler();
                 TraceSceneState(
                     "BackgroundZoomStarted",
                     new KeyValuePair<string, object?>("reason", reason),
@@ -3459,7 +3669,8 @@ public partial class VisualizerSceneControl : UserControl
         if (!isEnabled)
             return;
 
-        _backgroundZoomTimer.Stop();
+        _backgroundZoomRunning = false;
+        _nextBackgroundZoomTickUtc = DateTimeOffset.MaxValue;
         TraceSceneState(
             "BackgroundZoomStopped",
             new KeyValuePair<string, object?>("reason", reason),
@@ -4389,24 +4600,22 @@ public partial class VisualizerSceneControl : UserControl
     private void StartDemoFlashSequence()
     {
         _demoFlashTicks = 0;
-        if (_demoFlashTimer.IsEnabled)
-            _demoFlashTimer.Stop();
-
-        _demoFlashTimer.Start();
+        _nextDemoFlashTickUtc = DateTimeOffset.UtcNow + DemoFlashInterval;
+        StartSceneScheduler();
         RunDemoFlashPulse();
     }
 
     private void StopDemoFlashSequence()
     {
-        _demoFlashTimer.Stop();
         _demoFlashTicks = 0;
+        _nextDemoFlashTickUtc = DateTimeOffset.MaxValue;
     }
 
     private void RunDemoFlashPulse()
     {
         if (_demoFlashTicks >= 4)
         {
-            _demoFlashTimer.Stop();
+            StopDemoFlashSequence();
             return;
         }
 

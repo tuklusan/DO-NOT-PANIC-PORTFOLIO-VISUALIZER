@@ -275,7 +275,10 @@ public sealed class VisualizerRenderBehaviorTests
             "Controls",
             "VisualizerSceneControl.xaml.cs"));
 
-        Assert.Contains("_backgroundZoomTimer.Tick += (_, _) => StepBackgroundSlowZoom();", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private readonly DispatcherTimer _sceneTimer = new() { Interval = SceneSchedulerInterval };", codeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("_backgroundTransitionCompletionTimer", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("if (_backgroundZoomRunning && now >= _nextBackgroundZoomTickUtc)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("RunScheduledSceneAction(\"background-zoom\", StepBackgroundSlowZoom);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void StepBackgroundSlowZoom()", codeBehind, StringComparison.Ordinal);
         Assert.Contains("\"BackgroundTimerArmed\"", codeBehind, StringComparison.Ordinal);
         Assert.Contains("\"BackgroundRotationChosen\"", codeBehind, StringComparison.Ordinal);
@@ -1267,14 +1270,26 @@ public sealed class VisualizerRenderBehaviorTests
                 "StopLiveTimers",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("StopLiveTimers method not found.");
+            MethodInfo sceneSchedulerTick = typeof(VisualizerSceneControl).GetMethod(
+                "OnSceneSchedulerTick",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("OnSceneSchedulerTick method not found.");
             FieldInfo settingsField = typeof(VisualizerSceneControl).GetField(
                 "_settings",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_settings field not found.");
-            FieldInfo refreshTimerField = typeof(VisualizerSceneControl).GetField(
-                "_refreshTimer",
+            FieldInfo sceneTimerField = typeof(VisualizerSceneControl).GetField(
+                "_sceneTimer",
                 BindingFlags.NonPublic | BindingFlags.Instance)
-                ?? throw new InvalidOperationException("_refreshTimer field not found.");
+                ?? throw new InvalidOperationException("_sceneTimer field not found.");
+            FieldInfo nextRuntimeQuoteTickField = typeof(VisualizerSceneControl).GetField(
+                "_nextRuntimeQuoteTickUtc",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_nextRuntimeQuoteTickUtc field not found.");
+            FieldInfo nextClockTickField = typeof(VisualizerSceneControl).GetField(
+                "_nextClockTickUtc",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_nextClockTickUtc field not found.");
 
             settingsField.SetValue(control, new AppSettings
             {
@@ -1285,9 +1300,20 @@ public sealed class VisualizerRenderBehaviorTests
 
             try
             {
+                DateTimeOffset beforeConfigure = DateTimeOffset.UtcNow;
                 configureTimers.Invoke(control, []);
-                DispatcherTimer refreshTimer = Assert.IsType<DispatcherTimer>(refreshTimerField.GetValue(control));
-                Assert.Equal(TimeSpan.FromSeconds(1), refreshTimer.Interval);
+                DateTimeOffset afterConfigure = DateTimeOffset.UtcNow;
+                DispatcherTimer sceneTimer = Assert.IsType<DispatcherTimer>(sceneTimerField.GetValue(control));
+                DateTimeOffset nextRuntimeQuoteTick = Assert.IsType<DateTimeOffset>(nextRuntimeQuoteTickField.GetValue(control));
+                Assert.Equal(TimeSpan.FromMilliseconds(33), sceneTimer.Interval);
+                Assert.InRange(nextRuntimeQuoteTick - beforeConfigure, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(2000));
+                Assert.InRange(nextRuntimeQuoteTick - afterConfigure, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(2000));
+
+                nextClockTickField.SetValue(control, DateTimeOffset.MaxValue);
+                nextRuntimeQuoteTickField.SetValue(control, DateTimeOffset.UtcNow - TimeSpan.FromSeconds(1));
+                sceneSchedulerTick.Invoke(control, [null, EventArgs.Empty]);
+                DateTimeOffset nextRuntimeQuoteTickAfterScheduler = Assert.IsType<DateTimeOffset>(nextRuntimeQuoteTickField.GetValue(control));
+                Assert.True(nextRuntimeQuoteTickAfterScheduler > DateTimeOffset.UtcNow);
             }
             finally
             {
@@ -2790,8 +2816,10 @@ public sealed class VisualizerRenderBehaviorTests
             "Controls",
             "VisualizerSceneControl.xaml.cs"));
 
-        Assert.Contains("_demoFlashTimer", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DemoFlashInterval = TimeSpan.FromSeconds(30)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("_nextDemoFlashTickUtc", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StartDemoFlashSequence()", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("if (_demoFlashTicks > 0 && now >= _nextDemoFlashTickUtc)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RunDemoFlashPulse()", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("TriggerValueFlash(Brushes.DeepSkyBlue)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("TriggerCardFlash(Brushes.DeepSkyBlue)", sceneCodeBehind, StringComparison.Ordinal);

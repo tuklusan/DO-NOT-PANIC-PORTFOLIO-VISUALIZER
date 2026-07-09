@@ -9789,17 +9789,25 @@
       "priority": 2,
       "area": "UI fluidity",
       "title": "Consolidate multiple `DispatcherTimer` instances in `VisualizerSceneControl` into one",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: 11 separate timers cause dispatcher pressure.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Implemented a unified VisualizerSceneControl scene scheduler that replaces the separate clock, runtime quote, world data, background rotation, background zoom, demo flash, motion, and transition-completion DispatcherTimer fields with one 33 ms scene timer and due-time checks.",
+        "Added fault isolation and slow-action tracing for scheduled scene actions, single-shot tick processing to prevent queued heartbeat pileups, and cancellation/generation protection for async background rotations.",
+        "Updated forensic scheduler/background tests for the new unified scheduler behavior and old timer removal.",
+        "Focused validation passed: scheduler/background targeted tests passed in Release.",
+        "Full validation passed: PortfolioSaver.Tests Release suite 656/656 passed.",
+        "DeepSeek code-review loop completed; concrete Critical/High implementation findings were addressed, with remaining scheduler-starvation concern accepted as an architectural tradeoff of CR-203 and mitigated by single-shot ticks plus slow-action tracing."
       ],
       "notes": [
         "Recommendation: Merge into a single 33 ms timer with internal scheduled action checks.",
         "Acceptance criteria: Dispatcher queue depth decreases; UI rendering remains smooth under load.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: implemented and closed 2026-07-09.",
+        "The CR explicitly requested timer consolidation; motion was kept in the unified scene scheduler rather than restored to a separate timer. Slow action telemetry was added to support future tuning if traces show starvation."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",

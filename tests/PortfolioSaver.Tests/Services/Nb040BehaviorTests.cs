@@ -1029,7 +1029,7 @@ public sealed class Nb040BehaviorTests
         string source = File.ReadAllText(Path.GetFullPath(controlPath));
 
         Assert.Contains(
-            "_refreshTimer.Tick += (_, _) => DispatchNextRuntimeQuoteRequestSafe();",
+            "private readonly DispatcherTimer _sceneTimer = new() { Interval = SceneSchedulerInterval };",
             source,
             StringComparison.Ordinal);
         Assert.Contains(
@@ -1041,7 +1041,15 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
-            "_refreshTimer.Interval = RuntimeQuoteDispatchInterval;",
+            "if (now >= _nextRuntimeQuoteTickUtc)",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "_nextRuntimeQuoteTickUtc = now + RuntimeQuoteDispatchInterval;",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "RunScheduledSceneAction(\"runtime-quote\", DispatchNextRuntimeQuoteRequestSafe);",
             source,
             StringComparison.Ordinal);
         Assert.Contains(
