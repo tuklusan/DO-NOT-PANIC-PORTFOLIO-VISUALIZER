@@ -886,6 +886,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("latest_server_quote_trace_age_seconds=", script, StringComparison.Ordinal);
         Assert.Contains("latest_server_quote_fetch_age_seconds=", script, StringComparison.Ordinal);
         Assert.Contains("function Get-TracePayloadFieldValue", script, StringComparison.Ordinal);
+        Assert.Contains("$env:DNPPV_RUNTIME_QUOTE_DEBUG_TRACE = '1'", script, StringComparison.Ordinal);
         Assert.Contains("Get-LatestRuntimeQuoteEvidence -RelativePath 'Trace\\trace.circular.log' -EventName 'RuntimeQuoteApplied' -SymbolFieldName 'requested_symbol' -FetchTimestampFieldName 'latest_fetch_timestamp_utc'", script, StringComparison.Ordinal);
         Assert.Contains("Get-LatestRuntimeQuoteEvidence -RelativePath 'Trace\\yfinance.circular.log' -EventName 'QuoteResponseObserved' -SymbolFieldName 'symbol' -FetchTimestampFieldName 'fetch_timestamp_utc'", script, StringComparison.Ordinal);
         Assert.Contains("[DateTimeOffset]::UtcNow", script, StringComparison.Ordinal);

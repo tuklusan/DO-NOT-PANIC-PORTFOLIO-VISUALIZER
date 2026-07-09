@@ -220,6 +220,7 @@ if ($VisualizerRuntimeDurationMinutes -le 0) {
     throw "VisualizerRuntimeDurationMinutes (or ScreensaverDurationMinutes alias) must be greater than zero."
 }
 $previousDisableInputExit = $null
+$previousRuntimeQuoteDebugTrace = $null
 $previousFaultProfilePath = $null
 $previousFaultProfile = $null
 Remove-Item Env:DNPPV_YFINANCE_FAULT_PROFILE_PATH -ErrorAction SilentlyContinue
@@ -3429,6 +3430,8 @@ try {
             $previousDisableInputExit = $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT
             $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = '1'
         }
+        $previousRuntimeQuoteDebugTrace = $env:DNPPV_RUNTIME_QUOTE_DEBUG_TRACE
+        $env:DNPPV_RUNTIME_QUOTE_DEBUG_TRACE = '1'
         $desktop = Start-Process -FilePath $desktopExe -PassThru
         $desktopWindow = Wait-ProcessWindowElementWithFallback `
             -Process $desktop `
@@ -3886,6 +3889,12 @@ finally {
     }
     else {
         $env:PORTFOLIOSAVER_DISABLE_INPUT_EXIT = $previousDisableInputExit
+    }
+    if ($null -eq $previousRuntimeQuoteDebugTrace) {
+        Remove-Item Env:DNPPV_RUNTIME_QUOTE_DEBUG_TRACE -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:DNPPV_RUNTIME_QUOTE_DEBUG_TRACE = $previousRuntimeQuoteDebugTrace
     }
     try {
         $localTraceTarget = Join-Path $results 'trace'

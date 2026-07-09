@@ -46,6 +46,7 @@ public partial class VisualizerSceneControl : UserControl
     private const int RuntimeQuoteOfflineDisplayFailureThreshold = 1;
     private const int RuntimeQuoteTransportRecoveryFailureThreshold = 10;
     private static readonly bool EnableMarketCritters = false;
+    private static readonly bool RuntimeQuoteDebugTracingEnabled = ResolveRuntimeQuoteDebugTracingEnabled();
     private const string PinnedNycExchangeKey = "NewYorkNasdaq";
     private const int MaxVisibleGraphCards = 16;
     private const string FooterBaseText = "\u00A9 Supratim Sanyal. SANYALnet Labs.";
@@ -562,6 +563,16 @@ public partial class VisualizerSceneControl : UserControl
     {
         TraceLog.InfoState("Visualizer.Scene", eventName, fields);
     }
+
+    private static bool ResolveRuntimeQuoteDebugTracingEnabled()
+    {
+        string? raw = Environment.GetEnvironmentVariable("DNPPV_RUNTIME_QUOTE_DEBUG_TRACE");
+        return string.Equals(raw, "1", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(raw, "yes", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool ShouldTraceRuntimeQuoteDebug() => RuntimeQuoteDebugTracingEnabled;
 
     private void TraceSceneStateSummary(string eventName, bool preserveLayout)
     {
@@ -1254,11 +1265,14 @@ public partial class VisualizerSceneControl : UserControl
         CancellationTokenSource requestCancellation = new(RuntimeQuoteRequestTimeout);
         Task<IReadOnlyList<QuoteSnapshot>> requestTask = _runtimeQuoteProvider.GetQuotesAsync([symbol], requestCancellation.Token);
         _inFlightQuoteRequests.Add(symbol, requestTask, DateTimeOffset.UtcNow, requestCancellation);
-        TraceSceneState(
-            "RuntimeQuoteRequestQueued",
-            new KeyValuePair<string, object?>("symbol", symbol),
-            new KeyValuePair<string, object?>("timeout_seconds", RuntimeQuoteRequestTimeout.TotalSeconds),
-            new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+        if (ShouldTraceRuntimeQuoteDebug())
+        {
+            TraceSceneState(
+                "RuntimeQuoteRequestQueued",
+                new KeyValuePair<string, object?>("symbol", symbol),
+                new KeyValuePair<string, object?>("timeout_seconds", RuntimeQuoteRequestTimeout.TotalSeconds),
+                new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+        }
 
         _ = requestTask.ContinueWith(
             task => Dispatcher.InvokeAsync(() => ApplyCompletedRuntimeQuote(symbol, task)),
@@ -1269,6 +1283,9 @@ public partial class VisualizerSceneControl : UserControl
 
     private void TraceRuntimeQuoteDispatchSkippedIfDue(string reason)
     {
+        if (!ShouldTraceRuntimeQuoteDebug())
+            return;
+
         DateTimeOffset now = DateTimeOffset.UtcNow;
         if (now - _lastAllRuntimeQuotesInFlightTraceUtc < RuntimeQuoteRequestTimeout)
             return;
@@ -1320,6 +1337,9 @@ public partial class VisualizerSceneControl : UserControl
 
     private void TraceRuntimeQuoteLoopHeartbeatIfDue()
     {
+        if (!ShouldTraceRuntimeQuoteDebug())
+            return;
+
         DateTimeOffset now = DateTimeOffset.UtcNow;
         if (now - _lastRuntimeQuoteLoopHeartbeatUtc < TimeSpan.FromSeconds(30))
             return;
@@ -4481,11 +4501,15 @@ public partial class VisualizerSceneControl : UserControl
     {
         if (!_inFlightQuoteRequests.TryComplete(symbol, task, out _))
         {
-            TraceSceneState(
-                "RuntimeQuoteRequestCompletionIgnored",
-                new KeyValuePair<string, object?>("symbol", symbol),
-                new KeyValuePair<string, object?>("reason", "stale_or_pruned"),
-                new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+            if (ShouldTraceRuntimeQuoteDebug())
+            {
+                TraceSceneState(
+                    "RuntimeQuoteRequestCompletionIgnored",
+                    new KeyValuePair<string, object?>("symbol", symbol),
+                    new KeyValuePair<string, object?>("reason", "stale_or_pruned"),
+                    new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+            }
+
             return;
         }
 
@@ -4545,19 +4569,22 @@ public partial class VisualizerSceneControl : UserControl
             QueueWorldMarketsRefresh(refreshAncillary: false, reason: "quote-delta");
 
         TraceDisplayedTapeSampleIfDue();
-        DateTimeOffset latestFetchUtc = deltaQuotes.Values
-            .Where(quote => quote.FetchTimestampUtc > DateTimeOffset.MinValue)
-            .Select(quote => quote.FetchTimestampUtc)
-            .DefaultIfEmpty(DateTimeOffset.MinValue)
-            .Max();
-        TraceSceneState(
-            "RuntimeQuoteApplied",
-            new KeyValuePair<string, object?>("requested_symbol", symbol),
-            new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel?.DataFreshnessText),
-            new KeyValuePair<string, object?>("latest_fetch_timestamp_utc", latestFetchUtc == DateTimeOffset.MinValue ? null : latestFetchUtc),
-            new KeyValuePair<string, object?>("latest_fetch_age_seconds", latestFetchUtc == DateTimeOffset.MinValue ? null : Math.Round(Math.Max(0d, (DateTimeOffset.UtcNow - latestFetchUtc).TotalSeconds), 1)),
-            new KeyValuePair<string, object?>("resolved_symbols", deltaQuotes.Keys.ToList()),
-            new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+        if (ShouldTraceRuntimeQuoteDebug())
+        {
+            DateTimeOffset latestFetchUtc = deltaQuotes.Values
+                .Where(quote => quote.FetchTimestampUtc > DateTimeOffset.MinValue)
+                .Select(quote => quote.FetchTimestampUtc)
+                .DefaultIfEmpty(DateTimeOffset.MinValue)
+                .Max();
+            TraceSceneState(
+                "RuntimeQuoteApplied",
+                new KeyValuePair<string, object?>("requested_symbol", symbol),
+                new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel?.DataFreshnessText),
+                new KeyValuePair<string, object?>("latest_fetch_timestamp_utc", latestFetchUtc == DateTimeOffset.MinValue ? null : latestFetchUtc),
+                new KeyValuePair<string, object?>("latest_fetch_age_seconds", latestFetchUtc == DateTimeOffset.MinValue ? null : Math.Round(Math.Max(0d, (DateTimeOffset.UtcNow - latestFetchUtc).TotalSeconds), 1)),
+                new KeyValuePair<string, object?>("resolved_symbols", deltaQuotes.Keys.ToList()),
+                new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+        }
     }
 
     private void TraceRuntimeQuoteRequestFailed(string symbol, Exception ex, bool failureCounted, int failureStreak)

@@ -1110,6 +1110,18 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
+            "DNPPV_RUNTIME_QUOTE_DEBUG_TRACE",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "ShouldTraceRuntimeQuoteDebug()",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "if (ShouldTraceRuntimeQuoteDebug())",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
             "RuntimeQuoteLoopHeartbeat",
             source,
             StringComparison.Ordinal);

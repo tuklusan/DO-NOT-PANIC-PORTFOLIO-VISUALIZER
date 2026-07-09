@@ -10066,7 +10066,7 @@
       "priority": 2,
       "area": "Performance / IO",
       "title": "Gate `TraceLog.InfoState` calls in hot ticker path behind debug condition",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
@@ -10076,7 +10076,9 @@
       "notes": [
         "Recommendation: Mark with `[Conditional(\"DEBUG\")]` or sample at low rate.",
         "Acceptance criteria: Release builds produce <10 trace lines per ticker cycle; disk I/O from tracing is negligible.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Closure 2026-07-09T19:26:52.5948724-04:00: Runtime quote success/heartbeat/skip trace events are gated behind DNPPV_RUNTIME_QUOTE_DEBUG_TRACE while timeout/failure/freshness diagnostics remain always-on; VM harness enables the debug switch only for validation evidence.",
+        "Validation: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter FullyQualifiedName~Nb040BehaviorTests|FullyQualifiedName~VmHarnessScriptTests passed 85/85."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
