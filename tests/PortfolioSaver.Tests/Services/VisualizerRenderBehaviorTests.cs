@@ -2807,6 +2807,24 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
+    public void GraphWarmup_BatchesSynchronousLayoutFlushes()
+    {
+        string sceneCodeBehind = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "VisualizerSceneControl.xaml.cs"));
+
+        string applyOrUpdateGraph = ExtractMethodBody(sceneCodeBehind, "private void ApplyOrUpdateGraph");
+
+        Assert.Contains("PrepareGraphWarmupLayoutBatch();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void PrepareGraphWarmupLayoutBatch()", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("_graphWarmupLayoutPrepared = false;", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("UpdateLayout();", applyOrUpdateGraph, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void VisualizerScene_ProvidesDeterministicDemoFlashPulses_ForVisualValidation()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
@@ -2932,6 +2950,31 @@ public sealed class VisualizerRenderBehaviorTests
             MarketStatusText = "OPEN"
         });
         return clock;
+    }
+
+    private static string ExtractMethodBody(string source, string methodSignature)
+    {
+        int methodStart = source.IndexOf(methodSignature, StringComparison.Ordinal);
+        if (methodStart < 0)
+            throw new InvalidOperationException($"Could not locate method signature: {methodSignature}");
+
+        int bodyStart = source.IndexOf('{', methodStart);
+        if (bodyStart < 0)
+            throw new InvalidOperationException($"Could not locate method body: {methodSignature}");
+
+        int depth = 0;
+        for (int index = bodyStart; index < source.Length; index++)
+        {
+            if (source[index] == '{')
+                depth++;
+            else if (source[index] == '}')
+                depth--;
+
+            if (depth == 0)
+                return source.Substring(bodyStart, index - bodyStart + 1);
+        }
+
+        throw new InvalidOperationException($"Could not locate method body end: {methodSignature}");
     }
 
     private static string GetRepoRoot()

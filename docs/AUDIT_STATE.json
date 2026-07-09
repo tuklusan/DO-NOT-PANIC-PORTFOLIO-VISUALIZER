@@ -9824,17 +9824,23 @@
       "priority": 2,
       "area": "UI jitter",
       "title": "Batch `UpdateLayout()` calls in graph warmup to prevent per-graph spikes",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "High",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: `ApplyOrUpdateGraph` calls `UpdateLayout()` synchronously for each of up to 16 graphs.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Implemented `PrepareGraphWarmupLayoutBatch()` so graph warmup performs one synchronous layout preparation per warmup run instead of one `UpdateLayout()` per yielded graph.",
+        "`ApplyOrUpdateGraph` now applies responsive sizing and graph synchronization without forcing a synchronous WPF layout flush on every graph card.",
+        "Added `GraphWarmup_BatchesSynchronousLayoutFlushes` source-regression coverage to prevent reintroducing per-card `UpdateLayout()` calls.",
+        "Validation passed on 2026-07-09: `dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --configuration Release --nologo --verbosity minimal --filter \"FullyQualifiedName~VisualizerRenderBehaviorTests|FullyQualifiedName~StartupCoordinatorGraphSelectionTests|FullyQualifiedName~Nb040BehaviorTests\"` (146 passed).",
+        "Full regression validation passed on 2026-07-09: `dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --configuration Release --nologo --verbosity minimal --filter \"FullyQualifiedName!~__NoSuchTestFilter__\"` (657 passed)."
       ],
       "notes": [
         "Recommendation: Defer `UpdateLayout()` to after the batch or use `InvalidateVisual()`.",
         "Acceptance criteria: Graph population does not cause visible stutter; initial card layout completes within 2 s.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking.",
+        "Closed on 2026-07-09. The warmup path now batches the expensive layout flush while preserving per-graph responsive sizing, quote application, sprite placement, and visual synchronization."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",

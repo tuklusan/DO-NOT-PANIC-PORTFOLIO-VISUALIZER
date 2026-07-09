@@ -124,6 +124,7 @@ public partial class VisualizerSceneControl : UserControl
     private CancellationTokenSource? _graphWarmupCancellation;
     private CancellationTokenSource? _backgroundRecoveryReloadCancellation;
     private Task? _graphWarmupTask;
+    private bool _graphWarmupLayoutPrepared;
     private CancellationTokenSource? _captureSequenceCancellation;
     private TimeSpan? _ntpOffset;
     private DateTimeOffset _lastNtpSyncUtc = DateTimeOffset.MinValue;
@@ -433,6 +434,7 @@ public partial class VisualizerSceneControl : UserControl
 
         CancellationTokenSource cancellation = new();
         _graphWarmupCancellation = cancellation;
+        _graphWarmupLayoutPrepared = false;
         _lastGraphSelectionRefreshUtc = DateTimeOffset.UtcNow;
         _graphWarmupTask = WarmGraphsAsync(rotationSeed, preserveLayout, cancellation.Token);
     }
@@ -615,6 +617,7 @@ public partial class VisualizerSceneControl : UserControl
         try
         {
             TraceScene($"WarmGraphsAsync starting rotationSeed={rotationSeed} preserveLayout={preserveLayout}.");
+            PrepareGraphWarmupLayoutBatch();
             await foreach (FloatingGraphViewModel graph in _startupCoordinator.LoadGraphsIncrementallyAsync(_settings, rotationSeed, cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -654,9 +657,18 @@ public partial class VisualizerSceneControl : UserControl
         }
     }
 
+    private void PrepareGraphWarmupLayoutBatch()
+    {
+        if (_graphWarmupLayoutPrepared)
+            return;
+
+        _graphWarmupLayoutPrepared = true;
+        UpdateLayout();
+        ApplyResponsiveLayout();
+    }
+
     private void ApplyOrUpdateGraph(FloatingGraphViewModel graph, bool preserveLayout)
     {
-        UpdateLayout();
         ApplyResponsiveLayout();
         string graphKey = GetGraphKey(graph);
         int existingIndex = -1;
