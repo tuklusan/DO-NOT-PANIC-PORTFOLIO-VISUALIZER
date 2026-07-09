@@ -924,6 +924,7 @@ public sealed class Nb040BehaviorTests
         string source = File.ReadAllText(Path.GetFullPath(coordinatorPath));
 
         Assert.Contains("await Task.WhenAll(quotesTask, backgroundsTask).ConfigureAwait(false);", source, StringComparison.Ordinal);
+        Assert.Contains("await _settingsService.LoadAsync(cancellationToken).ConfigureAwait(false);", source, StringComparison.Ordinal);
         Assert.Contains("await LoadQuotesAsync(", source, StringComparison.Ordinal);
         Assert.Contains("cancellationToken).ConfigureAwait(false);", source, StringComparison.Ordinal);
         Assert.Contains("await _financeNewsService.GetHeadlinesAsync(", source, StringComparison.Ordinal);

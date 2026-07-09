@@ -9959,7 +9959,15 @@
       "priority": 2,
       "area": "UI startup responsiveness",
       "title": "Convert `VisualizerSettingsService.Load` to async to avoid UI thread blocking",
-      "status": "open",
+      "status": "closed",
+      "closed_utc": "2026-07-09T21:36:25Z",
+      "resolution": "Added VisualizerSettingsService.LoadAsync using async FileStream and JsonSerializer.DeserializeAsync; runtime startup, scene rebuild, and background catalog refresh paths now use async settings reads instead of dispatcher-thread synchronous file IO. Removed unused sync StartupCoordinator entry points for bootstrap/background-catalog runtime paths.",
+      "verification": [
+        "Focused test gate passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter \"FullyQualifiedName~SettingsFileServiceTests|FullyQualifiedName~Nb040BehaviorTests|FullyQualifiedName~Nb048BehaviorTests|FullyQualifiedName~VisualizerRenderBehaviorTests\" => 153/153 passed.",
+        "Full suite passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter \"FullyQualifiedName!~__NoSuchTestFilter__\" => 662/662 passed.",
+        "Regression guards assert StartupCoordinator uses LoadAsync with ConfigureAwait(false), the bootstrap scene contract is async, and config-resume background catalog refresh uses the async path.",
+        "DeepSeek review blocker addressed by wrapping async background catalog refresh with trace logging for exceptions instead of silent fire-and-forget failure."
+      ],
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [

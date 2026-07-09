@@ -36,8 +36,9 @@ public sealed class Nb048BehaviorTests
             typeof(CancellationToken));
         MethodInfo buildBootstrap = RequirePublicMethod(
             typeof(StartupCoordinator),
-            nameof(StartupCoordinator.BuildBootstrapScene),
-            typeof(VisualizerSceneState));
+            nameof(StartupCoordinator.BuildBootstrapSceneAsync),
+            typeof(Task<VisualizerSceneState>),
+            typeof(CancellationToken));
         MethodInfo buildNews = RequirePublicMethod(
             typeof(StartupCoordinator),
             nameof(StartupCoordinator.BuildNewsViewModelAsync),
@@ -47,7 +48,7 @@ public sealed class Nb048BehaviorTests
             typeof(CancellationToken));
 
         Assert.Equal(2, buildScene.GetParameters().Length);
-        Assert.Empty(buildBootstrap.GetParameters());
+        Assert.Single(buildBootstrap.GetParameters());
         Assert.Equal(3, buildNews.GetParameters().Length);
     }
 

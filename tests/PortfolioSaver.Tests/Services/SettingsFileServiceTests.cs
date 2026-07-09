@@ -233,7 +233,7 @@ public sealed class SettingsFileServiceTests
     }
 
     [Fact]
-    public void Save_PersistsAiSecretSecurely_AndRuntimeLoadRestoresIt()
+    public async Task Save_PersistsAiSecretSecurely_AndRuntimeLoadRestoresIt()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), "PortfolioSaverTests", Guid.NewGuid().ToString("N"));
         string? previousRoot = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_APPDATA_ROOT");
@@ -259,11 +259,10 @@ public sealed class SettingsFileServiceTests
 
             AppSettings configLoaded = service.Load();
             VisualizerSettingsService runtimeService = new();
-            AppSettings runtimeLoaded = runtimeService.Load();
+            AppSettings runtimeLoadedAsync = await runtimeService.LoadAsync();
 
             Assert.Equal("placeholder-value", configLoaded.AiApiKey);
-
-            Assert.Equal("placeholder-value", runtimeLoaded.AiApiKey);
+            Assert.Equal("placeholder-value", runtimeLoadedAsync.AiApiKey);
         }
         finally
         {

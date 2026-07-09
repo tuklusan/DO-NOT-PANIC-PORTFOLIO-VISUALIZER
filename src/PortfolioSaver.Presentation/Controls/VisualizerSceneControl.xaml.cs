@@ -210,7 +210,7 @@ public partial class VisualizerSceneControl : UserControl
 
         _ = Dispatcher.BeginInvoke(new Action(() =>
         {
-            RefreshBackgroundCatalogFromSettings("warmup-complete");
+            StartBackgroundCatalogRefresh("warmup-complete");
         }), DispatcherPriority.Background);
     }
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -225,7 +225,7 @@ public partial class VisualizerSceneControl : UserControl
             ResetRuntimeQuoteFailureStreak();
             _activeBackgroundImage = BackgroundImageA;
             _inactiveBackgroundImage = BackgroundImageB;
-            ApplySceneState(_startupCoordinator.BuildBootstrapScene(), preserveLayout: false);
+            ApplySceneState(await _startupCoordinator.BuildBootstrapSceneAsync(), preserveLayout: false);
             _nextRuntimeQuoteTickUtc = DateTimeOffset.MaxValue;
             RestartGraphWarmup(_graphRotationSeed, preserveLayout: false);
             await RefreshSceneAsync(preserveLayout: false, fullAncillaryRefresh: true);
@@ -1412,7 +1412,7 @@ public partial class VisualizerSceneControl : UserControl
             return;
         }
 
-        RefreshBackgroundCatalogFromSettings("config-resume");
+        StartBackgroundCatalogRefresh("config-resume");
         if (_initialized)
             _ = RefreshSceneAfterValidationPauseAsync();
 
@@ -1443,23 +1443,56 @@ public partial class VisualizerSceneControl : UserControl
         CancelBackgroundRecoveryReload();
     }
 
-    private void RefreshBackgroundCatalogFromSettings(string reason)
+    private void StartBackgroundCatalogRefresh(string reason)
+    {
+        try
+        {
+            _ = RefreshBackgroundCatalogFromSettingsAsync(reason);
+        }
+        catch (Exception ex)
+        {
+            TraceScene($"StartBackgroundCatalogRefresh failed reason={reason}: {ex}");
+        }
+    }
+
+    private async Task RefreshBackgroundCatalogFromSettingsAsync(string reason)
+    {
+        try
+        {
+            (IReadOnlyList<string> paths, IReadOnlyDictionary<string, string> attributions) = await _startupCoordinator.GetCurrentBackgroundCatalogAsync();
+            List<string> refreshedPaths = paths
+                .Where(IsSupportedBackgroundReference)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (!Dispatcher.CheckAccess())
+            {
+                await Dispatcher.InvokeAsync(() => ApplyBackgroundCatalogRefresh(reason, refreshedPaths, attributions));
+                return;
+            }
+
+            ApplyBackgroundCatalogRefresh(reason, refreshedPaths, attributions);
+        }
+        catch (Exception ex)
+        {
+            TraceScene($"RefreshBackgroundCatalogFromSettingsAsync failed reason={reason}: {ex}");
+        }
+    }
+
+    private void ApplyBackgroundCatalogRefresh(
+        string reason,
+        IReadOnlyList<string> refreshedPaths,
+        IReadOnlyDictionary<string, string> attributions)
     {
         _backgroundPaths ??= [];
         _backgroundAttributions ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        (IReadOnlyList<string> paths, IReadOnlyDictionary<string, string> attributions) = _startupCoordinator.GetCurrentBackgroundCatalog();
-        List<string> refreshedPaths = paths
-            .Where(IsSupportedBackgroundReference)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
         BackgroundCatalogRefreshDecision decision = DecideBackgroundCatalogRefresh(
             _currentBackgroundPath,
             _backgroundPaths,
             refreshedPaths);
 
         _backgroundAttributions = attributions;
-        _backgroundPaths = refreshedPaths;
+        _backgroundPaths = refreshedPaths.ToList();
         if (!decision.CurrentStillValid)
         {
             _currentBackgroundPath = null;

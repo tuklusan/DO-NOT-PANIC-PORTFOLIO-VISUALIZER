@@ -1893,7 +1893,8 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("BackgroundAttributions", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("UpdateFooterAttribution(backgroundPath);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("QueueBackgroundCatalogRescan", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("RefreshBackgroundCatalogFromSettings(\"config-resume\")", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("StartBackgroundCatalogRefresh(\"config-resume\")", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Dispatcher.InvokeAsync(() => ApplyBackgroundCatalogRefresh", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RotateBackgroundAsync(forceDifferent: false)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RotateBackgroundAsync(forceDifferent: true)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("BackgroundCatalogRescanned", sceneCodeBehind, StringComparison.Ordinal);

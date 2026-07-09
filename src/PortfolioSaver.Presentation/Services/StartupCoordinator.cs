@@ -84,10 +84,15 @@ public sealed class StartupCoordinator
         _exchangePhotoCacheService.BackgroundCacheWarmupCompleted += () => BackgroundCacheWarmupCompleted?.Invoke();
     }
 
-    public VisualizerSceneState BuildBootstrapScene()
+    public async Task<VisualizerSceneState> BuildBootstrapSceneAsync(CancellationToken cancellationToken = default)
     {
         ConsumePendingRuntimeQuoteSeeds();
-        AppSettings settings = _settingsService.Load();
+        AppSettings settings = await _settingsService.LoadAsync(cancellationToken).ConfigureAwait(false);
+        return BuildBootstrapScene(settings);
+    }
+
+    private VisualizerSceneState BuildBootstrapScene(AppSettings settings)
+    {
         WarnIfIgnoredLegacyRuntimeAiApiKeyEnvironmentVariableIsPresent(settings);
         bool networkAvailable = _isNetworkAvailable();
         IReadOnlyList<string> backgroundPaths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
@@ -172,16 +177,17 @@ public sealed class StartupCoordinator
     }
 
 
-    public (IReadOnlyList<string> Paths, IReadOnlyDictionary<string, string> Attributions) GetCurrentBackgroundCatalog()
+    public async Task<(IReadOnlyList<string> Paths, IReadOnlyDictionary<string, string> Attributions)> GetCurrentBackgroundCatalogAsync(CancellationToken cancellationToken = default)
     {
-        AppSettings settings = _settingsService.Load();
+        AppSettings settings = await _settingsService.LoadAsync(cancellationToken).ConfigureAwait(false);
         IReadOnlyList<string> paths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
         return (paths, _exchangePhotoCacheService.GetFooterAttributionsForBackgrounds(paths));
     }
+
     public async Task<VisualizerSceneState> BuildSceneAsync(int graphRotationSeed = 0, CancellationToken cancellationToken = default)
     {
         ConsumePendingRuntimeQuoteSeeds();
-        AppSettings settings = _settingsService.Load();
+        AppSettings settings = await _settingsService.LoadAsync(cancellationToken).ConfigureAwait(false);
         WarnIfIgnoredLegacyRuntimeAiApiKeyEnvironmentVariableIsPresent(settings);
         bool networkAvailable = _isNetworkAvailable();
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));
@@ -220,7 +226,7 @@ public sealed class StartupCoordinator
     public async Task<VisualizerSceneState> BuildProgressiveQuoteSceneAsync(int graphRotationSeed = 0, CancellationToken cancellationToken = default)
     {
         ConsumePendingRuntimeQuoteSeeds();
-        AppSettings settings = _settingsService.Load();
+        AppSettings settings = await _settingsService.LoadAsync(cancellationToken).ConfigureAwait(false);
         WarnIfIgnoredLegacyRuntimeAiApiKeyEnvironmentVariableIsPresent(settings);
         bool networkAvailable = _isNetworkAvailable();
         using HttpClient httpClient = HttpClientFactory.Create(TimeSpan.FromSeconds(Math.Max(3, settings.HttpTimeoutSeconds)));

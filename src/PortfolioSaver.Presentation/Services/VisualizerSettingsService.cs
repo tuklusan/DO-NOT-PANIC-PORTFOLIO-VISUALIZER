@@ -13,6 +13,8 @@
 // ============================================================================
 using System.IO;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
@@ -32,14 +34,28 @@ public sealed class VisualizerSettingsService
     private readonly ProviderSecretStoreService _providerSecretStoreService = new();
     public string SettingsPath => Path.Combine(PathHelper.GetAppDataDirectory(), "settings.json");
 
-    public AppSettings Load()
+    public async Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default)
     {
         AppSettings settings = Defaults.CreateSettings();
         if (File.Exists(SettingsPath))
         {
             try
             {
-                settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(SettingsPath), JsonOptions) ?? settings;
+                await using FileStream stream = new(
+                    SettingsPath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read,
+                    bufferSize: 4096,
+                    useAsync: true);
+                settings = await JsonSerializer.DeserializeAsync<AppSettings>(
+                    stream,
+                    JsonOptions,
+                    cancellationToken).ConfigureAwait(false) ?? settings;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch
             {
