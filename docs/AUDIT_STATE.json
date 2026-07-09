@@ -9756,17 +9756,23 @@
       "priority": 2,
       "area": "Network resilience",
       "title": "Add retry with exponential backoff and jitter to `RetryPolicyService`",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: Linear backoff without jitter increases contention under transient failures.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Implemented RetryPolicyService exponential backoff with capped delay and per-retry jitter, injectable jitter/delay delegates for deterministic tests, cancellation propagation, final exception preservation, and fail-fast delay validation.",
+        "Focused validation passed: RetryPolicyService test slice 11/11 passed in Release.",
+        "Full validation passed: PortfolioSaver.Tests Release suite 656/656 passed.",
+        "DeepSeek code-review gate passed with no Critical/High/Medium blocking findings; commit acceptable."
       ],
       "notes": [
         "Recommendation: Use `TimeSpan.FromMilliseconds(Math.Min(1000 * Math.Pow(2, attempt - 1), maxDelay)) + Random.Next(0, 200)`.",
         "Acceptance criteria: Retry storms are eliminated; average success rate under transient failures improves.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: implemented and closed 2026-07-09.",
+        "DeepSeek informational note about injected delay delegate was reviewed; no production action needed because delay exceptions propagate out of the catch block and the default delay is Task.Delay."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
