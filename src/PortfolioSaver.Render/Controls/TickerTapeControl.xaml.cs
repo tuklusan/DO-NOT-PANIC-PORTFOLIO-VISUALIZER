@@ -27,16 +27,40 @@ namespace PortfolioSaver.Render.Controls;
 public partial class TickerTapeControl : UserControl
 {
     private const double TapeCopySpacing = 20d;
+    private const int MaxDeferredViewportRetries = 2;
+    private const double SymbolHostWidth = 62d;
+    private const double SymbolHostRightMargin = 2d;
+    private const double LastValueWidth = 64d;
+    private const double LastValueRightMargin = 2d;
+    private const double ChangeValueWidth = 72d;
+    private const double SeparatorWidth = 1d;
+    private const double SeparatorLeftMargin = 9d;
+    private const double ItemRightMargin = 18d;
+    // Fixed ticker item span: symbol(62+2) + last(64+2) + change(72)
+    // + separator(1+9) + item margin(18) = 230. Keep this tied to the
+    // layout constants above so animation distance cannot drift silently.
+    private const double TapeItemFixedWidth = SymbolHostWidth
+        + SymbolHostRightMargin
+        + LastValueWidth
+        + LastValueRightMargin
+        + ChangeValueWidth
+        + SeparatorWidth
+        + SeparatorLeftMargin
+        + ItemRightMargin;
     private readonly TapeAnimationController _animationController = new();
+    private readonly Dictionary<int, double> _sequenceWidthCache = [];
     private readonly Dictionary<TapeItemViewModel, List<Border>> _flashTargets = [];
     private readonly HashSet<TapeItemViewModel> _subscribedItems = [];
     private bool _metricsQueued;
+    private int _deferredViewportRetries;
     private TapeViewModel? _tape;
     private string _contentSignature = string.Empty;
     private int _renderedSideCopyCount;
     private bool _isLoaded;
 
     internal TapeAnimationController AnimationControllerForTests => _animationController;
+
+    internal double TrackPanelWidthForTests => TrackPanel.Width;
 
     internal void RefreshMotionMetricsForTests() => RefreshMotionMetrics();
 
@@ -67,9 +91,14 @@ public partial class TickerTapeControl : UserControl
         _animationController.Stop();
         UnsubscribeFromTape(_tape);
         ClearFlashTargets();
+        _sequenceWidthCache.Clear();
     }
 
-    private void OnSizeChanged(object sender, SizeChangedEventArgs e) => QueueMetricsUpdate();
+    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        _deferredViewportRetries = 0;
+        QueueMetricsUpdate();
+    }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
@@ -82,13 +111,13 @@ public partial class TickerTapeControl : UserControl
         QueueMetricsUpdate();
     }
 
-    private void QueueMetricsUpdate()
+    private void QueueMetricsUpdate(DispatcherPriority priority = DispatcherPriority.Loaded)
     {
         if (_metricsQueued)
             return;
 
         _metricsQueued = true;
-        Dispatcher.BeginInvoke(RefreshMotionMetrics, DispatcherPriority.Loaded);
+        Dispatcher.BeginInvoke(RefreshMotionMetrics, priority);
     }
 
     private void RefreshMotionMetrics()
@@ -111,10 +140,15 @@ public partial class TickerTapeControl : UserControl
             return;
         }
 
-        UpdateLayout();
         double viewportWidth = ViewportHost.ActualWidth;
         if (viewportWidth <= 0)
         {
+            if (_deferredViewportRetries++ < MaxDeferredViewportRetries)
+            {
+                QueueMetricsUpdate(DispatcherPriority.Background);
+                return;
+            }
+
             TrackPanel.Children.Clear();
             TrackPanel.Width = 0d;
             _contentSignature = string.Empty;
@@ -123,11 +157,12 @@ public partial class TickerTapeControl : UserControl
             _animationController.Stop();
             return;
         }
+        _deferredViewportRetries = 0;
 
         RefreshItemSubscriptions();
 
         string signature = BuildContentSignature(tape);
-        double sequenceWidth = MeasureContentWidth(tape);
+        double sequenceWidth = GetCachedContentWidth(tape);
         if (sequenceWidth <= 0)
         {
             TrackPanel.Children.Clear();
@@ -159,6 +194,7 @@ public partial class TickerTapeControl : UserControl
         _tape = tape;
         _contentSignature = string.Empty;
         _renderedSideCopyCount = 0;
+        _sequenceWidthCache.Clear();
         if (_tape is null)
             return;
 
@@ -177,6 +213,7 @@ public partial class TickerTapeControl : UserControl
         ClearItemSubscriptions();
         _contentSignature = string.Empty;
         _renderedSideCopyCount = 0;
+        _sequenceWidthCache.Clear();
         if (ReferenceEquals(_tape, tape))
             _tape = null;
     }
@@ -189,6 +226,7 @@ public partial class TickerTapeControl : UserControl
 
     private void OnTapeItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        _sequenceWidthCache.Clear();
         RefreshItemSubscriptions();
         QueueMetricsUpdate();
     }
@@ -236,11 +274,20 @@ public partial class TickerTapeControl : UserControl
         FlashValueTargets(item);
     }
 
-    private double MeasureContentWidth(TapeViewModel tape)
+    private double GetCachedContentWidth(TapeViewModel tape)
     {
-        FrameworkElement content = BuildSequencePanel(tape, registerTargets: false);
-        content.Measure(new Size(double.PositiveInfinity, Math.Max(1d, ViewportHost.ActualHeight)));
-        return Math.Max(content.ActualWidth, content.DesiredSize.Width);
+        int itemCount = tape.Items.Count;
+        if (itemCount <= 0)
+            return 0d;
+
+        if (_sequenceWidthCache.TryGetValue(itemCount, out double cachedWidth))
+            return cachedWidth;
+
+        // The ticker fields are intentionally fixed-width, so avoid forcing a
+        // WPF measure/layout pass on every resize or value refresh.
+        double width = (double)itemCount * TapeItemFixedWidth;
+        _sequenceWidthCache[itemCount] = width;
+        return width;
     }
 
     private void RebuildTrack(TapeViewModel tape, int sideCopies, double sequenceWidth)
@@ -268,7 +315,12 @@ public partial class TickerTapeControl : UserControl
         return Math.Max(2, (int)Math.Ceiling(viewportWidth / sequenceSpan) + 2);
     }
 
-    private static string BuildContentSignature(TapeViewModel tape) => $"{tape.Items.Count}";
+    private static string BuildContentSignature(TapeViewModel tape)
+    {
+        // Item visuals are fixed-width by design. If any future field becomes
+        // dynamic-width, update this signature and the width cache together.
+        return $"{tape.Items.Count}";
+    }
 
     private FrameworkElement BuildSequencePanel(TapeViewModel tape, bool registerTargets)
     {
@@ -289,18 +341,18 @@ public partial class TickerTapeControl : UserControl
         StackPanel panel = new()
         {
             Orientation = Orientation.Horizontal,
-            Margin = new Thickness(0, 0, 18, 0),
+            Margin = new Thickness(0, 0, ItemRightMargin, 0),
             VerticalAlignment = VerticalAlignment.Center
         };
 
         panel.Children.Add(CreateSymbolHost(item));
-        panel.Children.Add(CreateValueHost(item, nameof(TapeItemViewModel.LastText), nameof(TapeItemViewModel.LastForeground), 64d, 2d, TextAlignment.Right, FontWeights.SemiBold, registerTargets));
-        panel.Children.Add(CreateValueHost(item, nameof(TapeItemViewModel.ChangeText), nameof(TapeItemViewModel.ChangeForeground), 72d, 0d, TextAlignment.Right, FontWeights.SemiBold, registerTargets));
+        panel.Children.Add(CreateValueHost(item, nameof(TapeItemViewModel.LastText), nameof(TapeItemViewModel.LastForeground), LastValueWidth, LastValueRightMargin, TextAlignment.Right, FontWeights.SemiBold, registerTargets));
+        panel.Children.Add(CreateValueHost(item, nameof(TapeItemViewModel.ChangeText), nameof(TapeItemViewModel.ChangeForeground), ChangeValueWidth, 0d, TextAlignment.Right, FontWeights.SemiBold, registerTargets));
         panel.Children.Add(new Border
         {
-            Width = 1,
+            Width = SeparatorWidth,
             Height = 16,
-            Margin = new Thickness(9, 0, 0, 0),
+            Margin = new Thickness(SeparatorLeftMargin, 0, 0, 0),
             Background = new SolidColorBrush(Color.FromArgb(0x5A, 0x76, 0x8B, 0x9F)),
             VerticalAlignment = VerticalAlignment.Center
         });
@@ -311,8 +363,8 @@ public partial class TickerTapeControl : UserControl
     {
         Grid host = new()
         {
-            Width = 62d,
-            Margin = new Thickness(0, 0, 2, 0),
+            Width = SymbolHostWidth,
+            Margin = new Thickness(0, 0, SymbolHostRightMargin, 0),
             VerticalAlignment = VerticalAlignment.Center
         };
         host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });

@@ -31,6 +31,8 @@ public sealed class TapeAnimationController
 
     internal bool IsRunning => _running;
 
+    internal double CycleDistanceForTests => _cycleDistance;
+
     public void Attach(UIElement element)
     {
         if (ReferenceEquals(_element, element))

@@ -2263,10 +2263,31 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("private static FrameworkElement CreateSymbolHost(TapeItemViewModel item)", tapeCode, StringComparison.Ordinal);
         Assert.Contains("CreateWaitingGlyphHost(item)", tapeCode, StringComparison.Ordinal);
         Assert.DoesNotContain("showWaitingGlyph: true", tapeCode, StringComparison.Ordinal);
-        Assert.Contains("Width = 62d", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("Width = SymbolHostWidth", tapeCode, StringComparison.Ordinal);
         Assert.Contains("Margin = new Thickness(1, 0, 0, 0)", tapeCode, StringComparison.Ordinal);
         Assert.Contains("FontSize = 11", tapeCode, StringComparison.Ordinal);
         Assert.Contains("RenderingEventArgs", File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Render", "Services", "TapeAnimationController.cs")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TickerTapeControl_UsesCachedFixedWidthMeasurementInsteadOfForcedLayout()
+    {
+        string tapeCode = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Render",
+            "Controls",
+            "TickerTapeControl.xaml.cs"));
+
+        Assert.Contains("private const double SymbolHostWidth = 62d", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("private const double TapeItemFixedWidth = SymbolHostWidth", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("private readonly Dictionary<int, double> _sequenceWidthCache", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("GetCachedContentWidth(tape)", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("(double)itemCount * TapeItemFixedWidth", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("MaxDeferredViewportRetries", tapeCode, StringComparison.Ordinal);
+        Assert.Contains("QueueMetricsUpdate(DispatcherPriority.Background)", tapeCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("MeasureContentWidth", tapeCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("UpdateLayout();", tapeCode, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -2359,6 +2380,40 @@ public sealed class VisualizerRenderBehaviorTests
                 control.RefreshMotionMetricsForTests();
 
                 Assert.True(control.AnimationControllerForTests.IsRunning);
+            }
+            finally
+            {
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                window?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void TickerTapeControl_CachedWidthDrivesExpectedAnimationCycleDistance()
+    {
+        RunOnSta(() =>
+        {
+            TapeViewModel tape = new() { Title = "TEST" };
+            tape.Items.Add(new TapeItemViewModel { SymbolText = "AAPL", LastText = "123.45", ChangeText = "+1.23%" });
+            tape.Items.Add(new TapeItemViewModel { SymbolText = "MSFT", LastText = "456.78", ChangeText = "-0.45%" });
+
+            TickerTapeControl control = new()
+            {
+                DataContext = tape,
+                Width = 800,
+                Height = 40
+            };
+            Window? window = null;
+
+            try
+            {
+                window = HostControlForLayout(control, 800, 40);
+                control.RefreshMotionMetricsForTests();
+
+                Assert.True(control.AnimationControllerForTests.IsRunning);
+                Assert.Equal(480d, control.AnimationControllerForTests.CycleDistanceForTests, precision: 3);
+                Assert.True(control.TrackPanelWidthForTests >= control.AnimationControllerForTests.CycleDistanceForTests);
             }
             finally
             {

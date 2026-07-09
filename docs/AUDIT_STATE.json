@@ -10095,7 +10095,7 @@
       "priority": 2,
       "area": "UI fluidity",
       "title": "Use `VirtualizingStackPanel` and cached measurements in `TickerTapeControl` to avoid full rebuild",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
@@ -10105,7 +10105,10 @@
       "notes": [
         "Recommendation: Replace manual canvas with an `ItemsControl` + `VirtualizingStackPanel`; cache item widths.",
         "Acceptance criteria: Window resize and data updates do not cause frame drops; memory usage remains stable.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Closure 2026-07-09T19:31:36.3588687-04:00: TickerTapeControl no longer calls UpdateLayout or creates a measurement visual in RefreshMotionMetrics; sequence width is cached from the fixed-width ticker item layout and invalidated on tape/context structure changes.",
+        "Reviewer adjudication 2026-07-09T19:41:43.6455984-04:00: Long-symbol fixed-field clipping concern is intentional product behavior; ticker fields use fixed widths and CharacterEllipsis so symbol length cannot resize the whole tape ribbon.",
+        "Validation: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter FullyQualifiedName~VisualizerRenderBehaviorTests passed 83/83 after cached-width, retry, and overflow-guard coverage."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
