@@ -69,7 +69,7 @@ internal static class YFinanceServerProgram
         AppDomain.CurrentDomain.ProcessExit += processExitHandler;
 
         YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ServerStartup",
-        [new("port", options.Port), new("bind_address", options.BindAddress.ToString()), new("owned_mode", options.OwnedMode), new("owner_pid", options.OwnerProcessId), new("max_clients", options.MaxConcurrentClients), new("max_requests_per_client", options.MaxConcurrentRequestsPerClient), new("upstream_sync_check_enabled", options.EnableUpstreamSyncCheck)]);
+        [new("port", options.Port), new("bind_address", options.BindAddress.ToString()), new("owned_mode", options.OwnedMode), new("owner_pid", options.OwnerProcessId), new("max_clients", options.MaxConcurrentClients), new("max_requests_per_client", options.MaxConcurrentRequestsPerClient), new("client_idle_timeout_seconds", options.ClientIdleTimeout.TotalSeconds), new("upstream_sync_check_enabled", options.EnableUpstreamSyncCheck)]);
 
         try
         {
@@ -368,50 +368,167 @@ internal static class YFinanceServerProgram
         using SemaphoreSlim writeGate = new(1, 1);
         using SemaphoreSlim requestGate = new(options.MaxConcurrentRequestsPerClient, options.MaxConcurrentRequestsPerClient);
         List<Task> inFlight = [];
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            using PooledProtocolPayload? messagePayload = await LengthPrefixedProtocolStream.ReadPooledAsync(stream, cancellationToken).ConfigureAwait(false);
-            if (messagePayload is null)
-                break;
+        Task<PooledProtocolPayload?>? pendingRead = null;
+        CancellationTokenSource? pendingReadCts = null;
 
-            ProtocolRequest<JsonElement>? request = ProtocolJson.Deserialize<ProtocolRequest<JsonElement>>(messagePayload.Memory.Span);
-            if (request is null)
-                throw new InvalidOperationException("Protocol request could not be deserialized.");
-            if (!ProtocolIntegrity.Verify(request, request.Payload))
+        try
+        {
+            try
             {
-                YFinanceCircularTraceSink.Instance.WarnState("YFinanceServer", "RequestIntegrityRejected", [new("remote", remote), new("request_id", request.RequestId), new("operation", request.Operation), new("timestamp", request.Timestamp), new("payload_checksum", request.PayloadChecksum)]);
-                ProtocolResponse<EmptyPayload> integrityError = CreateError(request, ProtocolErrorCodes.ProtocolViolation, "Payload checksum mismatch.", false);
-                await WriteResponseAsync(stream, writeGate, integrityError, remote, request, cancellationToken).ConfigureAwait(false);
-                continue;
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    for (int i = inFlight.Count - 1; i >= 0; i--)
+                    {
+                        if (!inFlight[i].IsCompleted)
+                            continue;
+
+                        if (inFlight[i].IsFaulted)
+                        {
+                            YFinanceCircularTraceSink.Instance.WarnState(
+                                "YFinanceServer",
+                                "ClientRequestTaskFailed",
+                                [new("remote", remote), new("message", inFlight[i].Exception?.GetBaseException().Message ?? "Request task failed.")]);
+                        }
+
+                        inFlight.RemoveAt(i);
+                    }
+
+                    if (pendingRead is null)
+                    {
+                        pendingReadCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        pendingRead = LengthPrefixedProtocolStream.ReadPooledAsync(stream, pendingReadCts.Token);
+                    }
+
+                    Task<PooledProtocolPayload?> pendingReadSnapshot = pendingRead;
+                    PooledProtocolPayload? receivedPayload = null;
+                    try
+                    {
+                        if (inFlight.Count == 0)
+                        {
+                            receivedPayload = await pendingReadSnapshot.WaitAsync(options.ClientIdleTimeout, cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            // A connection is not idle while responses are still being
+                            // prepared. Wait for either the next client frame or the
+                            // outstanding response work to finish, but do not apply the
+                            // idle timeout until the in-flight list is empty. The
+                            // in-flight snapshot is safe because new request tasks can
+                            // only be added after this pending read completes.
+                            Task inFlightDrain = Task.WhenAll(inFlight);
+                            Task completed = await Task.WhenAny(pendingReadSnapshot, inFlightDrain).ConfigureAwait(false);
+                            if (!ReferenceEquals(completed, pendingReadSnapshot))
+                                continue;
+
+                            receivedPayload = await pendingReadSnapshot.ConfigureAwait(false);
+                        }
+
+                        pendingRead = null;
+                        pendingReadCts?.Dispose();
+                        pendingReadCts = null;
+                    }
+                    catch (TimeoutException)
+                    {
+                        if (!cancellationToken.IsCancellationRequested)
+                            YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ClientIdleTimedOut", [new("remote", remote), new("timeout_seconds", options.ClientIdleTimeout.TotalSeconds)]);
+                    pendingReadCts?.Cancel();
+                    try
+                    {
+                        await DrainPendingReadAsync(pendingRead, remote).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                            pendingRead = null;
+                            pendingReadCts?.Dispose();
+                            pendingReadCts = null;
+                        }
+
+                        break;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+
+                    using PooledProtocolPayload? messagePayload = receivedPayload;
+                    if (messagePayload is null)
+                        break;
+
+                    ProtocolRequest<JsonElement>? request = ProtocolJson.Deserialize<ProtocolRequest<JsonElement>>(messagePayload.Memory.Span);
+                    if (request is null)
+                        throw new InvalidOperationException("Protocol request could not be deserialized.");
+                    if (!ProtocolIntegrity.Verify(request, request.Payload))
+                    {
+                        YFinanceCircularTraceSink.Instance.WarnState("YFinanceServer", "RequestIntegrityRejected", [new("remote", remote), new("request_id", request.RequestId), new("operation", request.Operation), new("timestamp", request.Timestamp), new("payload_checksum", request.PayloadChecksum)]);
+                        ProtocolResponse<EmptyPayload> integrityError = CreateError(request, ProtocolErrorCodes.ProtocolViolation, "Payload checksum mismatch.", false);
+                        await WriteResponseAsync(stream, writeGate, integrityError, remote, request, cancellationToken).ConfigureAwait(false);
+                        continue;
+                    }
+
+                    YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "RequestReceived", [new("remote", remote), new("request_id", request.RequestId), new("operation", request.Operation), new("timestamp", request.Timestamp), new("payload_checksum", request.PayloadChecksum)]);
+                    // The request is dispatched asynchronously; clone the JsonElement
+                    // payload before the pooled transport buffer can be returned.
+                    ProtocolRequest<JsonElement> dispatchRequest = request with { Payload = request.Payload.Clone() };
+                    ProtocolRequest<JsonElement> capturedRequest = dispatchRequest;
+                    Task requestTask = Task.Run(async () =>
+                    {
+                        bool requestGateEntered = false;
+                        try
+                        {
+                            await requestGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                            requestGateEntered = true;
+                            object response = await DispatchAsync(capturedRequest, client, options, startedUtc, getActiveConnections, cancellationToken).ConfigureAwait(false);
+                            await WriteResponseAsync(stream, writeGate, response, remote, capturedRequest, cancellationToken).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            if (requestGateEntered)
+                                requestGate.Release();
+                        }
+                    }, cancellationToken);
+                    inFlight.Add(requestTask);
+                    if (string.Equals(dispatchRequest.Operation, ProtocolOperations.Goodbye, StringComparison.Ordinal))
+                        break;
+                }
+            }
+            finally
+            {
+                if (pendingRead is not null)
+                {
+                    pendingReadCts?.Cancel();
+                    await DrainPendingReadAsync(pendingRead, remote).ConfigureAwait(false);
+                }
+
+                pendingReadCts?.Dispose();
             }
 
-            YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "RequestReceived", [new("remote", remote), new("request_id", request.RequestId), new("operation", request.Operation), new("timestamp", request.Timestamp), new("payload_checksum", request.PayloadChecksum)]);
-            // The request is dispatched asynchronously; clone the JsonElement
-            // payload before the pooled transport buffer can be returned.
-            ProtocolRequest<JsonElement> dispatchRequest = request with { Payload = request.Payload.Clone() };
-            ProtocolRequest<JsonElement> capturedRequest = dispatchRequest;
-            Task requestTask = Task.Run(async () =>
-            {
-                await requestGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-                try
-                {
-                    object response = await DispatchAsync(capturedRequest, client, options, startedUtc, getActiveConnections, cancellationToken).ConfigureAwait(false);
-                    await WriteResponseAsync(stream, writeGate, response, remote, capturedRequest, cancellationToken).ConfigureAwait(false);
-                }
-                finally
-                {
-                    requestGate.Release();
-                }
-            }, cancellationToken);
-            inFlight.Add(requestTask);
-            if (string.Equals(dispatchRequest.Operation, ProtocolOperations.Goodbye, StringComparison.Ordinal))
-                break;
+            if (inFlight.Count > 0)
+                await Task.WhenAll(inFlight).ConfigureAwait(false);
+
+            YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ClientDisconnected", [new("remote", remote)]);
         }
+        finally
+        {
+            tcpClient.Dispose();
+        }
+    }
 
-        if (inFlight.Count > 0)
-            await Task.WhenAll(inFlight).ConfigureAwait(false);
-
-        YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "ClientDisconnected", [new("remote", remote)]);
+    private static async Task DrainPendingReadAsync(Task<PooledProtocolPayload?>? pendingRead, string remote)
+    {
+        PooledProtocolPayload? payload = null;
+        try
+        {
+            if (pendingRead is not null)
+                payload = await pendingRead.ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            YFinanceCircularTraceSink.Instance.WarnState("YFinanceServer", "PendingReadDrainFailed", [new("remote", remote), new("message", ex.Message)]);
+        }
+        finally
+        {
+            payload?.Dispose();
+        }
     }
 
     private static async Task WriteResponseAsync(NetworkStream stream, SemaphoreSlim writeGate, object response, string remote, ProtocolRequest<JsonElement> request, CancellationToken cancellationToken)

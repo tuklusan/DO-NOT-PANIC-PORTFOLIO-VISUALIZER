@@ -22,8 +22,14 @@ public sealed record ServerOptions(
     int? OwnerProcessId,
     int MaxConcurrentClients,
     int MaxConcurrentRequestsPerClient,
+    TimeSpan ClientIdleTimeout,
     bool EnableUpstreamSyncCheck)
 {
+    public const int DefaultClientIdleTimeoutSeconds = 300;
+    public const int MaxClientIdleTimeoutSeconds = 3600;
+    public static readonly TimeSpan DefaultClientIdleTimeout = TimeSpan.FromSeconds(DefaultClientIdleTimeoutSeconds);
+    public static readonly TimeSpan MaxClientIdleTimeout = TimeSpan.FromSeconds(MaxClientIdleTimeoutSeconds);
+
     public static ServerOptions Parse(string[] args)
     {
         int port = Protocol.Constants.ProtocolConstants.DefaultPort;
@@ -33,6 +39,7 @@ public sealed record ServerOptions(
         int? ownerPid = null;
         int maxClients = Protocol.Constants.ProtocolConstants.MaxConcurrentClients;
         int maxConcurrentRequestsPerClient = 8;
+        TimeSpan clientIdleTimeout = DefaultClientIdleTimeout;
         bool enableUpstreamSyncCheck = true;
 
         for (int i = 0; i < args.Length; i++)
@@ -71,6 +78,10 @@ public sealed record ServerOptions(
                     maxConcurrentRequestsPerClient = Math.Max(1, parsedRequests);
                     i++;
                     break;
+                case "--client-idle-timeout-seconds" when i + 1 < args.Length && int.TryParse(args[i + 1], out int parsedIdleSeconds):
+                    clientIdleTimeout = TimeSpan.FromSeconds(Math.Clamp(parsedIdleSeconds, 1, MaxClientIdleTimeoutSeconds));
+                    i++;
+                    break;
                 case "--no-upstream-sync":
                     enableUpstreamSyncCheck = false;
                     break;
@@ -80,6 +91,16 @@ public sealed record ServerOptions(
         if (ownedMode && !IPAddress.IsLoopback(bindAddress))
             throw new ArgumentException("Owned mode requires a loopback bind address.");
 
-        return new ServerOptions(port, bindAddress, ownedMode, ownerPid, maxClients, maxConcurrentRequestsPerClient, enableUpstreamSyncCheck);
+        // Keep construction named as this positional record grows; positional
+        // calls are easy to misorder when operational limits are added.
+        return new ServerOptions(
+            Port: port,
+            BindAddress: bindAddress,
+            OwnedMode: ownedMode,
+            OwnerProcessId: ownerPid,
+            MaxConcurrentClients: maxClients,
+            MaxConcurrentRequestsPerClient: maxConcurrentRequestsPerClient,
+            ClientIdleTimeout: clientIdleTimeout,
+            EnableUpstreamSyncCheck: enableUpstreamSyncCheck);
     }
 }

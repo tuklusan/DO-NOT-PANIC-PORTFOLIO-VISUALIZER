@@ -9689,17 +9689,24 @@
       "priority": 2,
       "area": "Resource leak",
       "title": "Add idle timeout for server client connections",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: No timeout; zombie connections consume memory and sockets indefinitely.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Implemented configurable YFinance.NET server client idle timeout with default 300 seconds and max 3600 seconds.",
+        "Added CLI --client-idle-timeout-seconds with clamp coverage for positive, zero, negative, and oversized values.",
+        "Server loop now disconnects idle clients, clients that idle after a request, and clients that stall mid-frame while preserving in-flight responses.",
+        "Resource cleanup hardened: pending pooled reads are drained best-effort, client sockets are disposed once after in-flight response tasks drain, and request-gate release is guarded.",
+        "Validation: focused YFinanceClientServerProtocolTests passed 50/50; full Release suite passed 643/643.",
+        "DeepSeek code-review gate final pass 2026-07-09 reported no critical or high-severity blockers and no required action items."
       ],
       "notes": [
         "Recommendation: Use `CancellationTokenSource.CreateLinkedTokenSource` with a resetting timeout per message.",
         "Acceptance criteria: A client that stays idle for the configured timeout is disconnected; after reconnect, it works normally.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: implemented and closed by Codex developer on 2026-07-09.",
+        "No VM run required for this server-side protocol hardening CR; real local server process integration tests cover the runtime behavior."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",

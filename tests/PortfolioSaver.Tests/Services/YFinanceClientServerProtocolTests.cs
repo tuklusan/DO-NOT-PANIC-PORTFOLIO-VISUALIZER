@@ -337,6 +337,7 @@ public sealed class YFinanceClientServerProtocolTests
         Assert.Equal(IPAddress.Loopback, options.BindAddress);
         Assert.True(options.EnableUpstreamSyncCheck);
         Assert.Equal(8, options.MaxConcurrentRequestsPerClient);
+        Assert.Equal(ServerOptions.DefaultClientIdleTimeout, options.ClientIdleTimeout);
     }
 
     [Fact]
@@ -347,6 +348,32 @@ public sealed class YFinanceClientServerProtocolTests
 
         Assert.Equal(3, options.MaxConcurrentRequestsPerClient);
         Assert.Equal(1, clamped.MaxConcurrentRequestsPerClient);
+    }
+
+    [Fact]
+    public void ServerOptions_CanConfigureClientIdleTimeout()
+    {
+        ServerOptions options = ServerOptions.Parse(["--client-idle-timeout-seconds", "2"]);
+        ServerOptions clamped = ServerOptions.Parse(["--client-idle-timeout-seconds", "0"]);
+
+        Assert.Equal(TimeSpan.FromSeconds(2), options.ClientIdleTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(1), clamped.ClientIdleTimeout);
+    }
+
+    [Fact]
+    public void ServerOptions_NegativeClientIdleTimeoutIsClamped()
+    {
+        ServerOptions options = ServerOptions.Parse(["--client-idle-timeout-seconds", "-5"]);
+
+        Assert.Equal(TimeSpan.FromSeconds(1), options.ClientIdleTimeout);
+    }
+
+    [Fact]
+    public void ServerOptions_LargeClientIdleTimeoutIsClamped()
+    {
+        ServerOptions options = ServerOptions.Parse(["--client-idle-timeout-seconds", int.MaxValue.ToString()]);
+
+        Assert.Equal(ServerOptions.MaxClientIdleTimeout, options.ClientIdleTimeout);
     }
 
     [Fact]
@@ -813,6 +840,181 @@ public sealed class YFinanceClientServerProtocolTests
     }
 
     [Fact]
+    public async Task ServerProcess_DisconnectsIdleClientAndAllowsReconnect()
+    {
+        (Process server, int port) = await StartReachableServerProcessAsync("--client-idle-timeout-seconds 5");
+        using (server)
+        try
+        {
+            using TcpClient idleClient = new();
+            await idleClient.ConnectAsync(IPAddress.Loopback, port);
+            NetworkStream idleStream = idleClient.GetStream();
+            byte[] buffer = new byte[1];
+
+            int read = await idleStream.ReadAsync(buffer).AsTask().WaitAsync(TimeSpan.FromSeconds(10));
+
+            Assert.Equal(0, read);
+            await WaitForPortAsync(port, TimeSpan.FromSeconds(10));
+            Assert.False(server.HasExited);
+
+            await using YFinanceServerClient client = new(new YFinanceServerConnectionOptions("127.0.0.1", port, TimeSpan.FromSeconds(5), NullYFinanceServerClientTraceSink.Instance));
+            HealthResponseDto health = await client.HealthAsync();
+            Assert.Equal("ok", health.Status);
+        }
+        finally
+        {
+            KillProcessIfRunning(server);
+        }
+    }
+
+    [Fact]
+    public async Task ServerProcess_DisconnectsClientThatIdlesAfterRequest()
+    {
+        (Process server, int port) = await StartReachableServerProcessAsync("--client-idle-timeout-seconds 5");
+        using (server)
+        try
+        {
+            using TcpClient rawClient = new();
+            await rawClient.ConnectAsync(IPAddress.Loopback, port);
+            await using NetworkStream stream = rawClient.GetStream();
+
+            ProtocolRequest<HelloRequestDto> hello = new()
+            {
+                RequestId = "req-idle-after-request",
+                Operation = ProtocolOperations.Hello,
+                Payload = new HelloRequestDto("PortfolioSaver.Tests", "1.0", "TESTHASH", false, Environment.ProcessId)
+            };
+            ProtocolIntegrity.Stamp(hello, hello.Payload);
+            await LengthPrefixedProtocolStream.WriteAsync(stream, ProtocolJson.Serialize(hello));
+
+            byte[]? responseBytes = await LengthPrefixedProtocolStream.ReadAsync(stream).WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.NotNull(responseBytes);
+            ProtocolResponse<JsonElement>? response = ProtocolJson.Deserialize<ProtocolResponse<JsonElement>>(responseBytes);
+            Assert.NotNull(response);
+            Assert.Equal(ProtocolResponseStatuses.Ok, response!.Status);
+
+            byte[] buffer = new byte[1];
+            int read = await stream.ReadAsync(buffer).AsTask().WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal(0, read);
+        }
+        finally
+        {
+            KillProcessIfRunning(server);
+        }
+    }
+
+    [Fact]
+    public async Task ServerProcess_DisconnectsClientThatStallsMidFrame()
+    {
+        (Process server, int port) = await StartReachableServerProcessAsync("--client-idle-timeout-seconds 5");
+        using (server)
+        try
+        {
+            using TcpClient rawClient = new();
+            await rawClient.ConnectAsync(IPAddress.Loopback, port);
+            NetworkStream stream = rawClient.GetStream();
+            byte[] prefix = new byte[ProtocolConstants.LengthPrefixBytes];
+            BinaryPrimitives.WriteInt32BigEndian(prefix, 128);
+            await stream.WriteAsync(prefix);
+            await stream.FlushAsync();
+
+            byte[] buffer = new byte[1];
+            int read = await stream.ReadAsync(buffer).AsTask().WaitAsync(TimeSpan.FromSeconds(10));
+
+            Assert.Equal(0, read);
+            await WaitForPortAsync(port, TimeSpan.FromSeconds(10));
+            Assert.False(server.HasExited);
+        }
+        finally
+        {
+            KillProcessIfRunning(server);
+        }
+    }
+
+    [Fact]
+    public async Task ServerProcess_KeepsClientAliveWhenRequestsArriveBeforeIdleTimeout()
+    {
+        (Process server, int port) = await StartReachableServerProcessAsync("--client-idle-timeout-seconds 5");
+        using (server)
+        try
+        {
+            await using YFinanceServerClient client = new(new YFinanceServerConnectionOptions("127.0.0.1", port, TimeSpan.FromSeconds(5), NullYFinanceServerClientTraceSink.Instance));
+
+            HealthResponseDto first = await client.HealthAsync();
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            HealthResponseDto second = await client.HealthAsync();
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            HealthResponseDto third = await client.HealthAsync();
+
+            Assert.Equal("ok", first.Status);
+            Assert.Equal("ok", second.Status);
+            Assert.Equal("ok", third.Status);
+        }
+        finally
+        {
+            KillProcessIfRunning(server);
+        }
+    }
+
+    [Fact]
+    public async Task ServerProcess_DoesNotIdleDisconnectWhileResponseIsInFlight()
+    {
+        await FaultInjectionTestGate.WaitAsync();
+        string profilePath = Path.Combine(Path.GetTempPath(), $"dnppv-yfinance-delay-{Guid.NewGuid():N}.json");
+        try
+        {
+            await File.WriteAllTextAsync(
+                profilePath,
+                JsonSerializer.Serialize(new
+                {
+                    profile = "high-latency-yfinance",
+                    mode = "delay-only",
+                    delayMilliseconds = 6000,
+                    operations = new[] { ProtocolOperations.Health }
+                }));
+
+            int port = GetAvailablePort();
+            Process server = StartServerProcess(
+                port,
+                "--client-idle-timeout-seconds 5",
+                startInfo => startInfo.Environment[YFinanceServerFaultInjection.ProfilePathEnvironmentVariable] = profilePath);
+            using (server)
+            try
+            {
+                // This test deliberately delays Health responses, so the normal
+                // health-based readiness probe would be delayed by the same
+                // injected fault. A raw TCP probe confirms the listener is ready
+                // before the delayed protocol request proves idle behavior.
+                await WaitForTcpPortOpenAsync(port, TimeSpan.FromSeconds(10));
+                await using YFinanceServerClient client = new(new YFinanceServerConnectionOptions("127.0.0.1", port, TimeSpan.FromSeconds(20), NullYFinanceServerClientTraceSink.Instance));
+                using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(15));
+                Stopwatch stopwatch = Stopwatch.StartNew();
+
+                HealthResponseDto response = await client.HealthAsync(timeout.Token);
+
+                Assert.Equal("ok", response.Status);
+                Assert.True(stopwatch.Elapsed >= TimeSpan.FromSeconds(5));
+            }
+            finally
+            {
+                KillProcessIfRunning(server);
+            }
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(profilePath);
+            }
+            catch
+            {
+            }
+
+            FaultInjectionTestGate.Release();
+        }
+    }
+
+    [Fact]
     public async Task OwnedServerProcess_ExitsWhenOwnerProcessExits()
     {
         int port = GetAvailablePort();
@@ -848,7 +1050,7 @@ public sealed class YFinanceClientServerProtocolTests
         throw new InvalidOperationException("Could not locate repository root from test base directory.");
     }
 
-    private static Process StartServerProcess(int port, string extraArguments = "")
+    private static Process StartServerProcess(int port, string extraArguments = "", Action<ProcessStartInfo>? configureStartInfo = null)
     {
         string repoRoot = GetRepoRoot();
         string serverDll = Path.Combine(repoRoot, "YFinance.net", "YFinance.NET.Server", "bin", "Release", "net10.0", "YFinance.NET.Server.dll");
@@ -865,10 +1067,12 @@ public sealed class YFinanceClientServerProtocolTests
             WindowStyle = ProcessWindowStyle.Hidden
         };
 
+        configureStartInfo?.Invoke(startInfo);
+
         return Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start YFinance.NET.Server process.");
     }
 
-    private static async Task<(Process Process, int Port)> StartReachableServerProcessAsync(string extraArguments = "", int attempts = 5)
+    private static async Task<(Process Process, int Port)> StartReachableServerProcessAsync(string extraArguments = "", int attempts = 5, Action<ProcessStartInfo>? configureStartInfo = null)
     {
         List<Exception> failures = [];
         for (int attempt = 0; attempt < attempts; attempt++)
@@ -877,7 +1081,7 @@ public sealed class YFinanceClientServerProtocolTests
             // so this best-effort probe is paired with retries to avoid rare
             // loopback port races in parallel or noisy test environments.
             int port = GetAvailablePort();
-            Process process = StartServerProcess(port, extraArguments);
+            Process process = StartServerProcess(port, extraArguments, configureStartInfo);
             try
             {
                 await WaitForPortAsync(port, TimeSpan.FromSeconds(5));
@@ -973,6 +1177,27 @@ public sealed class YFinanceClientServerProtocolTests
         }
 
         throw new TimeoutException($"Timed out waiting for server on port {port}.");
+    }
+
+    private static async Task WaitForTcpPortOpenAsync(int port, TimeSpan timeoutDuration)
+    {
+        using CancellationTokenSource timeout = new(timeoutDuration);
+        while (!timeout.IsCancellationRequested)
+        {
+            try
+            {
+                using TcpClient client = new();
+                await client.ConnectAsync(IPAddress.Loopback, port, timeout.Token);
+                return;
+            }
+            catch
+            {
+            }
+
+            await Task.Delay(200, timeout.Token);
+        }
+
+        throw new TimeoutException($"Timed out waiting for TCP listener on port {port}.");
     }
 
     private static void KillProcessIfRunning(Process process)
