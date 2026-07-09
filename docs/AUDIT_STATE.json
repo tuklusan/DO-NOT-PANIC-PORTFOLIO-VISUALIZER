@@ -9994,7 +9994,15 @@
       "priority": 2,
       "area": "Network latency",
       "title": "Parallelize weather city fetch in `WorldWeatherService`",
-      "status": "open",
+      "status": "closed",
+      "closed_utc": "2026-07-09T21:59:10Z",
+      "resolution": "WorldWeatherService now fetches supported weather cities in parallel behind a five-request SemaphoreSlim gate, preserves cached fallback behavior per requested city, and intentionally trims stale cache entries for cities no longer in the active request set.",
+      "verification": [
+        "Focused test gate passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter \"FullyQualifiedName~WorldWeatherServiceTests|FullyQualifiedName~VisualizerRenderBehaviorTests\" => 87/87 passed.",
+        "Full suite passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter \"FullyQualifiedName!~__NoSuchTestFilter__\" => 668/668 passed.",
+        "WorldWeatherServiceTests.GetWeatherAsync_FetchesCitiesInParallel_WithConcurrencyLimit uses a blocking fake HttpMessageHandler to prove only five requests start before the first wave is released and all seven city snapshots complete.",
+        "Additional weather tests verify cached fallback on failure, failed-city omission without cache, stale cache trimming, and cancellation propagation with gate release."
+      ],
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [

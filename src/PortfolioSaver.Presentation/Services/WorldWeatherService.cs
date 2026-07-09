@@ -24,42 +24,90 @@ namespace PortfolioSaver.Presentation.Services;
 public sealed class WorldWeatherService
 {
     private const string CacheFileName = "world-weather-cache.json";
+    private const int MaxConcurrentWeatherFetches = 5;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
-    private readonly string _cachePath = Path.Combine(PathHelper.GetLocalDataDirectory(), CacheFileName);
+    private readonly string _cachePath;
+    private readonly Func<TimeSpan, HttpClient> _httpClientFactory;
+    private readonly SemaphoreSlim _cacheOperationGate = new(1, 1);
+
+    public WorldWeatherService()
+        : this(
+            Path.Combine(PathHelper.GetLocalDataDirectory(), CacheFileName),
+            timeout => HttpClientFactory.Create(timeout))
+    {
+    }
+
+    internal WorldWeatherService(string cachePath, Func<TimeSpan, HttpClient> httpClientFactory)
+    {
+        _cachePath = cachePath;
+        _httpClientFactory = httpClientFactory;
+    }
 
     public async Task<IReadOnlyDictionary<string, WeatherSnapshot>> GetWeatherAsync(
         IEnumerable<ClockCityViewModel> cities,
         bool networkAvailable,
         CancellationToken cancellationToken = default)
     {
-        Dictionary<string, WeatherSnapshot> cached = await LoadCacheAsync(cancellationToken);
-        if (!networkAvailable)
-            return cached;
-
-        using HttpClient client = HttpClientFactory.Create(TimeSpan.FromSeconds(10));
-        Dictionary<string, WeatherSnapshot> results = new(StringComparer.OrdinalIgnoreCase);
-        foreach (ClockCityViewModel city in cities.Where(city => city.SupportsWeather))
+        await _cacheOperationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            try
-            {
-                WeatherSnapshot snapshot = await FetchWeatherAsync(client, city, cancellationToken);
-                results[city.Key] = snapshot;
-            }
-            catch
-            {
-                if (cached.TryGetValue(city.Key, out WeatherSnapshot? fallback))
-                    results[city.Key] = fallback;
-            }
-        }
+            Dictionary<string, WeatherSnapshot> cached = await LoadCacheAsync(cancellationToken).ConfigureAwait(false);
+            if (!networkAvailable)
+                return cached;
 
-        foreach ((string key, WeatherSnapshot value) in cached)
+            using HttpClient client = _httpClientFactory(TimeSpan.FromSeconds(10));
+            Dictionary<string, WeatherSnapshot> results = new(StringComparer.OrdinalIgnoreCase);
+            List<ClockCityViewModel> weatherCities = cities
+                .Where(city => city.SupportsWeather && !string.IsNullOrWhiteSpace(city.Key))
+                .ToList();
+            using SemaphoreSlim fetchGate = new(MaxConcurrentWeatherFetches);
+            Task<KeyValuePair<string, WeatherSnapshot>?>[] fetchTasks = weatherCities
+                .Select(city => FetchWeatherWithGateAsync(client, city, cached, fetchGate, cancellationToken))
+                .ToArray();
+            KeyValuePair<string, WeatherSnapshot>?[] fetched = await Task.WhenAll(fetchTasks).ConfigureAwait(false);
+            foreach (KeyValuePair<string, WeatherSnapshot>? pair in fetched)
+            {
+                if (pair.HasValue)
+                    results[pair.Value.Key] = pair.Value.Value;
+            }
+
+            // Keep the persisted cache scoped to the active city set so removed cities do not linger forever.
+            await SaveCacheAsync(results, cancellationToken).ConfigureAwait(false);
+            return results;
+        }
+        finally
         {
-            if (!results.ContainsKey(key))
-                results[key] = value;
+            _cacheOperationGate.Release();
         }
+    }
 
-        await SaveCacheAsync(results, cancellationToken);
-        return results;
+    private static async Task<KeyValuePair<string, WeatherSnapshot>?> FetchWeatherWithGateAsync(
+        HttpClient client,
+        ClockCityViewModel city,
+        IReadOnlyDictionary<string, WeatherSnapshot> cached,
+        SemaphoreSlim fetchGate,
+        CancellationToken cancellationToken)
+    {
+        await fetchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            WeatherSnapshot snapshot = await FetchWeatherAsync(client, city, cancellationToken).ConfigureAwait(false);
+            return new KeyValuePair<string, WeatherSnapshot>(city.Key, snapshot);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            return cached.TryGetValue(city.Key, out WeatherSnapshot? fallback)
+                ? new KeyValuePair<string, WeatherSnapshot>(city.Key, fallback)
+                : null;
+        }
+        finally
+        {
+            fetchGate.Release();
+        }
     }
 
     private static async Task<WeatherSnapshot> FetchWeatherAsync(HttpClient client, ClockCityViewModel city, CancellationToken cancellationToken)
@@ -101,7 +149,9 @@ public sealed class WorldWeatherService
 
     private async Task SaveCacheAsync(IReadOnlyDictionary<string, WeatherSnapshot> cache, CancellationToken cancellationToken)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(_cachePath)!);
+        string? cacheDirectory = Path.GetDirectoryName(_cachePath);
+        if (!string.IsNullOrWhiteSpace(cacheDirectory))
+            Directory.CreateDirectory(cacheDirectory);
         await using FileStream stream = File.Create(_cachePath);
         await JsonSerializer.SerializeAsync(stream, cache, JsonOptions, cancellationToken);
     }
