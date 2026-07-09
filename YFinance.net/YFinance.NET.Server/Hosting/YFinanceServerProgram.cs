@@ -370,11 +370,11 @@ internal static class YFinanceServerProgram
         List<Task> inFlight = [];
         while (!cancellationToken.IsCancellationRequested)
         {
-            byte[]? messageBytes = await LengthPrefixedProtocolStream.ReadAsync(stream, cancellationToken).ConfigureAwait(false);
-            if (messageBytes is null)
+            using PooledProtocolPayload? messagePayload = await LengthPrefixedProtocolStream.ReadPooledAsync(stream, cancellationToken).ConfigureAwait(false);
+            if (messagePayload is null)
                 break;
 
-            ProtocolRequest<JsonElement>? request = ProtocolJson.Deserialize<ProtocolRequest<JsonElement>>(messageBytes);
+            ProtocolRequest<JsonElement>? request = ProtocolJson.Deserialize<ProtocolRequest<JsonElement>>(messagePayload.Memory.Span);
             if (request is null)
                 throw new InvalidOperationException("Protocol request could not be deserialized.");
             if (!ProtocolIntegrity.Verify(request, request.Payload))
@@ -386,13 +386,17 @@ internal static class YFinanceServerProgram
             }
 
             YFinanceCircularTraceSink.Instance.InfoState("YFinanceServer", "RequestReceived", [new("remote", remote), new("request_id", request.RequestId), new("operation", request.Operation), new("timestamp", request.Timestamp), new("payload_checksum", request.PayloadChecksum)]);
+            // The request is dispatched asynchronously; clone the JsonElement
+            // payload before the pooled transport buffer can be returned.
+            ProtocolRequest<JsonElement> dispatchRequest = request with { Payload = request.Payload.Clone() };
+            ProtocolRequest<JsonElement> capturedRequest = dispatchRequest;
             Task requestTask = Task.Run(async () =>
             {
                 await requestGate.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
-                    object response = await DispatchAsync(request, client, options, startedUtc, getActiveConnections, cancellationToken).ConfigureAwait(false);
-                    await WriteResponseAsync(stream, writeGate, response, remote, request, cancellationToken).ConfigureAwait(false);
+                    object response = await DispatchAsync(capturedRequest, client, options, startedUtc, getActiveConnections, cancellationToken).ConfigureAwait(false);
+                    await WriteResponseAsync(stream, writeGate, response, remote, capturedRequest, cancellationToken).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -400,7 +404,7 @@ internal static class YFinanceServerProgram
                 }
             }, cancellationToken);
             inFlight.Add(requestTask);
-            if (string.Equals(request.Operation, ProtocolOperations.Goodbye, StringComparison.Ordinal))
+            if (string.Equals(dispatchRequest.Operation, ProtocolOperations.Goodbye, StringComparison.Ordinal))
                 break;
         }
 

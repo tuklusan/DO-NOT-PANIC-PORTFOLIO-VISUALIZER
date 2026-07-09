@@ -11,6 +11,7 @@
 // SANYALnet Labs." See LICENSE for full terms, warranty disclaimer, termination,
 // patent, trademark, and governing-law provisions.
 // ============================================================================
+using System.Buffers;
 using System.Buffers.Binary;
 using YFinance.NET.Protocol.Constants;
 
@@ -32,28 +33,116 @@ public static class LengthPrefixedProtocolStream
 
     public static async Task<byte[]?> ReadAsync(Stream stream, CancellationToken cancellationToken = default)
     {
-        byte[]? prefix = await ReadExactAsync(stream, ProtocolConstants.LengthPrefixBytes, cancellationToken).ConfigureAwait(false);
-        if (prefix is null)
+        byte[] prefix = new byte[ProtocolConstants.LengthPrefixBytes];
+        bool prefixRead = await ReadExactIntoAsync(stream, prefix, allowEndAtStart: true, cancellationToken).ConfigureAwait(false);
+        if (!prefixRead)
             return null;
 
         int length = BinaryPrimitives.ReadInt32BigEndian(prefix);
         if (length < 0 || length > ProtocolConstants.MaxMessageBytes)
             throw new InvalidOperationException($"Invalid message length {length}.");
+        if (length == 0)
+            return Array.Empty<byte>();
 
-        return await ReadExactAsync(stream, length, cancellationToken).ConfigureAwait(false);
+        byte[] payload = new byte[length];
+        await ReadExactIntoAsync(stream, payload, allowEndAtStart: false, cancellationToken).ConfigureAwait(false);
+        return payload;
     }
 
-    private static async Task<byte[]?> ReadExactAsync(Stream stream, int length, CancellationToken cancellationToken)
+    public static async Task<PooledProtocolPayload?> ReadPooledAsync(Stream stream, CancellationToken cancellationToken = default)
     {
-        byte[] buffer = new byte[length];
-        int offset = 0;
-        while (offset < length)
+        byte[] prefix = ArrayPool<byte>.Shared.Rent(ProtocolConstants.LengthPrefixBytes);
+        try
         {
-            int read = await stream.ReadAsync(buffer.AsMemory(offset, length - offset), cancellationToken).ConfigureAwait(false);
+            bool prefixRead = await ReadExactIntoAsync(stream, prefix.AsMemory(0, ProtocolConstants.LengthPrefixBytes), allowEndAtStart: true, cancellationToken).ConfigureAwait(false);
+            if (!prefixRead)
+                return null;
+
+            int length = BinaryPrimitives.ReadInt32BigEndian(prefix.AsSpan(0, ProtocolConstants.LengthPrefixBytes));
+            if (length < 0 || length > ProtocolConstants.MaxMessageBytes)
+                throw new InvalidOperationException($"Invalid message length {length}.");
+            if (length == 0)
+                return PooledProtocolPayload.Empty();
+
+            byte[] payload = ArrayPool<byte>.Shared.Rent(length);
+            bool payloadTransferred = false;
+            try
+            {
+                await ReadExactIntoAsync(stream, payload.AsMemory(0, length), allowEndAtStart: false, cancellationToken).ConfigureAwait(false);
+                PooledProtocolPayload pooledPayload = new(payload, length);
+                payloadTransferred = true;
+                return pooledPayload;
+            }
+            finally
+            {
+                if (!payloadTransferred)
+                    ArrayPool<byte>.Shared.Return(payload, clearArray: true);
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(prefix, clearArray: true);
+        }
+    }
+
+    private static async Task<bool> ReadExactIntoAsync(Stream stream, Memory<byte> buffer, bool allowEndAtStart, CancellationToken cancellationToken)
+    {
+        int offset = 0;
+        while (offset < buffer.Length)
+        {
+            int read = await stream.ReadAsync(buffer[offset..], cancellationToken).ConfigureAwait(false);
             if (read == 0)
-                return offset == 0 ? null : throw new EndOfStreamException("Unexpected end of stream while reading framed protocol payload.");
+            {
+                if (allowEndAtStart && offset == 0)
+                    return false;
+
+                throw new EndOfStreamException("Unexpected end of stream while reading framed protocol payload.");
+            }
+
             offset += read;
         }
-        return buffer;
+
+        return true;
+    }
+}
+
+/// <summary>
+/// Owns a protocol payload buffer rented from <see cref="ArrayPool{T}"/>.
+/// Callers must dispose the payload exactly as they would close a stream; failing
+/// to do so keeps the rented array unavailable for reuse until process exit.
+/// </summary>
+public sealed class PooledProtocolPayload : IDisposable
+{
+    private byte[]? _buffer;
+    private readonly int _length;
+    private readonly bool _returnToPool;
+
+    internal PooledProtocolPayload(byte[] buffer, int length, bool returnToPool = true)
+    {
+        _buffer = buffer;
+        _length = length;
+        _returnToPool = returnToPool;
+    }
+
+    internal static PooledProtocolPayload Empty()
+        => new(Array.Empty<byte>(), 0, returnToPool: false);
+
+    public ReadOnlyMemory<byte> Memory
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_buffer is null, this);
+            return _buffer.AsMemory(0, _length);
+        }
+    }
+
+    public byte[] ToArray()
+        => Memory.ToArray();
+
+    public void Dispose()
+    {
+        byte[]? buffer = Interlocked.Exchange(ref _buffer, null);
+        if (buffer is not null && _returnToPool)
+            ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
     }
 }

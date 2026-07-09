@@ -9657,17 +9657,22 @@
       "priority": 2,
       "area": "Memory/GC",
       "title": "Use `ArrayPool` in `LengthPrefixedProtocolStream` to reduce allocation rate",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
         "DeepSeek clean full-codebase optimization synthesis: `ReadExactAsync` allocates a new `byte[]` per read.",
-        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md"
+        "Review artifact: build/deepseek-review/full-optimization-20260703-085440/FINAL_SYNTHESIS.md",
+        "Implemented `LengthPrefixedProtocolStream.ReadPooledAsync` and `PooledProtocolPayload` using `ArrayPool<byte>.Shared` for hot receive paths.",
+        "Migrated YFinance client and server receive loops to pooled reads, cloned JsonElement payloads before async escape, and clear returned pooled buffers.",
+        "Kept `ReadAsync` compatibility behavior, including zero-length frame support, while using pooled reads in production receive loops.",
+        "Validation: focused protocol/client-server tests passed 58/58; full Release test suite passed 635/635.",
+        "DeepSeek gate: build/deepseek-review/deepseek-review-20260709-115005.md reported no blocking issues and marked changes production-ready."
       ],
       "notes": [
-        "Recommendation: Rent buffers from `ArrayPool<byte>.Shared` and return to pool.",
-        "Acceptance criteria: Under sustained load (100 quote/s), gen0 collections reduce by ≥30%; no buffer leaks.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: implemented with a new pooled API rather than changing `ReadAsync` ownership semantics.",
+        "Public pooled payload type remains necessary because protocol, client, and server are separate assemblies; constructor is internal and XML docs require disposal.",
+        "Closed 2026-07-09 after repeated focused/full validation and DeepSeek review gate."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",

@@ -12,6 +12,7 @@
 // patent, trademark, and governing-law provisions.
 // ============================================================================
 using System.IO;
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
@@ -19,6 +20,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using PortfolioSaver.Shared.Services;
 using YFinance.NET.Client;
+using YFinance.NET.Protocol.Constants;
 using YFinance.NET.Protocol.Dtos;
 using YFinance.NET.Protocol.Integrity;
 using YFinance.NET.Protocol.Messages;
@@ -171,6 +173,108 @@ public sealed class YFinanceClientServerProtocolTests
     }
 
     [Fact]
+    public async Task LengthPrefixedProtocolStream_ReadPooled_RoundTripsAndDisposesPayload()
+    {
+        ProtocolRequest<GetQuotesRequestDto> request = new()
+        {
+            RequestId = "req-pooled-0001",
+            Operation = "get_quotes",
+            Payload = new GetQuotesRequestDto(["VOO", "IJH"])
+        };
+        ProtocolIntegrity.Stamp(request, request.Payload);
+
+        byte[] bytes = ProtocolJson.Serialize(request);
+        await using MemoryStream stream = new();
+        await LengthPrefixedProtocolStream.WriteAsync(stream, bytes);
+        stream.Position = 0;
+
+        PooledProtocolPayload? payload = await LengthPrefixedProtocolStream.ReadPooledAsync(stream);
+
+        Assert.NotNull(payload);
+        using (payload)
+        {
+            ProtocolRequest<JsonElement>? roundTrip = ProtocolJson.Deserialize<ProtocolRequest<JsonElement>>(payload!.Memory.Span);
+            Assert.NotNull(roundTrip);
+            Assert.Equal(request.PayloadChecksum, roundTrip!.PayloadChecksum);
+            Assert.True(ProtocolIntegrity.Verify(roundTrip, roundTrip.Payload));
+        }
+
+        Assert.Throws<ObjectDisposedException>(() => _ = payload!.Memory);
+    }
+
+    [Fact]
+    public async Task LengthPrefixedProtocolStream_ReadPooled_ReturnsNullForEmptyStream()
+    {
+        await using MemoryStream stream = new();
+
+        PooledProtocolPayload? payload = await LengthPrefixedProtocolStream.ReadPooledAsync(stream);
+
+        Assert.Null(payload);
+    }
+
+    [Fact]
+    public async Task LengthPrefixedProtocolStream_ReadPooled_ThrowsForTruncatedPayload()
+    {
+        await using MemoryStream stream = CreateFramedStream(length: 8, "short"u8.ToArray());
+
+        await Assert.ThrowsAsync<EndOfStreamException>(async () => await LengthPrefixedProtocolStream.ReadPooledAsync(stream));
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    public async Task LengthPrefixedProtocolStream_ReadPooled_ThrowsForInvalidLength(int length)
+    {
+        await using MemoryStream stream = CreateFramedStream(length);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await LengthPrefixedProtocolStream.ReadPooledAsync(stream));
+    }
+
+    [Fact]
+    public async Task LengthPrefixedProtocolStream_ReadAsync_AllowsZeroLength()
+    {
+        await using MemoryStream stream = CreateFramedStream(length: 0);
+
+        byte[]? payload = await LengthPrefixedProtocolStream.ReadAsync(stream);
+
+        Assert.NotNull(payload);
+        Assert.Empty(payload);
+    }
+
+    [Fact]
+    public async Task LengthPrefixedProtocolStream_ReadPooled_AllowsZeroLength()
+    {
+        await using MemoryStream stream = CreateFramedStream(length: 0);
+
+        PooledProtocolPayload? payload = await LengthPrefixedProtocolStream.ReadPooledAsync(stream);
+
+        Assert.NotNull(payload);
+        using (payload)
+        {
+            Assert.True(payload!.Memory.IsEmpty);
+        }
+    }
+
+    [Fact]
+    public async Task LengthPrefixedProtocolStream_ReadPooled_ThrowsForOversizedLength()
+    {
+        await using MemoryStream stream = CreateFramedStream(ProtocolConstants.MaxMessageBytes + 1);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await LengthPrefixedProtocolStream.ReadPooledAsync(stream));
+    }
+
+    [Fact]
+    public async Task LengthPrefixedProtocolStream_ReadPooled_DisposeIsIdempotent()
+    {
+        await using MemoryStream stream = CreateFramedStream(length: 5, "hello"u8.ToArray());
+        PooledProtocolPayload? payload = await LengthPrefixedProtocolStream.ReadPooledAsync(stream);
+
+        Assert.NotNull(payload);
+        payload!.Dispose();
+        payload.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => _ = payload.Memory);
+    }
+
+    [Fact]
     public void OwnedModeStartup_IsWiredIntoInteractiveApps()
     {
         string repoRoot = GetRepoRoot();
@@ -206,6 +310,23 @@ public sealed class YFinanceClientServerProtocolTests
         Assert.Contains("QuoteResponseObserved", serverSource, StringComparison.Ordinal);
         Assert.Contains("new(\"price\"", serverSource, StringComparison.Ordinal);
         Assert.Contains("new(\"change_percent\"", serverSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PooledTransport_ClonesJsonPayloadsBeforeAsyncEscape()
+    {
+        string repoRoot = GetRepoRoot();
+        string clientSource = File.ReadAllText(Path.Combine(repoRoot, "YFinance.net", "YFinance.NET.Client", "YFinanceServerClient.cs"));
+        string serverSource = File.ReadAllText(Path.Combine(repoRoot, "YFinance.net", "YFinance.NET.Server", "Hosting", "YFinanceServerProgram.cs"));
+
+        // These source guards pin the exact async escape boundaries that can
+        // reintroduce pooled-buffer lifetime bugs if refactored carelessly.
+        Assert.Contains("pending.TrySetPayload(response.Payload.Clone())", clientSource, StringComparison.Ordinal);
+        Assert.Contains("protocolEvent = protocolEvent with { Payload = protocolEvent.Payload.Clone() }", clientSource, StringComparison.Ordinal);
+        Assert.Contains("dispatchRequest = request with { Payload = request.Payload.Clone() }", serverSource, StringComparison.Ordinal);
+        Assert.Contains("capturedRequest = dispatchRequest", serverSource, StringComparison.Ordinal);
+        Assert.Contains("DispatchAsync(capturedRequest", serverSource, StringComparison.Ordinal);
+        Assert.Contains("WriteResponseAsync(stream, writeGate, response, remote, capturedRequest", serverSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -609,10 +730,13 @@ public sealed class YFinanceClientServerProtocolTests
             await using YFinanceServerClient client = new(new YFinanceServerConnectionOptions("127.0.0.1", port, TimeSpan.FromSeconds(5), NullYFinanceServerClientTraceSink.Instance));
             HelloResponseDto hello = await client.HelloAsync(new HelloRequestDto("PortfolioSaver.Tests", "1.0", "TESTHASH", false, Environment.ProcessId));
             HealthResponseDto health = await client.HealthAsync();
+            HealthResponseDto secondHealth = await client.HealthAsync();
 
             Assert.Equal(port, hello.ListenerPort);
             Assert.Equal("standalone", hello.Mode);
             Assert.Equal("ok", health.Status);
+            Assert.Equal("ok", secondHealth.Status);
+            Assert.True(secondHealth.UptimeSeconds >= health.UptimeSeconds);
         }
         finally
         {
@@ -799,6 +923,18 @@ public sealed class YFinanceClientServerProtocolTests
         int port = ((IPEndPoint)listener.LocalEndpoint).Port;
         listener.Stop();
         return port;
+    }
+
+    private static MemoryStream CreateFramedStream(int length, byte[]? payload = null)
+    {
+        byte[] prefix = new byte[ProtocolConstants.LengthPrefixBytes];
+        BinaryPrimitives.WriteInt32BigEndian(prefix, length);
+        MemoryStream stream = new();
+        stream.Write(prefix);
+        if (payload is not null)
+            stream.Write(payload);
+        stream.Position = 0;
+        return stream;
     }
 
     private static async Task<bool> WaitForExitAsync(Process process, TimeSpan timeout)

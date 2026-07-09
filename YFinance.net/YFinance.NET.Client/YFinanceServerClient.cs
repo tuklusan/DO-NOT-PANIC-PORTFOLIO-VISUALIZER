@@ -264,23 +264,30 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                byte[]? responseBytes = await LengthPrefixedProtocolStream.ReadAsync(_stream!, cancellationToken).ConfigureAwait(false);
-                if (responseBytes is null)
+                using PooledProtocolPayload? responsePayload = await LengthPrefixedProtocolStream.ReadPooledAsync(_stream!, cancellationToken).ConfigureAwait(false);
+                if (responsePayload is null)
                     throw new IOException("Connection closed before a response was received.");
 
-                using JsonDocument document = JsonDocument.Parse(responseBytes);
-                string? messageType = document.RootElement.TryGetProperty("messageType", out JsonElement typeElement)
-                    ? typeElement.GetString()
-                    : null;
+                string? messageType;
+                // Parse only the message discriminator here; any JsonElement that
+                // escapes this receive-loop scope is cloned below before the pooled
+                // transport buffer can return to ArrayPool.
+                using (JsonDocument document = JsonDocument.Parse(responsePayload.Memory))
+                {
+                    messageType = document.RootElement.TryGetProperty("messageType", out JsonElement typeElement)
+                        ? typeElement.GetString()
+                        : null;
+                }
 
                 if (string.Equals(messageType, ProtocolMessageTypes.Event, StringComparison.Ordinal))
                 {
-                    ProtocolEvent<JsonElement>? protocolEvent = ProtocolJson.Deserialize<ProtocolEvent<JsonElement>>(responseBytes);
+                    ProtocolEvent<JsonElement>? protocolEvent = ProtocolJson.Deserialize<ProtocolEvent<JsonElement>>(responsePayload.Memory.Span);
                     if (protocolEvent is null)
                     {
                         throw new IOException("Event could not be deserialized.");
                     }
 
+                    protocolEvent = protocolEvent with { Payload = protocolEvent.Payload.Clone() };
                     if (!TryVerifyEnvelope(protocolEvent, protocolEvent.Payload, "event", protocolEvent.EventType, protocolEvent.EventType, out IOException? eventIntegrityFailure))
                     {
                         _options.TraceSink.Warn("ClientEventIntegrityFailure",
@@ -300,7 +307,7 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
                     continue;
                 }
 
-                ProtocolResponse<JsonElement>? response = ProtocolJson.Deserialize<ProtocolResponse<JsonElement>>(responseBytes);
+                ProtocolResponse<JsonElement>? response = ProtocolJson.Deserialize<ProtocolResponse<JsonElement>>(responsePayload.Memory.Span);
                 if (response is null)
                 {
                     throw new IOException("Response could not be deserialized.");
@@ -378,7 +385,9 @@ public sealed class YFinanceServerClient : IAsyncDisposable, IDisposable
                     continue;
                 }
 
-                pending.TrySetPayload(response.Payload);
+                // Clone before completing the pending request so no JsonElement
+                // backed by the pooled transport buffer can escape this scope.
+                pending.TrySetPayload(response.Payload.Clone());
             }
         }
         catch (OperationCanceledException)
