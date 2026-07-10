@@ -1,0 +1,90 @@
+Installed VM pre-deployment soak failure evidence
+
+Result: Failed
+Soak: installed-soak-20260709-234536
+Installer: build/artifacts/inno/output/DoNotPanicPortfolioVisualizerSetup-1.0.exe
+
+Summary:
+{
+  "ResultName": "installed-soak-20260709-234536",
+  "StartedAt": "2026-07-10T03:45:40.0993534+00:00",
+  "InstallRoot": "C:\\Program Files\\SANYALnet Labs\\DoNotPanicPortfolioVisualizer",
+  "DesktopExe": "C:\\Program Files\\SANYALnet Labs\\DoNotPanicPortfolioVisualizer\\PortfolioSaver.Desktop.exe",
+  "RuntimeMinutesRequested": 30,
+  "FinishedAt": "2026-07-10T04:15:40.3669124+00:00",
+  "DesktopProcessAliveAtEnd": false,
+  "TraceRoot": "C:\\Users\\sanyalnet\\AppData\\Local\\DoNotPanicPortfolioVisualizer\\Trace",
+  "DesktopProcessAliveAfterStop": false,
+  "ServerProcessAliveAfterStop": false,
+  "TraceFiles": [
+    {
+      "Name": "trace.circular.idx",
+      "Length": 6,
+      "LastWriteTime": "2026-07-10T03:46:51.3805874+00:00"
+    },
+    {
+      "Name": "trace.circular.log",
+      "Length": 33554432,
+      "LastWriteTime": "2026-07-10T03:46:51.3805874+00:00"
+    },
+    {
+      "Name": "yfinance.circular.idx",
+      "Length": 5,
+      "LastWriteTime": "2026-07-10T03:46:51.587643+00:00"
+    },
+    {
+      "Name": "yfinance.circular.log",
+      "Length": 33554432,
+      "LastWriteTime": "2026-07-10T03:46:51.6044128+00:00"
+    }
+  ]
+}
+
+
+Critical trace lines:
+2026-07-10T03:46:40.9429858+00:00 | ERROR | program=PortfolioSaver.Desktop | source=Desktop.App | function=OnStartup | host=windows10 | ip=192.168.56.102 | pid=5832 | tid=2 | DispatcherUnhandledException/ ex=ArgumentException: Must create DependencySource on same Thread as the DependencyObject.
+2026-07-10T03:46:40.9716699+00:00 | ERROR | program=PortfolioSaver.Desktop | source=Desktop.App | function=OnStartup | host=windows10 | ip=192.168.56.102 | pid=5832 | tid=2 | UnhandledException: System.ArgumentException: Must create DependencySource on same Thread as the DependencyObject.     at System.Windows.DependencyObject.ValidateSources(DependencyObject d, DependencySource[] newSources, Expression expr)     at System.Windows.Expression.ChangeSources(DependencyObject d, DependencyProperty dp, DependencySource[] newSources)     at System.Windows.Data.BindingExpressionBase.ChangeSources(WeakDependencySource[] newSources)     at MS.Internal.Data.ClrBindingWorker.NewValueAvailable(Boolean dependencySourcesChanged, Boolean initialValue, Boolean isASubPropertyChange)     at MS.Internal.Data.PropertyPathWorker.UpdateSourceValueState(Int32 k, ICollectionView collectionView, Object newValue, Boolean isASubPropertyChange)     at MS.Internal.Data.ClrBindingWorker.AttachDataItem()     at System.Windows.Data.BindingExpression.Activate(Object item)     at System.Windows.Data.BindingExpression.AttachToContext(AttachAttempt attempt)     at System.Windows.Data.BindingExpression.MS.Internal.Data.IDataBindEngineClient.AttachToContext(Boolean lastChance)     at MS.Internal.Data.DataBindEngine.Task.Run(Boolean lastChance)     at MS.Internal.Data.DataBindEngine.Run(Object arg)     at System.Windows.Threading.ExceptionWrapper.InternalRealCall(Delegate callback, Object args, Int32 numArgs)     at System.Windows.Threading.ExceptionWrapper.TryCatchWhen(Object source, Delegate callback, Object args, Int32 numArgs, Delegate catchHandler)     at System.Windows.Threading.DispatcherOperation.InvokeImpl()     at MS.Internal.CulturePreservingExecutionContext.CallbackWrapper(Object obj)     at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)  --- End of stack trace from previous location ---     at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback ...
+
+DeepSeek artifact review excerpt:
+## Advisory Findings (Ordered by Severity)
+
+### 1. [High] **Premature crash due to WPF threading violation — soak renders zero useful coverage**
+
+The evidence clearly shows a `System.ArgumentException: Must create DependencySource on same Thread as the DependencyObject` at **03:46:40 UTC**, exactly 60 seconds into a 30-minute soak. The `OnStartup` stack trace confirms the crash originates from WPF data binding (a classic cross‑thread UI access bug).  
+This effectively nullifies the soak: the desktop process lived for ~1/30 of the requested duration, and the remaining 29 minutes are dead time with no UI activity.  
+The deterministic verdict of **Failed** is fully justified. No false positive.
+
+**Residual risk**:  
+- This crash occurs during startup logic; if the app is used normally, users may hit this on launch under certain race conditions or input data states.  
+- The `yfinance` server warning at 03:46:51 (`PendingReadDrainFailed`, `ClientDisconnectedAbruptly`) is a natural consequence of the desktop process dying, but it also means the server lost its sole client immediately. We have **no visibility** into what the server did for the remaining 29 minutes (it may have continued running, but `ServerProcessAliveAfterStop` is false, implying it eventually terminated – possibly via a shutdown timeout). This should be confirmed.
+
+**Missing evidence**:  
+- No screenshots were captured. A screenshot of the desktop window at the time of the crash (or shortly before) could help determine whether the startup sequence had shown any UI or if the crash occurred before a window was rendered.  
+- No memory dump, event viewer logs, or crash dump files are mentioned. Without a dump, the root cause of the threading violation (which object was being bound, which thread was incorrect) cannot be pinpointed.
+
+**Recommended follow‑up checks**:  
+1. **Reproduction**: Run the installed app once manually with tracing enabled. Does the crash happen deterministically? If yes, fix the WPF data binding to use `Dispatcher.Invoke` or ensure the binding source is created on the UI thread.  
+2. **Post‑mortem**: Enable Windows Error Reporting (WER) dumps for the desktop executable in future soak runs.  
+3. **Server lifecycle**: Add a server health‑check log at the harness level every 30 seconds so we can tell when the server process actually exits.  
+4. **Circular trace retention**: The trace files are 32 MB each; they appear to have been overwritten because only a 1‑minute window is captured. Consider increasing buffer or capturing a periodic snapshot of the log tail for the full soak duration.
+
+---
+
+### 2. [Medium] **Soak harness did not detect the crash early; dead time inflates the test report**
+
+The harness requested 30 minutes of runtime, but the app died after 1 minute. The summary correctly reports `DesktopProcessAliveAtEnd: false`, but the `RuntimeMinutesRequested` field is still 30. The harness did not stop early (e.g., by polling for process existence every few seconds).  
+While this does not invalidate the pass/fail verdict, it wastes 29 minutes of CI pipeline time and may mask other issues (the server might have been idle or misbehaving during that time).
+
+**Recommended follow‑up**:  
+- Modify the soak harness to terminate the test if the desktop process disappears for more than a threshold (e.g., 10 seconds) and report the actual runtime as “partial soak – crashed at N minutes”.
+
+---
+
+### 3. [Low] **Screenshot artifacts were not collected — UX regression at crash invisible**
+
+The screenshot/image inventory is empty. Even though the crash is a functional/threading bug, a screenshot showing the desktop window state (or lack thereof) at the crash moment would strengthen the evidence and could reveal a secondary UX issue (e.g., a partially rendered window, error dialog, or frozen splash screen).
+
+**Recommended follow‑up**:  
+- Add screenshot capture to the soak harness at start, at regular intervals (e.g., every 5 minutes), and on exit/crash. This is cheap and provides visual proof for any future UI regressions.
+
+---

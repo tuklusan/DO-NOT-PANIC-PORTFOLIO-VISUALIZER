@@ -10493,6 +10493,35 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-225",
+      "tracking_number": "CR-225",
+      "priority": 1,
+      "area": "Runtime stability",
+      "title": "Installed app crashes during VM 30-minute pre-deployment soak with WPF cross-thread binding exception",
+      "status": "open",
+      "source": "installed_vm_predeployment_soak_2026_07_09",
+      "severity": "Critical",
+      "evidence": [
+        "Installed VM soak requested 30 minutes but DesktopProcessAliveAtEnd=false.",
+        "Trace error: 2026-07-10T03:46:40.9429858+00:00 DispatcherUnhandledException ex=ArgumentException: Must create DependencySource on same Thread as the DependencyObject.",
+        "Trace error: 2026-07-10T03:46:40.9716699+00:00 UnhandledException System.ArgumentException in WPF data binding stack.",
+        "Tracked evidence file: docs/cr-evidence/CR-225-installed-soak-wpf-cross-thread-crash.txt includes soak summary, trace excerpt, and DeepSeek artifact-review excerpt."
+      ],
+      "notes": [
+        "Fresh installer DoNotPanicPortfolioVisualizerSetup-1.0.exe was built locally, copied to the VM, installed silently, and launched from Program Files through an interactive scheduled task.",
+        "Trace files stopped updating at approximately 2026-07-10T03:46:51Z while the requested soak window continued until 2026-07-10T04:15:40Z.",
+        "YFinance PendingReadDrainFailed appears consequential to the desktop crash/client disconnect, not the root cause.",
+        "Follow-up should fix the WPF cross-thread binding issue and add early process-death detection/screenshot capture to installed-app soak validation."
+      ],
+      "acceptance": [
+        "Root cause of the WPF cross-thread binding exception is identified and fixed.",
+        "Installed-app VM soak detects early process death instead of sleeping through dead time.",
+        "Fresh rebuilt installer is installed on VM and completes a 30-minute soak with DesktopProcessAliveAtEnd=true until deliberate exit.",
+        "Trace inspection and DeepSeek artifact second opinion show no crash/error blockers.",
+        "Ticket is marked closed in docs/AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
