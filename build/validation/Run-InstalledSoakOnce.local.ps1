@@ -37,9 +37,9 @@ New-Item -ItemType Directory -Force -Path '$remoteResult' | Out-Null
 `$ErrorActionPreference='Stop'
 `$installer='$remoteInstaller'
 `$result='$remoteResult'
-`$screenshotDir=Join-Path `$result 'screenshots'
+`$captureDir=Join-Path `$result 'scene-captures'
 `$metricsPath=Join-Path `$result 'resource-samples.csv'
-New-Item -ItemType Directory -Force -Path `$screenshotDir | Out-Null
+New-Item -ItemType Directory -Force -Path `$captureDir | Out-Null
 function Write-ResourceSample([string]`$phase) {
   `$timestamp=(Get-Date).ToUniversalTime().ToString('o')
   `$processes=Get-Process PortfolioSaver.Desktop,YFinance.NET.Server -ErrorAction SilentlyContinue
@@ -55,29 +55,6 @@ function Write-ResourceSample([string]`$phase) {
       Threads=`$process.Threads.Count
       Handles=`$process.HandleCount
     } | Export-Csv -LiteralPath `$metricsPath -Append -NoTypeInformation
-  }
-}
-function Capture-Screenshot([string]`$phase) {
-  try {
-    Add-Type -AssemblyName System.Windows.Forms,System.Drawing
-    `$screen=[System.Windows.Forms.Screen]::PrimaryScreen
-    if (`$null -eq `$screen) { throw 'No primary screen is available for screenshot capture.' }
-    `$bounds=`$screen.Bounds
-    `$bitmap=New-Object System.Drawing.Bitmap `$bounds.Width, `$bounds.Height
-    `$graphics=[System.Drawing.Graphics]::FromImage(`$bitmap)
-    try {
-      `$graphics.CopyFromScreen(`$bounds.Location, [System.Drawing.Point]::Empty, `$bounds.Size)
-      `$path=Join-Path `$screenshotDir ("{0}-{1}.png" -f (Get-Date -Format 'yyyyMMdd-HHmmss'), `$phase)
-      `$bitmap.Save(`$path, [System.Drawing.Imaging.ImageFormat]::Png)
-    }
-    finally {
-      `$graphics.Dispose()
-      `$bitmap.Dispose()
-    }
-  }
-  catch {
-    `$screenshotErrorMessage=`$_.Exception.Message
-    ("{0}: {1}" -f `$phase, `$screenshotErrorMessage) | Add-Content -LiteralPath (Join-Path `$result 'screenshot-errors.txt')
   }
 }
 Start-Process -FilePath `$installer -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
@@ -100,7 +77,17 @@ if (!(Test-Path -LiteralPath `$configExe)) { throw "Config exe missing: `$config
 }
 `$taskName='DnppvInstalledSoakDesktop'
 `$taskTime=(Get-Date).AddMinutes(1).ToString('HH:mm')
-`$taskAction='"' + `$desktopExe + '"'
+`$launchCmd=Join-Path `$result 'launch-installed-soak.cmd'
+`$launchLines=@(
+  '@echo off',
+  "set PORTFOLIOSAVER_CAPTURE_DIR=`$captureDir",
+  'set PORTFOLIOSAVER_CAPTURE_STEM=installed-soak',
+  'set PORTFOLIOSAVER_CAPTURE_DELAYS=30,300,600,900,1200,1500,1790',
+  "cd /d ""`$installRoot""",
+  "start """" ""`$desktopExe"""
+)
+Set-Content -LiteralPath `$launchCmd -Value `$launchLines -Encoding ASCII
+`$taskAction='cmd.exe /c ""' + `$launchCmd + '""'
 # /IT is intentional: the installed-soak lane validates real GUI rendering in the logged-on test user's desktop session.
 schtasks /Create /TN `$taskName /TR `$taskAction /SC ONCE /ST `$taskTime /IT /RU '$remoteUser' /F | Out-Null
 schtasks /Run /TN `$taskName | Out-Null
@@ -108,7 +95,6 @@ schtasks /Run /TN `$taskName | Out-Null
 `$launchDeadline=(Get-Date).AddSeconds(90)
 while ((Get-Date) -lt `$launchDeadline -and -not (Get-Process PortfolioSaver.Desktop -ErrorAction SilentlyContinue)) { Start-Sleep -Seconds 2 }
 if (-not (Get-Process PortfolioSaver.Desktop -ErrorAction SilentlyContinue)) { throw 'Desktop process did not launch.' }
-Capture-Screenshot 'startup'
 Write-ResourceSample 'startup'
 `$nextEvidenceAt=(Get-Date).AddMinutes(5)
 `$evidenceIndex=0
@@ -116,14 +102,12 @@ while ((Get-Date) -lt `$deadline) {
   if (-not (Get-Process PortfolioSaver.Desktop -ErrorAction SilentlyContinue)) { `$summary.DesktopProcessDiedEarly=`$true; break }
   if ((Get-Date) -ge `$nextEvidenceAt) {
     `$evidenceIndex++
-    Capture-Screenshot ("soak-{0:00}" -f `$evidenceIndex)
     Write-ResourceSample ("soak-{0:00}" -f `$evidenceIndex)
     `$nextEvidenceAt=(Get-Date).AddMinutes(5)
   }
   Start-Sleep -Seconds 5
 }
 `$summary.DesktopProcessAliveAtEndBeforeStop = [bool](Get-Process PortfolioSaver.Desktop -ErrorAction SilentlyContinue)
-Capture-Screenshot 'before-stop'
 Write-ResourceSample 'before-stop'
 Get-Process PortfolioSaver.Desktop,PortfolioSaver.Config,YFinance.NET.Server -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 3
@@ -132,8 +116,7 @@ Start-Sleep -Seconds 3
   if (Test-Path -LiteralPath `$traceSource) { Copy-Item -LiteralPath `$traceSource -Destination `$traceDest -Recurse -Force }
   `$summary.CompletedAtUtc=(Get-Date).ToUniversalTime().ToString('o')
   `$summary.TraceFiles=@(if (Test-Path -LiteralPath `$traceDest) { Get-ChildItem -LiteralPath `$traceDest -File | ForEach-Object FullName })
-  `$summary.ScreenshotFiles=@(Get-ChildItem -LiteralPath `$screenshotDir -File -Filter '*.png' -ErrorAction SilentlyContinue | ForEach-Object FullName)
-  `$summary.ScreenshotErrorFile=if (Test-Path -LiteralPath (Join-Path `$result 'screenshot-errors.txt')) { Join-Path `$result 'screenshot-errors.txt' } else { `$null }
+  `$summary.ScreenshotFiles=@(Get-ChildItem -LiteralPath `$captureDir -File -Filter '*.png' -ErrorAction SilentlyContinue | ForEach-Object FullName)
   `$summary.ResourceSampleFile=if (Test-Path -LiteralPath `$metricsPath) { `$metricsPath } else { `$null }
   `$summary | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path `$result 'summary.json') -Encoding UTF8
   schtasks /Delete /TN `$taskName /F *>`$null 2>&1
@@ -148,8 +131,8 @@ Start-Sleep -Seconds 3
   if (Test-Path -LiteralPath $summaryPath) {
     $summary=Get-Content -Raw -LiteralPath $summaryPath | ConvertFrom-Json
     $screenshotCount=@($summary.ScreenshotFiles).Count
-    if ($screenshotCount -lt 2) { throw "Installed soak did not capture sufficient screenshot evidence. Captured screenshots: $screenshotCount. See $localResultRoot" }
-    if ($summary.ScreenshotErrorFile) { throw "Installed soak screenshot capture reported errors. See $localResultRoot" }
+    # The app schedules seven scene captures; require five so visual evidence cannot pass on a token capture.
+    if ($screenshotCount -lt 5) { throw "Installed soak did not capture sufficient screenshot evidence. Captured screenshots: $screenshotCount. See $localResultRoot" }
     if (-not $summary.ResourceSampleFile) { throw "Installed soak did not capture resource-sample evidence. See $localResultRoot" }
   } else {
     throw "Installed soak did not produce summary.json. See $localResultRoot"

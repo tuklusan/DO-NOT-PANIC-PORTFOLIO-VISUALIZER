@@ -64,6 +64,8 @@ public partial class VisualizerSceneControl : UserControl
     private static readonly TimeSpan RuntimeQuoteRequestTimeout = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan RuntimeTapeStructuralSyncInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan RuntimeQuoteAppliedTraceInterval = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan MotionFrameInterval = TimeSpan.FromMilliseconds(33);
+    private static readonly TimeSpan MaxMotionStepInterval = TimeSpan.FromMilliseconds(100);
     private static readonly TimeSpan GraphRefreshTravelFlashMaximumDuration = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan GraphRefreshTravelTargetDuration = TimeSpan.FromSeconds(1.4);
     private static readonly TimeSpan SceneSchedulerInterval = TimeSpan.FromMilliseconds(33);
@@ -893,10 +895,17 @@ public partial class VisualizerSceneControl : UserControl
         if (!_initialized || !_liveSchedulerRunning || _isValidationPaused)
             return;
 
+        DateTime currentTick = DateTime.UtcNow;
+        // Do not advance _lastMotionTick on skipped render callbacks. The next
+        // accepted step should carry the accumulated elapsed time so throttling
+        // reduces CPU without slowing graph-card travel.
+        if (currentTick - _lastMotionTick < MotionFrameInterval)
+            return;
+
         Stopwatch stopwatch = Stopwatch.StartNew();
         try
         {
-            StepMotion();
+            StepMotion(currentTick);
         }
         catch (Exception ex)
         {
@@ -907,7 +916,7 @@ public partial class VisualizerSceneControl : UserControl
         finally
         {
             stopwatch.Stop();
-            if (stopwatch.Elapsed > TimeSpan.FromMilliseconds(33))
+            if (stopwatch.Elapsed > MotionFrameInterval)
             {
                 // Motion is frame-driven rather than scheduler-driven, so keep this distinct from SceneSchedulerActionSlow.
                 TraceSceneState(
@@ -1805,14 +1814,16 @@ public partial class VisualizerSceneControl : UserControl
         _hasSeededLayout = true;
     }
 
-    private void StepMotion()
+    private void StepMotion(DateTime currentTick)
     {
         Rect bounds = GetGraphMotionBounds();
         if (bounds.Width <= 0 || bounds.Height <= 0)
             return;
 
-        DateTime currentTick = DateTime.UtcNow;
-        double elapsedSeconds = Math.Max(0.001, (currentTick - _lastMotionTick).TotalSeconds);
+        double elapsedSeconds = Math.Clamp(
+            (currentTick - _lastMotionTick).TotalSeconds,
+            0.001,
+            MaxMotionStepInterval.TotalSeconds);
         _lastMotionTick = currentTick;
 
         int visibleGraphCount = 0;

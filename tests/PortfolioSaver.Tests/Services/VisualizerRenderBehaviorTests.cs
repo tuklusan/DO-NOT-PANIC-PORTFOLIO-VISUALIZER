@@ -449,6 +449,11 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("CompositionTarget.Rendering += OnMotionRendering;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("CompositionTarget.Rendering -= OnMotionRendering;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnMotionRendering(object? sender, EventArgs e)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("MotionFrameInterval = TimeSpan.FromMilliseconds(33)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("MaxMotionStepInterval = TimeSpan.FromMilliseconds(100)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("Do not advance _lastMotionTick on skipped render callbacks.", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("if (currentTick - _lastMotionTick < MotionFrameInterval)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("StepMotion(currentTick);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("StopMotionRendering();", codeBehind, StringComparison.Ordinal);
         Assert.Contains("if (!_initialized || !_liveSchedulerRunning || _isValidationPaused)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("\"MotionFrameSlow\"", codeBehind, StringComparison.Ordinal);
@@ -1444,13 +1449,15 @@ public sealed class VisualizerRenderBehaviorTests
             "Controls",
             "VisualizerSceneControl.xaml.cs"));
 
-        int methodStart = sceneCodeBehind.IndexOf("private void StepMotion()", StringComparison.Ordinal);
+        int methodStart = sceneCodeBehind.IndexOf("private void StepMotion(DateTime currentTick)", StringComparison.Ordinal);
         Assert.True(methodStart >= 0, "StepMotion method not found.");
         int nextMethodStart = sceneCodeBehind.IndexOf("private IEnumerable<FloatingGraphViewModel> EnumerateVisibleGraphCards()", methodStart, StringComparison.Ordinal);
         Assert.True(nextMethodStart > methodStart, "StepMotion method boundary not found.");
         string body = sceneCodeBehind[methodStart..nextMethodStart];
 
         Assert.Contains("for (int i = 0; i < _graphs.Count && visibleGraphCount < MaxVisibleGraphCards; i++)", body, StringComparison.Ordinal);
+        Assert.Contains("Math.Clamp(", body, StringComparison.Ordinal);
+        Assert.Contains("MaxMotionStepInterval.TotalSeconds", body, StringComparison.Ordinal);
         Assert.DoesNotContain("EnumerateVisibleGraphCards()", body, StringComparison.Ordinal);
         Assert.DoesNotContain("ClampSpritesToSafeBounds();", body, StringComparison.Ordinal);
         Assert.DoesNotContain(".Where(", body, StringComparison.Ordinal);
@@ -1504,7 +1511,7 @@ public sealed class VisualizerRenderBehaviorTests
                 graphs.Add(graph);
                 lastMotionTickField.SetValue(control, DateTime.UtcNow - TimeSpan.FromSeconds(1));
 
-                stepMotion.Invoke(control, []);
+                stepMotion.Invoke(control, [DateTime.UtcNow]);
 
                 Assert.InRange(graph.X, bounds.Left, Math.Max(bounds.Left, bounds.Right - graph.Width));
                 Assert.InRange(graph.Y, bounds.Top, Math.Max(bounds.Top, bounds.Bottom - graph.Height));
@@ -1551,6 +1558,40 @@ public sealed class VisualizerRenderBehaviorTests
             finally
             {
                 host?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void SceneCapture_WritesPngFromHostedVisualizerControl()
+    {
+        RunOnSta(() =>
+        {
+            string capturePath = Path.Combine(
+                Path.GetTempPath(),
+                $"dnppv-scene-capture-{Guid.NewGuid():N}.png");
+            VisualizerSceneControl control = new();
+            Window? host = null;
+
+            try
+            {
+                host = HostControlForLayout(control, 640, 360);
+                MethodInfo saveSceneCapture = typeof(VisualizerSceneControl).GetMethod(
+                    "SaveSceneCapture",
+                    BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException("SaveSceneCapture method not found.");
+
+                saveSceneCapture.Invoke(control, [capturePath]);
+
+                Assert.True(File.Exists(capturePath), $"Expected scene capture at {capturePath}.");
+                byte[] signature = File.ReadAllBytes(capturePath).Take(8).ToArray();
+                Assert.Equal([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A], signature);
+            }
+            finally
+            {
+                host?.Close();
+                if (File.Exists(capturePath))
+                    File.Delete(capturePath);
             }
         });
     }

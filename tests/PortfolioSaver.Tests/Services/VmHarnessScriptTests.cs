@@ -1077,22 +1077,28 @@ public sealed class VmHarnessScriptTests
     public void InstalledSoakHarness_CapturesVisualAndResourceEvidence()
     {
         string script = ReadRepoText("build", "validation", "Run-InstalledSoakOnce.local.ps1");
+        string sceneControl = ReadRepoText("src", "PortfolioSaver.Presentation", "Controls", "VisualizerSceneControl.xaml.cs");
 
-        Assert.Contains("$screenshotDir=Join-Path `$result 'screenshots'", script, StringComparison.Ordinal);
+        Assert.Contains("$captureDir=Join-Path `$result 'scene-captures'", script, StringComparison.Ordinal);
         Assert.Contains("$metricsPath=Join-Path `$result 'resource-samples.csv'", script, StringComparison.Ordinal);
-        Assert.Contains("function Capture-Screenshot", script, StringComparison.Ordinal);
         Assert.Contains("function Write-ResourceSample", script, StringComparison.Ordinal);
-        Assert.Contains("CopyFromScreen", script, StringComparison.Ordinal);
-        Assert.Contains("No primary screen is available for screenshot capture.", script, StringComparison.Ordinal);
-        Assert.Contains("Capture-Screenshot 'startup'", script, StringComparison.Ordinal);
-        Assert.Contains("Capture-Screenshot 'before-stop'", script, StringComparison.Ordinal);
+        Assert.Contains("set PORTFOLIOSAVER_CAPTURE_DIR=`$captureDir", script, StringComparison.Ordinal);
+        Assert.Contains("set PORTFOLIOSAVER_CAPTURE_STEM=installed-soak", script, StringComparison.Ordinal);
+        Assert.Contains("set PORTFOLIOSAVER_CAPTURE_DELAYS=30,300,600,900,1200,1500,1790", script, StringComparison.Ordinal);
+        Assert.Contains("launch-installed-soak.cmd", script, StringComparison.Ordinal);
+        Assert.Contains("$taskAction='cmd.exe /c \"\"' + `$launchCmd + '\"\"'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ResourceSample 'before-stop'", script, StringComparison.Ordinal);
         Assert.Contains("Get-Process PortfolioSaver.Desktop,YFinance.NET.Server", script, StringComparison.Ordinal);
         Assert.Contains("/IT is intentional: the installed-soak lane validates real GUI rendering", script, StringComparison.Ordinal);
         Assert.Contains("/ST `$taskTime /IT /RU '$remoteUser'", script, StringComparison.Ordinal);
         Assert.Contains("Installed soak did not capture sufficient screenshot evidence.", script, StringComparison.Ordinal);
-        Assert.Contains("Installed soak screenshot capture reported errors.", script, StringComparison.Ordinal);
         Assert.Contains("Installed soak did not capture resource-sample evidence.", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("CopyFromScreen", script, StringComparison.Ordinal);
+        Assert.Contains("PORTFOLIOSAVER_CAPTURE_DIR", sceneControl, StringComparison.Ordinal);
+        Assert.Contains("PORTFOLIOSAVER_CAPTURE_STEM", sceneControl, StringComparison.Ordinal);
+        Assert.Contains("PORTFOLIOSAVER_CAPTURE_DELAYS", sceneControl, StringComparison.Ordinal);
+        Assert.Contains("CaptureSceneSequenceAsync", sceneControl, StringComparison.Ordinal);
+        Assert.Contains("SaveSceneCapture", sceneControl, StringComparison.Ordinal);
     }
 
     private static readonly ConcurrentDictionary<string, Lazy<string>> SourceTextCache = new(StringComparer.OrdinalIgnoreCase);
