@@ -68,7 +68,7 @@ $report = [ordered]@{
         http429 = @($allLines | Where-Object { $_ -match '(?i)(\b429\b|rate limit)' }).Count
         sceneSchedulerActionSlow = Measure-LineCount $slowScene
         strictTransportFailure = Measure-LineCount $transportFailures
-        runtimeQuoteApplied = @($desktopLines | Where-Object { $_ -match 'event=RuntimeQuoteApplied' }).Count
+        runtimeQuoteApplied = @($desktopLines | Where-Object { $_ -match 'event=RuntimeQuoteApplied(?!\w)' }).Count
         worldMarketsFetchComplete = @($desktopLines | Where-Object { $_ -match 'event=WorldMarketsFetchComplete' }).Count
         worldMarketsUiPatchComplete = @($desktopLines | Where-Object { $_ -match 'event=WorldMarketsUiPatchComplete' }).Count
         backgroundRotationChosen = @($desktopLines | Where-Object { $_ -match 'event=BackgroundRotationChosen' }).Count

@@ -1069,7 +1069,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("event=ServerStartup", analyzer, StringComparison.Ordinal);
         Assert.Contains("strictTransportFailure", analyzer, StringComparison.Ordinal);
         Assert.Contains("runtimeQuoteApplied", analyzer, StringComparison.Ordinal);
-        Assert.Contains("event=RuntimeQuoteApplied", analyzer, StringComparison.Ordinal);
+        Assert.Contains("event=RuntimeQuoteApplied(?!\\w)", analyzer, StringComparison.Ordinal);
         Assert.DoesNotContain("transport_fail", analyzer, StringComparison.OrdinalIgnoreCase);
     }
 

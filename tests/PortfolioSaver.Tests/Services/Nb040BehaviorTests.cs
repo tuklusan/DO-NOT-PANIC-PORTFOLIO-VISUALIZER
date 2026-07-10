@@ -1094,7 +1094,23 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
+            "RuntimeQuoteAppliedTraceInterval = TimeSpan.FromSeconds(15)",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
             "ApplyQuotesToDisplayedTapeItems(deltaQuotes.Values)",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"RuntimeQuoteApplied\"",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"RuntimeQuoteAppliedDebug\"",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "applied_symbol_count",
             source,
             StringComparison.Ordinal);
         Assert.Contains(
@@ -1118,7 +1134,7 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
-            "if (ShouldTraceRuntimeQuoteDebug())",
+            "bool traceRuntimeQuoteDebug = ShouldTraceRuntimeQuoteDebug();",
             source,
             StringComparison.Ordinal);
         Assert.Contains(

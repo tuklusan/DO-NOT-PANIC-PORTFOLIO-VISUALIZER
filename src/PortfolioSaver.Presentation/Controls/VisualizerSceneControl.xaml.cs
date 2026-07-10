@@ -63,6 +63,7 @@ public partial class VisualizerSceneControl : UserControl
     private static readonly TimeSpan RuntimeQuoteDispatchInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan RuntimeQuoteRequestTimeout = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan RuntimeTapeStructuralSyncInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan RuntimeQuoteAppliedTraceInterval = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan GraphRefreshTravelFlashMaximumDuration = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan GraphRefreshTravelTargetDuration = TimeSpan.FromSeconds(1.4);
     private static readonly TimeSpan SceneSchedulerInterval = TimeSpan.FromMilliseconds(33);
@@ -164,6 +165,7 @@ public partial class VisualizerSceneControl : UserControl
     private DateTimeOffset _lastAllRuntimeQuotesInFlightTraceUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastRuntimeQuoteLoopHeartbeatUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastDisplayedTapeSampleTraceUtc = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastRuntimeQuoteAppliedTraceUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastFullTapeSyncUtc = DateTimeOffset.MinValue;
     private readonly RuntimeQuoteRecoveryGate _runtimeQuoteRecoveryGate = new(RuntimeQuoteTransportRecoveryFailureThreshold, TimeSpan.FromSeconds(30));
     private CancellationTokenSource? _newsRefreshCancellation;
@@ -4685,21 +4687,47 @@ public partial class VisualizerSceneControl : UserControl
             QueueWorldMarketsRefresh(refreshAncillary: false, reason: "quote-delta");
 
         TraceDisplayedTapeSampleIfDue();
-        if (ShouldTraceRuntimeQuoteDebug())
+        bool traceRuntimeQuoteDebug = ShouldTraceRuntimeQuoteDebug();
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        bool traceRuntimeQuoteApplied = now - _lastRuntimeQuoteAppliedTraceUtc >= RuntimeQuoteAppliedTraceInterval;
+        if (traceRuntimeQuoteApplied || traceRuntimeQuoteDebug)
         {
-            DateTimeOffset latestFetchUtc = deltaQuotes.Values
-                .Where(quote => quote.FetchTimestampUtc > DateTimeOffset.MinValue)
-                .Select(quote => quote.FetchTimestampUtc)
-                .DefaultIfEmpty(DateTimeOffset.MinValue)
-                .Max();
-            TraceSceneState(
-                "RuntimeQuoteApplied",
-                new KeyValuePair<string, object?>("requested_symbol", symbol),
-                new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel?.DataFreshnessText),
-                new KeyValuePair<string, object?>("latest_fetch_timestamp_utc", latestFetchUtc == DateTimeOffset.MinValue ? null : latestFetchUtc),
-                new KeyValuePair<string, object?>("latest_fetch_age_seconds", latestFetchUtc == DateTimeOffset.MinValue ? null : Math.Round(Math.Max(0d, (DateTimeOffset.UtcNow - latestFetchUtc).TotalSeconds), 1)),
-                new KeyValuePair<string, object?>("resolved_symbols", deltaQuotes.Keys.ToList()),
-                new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+            DateTimeOffset latestFetchUtc = DateTimeOffset.MinValue;
+            foreach (QuoteSnapshot quote in deltaQuotes.Values)
+            {
+                if (quote.FetchTimestampUtc > latestFetchUtc)
+                    latestFetchUtc = quote.FetchTimestampUtc;
+            }
+
+            double? latestFetchAgeSeconds = latestFetchUtc == DateTimeOffset.MinValue
+                ? null
+                : Math.Round(Math.Max(0d, (now - latestFetchUtc).TotalSeconds), 1);
+
+            if (traceRuntimeQuoteApplied)
+            {
+                _lastRuntimeQuoteAppliedTraceUtc = now;
+                TraceSceneState(
+                    "RuntimeQuoteApplied",
+                    new KeyValuePair<string, object?>("requested_symbol", symbol),
+                    new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel?.DataFreshnessText),
+                    new KeyValuePair<string, object?>("latest_fetch_timestamp_utc", latestFetchUtc == DateTimeOffset.MinValue ? null : latestFetchUtc),
+                    new KeyValuePair<string, object?>("latest_fetch_age_seconds", latestFetchAgeSeconds),
+                    new KeyValuePair<string, object?>("applied_symbol_count", deltaQuotes.Count),
+                    new KeyValuePair<string, object?>("tape_structure_still_matched", tapeStructureStillMatched),
+                    new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+            }
+
+            if (traceRuntimeQuoteDebug)
+            {
+                TraceSceneState(
+                    "RuntimeQuoteAppliedDebug",
+                    new KeyValuePair<string, object?>("requested_symbol", symbol),
+                    new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel?.DataFreshnessText),
+                    new KeyValuePair<string, object?>("latest_fetch_timestamp_utc", latestFetchUtc == DateTimeOffset.MinValue ? null : latestFetchUtc),
+                    new KeyValuePair<string, object?>("latest_fetch_age_seconds", latestFetchAgeSeconds),
+                    new KeyValuePair<string, object?>("resolved_symbols", deltaQuotes.Keys.ToList()),
+                    new KeyValuePair<string, object?>("in_flight_count", _inFlightQuoteRequests.Count));
+            }
         }
     }
 
