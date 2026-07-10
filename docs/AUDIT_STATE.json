@@ -10155,7 +10155,7 @@
       "priority": 2,
       "area": "UI / network",
       "title": "Replace 1-s connectivity polling timer with `NetworkChange.NetworkAvailabilityChanged` event",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "High",
       "evidence": [
@@ -10165,7 +10165,15 @@
       "notes": [
         "Recommendation: Subscribe to `NetworkChange.NetworkAvailabilityChanged`; fallback to 30 s interval if event unavailable.",
         "Acceptance criteria: No periodic network poll; connectivity state updates immediately on network change.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Implementation: IConnectivityService now exposes ConnectivityChanged; ConfigConnectivityService subscribes to NetworkChange.NetworkAvailabilityChanged and invalidates the InternetProbeService cache before notifying.",
+        "Implementation: MainWindowViewModel removed _stateTimer/OnStateTimerTickAsync, reacts to connectivity events, coalesces rapid events, keeps UI-state mutation on the UI dispatcher, and force-probes connectivity on every Validate click.",
+        "Validation: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --filter \"MainWindowViewModelValidationTests\" --no-restore passed 59/59.",
+        "DeepSeek review: build/deepseek-review/deepseek-review-20260709-202940.md remaining periodic-poll recommendation was adjudicated as conflicting with CR-214 no-periodic-poll acceptance; forced Validate probe is documented as the stale-state safety net.",
+        "Implementation: IConnectivityService now exposes ConnectivityChanged; ConfigConnectivityService subscribes to NetworkChange.NetworkAvailabilityChanged and invalidates the InternetProbeService cache before notifying.",
+        "Implementation: MainWindowViewModel removed _stateTimer/OnStateTimerTickAsync, reacts to connectivity events, coalesces rapid events, keeps UI-state mutation on the UI dispatcher, and force-probes connectivity on every Validate click.",
+        "Validation: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --filter \"MainWindowViewModelValidationTests\" --no-restore passed 59/59.",
+        "DeepSeek review: build/deepseek-review/deepseek-review-20260709-202940.md remaining periodic-poll recommendation was adjudicated as conflicting with CR-214 no-periodic-poll acceptance; forced Validate probe is documented as the stale-state safety net."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10174,7 +10182,8 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-07-09 by replacing the config screen 1-second DispatcherTimer connectivity poll with NetworkChange.NetworkAvailabilityChanged event notifications, coalescing/serializing connectivity refreshes, forcing a fresh internet probe on Validate as the no-periodic-poll stale-state safety net, and disposing owned event-backed connectivity service on window close."
     },
     {
       "id": "CR-215",

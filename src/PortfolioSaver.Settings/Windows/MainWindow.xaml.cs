@@ -188,6 +188,7 @@ public partial class MainWindow : Window
         {
             viewModel.CloseRequested -= OnCloseRequested;
             viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            viewModel.Dispose();
         }
 
         CloseValidationProgressWindow();

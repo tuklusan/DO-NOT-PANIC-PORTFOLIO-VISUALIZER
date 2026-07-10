@@ -34,7 +34,7 @@ using PortfolioSaver.Shared.Infrastructure;
 
 namespace PortfolioSaver.Config.ViewModels;
 
-public sealed class MainWindowViewModel : BindableBase
+public sealed class MainWindowViewModel : BindableBase, IDisposable
 {
     private readonly SettingsFileService _settingsFileService;
     private readonly SettingsValidator _settingsValidator;
@@ -42,16 +42,20 @@ public sealed class MainWindowViewModel : BindableBase
     private readonly IAiNewsAccessValidationService _aiNewsAccessValidationService;
     private readonly IConfigDialogService _dialogService;
     private readonly IConnectivityService _connectivityService;
+    private readonly bool _ownsConnectivityService;
     private readonly IYahooSymbolValidationService _yahooSymbolValidationService;
     private readonly SymbolProfileStore _symbolProfileStore;
     private AppSettings _loadedSettingsSnapshot;
-    private readonly DispatcherTimer _stateTimer;
     private readonly Dispatcher _uiDispatcher;
     private readonly SemaphoreSlim _symbolProfileSaveGate = new(1, 1);
+    private readonly object _connectivityRefreshGate = new();
     private readonly HashSet<TickerGroupEditorViewModel> _trackedGroups = [];
     private readonly HashSet<TickerItemEditorViewModel> _trackedTickers = [];
     private readonly Dictionary<TickerGroupEditorViewModel, HashSet<TickerItemEditorViewModel>> _trackedTickersByGroup = [];
     private CancellationTokenSource? _validationCancellation;
+    private bool _connectivityRefreshRunning;
+    private bool _connectivityRefreshQueued;
+    private bool _isDisposed;
 
     private AppSettings _settings;
     private string _statusMessage = $"{PortfolioVersion.DisplayName} ready";
@@ -89,7 +93,16 @@ public sealed class MainWindowViewModel : BindableBase
         _newsFeedValidationService = new NewsFeedValidationService();
         _aiNewsAccessValidationService = aiNewsAccessValidationService ?? new AiNewsAccessValidationService();
         _dialogService = dialogService ?? new WpfConfigDialogService();
-        _connectivityService = connectivityService ?? new ConfigConnectivityService();
+        if (connectivityService is null)
+        {
+            _connectivityService = new ConfigConnectivityService();
+            _ownsConnectivityService = true;
+        }
+        else
+        {
+            _connectivityService = connectivityService;
+        }
+
         _yahooSymbolValidationService = yahooSymbolValidationService ?? new YahooSymbolValidationService();
         _symbolProfileStore = new SymbolProfileStore(Path.Combine(PathHelper.GetLocalDataDirectory(), "symbol-profiles.json"));
         _uiDispatcher = Dispatcher.CurrentDispatcher;
@@ -109,8 +122,7 @@ public sealed class MainWindowViewModel : BindableBase
         AddGroupCommand = new RelayCommand(AddGroup, () => IsConfigActive);
         ChooseBackgroundFolderCommand = new RelayCommand(ChooseBackgroundFolder);
 
-        _stateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _stateTimer.Tick += async (_, _) => await OnStateTimerTickAsync();
+        _connectivityService.ConnectivityChanged += OnConnectivityChanged;
 
         if (Groups.Count == 0)
             AddGroup();
@@ -119,8 +131,6 @@ public sealed class MainWindowViewModel : BindableBase
         HookEditors();
         RunConnectivityUpdateInBackground();
         ResetAllSymbolValidationStates("Pending validation");
-
-        _stateTimer.Start();
     }
 
     public event Action? CloseRequested;
@@ -749,9 +759,16 @@ public sealed class MainWindowViewModel : BindableBase
         }
     }
 
-    private async Task OnStateTimerTickAsync()
+    private void OnConnectivityChanged(object? sender, EventArgs e)
     {
-        await UpdateConnectivityStateAsync();
+        try
+        {
+            RunConnectivityUpdateInBackground(forceProbe: true);
+        }
+        catch (Exception ex)
+        {
+            TraceLog.Error("Config.Connectivity", "Connectivity change notification failed.", ex);
+        }
     }
 
     private AppSettings BuildCandidateSettings()
@@ -866,11 +883,8 @@ public sealed class MainWindowViewModel : BindableBase
 
     private async Task RetryConnectivityAsync()
     {
-        _connectivityService.ForceProbe();
-        await UpdateConnectivityStateAsync();
-        StatusMessage = IsNetworkAvailable
-            ? "Internet connection detected. Continue with Validate."
-            : "Internet connection not detected yet.";
+        bool connected = await ProbeConnectivityStateAsync(forceProbe: true).ConfigureAwait(false);
+        await ApplyRetryConnectivityStateOnUiThreadAsync(connected).ConfigureAwait(false);
     }
 
     private void UpdateConnectivityState()
@@ -880,17 +894,65 @@ public sealed class MainWindowViewModel : BindableBase
         => await ApplyConnectivityStateOnUiThreadAsync(
             await _connectivityService.IsInternetAvailableAsync(cancellationToken).ConfigureAwait(false));
 
+    private async Task<bool> ProbeConnectivityStateAsync(bool forceProbe, CancellationToken cancellationToken = default)
+    {
+        if (forceProbe)
+            _connectivityService.ForceProbe();
+
+        return await _connectivityService.IsInternetAvailableAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     private void RunConnectivityUpdateInBackground(bool forceProbe = false)
-        => _ = RunConnectivityUpdateInBackgroundAsync(forceProbe);
+        => _ = RunSerializedConnectivityUpdateInBackgroundAsync(forceProbe);
+
+    private async Task RunSerializedConnectivityUpdateInBackgroundAsync(bool forceProbe)
+    {
+        lock (_connectivityRefreshGate)
+        {
+            if (_isDisposed)
+                return;
+
+            if (_connectivityRefreshRunning)
+            {
+                _connectivityRefreshQueued |= forceProbe;
+                return;
+            }
+
+            _connectivityRefreshRunning = true;
+            _connectivityRefreshQueued = false;
+        }
+
+        bool nextForceProbe = forceProbe;
+        while (true)
+        {
+            await RunConnectivityUpdateInBackgroundAsync(nextForceProbe).ConfigureAwait(false);
+
+            lock (_connectivityRefreshGate)
+            {
+                if (_isDisposed || !_connectivityRefreshQueued)
+                {
+                    _connectivityRefreshRunning = false;
+                    _connectivityRefreshQueued = false;
+                    return;
+                }
+
+                nextForceProbe = _connectivityRefreshQueued;
+                _connectivityRefreshQueued = false;
+            }
+        }
+    }
 
     private async Task RunConnectivityUpdateInBackgroundAsync(bool forceProbe)
     {
         try
         {
             if (forceProbe)
-                await RetryConnectivityAsync();
+                await RetryConnectivityAsync().ConfigureAwait(false);
             else
-                await UpdateConnectivityStateAsync();
+                await UpdateConnectivityStateAsync().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
         }
         catch (Exception ex)
         {
@@ -946,13 +1008,41 @@ public sealed class MainWindowViewModel : BindableBase
             DispatcherPriority.Send);
     }
 
+    private async Task ApplyRetryConnectivityStateOnUiThreadAsync(bool connected)
+    {
+        if (_uiDispatcher.CheckAccess())
+        {
+            ApplyRetryConnectivityState(connected);
+            return;
+        }
+
+        await _uiDispatcher.InvokeAsync(
+            () => ApplyRetryConnectivityState(connected),
+            DispatcherPriority.Send);
+    }
+
+    private void ApplyRetryConnectivityState(bool connected)
+    {
+        bool wasValidated = _isValidated;
+        ApplyConnectivityState(connected);
+        if (wasValidated && !connected)
+            return;
+
+        if (_isValidated)
+            return;
+
+        StatusMessage = IsNetworkAvailable
+            ? "Internet connection detected. Continue with Validate."
+            : "Internet connection not detected yet.";
+    }
+
     private async Task<bool> EnsureValidationConnectivityAsync()
     {
-        if (IsNetworkAvailable)
-            return true;
-
-        _connectivityService.ForceProbe();
-        await UpdateConnectivityStateAsync();
+        // CR-214 deliberately removes periodic connectivity polling. OS network-change
+        // events keep the passive UI fresh, while every Validate click forces a live
+        // internet probe so stale adapter state cannot let validation proceed.
+        bool connected = await ProbeConnectivityStateAsync(forceProbe: true);
+        await ApplyConnectivityStateOnUiThreadAsync(connected);
         return IsNetworkAvailable;
     }
 
@@ -1378,6 +1468,22 @@ public sealed class MainWindowViewModel : BindableBase
         catch (ObjectDisposedException)
         {
         }
+    }
+
+    public void Dispose()
+    {
+        lock (_connectivityRefreshGate)
+        {
+            _isDisposed = true;
+            _connectivityRefreshQueued = false;
+        }
+
+        _connectivityService.ConnectivityChanged -= OnConnectivityChanged;
+        if (_ownsConnectivityService && _connectivityService is IDisposable disposableConnectivityService)
+            disposableConnectivityService.Dispose();
+        CancelActiveValidation();
+        _validationCancellation?.Dispose();
+        _validationCancellation = null;
     }
 
     private void AppendValidationLog(string line)

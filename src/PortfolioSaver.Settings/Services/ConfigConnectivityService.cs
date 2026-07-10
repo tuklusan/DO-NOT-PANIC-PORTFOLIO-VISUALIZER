@@ -12,13 +12,21 @@
 // patent, trademark, and governing-law provisions.
 // ============================================================================
 using PortfolioSaver.Shared.Services;
+using System.Net.NetworkInformation;
 
 namespace PortfolioSaver.Config.Services;
 
 public sealed class ConfigConnectivityService
-    : IConnectivityService
+    : IConnectivityService, IDisposable
 {
     private readonly InternetProbeService _probe = new();
+
+    public ConfigConnectivityService()
+    {
+        NetworkChange.NetworkAvailabilityChanged += OnNetworkAvailabilityChanged;
+    }
+
+    public event EventHandler? ConnectivityChanged;
 
     public bool IsInternetAvailable()
         => _probe.IsInternetAvailable();
@@ -28,4 +36,16 @@ public sealed class ConfigConnectivityService
 
     public void ForceProbe()
         => _probe.InvalidateCache();
+
+    public void Dispose()
+    {
+        NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
+        ConnectivityChanged = null;
+    }
+
+    private void OnNetworkAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs e)
+    {
+        _probe.InvalidateCache();
+        ConnectivityChanged?.Invoke(this, EventArgs.Empty);
+    }
 }

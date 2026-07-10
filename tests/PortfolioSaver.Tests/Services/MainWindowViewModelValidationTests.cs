@@ -448,9 +448,10 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
-    public void OnStateTimerTickAsync_DoesNotTriggerBackgroundSymbolValidation()
+    public void ConnectivityChanged_DoesNotTriggerBackgroundSymbolValidation()
     {
-        MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));
+        FakeConnectivityService connectivity = new(initiallyAvailable: true);
+        MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
 
         TickerItemEditorViewModel ticker = new(new TickerItem { Symbol = "AAPL", Enabled = true });
         ticker.ValidationState = SymbolValidationState.Unknown;
@@ -461,23 +462,26 @@ public sealed class MainWindowViewModelValidationTests
         vm.Groups.Clear();
         vm.Groups.Add(group);
 
-        Task task = InvokePrivate<Task>(vm, "OnStateTimerTickAsync", []);
-        PumpDispatcherUntil(task, TimeSpan.FromSeconds(5));
+        connectivity.RaiseConnectivityChanged();
+        PumpDispatcherUntilCondition(() => vm.IsNetworkAvailable, TimeSpan.FromSeconds(5));
 
         Assert.Equal(SymbolValidationState.Unknown, ticker.ValidationState);
         Assert.Equal("Pending validation", ticker.ValidationMessage);
     }
 
     [Fact]
-    public void OnStateTimerTickAsync_WhenValidated_DoesNotInvalidateIdleValidatedState()
+    public void ConnectivityChanged_WhenValidated_DoesNotInvalidateIdleValidatedState()
     {
-        MainWindowViewModel vm = CreateIsolatedViewModel(new FakeConnectivityService(initiallyAvailable: true));
+        FakeConnectivityService connectivity = new(initiallyAvailable: true);
+        MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
+        PumpDispatcherUntilCondition(() => vm.IsNetworkAvailable, TimeSpan.FromSeconds(5));
+        SetPrivateField(vm, "_isNetworkAvailable", true);
         SetPrivateField(vm, "_isValidated", true);
         SetPrivateField(vm, "_validatedFingerprint", "idle-fingerprint");
         vm.StatusMessage = "Validation passed. Click OK to save/apply, or Cancel to discard.";
 
-        Task task = InvokePrivate<Task>(vm, "OnStateTimerTickAsync", []);
-        PumpDispatcherUntil(task, TimeSpan.FromSeconds(5));
+        connectivity.RaiseConnectivityChanged();
+        PumpDispatcherUntilCondition(() => vm.IsNetworkAvailable, TimeSpan.FromSeconds(5));
 
         Assert.True(vm.IsValidated);
         Assert.Equal("Validate", vm.PrimaryButtonText);
@@ -485,6 +489,66 @@ public sealed class MainWindowViewModelValidationTests
         Assert.True(vm.ShowValidatedActionButtons);
         Assert.Equal("idle-fingerprint", GetPrivateField<string>(vm, "_validatedFingerprint"));
         Assert.Equal("Validation passed. Click OK to save/apply, or Cancel to discard.", vm.StatusMessage);
+    }
+
+    [Fact]
+    public void ConnectivityChanged_ForcesFreshProbeAndRefreshesState()
+    {
+        FakeConnectivityService connectivity = new(initiallyAvailable: false);
+        MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
+
+        connectivity.SetAvailable(true);
+        connectivity.RaiseConnectivityChanged();
+
+        PumpDispatcherUntilCondition(() => vm.IsNetworkAvailable, TimeSpan.FromSeconds(5));
+
+        Assert.True(vm.IsNetworkAvailable);
+        Assert.Equal(1, connectivity.ForceProbeCalls);
+    }
+
+    [Fact]
+    public void ConnectivityLoss_AfterValidation_InvalidatesValidatedState()
+    {
+        FakeConnectivityService connectivity = new(initiallyAvailable: true);
+        MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
+        PumpDispatcherUntilCondition(() => vm.IsNetworkAvailable, TimeSpan.FromSeconds(5));
+        SetPrivateField(vm, "_isValidated", true);
+        SetPrivateField(vm, "_validatedFingerprint", "validated-fingerprint");
+        vm.StatusMessage = "Validation passed. Click OK to save/apply, or Cancel to discard.";
+
+        connectivity.SetAvailable(false);
+        connectivity.RaiseConnectivityChanged();
+
+        PumpDispatcherUntilCondition(() => !vm.IsNetworkAvailable, TimeSpan.FromSeconds(5));
+
+        Assert.False(vm.IsValidated);
+        Assert.Equal(string.Empty, GetPrivateField<string>(vm, "_validatedFingerprint"));
+        Assert.Equal("Internet connection is required for ticker validation.", vm.StatusMessage);
+    }
+
+    [Fact]
+    public void Dispose_DoesNotDisposeInjectedConnectivityService()
+    {
+        DisposableFakeConnectivityService connectivity = new(initiallyAvailable: true);
+        MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
+
+        vm.Dispose();
+
+        Assert.False(connectivity.IsDisposed);
+    }
+
+    [Fact]
+    public void EnsureValidationConnectivityAsync_ForcesFreshProbeEvenWhenCachedOnline()
+    {
+        FakeConnectivityService connectivity = new(initiallyAvailable: true);
+        MainWindowViewModel vm = CreateIsolatedViewModel(connectivity);
+        SetPrivateField(vm, "_isNetworkAvailable", true);
+
+        Task<bool> probeTask = InvokePrivate<Task<bool>>(vm, "EnsureValidationConnectivityAsync", []);
+        bool available = PumpDispatcherUntil(probeTask, TimeSpan.FromSeconds(5));
+
+        Assert.True(available);
+        Assert.Equal(1, connectivity.ForceProbeCalls);
     }
 
     [Fact]
@@ -1344,8 +1408,6 @@ public sealed class MainWindowViewModelValidationTests
             aiNewsAccessValidationService,
             yahooSymbolValidationService ?? new FakeYahooSymbolValidationService(),
             dialogService ?? new FakeConfigDialogService());
-        DispatcherTimer timer = GetPrivateField<DispatcherTimer>(vm, "_stateTimer");
-        timer.Stop();
         return vm;
     }
 
@@ -1388,6 +1450,28 @@ public sealed class MainWindowViewModelValidationTests
         return task.GetAwaiter().GetResult();
     }
 
+    private static void PumpDispatcherUntilCondition(Func<bool> condition, TimeSpan timeout)
+    {
+        Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+        DateTimeOffset deadline = DateTimeOffset.UtcNow + timeout;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (condition())
+                return;
+
+            DispatcherFrame frame = new();
+            dispatcher.BeginInvoke(
+                DispatcherPriority.ContextIdle,
+                new Action(() => frame.Continue = false));
+            Dispatcher.PushFrame(frame);
+
+            if (condition() || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
+                return;
+        }
+
+        throw new TimeoutException("Dispatcher did not satisfy the expected condition in time.");
+    }
+
     private static T InvokePrivate<T>(object instance, string methodName, object?[] args)
     {
         MethodInfo? method = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
@@ -1415,6 +1499,8 @@ public sealed class MainWindowViewModelValidationTests
     {
         private bool _available = initiallyAvailable;
 
+        public event EventHandler? ConnectivityChanged;
+
         public int ForceProbeCalls { get; private set; }
 
         public bool IsInternetAvailable() => _available;
@@ -1428,6 +1514,33 @@ public sealed class MainWindowViewModelValidationTests
         }
 
         public void SetAvailable(bool available) => _available = available;
+
+        public void RaiseConnectivityChanged()
+            => ConnectivityChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private sealed class DisposableFakeConnectivityService(bool initiallyAvailable)
+        : IConnectivityService, IDisposable
+    {
+        private readonly FakeConnectivityService _inner = new(initiallyAvailable);
+
+        public event EventHandler?
+            ConnectivityChanged
+            {
+                add => _inner.ConnectivityChanged += value;
+                remove => _inner.ConnectivityChanged -= value;
+            }
+
+        public bool IsDisposed { get; private set; }
+
+        public bool IsInternetAvailable() => _inner.IsInternetAvailable();
+
+        public Task<bool> IsInternetAvailableAsync(CancellationToken cancellationToken = default)
+            => _inner.IsInternetAvailableAsync(cancellationToken);
+
+        public void ForceProbe() => _inner.ForceProbe();
+
+        public void Dispose() => IsDisposed = true;
     }
 
     private sealed class FakeAiNewsAccessValidationService(AiNewsAccessValidationResult result) : IAiNewsAccessValidationService
