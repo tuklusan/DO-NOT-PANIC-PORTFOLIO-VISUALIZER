@@ -50,6 +50,7 @@ public partial class VisualizerSceneControl : UserControl
     private static readonly bool RuntimeQuoteDebugTracingEnabled = ResolveRuntimeQuoteDebugTracingEnabled();
     private const string PinnedNycExchangeKey = "NewYorkNasdaq";
     private const int MaxVisibleGraphCards = 16;
+    private const double GraphMotionSafeInset = 12d;
     private const string FooterBaseText = "\u00A9 Supratim Sanyal. SANYALnet Labs.";
     private static readonly TimeSpan GraphSelectionRefreshInterval = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan MacroLaneMinimumRefreshInterval = TimeSpan.FromSeconds(10);
@@ -1754,27 +1755,35 @@ public partial class VisualizerSceneControl : UserControl
         double elapsedSeconds = Math.Max(0.001, (currentTick - _lastMotionTick).TotalSeconds);
         _lastMotionTick = currentTick;
 
-        foreach (FloatingGraphViewModel graph in EnumerateVisibleGraphCards())
+        int visibleGraphCount = 0;
+        for (int i = 0; i < _graphs.Count && visibleGraphCount < MaxVisibleGraphCards; i++)
         {
+            FloatingGraphViewModel graph = _graphs[i];
+            if (!graph.IsVisible)
+                continue;
+
+            visibleGraphCount++;
             string? invalidResetReason = ResetInvalidGraphRefreshImpulseIfNeeded(graph);
             if (invalidResetReason is not null)
                 TraceScene($"GraphCardFlashStop symbol={graph.Symbol} reason={invalidResetReason} y={graph.Y:F1} velocity_y={graph.VelocityY:F1}");
 
             ApplyGraphRefreshImpulse(graph, bounds);
             _motionController.Step(graph, bounds, elapsedSeconds);
+            ClampSpriteToBounds(graph, bounds);
             string? resetReason = ResetGraphRefreshImpulseIfNeeded(graph, bounds);
             if (resetReason is not null)
                 TraceScene($"GraphCardFlashStop symbol={graph.Symbol} reason={resetReason} y={graph.Y:F1} velocity_y={graph.VelocityY:F1}");
         }
 
         if (EnableMarketCritters)
-            if (EnableMarketCritters)
-                StepMarketSpriteMotion(elapsedSeconds);
+            StepMarketSpriteMotion(elapsedSeconds);
 
         if (_networkWaitingViewModel is not null)
-            _motionController.Step(_networkWaitingViewModel, GetWaitingBounds(), elapsedSeconds);
-
-        ClampSpritesToSafeBounds();
+        {
+            Rect waitingBounds = GetWaitingBounds();
+            _motionController.Step(_networkWaitingViewModel, waitingBounds, elapsedSeconds);
+            ClampSpriteToBounds(_networkWaitingViewModel, waitingBounds);
+        }
     }
 
     private IEnumerable<FloatingGraphViewModel> EnumerateVisibleGraphCards()
@@ -1787,11 +1796,17 @@ public partial class VisualizerSceneControl : UserControl
         if (width <= 0 || height <= 0)
             return Rect.Empty;
 
-        return new Rect(12, 12, Math.Max(20, width - 24), Math.Max(20, height - 24));
+        return new Rect(
+            GraphMotionSafeInset,
+            GraphMotionSafeInset,
+            Math.Max(20, width - (GraphMotionSafeInset * 2d)),
+            Math.Max(20, height - (GraphMotionSafeInset * 2d)));
     }
 
     private Rect GetGraphMotionBounds()
-        => GetFullCanvasBounds();
+        // Keep graph cards scene-wide but slightly inset so edge bounces do not
+        // visually collide with the desktop chrome or foreground ribbons.
+        => GetBaseMotionBounds();
 
     private Rect GetWaitingBounds()
     {

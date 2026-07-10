@@ -18,13 +18,17 @@ namespace PortfolioSaver.Render.Services;
 
 public sealed class FloatingSpriteMotionController
 {
+    /// <summary>
+    /// Advances one sprite and clamps it inside the supplied bounds. When
+    /// <see cref="FloatingSpriteViewModel.BounceWithinViewport"/> is enabled,
+    /// boundary contact also reverses velocity; otherwise velocity is preserved,
+    /// matching the legacy post-step clamp behavior without requiring a global
+    /// collection pass on every frame.
+    /// </summary>
     public void Step(FloatingSpriteViewModel sprite, Rect bounds, double elapsedSeconds)
     {
         sprite.X += sprite.VelocityX * elapsedSeconds;
         sprite.Y += sprite.VelocityY * elapsedSeconds;
-
-        if (!sprite.BounceWithinViewport)
-            return;
 
         double minX = bounds.Left;
         double maxX = Math.Max(bounds.Left, bounds.Right - sprite.Width);
@@ -34,23 +38,27 @@ public sealed class FloatingSpriteMotionController
         if (sprite.X <= minX)
         {
             sprite.X = minX;
-            sprite.VelocityX = Math.Abs(sprite.VelocityX);
+            if (sprite.BounceWithinViewport)
+                sprite.VelocityX = Math.Abs(sprite.VelocityX);
         }
         else if (sprite.X >= maxX)
         {
             sprite.X = maxX;
-            sprite.VelocityX = -Math.Abs(sprite.VelocityX);
+            if (sprite.BounceWithinViewport)
+                sprite.VelocityX = -Math.Abs(sprite.VelocityX);
         }
 
         if (sprite.Y <= minY)
         {
             sprite.Y = minY;
-            sprite.VelocityY = Math.Abs(sprite.VelocityY);
+            if (sprite.BounceWithinViewport)
+                sprite.VelocityY = Math.Abs(sprite.VelocityY);
         }
         else if (sprite.Y >= maxY)
         {
             sprite.Y = maxY;
-            sprite.VelocityY = -Math.Abs(sprite.VelocityY);
+            if (sprite.BounceWithinViewport)
+                sprite.VelocityY = -Math.Abs(sprite.VelocityY);
         }
     }
 }

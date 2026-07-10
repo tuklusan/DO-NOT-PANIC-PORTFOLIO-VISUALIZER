@@ -39,6 +39,52 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class VisualizerRenderBehaviorTests
 {
     [Fact]
+    public void FloatingSpriteMotionController_ClampsNonBouncingSprites_WithoutReversingVelocity()
+    {
+        FloatingSpriteMotionController controller = new();
+        FloatingSpriteViewModel sprite = new()
+        {
+            Width = 20,
+            Height = 10,
+            X = 150,
+            Y = 100,
+            VelocityX = 40,
+            VelocityY = 30,
+            BounceWithinViewport = false
+        };
+
+        controller.Step(sprite, new Rect(0, 0, 100, 80), 1);
+
+        Assert.Equal(80, sprite.X);
+        Assert.Equal(70, sprite.Y);
+        Assert.Equal(40, sprite.VelocityX);
+        Assert.Equal(30, sprite.VelocityY);
+    }
+
+    [Fact]
+    public void FloatingSpriteMotionController_ClampsBouncingSprites_AndReversesVelocity()
+    {
+        FloatingSpriteMotionController controller = new();
+        FloatingSpriteViewModel sprite = new()
+        {
+            Width = 20,
+            Height = 10,
+            X = 150,
+            Y = 100,
+            VelocityX = 40,
+            VelocityY = 30,
+            BounceWithinViewport = true
+        };
+
+        controller.Step(sprite, new Rect(0, 0, 100, 80), 1);
+
+        Assert.Equal(80, sprite.X);
+        Assert.Equal(70, sprite.Y);
+        Assert.Equal(-40, sprite.VelocityX);
+        Assert.Equal(-30, sprite.VelocityY);
+    }
+
+    [Fact]
     public void UpdateTapeItem_TriggersSingleFlashWhenLiveValueChanges()
     {
         MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
@@ -244,7 +290,9 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("TitleText", xaml, StringComparison.Ordinal);
         Assert.Contains("DetailText", xaml, StringComparison.Ordinal);
         Assert.Contains("_networkWaitingViewModel.BounceWithinViewport = true;", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("_motionController.Step(_networkWaitingViewModel, GetWaitingBounds(), elapsedSeconds);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("Rect waitingBounds = GetWaitingBounds();", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("_motionController.Step(_networkWaitingViewModel, waitingBounds, elapsedSeconds);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("ClampSpriteToBounds(_networkWaitingViewModel, waitingBounds);", codeBehind, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1355,7 +1403,8 @@ public sealed class VisualizerRenderBehaviorTests
             "GlobalMarketsTapeControl.xaml"));
 
         Assert.Contains("private Rect GetWaitingBounds()", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("_motionController.Step(_networkWaitingViewModel, GetWaitingBounds(), elapsedSeconds);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Rect waitingBounds = GetWaitingBounds();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("_motionController.Step(_networkWaitingViewModel, waitingBounds, elapsedSeconds);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"GlobalMarketsTapeHost\"", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("<controls:GlobalMarketsTapeControl />", sceneXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"NewsFlasherHost\"", sceneXaml, StringComparison.Ordinal);
@@ -1376,6 +1425,175 @@ public sealed class VisualizerRenderBehaviorTests
             "VisualizerSceneControl.xaml.cs"));
 
         Assert.DoesNotContain("_networkWaitingViewModel.TitleText = \"Loading live market data\";", sceneCodeBehind, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MotionTick_AvoidsGlobalClampAndLinqAllocationInFrameLoop()
+    {
+        string sceneCodeBehind = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "VisualizerSceneControl.xaml.cs"));
+
+        int methodStart = sceneCodeBehind.IndexOf("private void StepMotion()", StringComparison.Ordinal);
+        Assert.True(methodStart >= 0, "StepMotion method not found.");
+        int nextMethodStart = sceneCodeBehind.IndexOf("private IEnumerable<FloatingGraphViewModel> EnumerateVisibleGraphCards()", methodStart, StringComparison.Ordinal);
+        Assert.True(nextMethodStart > methodStart, "StepMotion method boundary not found.");
+        string body = sceneCodeBehind[methodStart..nextMethodStart];
+
+        Assert.Contains("for (int i = 0; i < _graphs.Count && visibleGraphCount < MaxVisibleGraphCards; i++)", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("EnumerateVisibleGraphCards()", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("ClampSpritesToSafeBounds();", body, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Where(", body, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Take(", body, StringComparison.Ordinal);
+        Assert.DoesNotMatch(@"if\s*\(\s*EnableMarketCritters\s*\)\s*if\s*\(\s*EnableMarketCritters\s*\)", body);
+    }
+
+    [Fact]
+    public void MotionTick_KeepsVisibleNonBouncingGraphsInsideBoundsWithoutGlobalClampPass()
+    {
+        RunOnSta(() =>
+        {
+            VisualizerSceneControl control = new();
+            Window? host = null;
+
+            try
+            {
+                host = HostControlForLayout(control, 800, 600);
+                MethodInfo boundsMethod = typeof(VisualizerSceneControl).GetMethod(
+                    "GetGraphMotionBounds",
+                    BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException("GetGraphMotionBounds method not found.");
+                MethodInfo stepMotion = typeof(VisualizerSceneControl).GetMethod(
+                    "StepMotion",
+                    BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException("StepMotion method not found.");
+                FieldInfo graphsField = typeof(VisualizerSceneControl).GetField(
+                    "_graphs",
+                    BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException("_graphs field not found.");
+                FieldInfo lastMotionTickField = typeof(VisualizerSceneControl).GetField(
+                    "_lastMotionTick",
+                    BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException("_lastMotionTick field not found.");
+
+                Rect bounds = Assert.IsType<Rect>(boundsMethod.Invoke(control, []));
+                FloatingGraphViewModel graph = new()
+                {
+                    Symbol = "AAPL",
+                    Width = 140,
+                    Height = 84,
+                    X = bounds.Right + 120,
+                    Y = bounds.Bottom + 120,
+                    VelocityX = 500,
+                    VelocityY = 500,
+                    IsVisible = true,
+                    BounceWithinViewport = false
+                };
+
+                var graphs = Assert.IsType<System.Collections.ObjectModel.ObservableCollection<FloatingGraphViewModel>>(graphsField.GetValue(control));
+                graphs.Add(graph);
+                lastMotionTickField.SetValue(control, DateTime.UtcNow - TimeSpan.FromSeconds(1));
+
+                stepMotion.Invoke(control, []);
+
+                Assert.InRange(graph.X, bounds.Left, Math.Max(bounds.Left, bounds.Right - graph.Width));
+                Assert.InRange(graph.Y, bounds.Top, Math.Max(bounds.Top, bounds.Bottom - graph.Height));
+                Assert.True(graph.VelocityX > 0);
+                Assert.True(graph.VelocityY > 0);
+            }
+            finally
+            {
+                host?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void GraphMotionBounds_ReturnSceneWideSafeInset()
+    {
+        RunOnSta(() =>
+        {
+            VisualizerSceneControl control = new();
+            Window? host = null;
+
+            try
+            {
+                host = HostControlForLayout(control, 800, 600);
+                MethodInfo boundsMethod = typeof(VisualizerSceneControl).GetMethod(
+                    "GetGraphMotionBounds",
+                    BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException("GetGraphMotionBounds method not found.");
+
+                Rect bounds = Assert.IsType<Rect>(boundsMethod.Invoke(control, []));
+
+                Assert.Equal(12, bounds.Left);
+                Assert.Equal(12, bounds.Top);
+                Assert.True(bounds.Width >= 760);
+                Assert.True(bounds.Height >= 540);
+                Assert.True(bounds.Right <= 800);
+                Assert.True(bounds.Bottom <= 600);
+            }
+            finally
+            {
+                host?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void MarketBagSpriteMotion_ClampsBagsInsideMarketSpriteBounds()
+    {
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
+            "StepMarketBagSprite",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("StepMarketBagSprite method not found.");
+        MarketSpriteViewModel bag = new()
+        {
+            Width = 40,
+            Height = 40,
+            X = 300,
+            BaseY = 300,
+            VelocityX = 80
+        };
+        Rect bounds = new(10, 20, 200, 120);
+
+        method.Invoke(null, [bag, bounds, 1d, 1d]);
+
+        Assert.Equal(bounds.Right - bag.Width, bag.X);
+        Assert.InRange(bag.Y, bounds.Top, bounds.Bottom - bag.Height);
+        Assert.True(bag.VelocityX < 0);
+    }
+
+    [Fact]
+    public void MarketCritterMotion_ClampsCrittersInsideMarketSpriteBounds()
+    {
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
+            "StepCritterChase",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("StepCritterChase method not found.");
+        MarketSpriteViewModel critter = new()
+        {
+            Width = 40,
+            Height = 40,
+            X = 300,
+            Y = 300
+        };
+        MarketSpriteViewModel target = new()
+        {
+            Width = 40,
+            Height = 40,
+            X = 600,
+            Y = 600
+        };
+        Rect bounds = new(10, 20, 200, 120);
+
+        method.Invoke(null, [critter, target, bounds, 10d, 500d]);
+
+        Assert.InRange(critter.X, bounds.Left, bounds.Right - critter.Width);
+        Assert.InRange(critter.Y, bounds.Top, bounds.Bottom - critter.Height);
     }
 
     [Fact]
@@ -2365,7 +2583,7 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
-    public void VisualizerScene_LetsGraphCardsUseFullCanvasBehindForeground()
+    public void VisualizerScene_LetsGraphCardsUseSceneWideSafeInsetBehindForeground()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
@@ -2374,8 +2592,9 @@ public sealed class VisualizerRenderBehaviorTests
             "Controls",
             "VisualizerSceneControl.xaml.cs"));
 
+        Assert.Contains("private const double GraphMotionSafeInset = 12d;", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private Rect GetGraphMotionBounds()", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("=> GetFullCanvasBounds();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("=> GetBaseMotionBounds();", sceneCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -2519,7 +2738,7 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
-    public void FloatingGraphCards_UseIndependentMotionAcrossFullCanvas_AndRightLabelGutter()
+    public void FloatingGraphCards_UseIndependentMotionAcrossSceneWideSafeInset_AndRightLabelGutter()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
@@ -2543,7 +2762,7 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("private const int MaxVisibleGraphCards = 16;", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("SeparateVisibleGraphCards(bounds);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("GraphCardSeparationGap", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("foreach (FloatingGraphViewModel graph in EnumerateVisibleGraphCards())", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("for (int i = 0; i < _graphs.Count && visibleGraphCount < MaxVisibleGraphCards; i++)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ApplyGraphRefreshImpulse(graph, bounds);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("string? resetReason = ResetGraphRefreshImpulseIfNeeded(graph, bounds);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GraphCardFlashStop", sceneCodeBehind, StringComparison.Ordinal);
@@ -3239,7 +3458,7 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
-    public void GraphMotionBounds_UseFullCanvasBecauseGraphsSwimBehindForeground()
+    public void GraphMotionBounds_UseSceneWideSafeInsetBecauseGraphsSwimBehindForeground()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
@@ -3249,7 +3468,7 @@ public sealed class VisualizerRenderBehaviorTests
             "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("private Rect GetGraphMotionBounds()", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("=> GetFullCanvasBounds();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("=> GetBaseMotionBounds();", sceneCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -3394,6 +3613,10 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("MarketSpriteItemsControl.Visibility = Visibility.Collapsed;", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("EnsureMarketSpritesInitialized()", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StepMarketSpriteMotion(elapsedSeconds);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private static void StepMarketBagSprite(", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("bag.Y = Math.Clamp(", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("critter.X = Math.Clamp(", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("critter.Y = Math.Clamp(", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SpriteText = \"🐂\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SpriteText = \"🐻\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SpriteText = \"💵\"", sceneCodeBehind, StringComparison.Ordinal);
