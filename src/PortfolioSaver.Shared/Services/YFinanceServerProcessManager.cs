@@ -21,6 +21,8 @@ namespace PortfolioSaver.Shared.Services;
 
 public static class YFinanceServerProcessManager
 {
+    private static readonly TimeSpan ServerStartupTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan ServerStartupPollInterval = TimeSpan.FromMilliseconds(250);
     private static readonly SemaphoreSlim Sync = new(1, 1);
     private static readonly IEqualityComparer<string> PathComparer = OperatingSystem.IsWindows()
         ? StringComparer.OrdinalIgnoreCase
@@ -81,18 +83,25 @@ public static class YFinanceServerProcessManager
 
             _launchToken = token;
 
-            for (int attempt = 0; attempt < 30; attempt++)
+            Stopwatch startupStopwatch = Stopwatch.StartNew();
+            int attempt = 0;
+            while (startupStopwatch.Elapsed < ServerStartupTimeout)
             {
+                attempt++;
                 if (await CanConnectAsync(cancellationToken).ConfigureAwait(false))
                 {
-                    TraceLog.InfoState("YFinanceServerManager", "ServerLaunchReady", [new("client_type", clientType), new("pid", _ownedProcess.Id), new("attempt", attempt + 1)]);
+                    TraceLog.InfoState("YFinanceServerManager", "ServerLaunchReady", [new("client_type", clientType), new("pid", _ownedProcess.Id), new("attempt", attempt), new("elapsed_milliseconds", Math.Round(startupStopwatch.Elapsed.TotalMilliseconds, 0))]);
                     return;
                 }
 
                 if (_ownedProcess.HasExited)
                     throw new InvalidOperationException($"YFinance.NET server exited early with code {_ownedProcess.ExitCode}.");
 
-                await Task.Delay(250, cancellationToken).ConfigureAwait(false);
+                TimeSpan remaining = ServerStartupTimeout - startupStopwatch.Elapsed;
+                if (remaining <= TimeSpan.Zero)
+                    break;
+
+                await Task.Delay(remaining < ServerStartupPollInterval ? remaining : ServerStartupPollInterval, cancellationToken).ConfigureAwait(false);
             }
 
             throw new TimeoutException("Timed out waiting for YFinance.NET server to start listening.");

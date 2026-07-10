@@ -566,6 +566,11 @@ public sealed class YFinanceClientServerProtocolTests
         Assert.Contains("$(OwnedYFinanceServerOutput)**\\*", serverTargets, StringComparison.Ordinal);
         Assert.Contains("Path.Combine(baseDirectory, \"YFinanceServer\", \"YFinance.NET.Server.exe\")", launcherSource, StringComparison.Ordinal);
         Assert.Contains("Path.Combine(baseDirectory, \"YFinanceServer\", \"YFinance.NET.Server.dll\")", launcherSource, StringComparison.Ordinal);
+        Assert.Contains("ServerStartupTimeout = TimeSpan.FromSeconds(60)", launcherSource, StringComparison.Ordinal);
+        Assert.Contains("ServerStartupPollInterval = TimeSpan.FromMilliseconds(250)", launcherSource, StringComparison.Ordinal);
+        Assert.Contains("Stopwatch startupStopwatch = Stopwatch.StartNew();", launcherSource, StringComparison.Ordinal);
+        Assert.Contains("while (startupStopwatch.Elapsed < ServerStartupTimeout)", launcherSource, StringComparison.Ordinal);
+        Assert.Contains("remaining < ServerStartupPollInterval ? remaining : ServerStartupPollInterval", launcherSource, StringComparison.Ordinal);
         Assert.DoesNotContain("GetRepoRoot()", launcherSource, StringComparison.Ordinal);
         Assert.DoesNotContain("PORTFOLIOSAVER_YFINANCE_SERVER_PATH", launcherSource, StringComparison.Ordinal);
         Assert.DoesNotContain("string siblingRepo = Path.Combine(current, \"repo\")", launcherSource, StringComparison.Ordinal);
