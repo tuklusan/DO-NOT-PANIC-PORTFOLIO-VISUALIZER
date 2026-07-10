@@ -446,6 +446,13 @@ public sealed class VisualizerRenderBehaviorTests
             "VisualizerSceneControl.xaml.cs"));
 
         Assert.Contains("private readonly DispatcherTimer _sceneTimer = new() { Interval = SceneSchedulerInterval };", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("CompositionTarget.Rendering += OnMotionRendering;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("CompositionTarget.Rendering -= OnMotionRendering;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnMotionRendering(object? sender, EventArgs e)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("StopMotionRendering();", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("if (!_initialized || !_liveSchedulerRunning || _isValidationPaused)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"MotionFrameSlow\"", codeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("RunScheduledSceneAction(\"motion\", StepMotion);", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("_backgroundTransitionCompletionTimer", codeBehind, StringComparison.Ordinal);
         Assert.Contains("if (_backgroundZoomRunning && now >= _nextBackgroundZoomTickUtc)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("RunScheduledSceneAction(\"background-zoom\", StepBackgroundSlowZoom);", codeBehind, StringComparison.Ordinal);
@@ -1635,6 +1642,10 @@ public sealed class VisualizerRenderBehaviorTests
                 "_nextClockTickUtc",
                 BindingFlags.NonPublic | BindingFlags.Instance)
                 ?? throw new InvalidOperationException("_nextClockTickUtc field not found.");
+            FieldInfo motionRenderingSubscribedField = typeof(VisualizerSceneControl).GetField(
+                "_motionRenderingSubscribed",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_motionRenderingSubscribed field not found.");
 
             settingsField.SetValue(control, new AppSettings
             {
@@ -1651,6 +1662,7 @@ public sealed class VisualizerRenderBehaviorTests
                 DispatcherTimer sceneTimer = Assert.IsType<DispatcherTimer>(sceneTimerField.GetValue(control));
                 DateTimeOffset nextRuntimeQuoteTick = Assert.IsType<DateTimeOffset>(nextRuntimeQuoteTickField.GetValue(control));
                 Assert.Equal(TimeSpan.FromMilliseconds(33), sceneTimer.Interval);
+                Assert.True(Assert.IsType<bool>(motionRenderingSubscribedField.GetValue(control)));
                 Assert.InRange(nextRuntimeQuoteTick - beforeConfigure, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(2000));
                 Assert.InRange(nextRuntimeQuoteTick - afterConfigure, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(2000));
 
@@ -1663,6 +1675,7 @@ public sealed class VisualizerRenderBehaviorTests
             finally
             {
                 stopLiveTimers.Invoke(control, []);
+                Assert.False(Assert.IsType<bool>(motionRenderingSubscribedField.GetValue(control)));
             }
         });
 

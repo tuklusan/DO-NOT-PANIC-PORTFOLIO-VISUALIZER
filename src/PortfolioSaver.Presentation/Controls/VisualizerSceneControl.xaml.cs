@@ -95,6 +95,7 @@ public partial class VisualizerSceneControl : UserControl
     private int _backgroundTransitionCompletionGeneration;
     private bool _liveSchedulerRunning;
     private bool _sceneSchedulerTickInProgress;
+    private bool _motionRenderingSubscribed;
     private bool _backgroundRotationEnabled;
     private bool _backgroundZoomRunning;
     private bool _backgroundRotationInFlight;
@@ -260,6 +261,7 @@ public partial class VisualizerSceneControl : UserControl
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         _startupCoordinator.BackgroundCacheWarmupCompleted -= QueueBackgroundCatalogRescan;
+        StopMotionRendering();
         StopRuntimeQuoteLoop();
         CancelNewsRefreshLoop();
         CancelMacroLane();
@@ -775,6 +777,7 @@ public partial class VisualizerSceneControl : UserControl
     private void StartSceneScheduler()
     {
         _liveSchedulerRunning = true;
+        StartMotionRendering();
         if (!_sceneTimer.IsEnabled)
         {
             _sceneTimer.Start();
@@ -802,7 +805,6 @@ public partial class VisualizerSceneControl : UserControl
             _sceneSchedulerTickInProgress = true;
             acquiredSchedulerTick = true;
             DateTimeOffset now = DateTimeOffset.UtcNow;
-            RunScheduledSceneAction("motion", StepMotion);
 
             if (now >= _nextClockTickUtc)
             {
@@ -862,6 +864,56 @@ public partial class VisualizerSceneControl : UserControl
 
             if (_liveSchedulerRunning && !_isValidationPaused && !_sceneTimer.IsEnabled)
                 _sceneTimer.Start();
+        }
+    }
+
+    private void StartMotionRendering()
+    {
+        if (_motionRenderingSubscribed)
+            return;
+
+        _lastMotionTick = DateTime.UtcNow;
+        CompositionTarget.Rendering += OnMotionRendering;
+        _motionRenderingSubscribed = true;
+        TraceSceneState("MotionRenderingStarted");
+    }
+
+    private void StopMotionRendering()
+    {
+        if (!_motionRenderingSubscribed)
+            return;
+
+        CompositionTarget.Rendering -= OnMotionRendering;
+        _motionRenderingSubscribed = false;
+        TraceSceneState("MotionRenderingStopped");
+    }
+
+    private void OnMotionRendering(object? sender, EventArgs e)
+    {
+        if (!_initialized || !_liveSchedulerRunning || _isValidationPaused)
+            return;
+
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        try
+        {
+            StepMotion();
+        }
+        catch (Exception ex)
+        {
+            TraceSceneState(
+                "MotionRenderingFailed",
+                new KeyValuePair<string, object?>("exception", ex.ToString()));
+        }
+        finally
+        {
+            stopwatch.Stop();
+            if (stopwatch.Elapsed > TimeSpan.FromMilliseconds(33))
+            {
+                // Motion is frame-driven rather than scheduler-driven, so keep this distinct from SceneSchedulerActionSlow.
+                TraceSceneState(
+                    "MotionFrameSlow",
+                    new KeyValuePair<string, object?>("elapsed_milliseconds", Math.Round(stopwatch.Elapsed.TotalMilliseconds, 1)));
+            }
         }
     }
 
@@ -1467,6 +1519,7 @@ public partial class VisualizerSceneControl : UserControl
     {
         _liveSchedulerRunning = false;
         _sceneTimer.Stop();
+        StopMotionRendering();
         _backgroundRotationEnabled = false;
         _backgroundZoomRunning = false;
         _nextClockTickUtc = DateTimeOffset.MaxValue;
@@ -1599,6 +1652,7 @@ public partial class VisualizerSceneControl : UserControl
             InitializeRuntimeQuoteLoop();
             EnsureBackgroundSlowZoomRunning();
             StartDemoFlashSequence();
+            // ConfigureTimers restarts the scene scheduler and the CompositionTarget motion-rendering loop after config pause.
             ConfigureTimers();
             _ = RefreshNewsLaneAsync(force: true, CancellationToken.None);
         }
