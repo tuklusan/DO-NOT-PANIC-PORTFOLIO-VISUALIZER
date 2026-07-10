@@ -2307,7 +2307,7 @@ public partial class VisualizerSceneControl : UserControl
             }
         }
 
-        return new MacroMeterState(label, valueText, changeText, accentBrush, fill, isMissing);
+        return new MacroMeterState(label, valueText, changeText, FreezeForCrossThreadSnapshot(accentBrush), fill, isMissing);
     }
 
     private async Task<WorldMarketsLaneSnapshot> BuildWorldMarketsLaneSnapshotAsync(bool refreshAncillary, CancellationToken cancellationToken)
@@ -2561,9 +2561,14 @@ public partial class VisualizerSceneControl : UserControl
 
     private WorldMarketsInputSnapshot SnapshotWorldMarketsInput()
     {
+        Dispatcher.VerifyAccess();
+
         if (_clockViewModel is null)
             return WorldMarketsInputSnapshot.Empty;
 
+        // Clock city view models contain WPF Freezables. Snapshot them only on
+        // the dispatcher, then freeze the copied Freezables before the worker
+        // lane reads or returns them across threads.
         return new WorldMarketsInputSnapshot(
             _clockViewModel.Title,
             _clockViewModel.Subtitle,
@@ -2653,14 +2658,14 @@ public partial class VisualizerSceneControl : UserControl
             ExchangeSymbol = source.ExchangeSymbol,
             CalendarExchangeCode = source.CalendarExchangeCode,
             MarketStatusText = source.MarketStatusText,
-            MarketStatusForeground = source.MarketStatusForeground,
+            MarketStatusForeground = FreezeForCrossThreadSnapshot(source.MarketStatusForeground),
             IndexValueText = source.IndexValueText,
             IndexChangeText = source.IndexChangeText,
-            IndexChangeForeground = source.IndexChangeForeground,
-            MiniGraphStroke = source.MiniGraphStroke,
-            MiniGraphPoints = new PointCollection(source.MiniGraphPoints),
-            CardBackground = source.CardBackground,
-            CardBorderBrush = source.CardBorderBrush
+            IndexChangeForeground = FreezeForCrossThreadSnapshot(source.IndexChangeForeground),
+            MiniGraphStroke = FreezeForCrossThreadSnapshot(source.MiniGraphStroke),
+            MiniGraphPoints = CreateFrozenPointCollection(source.MiniGraphPoints),
+            CardBackground = FreezeForCrossThreadSnapshot(source.CardBackground),
+            CardBorderBrush = FreezeForCrossThreadSnapshot(source.CardBorderBrush)
         };
 
     private static ClockCityViewModel CloneCityForWeatherService(ClockCityViewModel source)
@@ -3118,8 +3123,45 @@ public partial class VisualizerSceneControl : UserControl
             _ => (Color.FromArgb(0x78, 0x14, 0x1D, 0x2A), Color.FromArgb(0x76, 0x4D, 0x6B, 0x85))
         };
 
-        city.CardBackground = new SolidColorBrush(background);
-        city.CardBorderBrush = new SolidColorBrush(border);
+        city.CardBackground = CreateFrozenBrush(background);
+        city.CardBorderBrush = CreateFrozenBrush(border);
+    }
+
+    private static SolidColorBrush CreateFrozenBrush(Color color)
+    {
+        SolidColorBrush brush = new(color);
+        brush.Freeze();
+        return brush;
+    }
+
+    private static Brush FreezeForCrossThreadSnapshot(Brush brush)
+    {
+        ArgumentNullException.ThrowIfNull(brush);
+
+        if (brush.IsFrozen)
+            return brush;
+
+        Brush clone = brush.CloneCurrentValue();
+        if (!clone.CanFreeze)
+            throw new InvalidOperationException($"Brush type '{clone.GetType().FullName}' cannot be frozen for cross-thread snapshot use.");
+
+        clone.Freeze();
+        return clone;
+    }
+
+    private static PointCollection CreateFrozenPointCollection(IEnumerable<Point> points)
+    {
+        ArgumentNullException.ThrowIfNull(points);
+
+        if (points is PointCollection { IsFrozen: true } frozenCollection)
+            return frozenCollection;
+
+        PointCollection collection = new(points);
+        if (!collection.CanFreeze)
+            throw new InvalidOperationException("PointCollection snapshots must be freezable for cross-thread use.");
+
+        collection.Freeze();
+        return collection;
     }
 
     private async Task LoadBackgroundAsync(string? path, CancellationToken cancellationToken = default)

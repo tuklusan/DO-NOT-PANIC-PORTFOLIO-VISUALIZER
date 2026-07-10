@@ -104,6 +104,97 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
+    public void VisualizerSceneControl_FreezeForCrossThreadSnapshot_FreezesMutableBrush()
+    {
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
+            "FreezeForCrossThreadSnapshot",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("VisualizerSceneControl.FreezeForCrossThreadSnapshot not found.");
+        SolidColorBrush mutableBrush = new(Colors.OrangeRed);
+
+        Brush result = Assert.IsAssignableFrom<Brush>(method.Invoke(null, [mutableBrush]));
+
+        Assert.NotSame(mutableBrush, result);
+        Assert.True(result.IsFrozen);
+        Assert.False(mutableBrush.IsFrozen);
+    }
+
+    [Fact]
+    public void VisualizerSceneControl_FreezeForCrossThreadSnapshot_ReusesAlreadyFrozenBrush()
+    {
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
+            "FreezeForCrossThreadSnapshot",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("VisualizerSceneControl.FreezeForCrossThreadSnapshot not found.");
+        SolidColorBrush frozenBrush = new(Colors.LimeGreen);
+        frozenBrush.Freeze();
+
+        object? result = method.Invoke(null, [frozenBrush]);
+
+        Assert.Same(frozenBrush, result);
+    }
+
+    [Fact]
+    public void VisualizerSceneControl_FreezeForCrossThreadSnapshot_RejectsNullBrush()
+    {
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
+            "FreezeForCrossThreadSnapshot",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("VisualizerSceneControl.FreezeForCrossThreadSnapshot not found.");
+
+        TargetInvocationException exception = Assert.Throws<TargetInvocationException>(() => method.Invoke(null, [null]));
+
+        Assert.IsType<ArgumentNullException>(exception.InnerException);
+    }
+
+    [Fact]
+    public void VisualizerSceneControl_CreateFrozenBrush_ReturnsFrozenBrushWithRequestedColor()
+    {
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
+            "CreateFrozenBrush",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("VisualizerSceneControl.CreateFrozenBrush not found.");
+        Color expectedColor = Color.FromArgb(0xCC, 0x12, 0x34, 0x56);
+
+        SolidColorBrush brush = Assert.IsType<SolidColorBrush>(method.Invoke(null, [expectedColor]));
+
+        Assert.True(brush.IsFrozen);
+        Assert.Equal(expectedColor, brush.Color);
+    }
+
+    [Fact]
+    public void VisualizerSceneControl_CreateFrozenPointCollection_PreservesAndFreezesMiniGraphPoints()
+    {
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
+            "CreateFrozenPointCollection",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("VisualizerSceneControl.CreateFrozenPointCollection not found.");
+        Point[] points = [new(1.25, 2.5), new(3.75, 4.5), new(5.25, 6.5)];
+
+        PointCollection collection = Assert.IsType<PointCollection>(method.Invoke(null, [points]));
+
+        Assert.True(collection.IsFrozen);
+        Assert.Equal(points.Length, collection.Count);
+        for (int index = 0; index < points.Length; index++)
+            Assert.Equal(points[index], collection[index]);
+    }
+
+    [Fact]
+    public void VisualizerSceneControl_CreateFrozenPointCollection_ReusesAlreadyFrozenCollection()
+    {
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
+            "CreateFrozenPointCollection",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("VisualizerSceneControl.CreateFrozenPointCollection not found.");
+        PointCollection frozenPoints = new([new Point(10, 20), new Point(30, 40)]);
+        frozenPoints.Freeze();
+
+        object? collection = method.Invoke(null, [frozenPoints]);
+
+        Assert.Same(frozenPoints, collection);
+    }
+
+    [Fact]
     public void NetworkWaitingOverlay_DefinesOverlayTemplateAndBounceMotion()
     {
         string xaml = File.ReadAllText(Path.Combine(
@@ -2286,6 +2377,23 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
+    public void ClockCityViewModel_SetMiniGraphPointsIfChanged_CopiesFrozenSnapshotIntoMutableUiCollection()
+    {
+        ClockCityViewModel city = new();
+        PointCollection frozenSnapshot = new([new Point(7, 8), new Point(9, 10)]);
+        frozenSnapshot.Freeze();
+
+        bool changed = city.SetMiniGraphPointsIfChanged(frozenSnapshot);
+
+        Assert.True(changed);
+        Assert.NotSame(frozenSnapshot, city.MiniGraphPoints);
+        Assert.False(city.MiniGraphPoints.IsFrozen);
+        Assert.Equal(frozenSnapshot.Count, city.MiniGraphPoints.Count);
+        Assert.Equal(frozenSnapshot[0], city.MiniGraphPoints[0]);
+        Assert.Equal(frozenSnapshot[1], city.MiniGraphPoints[1]);
+    }
+
+    [Fact]
     public void ClockCityViewModel_SetMiniGraphPointsIfChanged_RejectsNullInput()
     {
         ClockCityViewModel city = new();
@@ -3016,6 +3124,8 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("private async Task<WorldMarketsLaneSnapshot> BuildWorldMarketsLaneSnapshotAsync(bool refreshAncillary, CancellationToken cancellationToken)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void ApplyWorldMarketsLaneSnapshot(WorldMarketsLaneSnapshot snapshot)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Dispatcher.VerifyAccess();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("_clockViewModel.Cities.Select(CloneClockCity).ToList()", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ClockCityViewModel working = CloneClockCity(city);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("target.SetMiniGraphPointsIfChanged(source.MiniGraphPoints);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SetMiniGraphPointsIfChanged(city, history, 72d, 12d);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ArgumentNullException.ThrowIfNull(target);", sceneCodeBehind, StringComparison.Ordinal);
