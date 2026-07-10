@@ -10538,13 +10538,17 @@
         "DeepSeek artifact review classified repeated clock action durations around 230-328 ms as a user-visible performance risk needing investigation before release-clean closure.",
         "The slow events were concentrated in action=clock, while the app otherwise had 0 fatal/crash/cross-thread exceptions, 0 ERROR, 0 WARN, and 0 HTTP 429.",
         "Follow-up installed VM soak installed-soak-20260710-123657 completed 30 minutes without crash and produced runtimeQuoteApplied=114, but still recorded 29 SceneSchedulerActionSlow events. Distribution: motion count=17 max=287.2ms avg=60.0ms; runtime-quote count=5 max=158.0ms avg=58.3ms; clock count=4 max=34.6ms avg=29.8ms; background-rotation count=2 max=146.1ms avg=113.7ms; background-zoom count=1 max=47.2ms.",
-        "DeepSeek artifact review for installed-soak-20260710-123657 classified recurrent slow scheduler actions as Medium UX risk and recommended per-action thresholds, visual artifacts, and deeper motion/rotation correlation."
+        "DeepSeek artifact review for installed-soak-20260710-123657 classified recurrent slow scheduler actions as Medium UX risk and recommended per-action thresholds, visual artifacts, and deeper motion/rotation correlation.",
+        "Installed VM soak installed-soak-20260710-151844 completed 30 minutes without crash/error/warn/HTTP429 and produced 6 app-native scene captures, runtimeQuoteApplied=113, worldMarketsUiPatchComplete=11, backgroundRotationChosen=6, and backgroundTransitionComplete=5.",
+        "CR-226 follow-up analysis: SceneSchedulerActionSlow dropped to 14 events, but PortfolioSaver.Desktop still consumed roughly 1.7 CPU cores continuously and private memory fluctuated up to 568.1 MB, indicating remaining continuous-render cost rather than clock-only scheduler work.",
+        "DeepSeek artifact review build/validation/artifacts/deepseek-artifact-review-20260710-155109.md agreed deterministic trace analysis was clean but flagged memory pressure, thread growth, and the 414.8 ms background-rotation outlier as residual UI-fluidity risk."
       ],
       "acceptance": [
         "Identify why clock scheduler work takes hundreds of milliseconds during installed runtime.",
         "Reduce avoidable clock-lane work or move it off the UI scheduler without destabilizing world-market/macro/news lanes.",
         "Add or update trace/test coverage so future installed soaks can distinguish acceptable occasional timing noise from a real UI-fluidity regression.",
-        "Close only after local tests, DeepSeek code review, and an installed VM soak show no crash and no actionable clock-slow performance defect."
+        "Close only after local tests, DeepSeek code review, and an installed VM soak show no crash and no actionable clock-slow performance defect.",
+        "Reduce continuous-render overhead from tape/global-market render controllers and re-run installed VM soak to compare CPU-core usage and MotionFrameSlow counts."
       ]
     },
     {
@@ -10592,7 +10596,7 @@
       "priority": 1,
       "area": "Market status UX",
       "title": "Top-left New York market status can lag the 09:30 ET open because stale quote session overrides exchange calendar",
-      "status": "closed",
+      "status": "open",
       "source": "installed_soak_20260710_091218_market_open_crossover",
       "severity": "high",
       "evidence": [
@@ -10600,7 +10604,9 @@
         "At 2026-07-10T13:33:25Z, after the 09:30 ET open, WorldMarketsUiPatchComplete still rendered Market (New York): Pre-Market | Closing in 06:26.",
         "The text was contradictory because YFinance quote metadata for ^IXIC and some ETFs still reported PRE while exchange calendar timing had already entered the regular session.",
         "Code inspection found BuildPinnedNewYorkStatusBandText preferred QuoteSnapshot.MarketSession over YFinanceExchangeTimingService.ResolveStatus(calendar, referenceUtc).",
-        "Closed on 2026-07-10 after installed-soak-20260710-123657 traced market_status_text=Market (New York): Open 11 times during regular-session runtime, proving the top-left market status no longer lagged as Pre-Market after the exchange open."
+        "Closed on 2026-07-10 after installed-soak-20260710-123657 traced market_status_text=Market (New York): Open 11 times during regular-session runtime, proving the top-left market status no longer lagged as Pre-Market after the exchange open.",
+        "Reopened on 2026-07-10 after code inspection showed UpdateClocks refreshed ClockText every second but did not recompute _statusViewModel.MarketStatusText; therefore the top-left label could still wait for a world-market patch even after the calendar-driven formatter was fixed.",
+        "Follow-up implementation wires _statusViewModel.MarketStatusText = BuildPinnedNewYorkStatusBandText(referenceUtc) into UpdateClocks so the status band can transition on the normal 1-second clock tick."
       ],
       "notes": [
         "User-visible requirement: on market-open days the top-left New York status should transition to Open exactly at the exchange calendar open time, even if ordinary quote metadata lags for a few minutes.",
@@ -10612,7 +10618,8 @@
         "DeepSeek code review gate reports no blocking findings for code changes.",
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
-        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence.",
+        "Source/test proof shows UpdateClocks recomputes the pinned New York market status on each clock tick, not only during world-market patch application."
       ]
     },
     {

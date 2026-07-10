@@ -2929,7 +2929,14 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("Width = SymbolHostWidth", tapeCode, StringComparison.Ordinal);
         Assert.Contains("Margin = new Thickness(1, 0, 0, 0)", tapeCode, StringComparison.Ordinal);
         Assert.Contains("FontSize = 11", tapeCode, StringComparison.Ordinal);
-        Assert.Contains("RenderingEventArgs", File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Render", "Services", "TapeAnimationController.cs")), StringComparison.Ordinal);
+        string tapeAnimationController = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Render", "Services", "TapeAnimationController.cs"));
+        Assert.Contains("RenderingEventArgs", tapeAnimationController, StringComparison.Ordinal);
+        Assert.Contains("MinimumFrameInterval = TimeSpan.FromMilliseconds(33)", tapeAnimationController, StringComparison.Ordinal);
+        Assert.Contains("MaximumFrameStep = TimeSpan.FromMilliseconds(100)", tapeAnimationController, StringComparison.Ordinal);
+        Assert.Contains("elapsedSeconds = 1d / 60d;", tapeAnimationController, StringComparison.Ordinal);
+        Assert.Contains("if (elapsed < MinimumFrameInterval)", tapeAnimationController, StringComparison.Ordinal);
+        Assert.Contains("Throttle continuous tape invalidation to roughly 30 FPS", tapeAnimationController, StringComparison.Ordinal);
+        Assert.Contains("Math.Clamp(", tapeAnimationController, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -3603,6 +3610,22 @@ public sealed class VisualizerRenderBehaviorTests
         string fieldBackedMethod = ExtractMethodBody(sceneCodeBehind, "private string BuildPinnedNewYorkStatusBandText");
 
         Assert.Contains("return BuildPinnedNewYorkStatusBandText(_clockViewModel.Cities, _exchangeCalendars, referenceUtc, _exchangeMarketCalendarService);", fieldBackedMethod, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ClockTick_RecomputesPinnedNewYorkStatusBandEverySecond()
+    {
+        string sceneCodeBehind = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "VisualizerSceneControl.xaml.cs"));
+        string updateClocks = ExtractMethodBody(sceneCodeBehind, "private void UpdateClocks");
+
+        Assert.Contains("_statusViewModel.ClockText = FormatClockTimeWithZone(referenceUtc, TimeZoneInfo.Utc);", updateClocks, StringComparison.Ordinal);
+        Assert.Contains("_statusViewModel.MarketStatusText = BuildPinnedNewYorkStatusBandText(referenceUtc);", updateClocks, StringComparison.Ordinal);
+        Assert.Contains("UpdateStatusFreshnessText();", updateClocks, StringComparison.Ordinal);
     }
 
     [Fact]

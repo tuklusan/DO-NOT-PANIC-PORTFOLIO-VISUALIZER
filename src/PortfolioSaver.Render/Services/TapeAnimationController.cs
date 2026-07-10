@@ -19,6 +19,8 @@ namespace PortfolioSaver.Render.Services;
 
 public sealed class TapeAnimationController
 {
+    private static readonly TimeSpan MinimumFrameInterval = TimeSpan.FromMilliseconds(33);
+    private static readonly TimeSpan MaximumFrameStep = TimeSpan.FromMilliseconds(100);
     private UIElement? _element;
     private TranslateTransform? _transform;
     private double _cycleDistance;
@@ -93,10 +95,26 @@ public sealed class TapeAnimationController
             return;
         }
 
-        double elapsedSeconds = _lastRenderingTime is null
-            ? 1d / 60d
-            : Math.Max(1d / 240d, (renderingTime - _lastRenderingTime.Value).TotalSeconds);
-        _lastRenderingTime = renderingTime;
+        double elapsedSeconds;
+        if (_lastRenderingTime is null)
+        {
+            _lastRenderingTime = renderingTime;
+            elapsedSeconds = 1d / 60d;
+        }
+        else
+        {
+            TimeSpan elapsed = renderingTime - _lastRenderingTime.Value;
+            if (elapsed < MinimumFrameInterval)
+                return;
+
+            _lastRenderingTime = renderingTime;
+            // Throttle continuous tape invalidation to roughly 30 FPS while
+            // preserving elapsed-time motion and preventing resume jumps.
+            elapsedSeconds = Math.Clamp(
+                elapsed.TotalSeconds,
+                1d / 240d,
+                MaximumFrameStep.TotalSeconds);
+        }
 
         _progress += _pixelsPerSecond * elapsedSeconds;
         NormalizeProgress();

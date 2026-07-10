@@ -2083,6 +2083,7 @@ public partial class VisualizerSceneControl : UserControl
         {
             _statusViewModel.ClockDateText = FormatStatusClockDate(referenceUtc);
             _statusViewModel.ClockText = FormatClockTimeWithZone(referenceUtc, TimeZoneInfo.Utc);
+            _statusViewModel.MarketStatusText = BuildPinnedNewYorkStatusBandText(referenceUtc);
             UpdateStatusFreshnessText();
             if (refreshStatusAncillary)
                 _lastStatusAncillaryRefreshUtc = referenceUtc;
