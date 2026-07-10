@@ -1471,10 +1471,19 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("RuntimeQuoteTransportRecoveryFailureThreshold = 10", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RuntimeDataFreshnessChanged", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ResolveEffectiveDataFreshnessNetworkState", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("GetCachedStatusNetworkAvailability()", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RefreshCachedStatusNetworkAvailabilityAsync()", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("failure_counted", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("UpdateDataFreshnessStatus();", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"data_freshness_text\"", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StartupCoordinator.TryGetLatestUpdatedSymbol(_latestQuotes, out string latestUpdatedSymbol, out DateTimeOffset latestUpdatedFetchUtc)", sceneCodeBehind, StringComparison.Ordinal);
+
+        int updateMethodStart = sceneCodeBehind.IndexOf("private void UpdateDataFreshnessStatus()", StringComparison.Ordinal);
+        Assert.True(updateMethodStart >= 0);
+        int updateMethodEnd = sceneCodeBehind.IndexOf("private bool GetCachedStatusNetworkAvailability()", updateMethodStart, StringComparison.Ordinal);
+        Assert.True(updateMethodEnd > updateMethodStart);
+        string updateMethodBody = sceneCodeBehind[updateMethodStart..updateMethodEnd];
+        Assert.DoesNotContain("_networkAvailabilityService.IsNetworkAvailable()", updateMethodBody, StringComparison.Ordinal);
 
         string statusBarXaml = File.ReadAllText(Path.Combine(
             GetRepoRoot(),

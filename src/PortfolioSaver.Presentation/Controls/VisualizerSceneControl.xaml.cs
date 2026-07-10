@@ -55,6 +55,7 @@ public partial class VisualizerSceneControl : UserControl
     private static readonly TimeSpan MacroLaneMinimumRefreshInterval = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan WorldMarketsLaneMinimumRefreshInterval = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan ClosedClockMarketQuoteRefreshInterval = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan StatusNetworkAvailabilityProbeInterval = TimeSpan.FromSeconds(30);
     // Runtime quotes intentionally use a fixed one-at-a-time transport cadence:
     // dispatch a single symbol, apply that response surgically, then wait for the
     // next timer tick before dispatching another symbol. This avoids UI bursts.
@@ -175,6 +176,10 @@ public partial class VisualizerSceneControl : UserControl
     private Task? _worldMarketsLaneTask;
     private int _worldMarketsQuoteDirty;
     private int _worldMarketsAncillaryDirty;
+    // Keep startup optimistic and non-blocking; quote failures will still flip the visible status immediately.
+    private bool _cachedStatusNetworkAvailable = true;
+    private int _statusNetworkProbeInFlight;
+    private DateTimeOffset _lastStatusNetworkProbeStartedUtc = DateTimeOffset.MinValue;
 
     public VisualizerSceneControl()
     {
@@ -4535,7 +4540,7 @@ public partial class VisualizerSceneControl : UserControl
 
         string? previousFreshnessText = _statusViewModel.DataFreshnessText;
         bool networkAvailable = StartupCoordinator.ResolveEffectiveDataFreshnessNetworkState(
-            _networkAvailabilityService.IsNetworkAvailable(),
+            GetCachedStatusNetworkAvailability(),
             ReadRuntimeQuoteFailureStreak(),
             RuntimeQuoteOfflineDisplayFailureThreshold);
         _statusViewModel.DataFreshnessText = StartupCoordinator.ResolveDataFreshnessText(networkAvailable, _latestQuotes);
@@ -4548,6 +4553,63 @@ public partial class VisualizerSceneControl : UserControl
                 new KeyValuePair<string, object?>("data_freshness_text", _statusViewModel.DataFreshnessText),
                 new KeyValuePair<string, object?>("failure_streak", ReadRuntimeQuoteFailureStreak()),
                 new KeyValuePair<string, object?>("quote_count", _latestQuotes.Count));
+        }
+    }
+
+    private bool GetCachedStatusNetworkAvailability()
+    {
+        QueueStatusNetworkAvailabilityProbeIfDue();
+        return _cachedStatusNetworkAvailable;
+    }
+
+    private void QueueStatusNetworkAvailabilityProbeIfDue()
+    {
+        DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
+        if (nowUtc - _lastStatusNetworkProbeStartedUtc < StatusNetworkAvailabilityProbeInterval)
+            return;
+
+        if (System.Threading.Interlocked.CompareExchange(ref _statusNetworkProbeInFlight, 1, 0) != 0)
+            return;
+
+        _lastStatusNetworkProbeStartedUtc = nowUtc;
+        _ = RefreshCachedStatusNetworkAvailabilityAsync();
+    }
+
+    private async Task RefreshCachedStatusNetworkAvailabilityAsync()
+    {
+        bool networkAvailable;
+        try
+        {
+            networkAvailable = await _networkAvailabilityService.IsNetworkAvailableAsync();
+        }
+        catch (Exception ex)
+        {
+            networkAvailable = false;
+            TraceSceneState(
+                "StatusNetworkAvailabilityProbeFailed",
+                new KeyValuePair<string, object?>("exception_type", ex.GetType().Name));
+        }
+
+        try
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                if (!_initialized)
+                    return;
+
+                _cachedStatusNetworkAvailable = networkAvailable;
+                UpdateDataFreshnessStatus();
+            }, DispatcherPriority.Background);
+        }
+        catch (Exception ex)
+        {
+            TraceSceneState(
+                "StatusNetworkAvailabilityProbeApplyFailed",
+                new KeyValuePair<string, object?>("exception_type", ex.GetType().Name));
+        }
+        finally
+        {
+            System.Threading.Interlocked.Exchange(ref _statusNetworkProbeInFlight, 0);
         }
     }
 
