@@ -42,7 +42,7 @@ public sealed class VisualizerRenderBehaviorTests
     public void FloatingSpriteMotionController_ClampsNonBouncingSprites_WithoutReversingVelocity()
     {
         FloatingSpriteMotionController controller = new();
-        FloatingSpriteViewModel sprite = new()
+        MarketSpriteViewModel sprite = new()
         {
             Width = 20,
             Height = 10,
@@ -65,7 +65,7 @@ public sealed class VisualizerRenderBehaviorTests
     public void FloatingSpriteMotionController_ClampsBouncingSprites_AndReversesVelocity()
     {
         FloatingSpriteMotionController controller = new();
-        FloatingSpriteViewModel sprite = new()
+        MarketSpriteViewModel sprite = new()
         {
             Width = 20,
             Height = 10,
