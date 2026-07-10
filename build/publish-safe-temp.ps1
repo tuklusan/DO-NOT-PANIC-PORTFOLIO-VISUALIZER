@@ -134,6 +134,23 @@ if ($yfinanceCopyExit -gt 7) {
     throw "Workspace mirror failed. robocopy exit: yfinance=$yfinanceCopyExit"
 }
 
+# The solution restore needs any test project files referenced by the solution,
+# but the installer publish workspace must not copy test sources or fixtures.
+# Test projects currently have no project-local props/targets imports.
+$solutionText = Get-Content -LiteralPath (Join-Path $repoRoot "DoNotPanicPortfolioVisualizer.sln") -Raw
+$testProjectMatches = [regex]::Matches($solutionText, '"(?<path>tests\\[^"]+\.csproj)"', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+foreach ($match in $testProjectMatches) {
+    $relativeProjectPath = $match.Groups['path'].Value
+    $sourceProjectPath = Join-Path $repoRoot $relativeProjectPath
+    $targetProjectPath = Join-Path $tempRoot $relativeProjectPath
+    if (-not (Test-Path -LiteralPath $sourceProjectPath -PathType Leaf)) {
+        throw "Solution references missing test project file: $relativeProjectPath"
+    }
+
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $targetProjectPath) | Out-Null
+    Copy-Item -LiteralPath $sourceProjectPath -Destination $targetProjectPath -Force
+}
+
 if (Test-Path $publishRoot) {
     Remove-Item -LiteralPath $publishRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
