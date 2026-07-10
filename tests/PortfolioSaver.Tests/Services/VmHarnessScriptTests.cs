@@ -1079,12 +1079,20 @@ public sealed class VmHarnessScriptTests
         string script = ReadRepoText("build", "validation", "Run-InstalledSoakOnce.local.ps1");
         string sceneControl = ReadRepoText("src", "PortfolioSaver.Presentation", "Controls", "VisualizerSceneControl.xaml.cs");
 
+        Assert.Contains("[ValidateRange(5, 1440)]", script, StringComparison.Ordinal);
+        Assert.Contains("[int]$DurationMinutes = 30", script, StringComparison.Ordinal);
+        Assert.Contains("$durationSeconds=[int]($DurationMinutes * 60)", script, StringComparison.Ordinal);
+        Assert.Contains("$captureDelayText=($captureDelays -join ',')", script, StringComparison.Ordinal);
+        Assert.Contains("$invokeTimeoutSeconds=[Math]::Max(600, $durationSeconds + 300)", script, StringComparison.Ordinal);
         Assert.Contains("$captureDir=Join-Path `$result 'scene-captures'", script, StringComparison.Ordinal);
         Assert.Contains("$metricsPath=Join-Path `$result 'resource-samples.csv'", script, StringComparison.Ordinal);
         Assert.Contains("function Write-ResourceSample", script, StringComparison.Ordinal);
         Assert.Contains("set PORTFOLIOSAVER_CAPTURE_DIR=`$captureDir", script, StringComparison.Ordinal);
         Assert.Contains("set PORTFOLIOSAVER_CAPTURE_STEM=installed-soak", script, StringComparison.Ordinal);
-        Assert.Contains("set PORTFOLIOSAVER_CAPTURE_DELAYS=30,300,600,900,1200,1500,1790", script, StringComparison.Ordinal);
+        Assert.Contains("\"set PORTFOLIOSAVER_CAPTURE_DELAYS=$captureDelayText\"", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("'set PORTFOLIOSAVER_CAPTURE_DELAYS=$captureDelayText'", script, StringComparison.Ordinal);
+        Assert.Contains("`$deadline=(Get-Date).AddSeconds($durationSeconds)", script, StringComparison.Ordinal);
+        Assert.Contains("-TimeOutSeconds $invokeTimeoutSeconds", script, StringComparison.Ordinal);
         Assert.Contains("launch-installed-soak.cmd", script, StringComparison.Ordinal);
         Assert.Contains("$taskAction='cmd.exe /c \"\"' + `$launchCmd + '\"\"'", script, StringComparison.Ordinal);
         Assert.Contains("Write-ResourceSample 'before-stop'", script, StringComparison.Ordinal);

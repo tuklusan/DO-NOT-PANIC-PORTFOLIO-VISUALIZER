@@ -1,4 +1,9 @@
 
+param(
+  [ValidateRange(5, 1440)]
+  [int]$DurationMinutes = 30
+)
+
 . "$PSScriptRoot\..\vm\VmSshCommon.ps1"
 $ErrorActionPreference='Stop'
 $repoRoot=(Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -7,6 +12,10 @@ $installerLocal=(Resolve-Path (Join-Path $repoRoot 'build\artifacts\inno\output\
 $resultName='installed-soak-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
 $localParent=(Resolve-Path (Join-Path $repoRoot 'build\validation\artifacts')).Path
 $localResultRoot=Join-Path $localParent $resultName
+$durationSeconds=[int]($DurationMinutes * 60)
+$captureDelays=0..6 | ForEach-Object { [int][Math]::Round(30 + ($_ * (($durationSeconds - 40) / 6.0))) } | Sort-Object -Unique
+$captureDelayText=($captureDelays -join ',')
+$invokeTimeoutSeconds=[Math]::Max(600, $durationSeconds + 300)
 $bundle=New-VmSshSessionBundle
 try {
   $userParts=Get-VmSshCredentialPartsFromEnv
@@ -73,7 +82,7 @@ if (!(Test-Path -LiteralPath `$configExe)) { throw "Config exe missing: `$config
   InstalledAtUtc=(Get-Date).ToUniversalTime().ToString('o')
   DesktopProcessDiedEarly=`$false
   DesktopProcessAliveAtEndBeforeStop=`$false
-  DurationSeconds=1800
+  DurationSeconds=$durationSeconds
 }
 `$taskName='DnppvInstalledSoakDesktop'
 `$taskTime=(Get-Date).AddMinutes(1).ToString('HH:mm')
@@ -82,7 +91,7 @@ if (!(Test-Path -LiteralPath `$configExe)) { throw "Config exe missing: `$config
   '@echo off',
   "set PORTFOLIOSAVER_CAPTURE_DIR=`$captureDir",
   'set PORTFOLIOSAVER_CAPTURE_STEM=installed-soak',
-  'set PORTFOLIOSAVER_CAPTURE_DELAYS=30,300,600,900,1200,1500,1790',
+  "set PORTFOLIOSAVER_CAPTURE_DELAYS=$captureDelayText",
   "cd /d ""`$installRoot""",
   "start """" ""`$desktopExe"""
 )
@@ -91,7 +100,7 @@ Set-Content -LiteralPath `$launchCmd -Value `$launchLines -Encoding ASCII
 # /IT is intentional: the installed-soak lane validates real GUI rendering in the logged-on test user's desktop session.
 schtasks /Create /TN `$taskName /TR `$taskAction /SC ONCE /ST `$taskTime /IT /RU '$remoteUser' /F | Out-Null
 schtasks /Run /TN `$taskName | Out-Null
-`$deadline=(Get-Date).AddSeconds(1800)
+`$deadline=(Get-Date).AddSeconds($durationSeconds)
 `$launchDeadline=(Get-Date).AddSeconds(90)
 while ((Get-Date) -lt `$launchDeadline -and -not (Get-Process PortfolioSaver.Desktop -ErrorAction SilentlyContinue)) { Start-Sleep -Seconds 2 }
 if (-not (Get-Process PortfolioSaver.Desktop -ErrorAction SilentlyContinue)) { throw 'Desktop process did not launch.' }
@@ -124,7 +133,7 @@ Start-Sleep -Seconds 3
   Set-Content -LiteralPath $localRemoteScript -Value $remoteScriptContent -Encoding UTF8
   $remoteScript="$root\RunInstalledSoak.ps1"
   Send-VmItem -Bundle $bundle -LocalPath $localRemoteScript -RemoteDestination $root
-  Invoke-VmRawCommand -Bundle $bundle -Command "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$remoteScript`"" -TimeOutSeconds 2100 | Out-Null
+  Invoke-VmRawCommand -Bundle $bundle -Command "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$remoteScript`"" -TimeOutSeconds $invokeTimeoutSeconds | Out-Null
   New-Item -ItemType Directory -Force -Path $localParent | Out-Null
   Receive-VmItem -Bundle $bundle -RemotePath $remoteResult -LocalDestination $localParent
   $summaryPath=Join-Path $localResultRoot 'summary.json'
