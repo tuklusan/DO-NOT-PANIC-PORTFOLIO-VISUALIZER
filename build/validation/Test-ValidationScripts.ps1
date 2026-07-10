@@ -27,14 +27,48 @@ $scriptPaths = @(
     'build\installer\Test-InnoInstallCycle.ps1'
 )
 
-foreach ($relativePath in $scriptPaths) {
-    $path = Join-Path $repoRoot $relativePath
-    $tokens = $null
-    $parseErrors = $null
-    [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$parseErrors) | Out-Null
-    if ($parseErrors) {
-        $messages = ($parseErrors | ForEach-Object { $_.Message }) -join '; '
-        throw "PowerShell parser failed for ${relativePath}: $messages"
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+    $parseFailures = @($scriptPaths | ForEach-Object -Parallel {
+        $relativePath = $_
+        $path = Join-Path $using:repoRoot $relativePath
+        $tokens = $null
+        $parseErrors = $null
+        try {
+            [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$parseErrors) | Out-Null
+        }
+        catch {
+            [pscustomobject]@{
+                Path = $relativePath
+                Messages = "Exception: $($_.Exception.Message)"
+            }
+            return
+        }
+
+        if ($parseErrors) {
+            [pscustomobject]@{
+                Path = $relativePath
+                Messages = ($parseErrors | ForEach-Object { $_.Message }) -join '; '
+            }
+        }
+    } -ThrottleLimit ([Math]::Min(6, [Math]::Max(1, $scriptPaths.Count))))
+
+    if ($parseFailures.Count -gt 0) {
+        # The PS7 branch intentionally reports all parser failures from the
+        # parallel smoke pass instead of hiding later failures behind the first.
+        $messages = ($parseFailures | ForEach-Object { "PowerShell parser failed for $($_.Path): $($_.Messages)" }) -join [Environment]::NewLine
+        throw $messages
+    }
+}
+else {
+    foreach ($relativePath in $scriptPaths) {
+        $path = Join-Path $repoRoot $relativePath
+        $tokens = $null
+        $parseErrors = $null
+        [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$parseErrors) | Out-Null
+        if ($parseErrors) {
+            $messages = ($parseErrors | ForEach-Object { $_.Message }) -join '; '
+            throw "PowerShell parser failed for ${relativePath}: $messages"
+        }
     }
 }
 
