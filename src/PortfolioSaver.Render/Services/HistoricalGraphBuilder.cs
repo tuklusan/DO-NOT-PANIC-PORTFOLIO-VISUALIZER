@@ -78,12 +78,15 @@ public sealed class HistoricalGraphBuilder
 
             Point previous = new(vm.Points[i - 1].X, vm.Points[i - 1].Y);
             PointCollection segment = [previous, p];
+            segment.Freeze();
             if (point.Close >= snapshot.Points[i - 1].Close)
                 greenSegments.Add(segment);
             else
                 redSegments.Add(segment);
         }
 
+        green.Freeze();
+        red.Freeze();
         vm.GreenPoints = green;
         vm.RedPoints = red;
         vm.GreenSegments = greenSegments;
@@ -95,6 +98,7 @@ public sealed class HistoricalGraphBuilder
                 new Point(vm.Points[^2].X, vm.Points[^2].Y),
                 new Point(vm.Points[^1].X, vm.Points[^1].Y)
             ];
+            vm.LatestSegmentPoints.Freeze();
         }
         vm.MaxScaleText = FormatScaleValue(max);
         vm.MidScaleText = FormatScaleValue((min + max) / 2m);

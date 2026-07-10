@@ -49,6 +49,15 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
     private PointCollection _latestSegmentPoints = [];
     private Brush _latestSegmentBrush = Brushes.Gainsboro;
 
+    public FloatingGraphViewModel()
+    {
+        _cardBackground.Freeze();
+        _cardBorderBrush.Freeze();
+        _greenPoints.Freeze();
+        _redPoints.Freeze();
+        _latestSegmentPoints.Freeze();
+    }
+
     public string Symbol
     {
         get => _symbol;

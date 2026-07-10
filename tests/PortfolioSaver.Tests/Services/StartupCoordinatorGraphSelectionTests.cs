@@ -23,6 +23,18 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class StartupCoordinatorGraphSelectionTests
 {
     [Fact]
+    public void FloatingGraphViewModel_DefaultFreezablesAreFrozenForCrossThreadSafety()
+    {
+        FloatingGraphViewModel graph = new();
+
+        Assert.True(graph.CardBackground.IsFrozen);
+        Assert.True(graph.CardBorderBrush.IsFrozen);
+        Assert.True(graph.GreenPoints.IsFrozen);
+        Assert.True(graph.RedPoints.IsFrozen);
+        Assert.True(graph.LatestSegmentPoints.IsFrozen);
+    }
+
+    [Fact]
     public void SelectGraphTickerPairs_PrefersTopAbsoluteMovers_AndCapsAtSixteen()
     {
         StartupCoordinator coordinator = new();
@@ -136,6 +148,12 @@ public sealed class StartupCoordinatorGraphSelectionTests
         PointCollection originalGreenPoints = first.GreenPoints;
         FloatingGraphViewModel second = Assert.IsType<FloatingGraphViewModel>(method.Invoke(coordinator, ["CORE", CreateHistorySnapshot("VOO", 100m, 101m), settings]));
 
+        Assert.True(first.CardBackground.IsFrozen);
+        Assert.True(first.CardBorderBrush.IsFrozen);
+        Assert.True(first.GreenPoints.IsFrozen);
+        Assert.True(first.RedPoints.IsFrozen);
+        Assert.True(first.LatestSegmentPoints.IsFrozen);
+        Assert.All(first.GreenSegments.Concat(first.RedSegments), segment => Assert.True(segment.IsFrozen));
         Assert.Same(first, second);
         Assert.Same(originalGreenPoints, second.GreenPoints);
         Assert.True(second.BounceWithinViewport);
