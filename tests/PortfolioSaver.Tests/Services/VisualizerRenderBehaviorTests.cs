@@ -1531,10 +1531,10 @@ public sealed class VisualizerRenderBehaviorTests
 
                 Assert.Equal(12, bounds.Left);
                 Assert.Equal(12, bounds.Top);
-                Assert.True(bounds.Width >= 760);
-                Assert.True(bounds.Height >= 540);
-                Assert.True(bounds.Right <= 800);
-                Assert.True(bounds.Bottom <= 600);
+                Assert.Equal(Math.Max(20, control.ActualWidth - 24), bounds.Width, precision: 1);
+                Assert.Equal(Math.Max(20, control.ActualHeight - 24), bounds.Height, precision: 1);
+                Assert.True(bounds.Right <= control.ActualWidth);
+                Assert.True(bounds.Bottom <= control.ActualHeight);
             }
             finally
             {
