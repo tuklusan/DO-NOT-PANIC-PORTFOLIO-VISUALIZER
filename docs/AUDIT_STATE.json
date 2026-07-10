@@ -10679,6 +10679,32 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-232",
+      "tracking_number": "CR-232",
+      "priority": 2,
+      "area": "vm-harness",
+      "title": "Validation scene-capture hook must not distort soak memory evidence",
+      "status": "open",
+      "source": "installed-soak-20260710-183226",
+      "severity": "medium",
+      "evidence": [
+        "DeepSeek artifact review for installed-soak-20260710-183226 flagged PortfolioSaver.Desktop private memory stepping from roughly 303 MB to roughly 593 MB after the fourth app-native scene capture.",
+        "Trace timestamps show captures at 22:34, 22:44, 22:54, 23:04, 23:14, and 23:23 UTC; resource sample jumped at 23:08 after installed-soak-4.png was saved.",
+        "The capture hook uses RenderTargetBitmap/PngBitmapEncoder inside the app process only when PORTFOLIOSAVER_CAPTURE_DIR is set by the validation harness."
+      ],
+      "notes": [
+        "This is test-infrastructure distortion risk: validation captures should not create long-lived bitmap/encoder memory that contaminates memory-leak assessment."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

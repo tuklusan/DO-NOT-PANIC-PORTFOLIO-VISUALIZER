@@ -1082,6 +1082,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[ValidateRange(5, 1440)]", script, StringComparison.Ordinal);
         Assert.Contains("[int]$DurationMinutes = 30", script, StringComparison.Ordinal);
         Assert.Contains("$durationSeconds=[int]($DurationMinutes * 60)", script, StringComparison.Ordinal);
+        Assert.Contains("$lastCaptureDelaySeconds=[Math]::Max(30, $durationSeconds - 45)", script, StringComparison.Ordinal);
         Assert.Contains("$captureDelayText=($captureDelays -join ',')", script, StringComparison.Ordinal);
         Assert.Contains("$invokeTimeoutSeconds=[Math]::Max(600, $durationSeconds + 300)", script, StringComparison.Ordinal);
         Assert.Contains("$captureDir=Join-Path `$result 'scene-captures'", script, StringComparison.Ordinal);
@@ -1108,6 +1109,10 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("PORTFOLIOSAVER_CAPTURE_DELAYS", sceneControl, StringComparison.Ordinal);
         Assert.Contains("CaptureSceneSequenceAsync", sceneControl, StringComparison.Ordinal);
         Assert.Contains("SaveSceneCapture", sceneControl, StringComparison.Ordinal);
+        Assert.Contains("SceneCaptureComplete", sceneControl, StringComparison.Ordinal);
+        Assert.Contains("SceneCaptureCleanupQueued", sceneControl, StringComparison.Ordinal);
+        Assert.Contains("GC.Collect(2, GCCollectionMode.Optimized, blocking: false", sceneControl, StringComparison.Ordinal);
+        Assert.DoesNotContain("GC.WaitForPendingFinalizers", sceneControl, StringComparison.Ordinal);
     }
 
     private static readonly ConcurrentDictionary<string, Lazy<string>> SourceTextCache = new(StringComparer.OrdinalIgnoreCase);

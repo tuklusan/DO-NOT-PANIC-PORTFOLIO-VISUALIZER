@@ -547,13 +547,46 @@ public partial class VisualizerSceneControl : UserControl
 
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
 
+        long beforeMemoryBytes = GC.GetTotalMemory(forceFullCollection: false);
+
         RenderTargetBitmap bitmap = new(pixelWidth, pixelHeight, 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(this);
+        bitmap.Freeze();
+
+        BitmapFrame frame = BitmapFrame.Create(bitmap);
+        frame.Freeze();
 
         PngBitmapEncoder encoder = new();
-        encoder.Frames.Add(BitmapFrame.Create(bitmap));
-        using FileStream stream = File.Create(targetPath);
-        encoder.Save(stream);
+        encoder.Frames.Add(frame);
+        using (FileStream stream = File.Create(targetPath))
+        {
+            encoder.Save(stream);
+            stream.Flush(flushToDisk: true);
+        }
+
+        long afterSaveMemoryBytes = GC.GetTotalMemory(forceFullCollection: false);
+
+        TraceSceneState(
+            "SceneCaptureComplete",
+            new("path", Path.GetFileName(targetPath)),
+            new("width", pixelWidth),
+            new("height", pixelHeight),
+            new("managed_memory_before_mb", Math.Round(beforeMemoryBytes / 1024d / 1024d, 1)),
+            new("managed_memory_after_save_mb", Math.Round(afterSaveMemoryBytes / 1024d / 1024d, 1)));
+        QueueCaptureMemoryCleanup(Path.GetFileName(targetPath));
+    }
+
+    private static void QueueCaptureMemoryCleanup(string captureFileName)
+    {
+        _ = Task.Run(() =>
+        {
+            GC.Collect(2, GCCollectionMode.Optimized, blocking: false, compacting: false);
+            long afterCleanupRequestBytes = GC.GetTotalMemory(forceFullCollection: false);
+            TraceSceneState(
+                "SceneCaptureCleanupQueued",
+                new("path", captureFileName),
+                new("managed_memory_after_cleanup_request_mb", Math.Round(afterCleanupRequestBytes / 1024d / 1024d, 1)));
+        });
     }
 
     private static List<int> ParseCaptureSchedule(string? rawSchedule)
