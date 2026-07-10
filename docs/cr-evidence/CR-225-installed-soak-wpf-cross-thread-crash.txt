@@ -50,32 +50,32 @@ DeepSeek artifact review excerpt:
 
 ### 1. [High] **Premature crash due to WPF threading violation — soak renders zero useful coverage**
 
-The evidence clearly shows a `System.ArgumentException: Must create DependencySource on same Thread as the DependencyObject` at **03:46:40 UTC**, exactly 60 seconds into a 30-minute soak. The `OnStartup` stack trace confirms the crash originates from WPF data binding (a classic cross‑thread UI access bug).  
-This effectively nullifies the soak: the desktop process lived for ~1/30 of the requested duration, and the remaining 29 minutes are dead time with no UI activity.  
+The evidence clearly shows a `System.ArgumentException: Must create DependencySource on same Thread as the DependencyObject` at **03:46:40 UTC**, exactly 60 seconds into a 30-minute soak. The `OnStartup` stack trace confirms the crash originates from WPF data binding (a classic cross‑thread UI access bug).
+This effectively nullifies the soak: the desktop process lived for ~1/30 of the requested duration, and the remaining 29 minutes are dead time with no UI activity.
 The deterministic verdict of **Failed** is fully justified. No false positive.
 
-**Residual risk**:  
-- This crash occurs during startup logic; if the app is used normally, users may hit this on launch under certain race conditions or input data states.  
+**Residual risk**:
+- This crash occurs during startup logic; if the app is used normally, users may hit this on launch under certain race conditions or input data states.
 - The `yfinance` server warning at 03:46:51 (`PendingReadDrainFailed`, `ClientDisconnectedAbruptly`) is a natural consequence of the desktop process dying, but it also means the server lost its sole client immediately. We have **no visibility** into what the server did for the remaining 29 minutes (it may have continued running, but `ServerProcessAliveAfterStop` is false, implying it eventually terminated – possibly via a shutdown timeout). This should be confirmed.
 
-**Missing evidence**:  
-- No screenshots were captured. A screenshot of the desktop window at the time of the crash (or shortly before) could help determine whether the startup sequence had shown any UI or if the crash occurred before a window was rendered.  
+**Missing evidence**:
+- No screenshots were captured. A screenshot of the desktop window at the time of the crash (or shortly before) could help determine whether the startup sequence had shown any UI or if the crash occurred before a window was rendered.
 - No memory dump, event viewer logs, or crash dump files are mentioned. Without a dump, the root cause of the threading violation (which object was being bound, which thread was incorrect) cannot be pinpointed.
 
-**Recommended follow‑up checks**:  
-1. **Reproduction**: Run the installed app once manually with tracing enabled. Does the crash happen deterministically? If yes, fix the WPF data binding to use `Dispatcher.Invoke` or ensure the binding source is created on the UI thread.  
-2. **Post‑mortem**: Enable Windows Error Reporting (WER) dumps for the desktop executable in future soak runs.  
-3. **Server lifecycle**: Add a server health‑check log at the harness level every 30 seconds so we can tell when the server process actually exits.  
+**Recommended follow‑up checks**:
+1. **Reproduction**: Run the installed app once manually with tracing enabled. Does the crash happen deterministically? If yes, fix the WPF data binding to use `Dispatcher.Invoke` or ensure the binding source is created on the UI thread.
+2. **Post‑mortem**: Enable Windows Error Reporting (WER) dumps for the desktop executable in future soak runs.
+3. **Server lifecycle**: Add a server health‑check log at the harness level every 30 seconds so we can tell when the server process actually exits.
 4. **Circular trace retention**: The trace files are 32 MB each; they appear to have been overwritten because only a 1‑minute window is captured. Consider increasing buffer or capturing a periodic snapshot of the log tail for the full soak duration.
 
 ---
 
 ### 2. [Medium] **Soak harness did not detect the crash early; dead time inflates the test report**
 
-The harness requested 30 minutes of runtime, but the app died after 1 minute. The summary correctly reports `DesktopProcessAliveAtEnd: false`, but the `RuntimeMinutesRequested` field is still 30. The harness did not stop early (e.g., by polling for process existence every few seconds).  
+The harness requested 30 minutes of runtime, but the app died after 1 minute. The summary correctly reports `DesktopProcessAliveAtEnd: false`, but the `RuntimeMinutesRequested` field is still 30. The harness did not stop early (e.g., by polling for process existence every few seconds).
 While this does not invalidate the pass/fail verdict, it wastes 29 minutes of CI pipeline time and may mask other issues (the server might have been idle or misbehaving during that time).
 
-**Recommended follow‑up**:  
+**Recommended follow‑up**:
 - Modify the soak harness to terminate the test if the desktop process disappears for more than a threshold (e.g., 10 seconds) and report the actual runtime as “partial soak – crashed at N minutes”.
 
 ---
@@ -84,7 +84,7 @@ While this does not invalidate the pass/fail verdict, it wastes 29 minutes of CI
 
 The screenshot/image inventory is empty. Even though the crash is a functional/threading bug, a screenshot showing the desktop window state (or lack thereof) at the crash moment would strengthen the evidence and could reveal a secondary UX issue (e.g., a partially rendered window, error dialog, or frozen splash screen).
 
-**Recommended follow‑up**:  
+**Recommended follow‑up**:
 - Add screenshot capture to the soak harness at start, at regular intervals (e.g., every 5 minutes), and on exit/crash. This is cheap and provides visual proof for any future UI regressions.
 
 ---
