@@ -76,7 +76,8 @@ function Capture-Screenshot([string]`$phase) {
     }
   }
   catch {
-    "`${phase}: `$($_.Exception.Message)" | Add-Content -LiteralPath (Join-Path `$result 'screenshot-errors.txt')
+    `$screenshotErrorMessage=`$_.Exception.Message
+    ("{0}: {1}" -f `$phase, `$screenshotErrorMessage) | Add-Content -LiteralPath (Join-Path `$result 'screenshot-errors.txt')
   }
 }
 Start-Process -FilePath `$installer -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
