@@ -636,6 +636,9 @@ public partial class VisualizerSceneControl : UserControl
     {
         try
         {
+            // Let the scheduler tick return before any graph layout preparation starts.
+            await Dispatcher.InvokeAsync(static () => { }, DispatcherPriority.Background);
+            cancellationToken.ThrowIfCancellationRequested();
             TraceScene($"WarmGraphsAsync starting rotationSeed={rotationSeed} preserveLayout={preserveLayout}.");
             PrepareGraphWarmupLayoutBatch();
             await foreach (FloatingGraphViewModel graph in _startupCoordinator.LoadGraphsIncrementallyAsync(_settings, rotationSeed, cancellationToken))
@@ -2499,7 +2502,7 @@ public partial class VisualizerSceneControl : UserControl
             cityStates.Add(WorldMarketCityState.FromViewModel(working, []));
         }
 
-        string pinnedStatusText = BuildPinnedNewYorkStatusBandText(input.Cities, input.Quotes, calendarSet, referenceUtc);
+        string pinnedStatusText = BuildPinnedNewYorkStatusBandText(input.Cities, calendarSet, referenceUtc, _exchangeMarketCalendarService);
         TraceSceneState(
             "WorldMarketsFetchComplete",
             new KeyValuePair<string, object?>("refresh_ancillary", refreshAncillary),
@@ -3030,63 +3033,37 @@ public partial class VisualizerSceneControl : UserControl
         if (_clockViewModel is null)
             return "Market (New York): --";
 
-        ClockCityViewModel? city = _clockViewModel.Cities.FirstOrDefault(candidate =>
-            candidate.ShowExchangeDetails &&
-            string.Equals(candidate.Key, PinnedNycExchangeKey, StringComparison.OrdinalIgnoreCase));
-        if (city is null)
-            return "Market (New York): --";
-
-        _latestQuotes.TryGetValue(city.ExchangeSymbol, out QuoteSnapshot? quote);
-        ExchangeTradingCalendar? calendar = _exchangeCalendars.TryGetByCityKey(city.Key);
-        if (quote is null || calendar is null)
-            return "Market (New York): --";
-
-        ExchangeCalendarStatus calendarStatus = _exchangeMarketCalendarService.ResolveStatus(calendar, referenceUtc);
-        MarketSession effectiveSession = quote.MarketSession == MarketSession.Unknown
-            ? calendarStatus.Session
-            : quote.MarketSession;
-        string sessionText = effectiveSession switch
-        {
-            MarketSession.Regular => "Regular",
-            MarketSession.PreMarket => "Pre-Market",
-            MarketSession.AfterHours => "After Hours",
-            MarketSession.Closed => "Closed",
-            _ => calendarStatus.IsOpen ? "Regular" : "Closed"
-        };
-
-        string countdownText = FormatPinnedStatusCountdown(effectiveSession, calendarStatus);
-
-        return FormatStatusBandText($"Market (New York): {sessionText} | {countdownText}");
+        return BuildPinnedNewYorkStatusBandText(_clockViewModel.Cities, _exchangeCalendars, referenceUtc, _exchangeMarketCalendarService);
     }
 
-    private string BuildPinnedNewYorkStatusBandText(
+    private static string BuildPinnedNewYorkStatusBandText(
         IReadOnlyList<ClockCityViewModel> cities,
-        IReadOnlyDictionary<string, QuoteSnapshot> quotes,
-        ExchangeCalendarSet calendarSet,
-        DateTimeOffset referenceUtc)
+        ExchangeCalendarSet? calendarSet,
+        DateTimeOffset referenceUtc,
+        YFinanceExchangeTimingService? exchangeMarketCalendarService)
     {
+        if (calendarSet is null || exchangeMarketCalendarService is null)
+            return "Market (New York): --";
+
         ClockCityViewModel? city = cities.FirstOrDefault(candidate =>
             candidate.ShowExchangeDetails &&
             string.Equals(candidate.Key, PinnedNycExchangeKey, StringComparison.OrdinalIgnoreCase));
         if (city is null || string.IsNullOrWhiteSpace(city.ExchangeSymbol))
             return "Market (New York): --";
 
-        quotes.TryGetValue(city.ExchangeSymbol, out QuoteSnapshot? quote);
         ExchangeTradingCalendar? calendar = calendarSet.TryGetByCityKey(city.Key);
-        if (quote is null || calendar is null)
+        if (calendar is null)
             return "Market (New York): --";
 
-        ExchangeCalendarStatus calendarStatus = _exchangeMarketCalendarService.ResolveStatus(calendar, referenceUtc);
-        MarketSession effectiveSession = quote.MarketSession == MarketSession.Unknown
-            ? calendarStatus.Session
-            : quote.MarketSession;
+        ExchangeCalendarStatus calendarStatus = exchangeMarketCalendarService.ResolveStatus(calendar, referenceUtc);
+        MarketSession effectiveSession = calendarStatus.Session;
         string sessionText = effectiveSession switch
         {
-            MarketSession.Regular => "Regular",
+            MarketSession.Regular => "Open",
             MarketSession.PreMarket => "Pre-Market",
             MarketSession.AfterHours => "After Hours",
             MarketSession.Closed => "Closed",
-            _ => calendarStatus.IsOpen ? "Regular" : "Closed"
+            _ => calendarStatus.IsOpen ? "Open" : "Closed"
         };
 
         string countdownText = FormatPinnedStatusCountdown(effectiveSession, calendarStatus);

@@ -20,15 +20,19 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using System.Xml.Linq;
+using System.Globalization;
 using PortfolioSaver.Core.Constants;
 using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Data.Services;
 using PortfolioSaver.Render.Controls;
 using PortfolioSaver.Render.Services;
 using PortfolioSaver.Render.ViewModels;
 using PortfolioSaver.Presentation.Controls;
 using PortfolioSaver.Presentation.Services;
 using Xunit;
+using CurrentTradingPeriods = YFinance.NET.Models.CurrentTradingPeriods;
+using TradingPeriodWindow = YFinance.NET.Models.TradingPeriodWindow;
 
 namespace PortfolioSaver.Tests.Services;
 
@@ -3275,11 +3279,71 @@ public sealed class VisualizerRenderBehaviorTests
             "VisualizerSceneControl.xaml.cs"));
 
         string applyOrUpdateGraph = ExtractMethodBody(sceneCodeBehind, "private void ApplyOrUpdateGraph");
+        string warmGraphsAsync = ExtractMethodBody(sceneCodeBehind, "private async Task WarmGraphsAsync");
 
+        Assert.Contains("await Dispatcher.InvokeAsync(static () => { }, DispatcherPriority.Background);", warmGraphsAsync, StringComparison.Ordinal);
+        Assert.Contains("cancellationToken.ThrowIfCancellationRequested();", warmGraphsAsync, StringComparison.Ordinal);
         Assert.Contains("PrepareGraphWarmupLayoutBatch();", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void PrepareGraphWarmupLayoutBatch()", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("_graphWarmupLayoutPrepared = false;", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("UpdateLayout();", applyOrUpdateGraph, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PinnedNewYorkStatusBand_UsesCalendarOpenStateWhenQuoteSessionLagsAtMarketOpen()
+    {
+        string pinnedKey = GetPinnedNycExchangeKey();
+        ClockCityViewModel city = new()
+        {
+            Key = pinnedKey,
+            ShowExchangeDetails = true,
+            ExchangeSymbol = "^IXIC"
+        };
+        ExchangeCalendarSet calendarSet = new();
+        calendarSet.AddOrUpdate(CreateNewYorkMarketOpenCalendar(pinnedKey));
+
+        MethodInfo method = GetPinnedNewYorkStatusBandMethod();
+
+        string text = Assert.IsType<string>(method.Invoke(
+            null,
+            new object?[] { new List<ClockCityViewModel> { city }, calendarSet, Utc("2026-07-10T13:33:25.0000000Z"), new YFinanceExchangeTimingService() }));
+
+        Assert.Contains("Market (New York): Open", text, StringComparison.Ordinal);
+        Assert.Contains("Closing in", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Pre-Market", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PinnedNewYorkStatusBand_FieldBackedPathDelegatesToCalendarFormatter()
+    {
+        string sceneCodeBehind = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "VisualizerSceneControl.xaml.cs"));
+        string fieldBackedMethod = ExtractMethodBody(sceneCodeBehind, "private string BuildPinnedNewYorkStatusBandText");
+
+        Assert.Contains("return BuildPinnedNewYorkStatusBandText(_clockViewModel.Cities, _exchangeCalendars, referenceUtc, _exchangeMarketCalendarService);", fieldBackedMethod, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PinnedNewYorkStatusBand_ReturnsPlaceholderWhenParameterizedCalendarIsMissing()
+    {
+        ClockCityViewModel city = new()
+        {
+            Key = GetPinnedNycExchangeKey(),
+            ShowExchangeDetails = true,
+            ExchangeSymbol = "^IXIC"
+        };
+
+        MethodInfo method = GetPinnedNewYorkStatusBandMethod();
+
+        string text = Assert.IsType<string>(method.Invoke(
+            null,
+            new object?[] { new List<ClockCityViewModel> { city }, new ExchangeCalendarSet(), Utc("2026-07-10T13:33:25.0000000Z"), new YFinanceExchangeTimingService() }));
+
+        Assert.Equal("Market (New York): --", text);
     }
 
     [Fact]
@@ -3395,6 +3459,51 @@ public sealed class VisualizerRenderBehaviorTests
         control.UpdateLayout();
         return window;
     }
+
+    private static TradingPeriodWindow Window(string startUtc, string endUtc)
+        => new(Utc(startUtc), Utc(endUtc), "EDT", -14400);
+
+    private static MethodInfo GetPinnedNewYorkStatusBandMethod()
+        => typeof(VisualizerSceneControl).GetMethod(
+            "BuildPinnedNewYorkStatusBandText",
+            BindingFlags.NonPublic | BindingFlags.Static,
+            [
+                typeof(IReadOnlyList<ClockCityViewModel>),
+                typeof(ExchangeCalendarSet),
+                typeof(DateTimeOffset),
+                typeof(YFinanceExchangeTimingService)
+            ])
+            ?? throw new InvalidOperationException("Pinned New York status formatter not found.");
+
+    private static string GetPinnedNycExchangeKey()
+    {
+        FieldInfo field = typeof(VisualizerSceneControl).GetField(
+            "PinnedNycExchangeKey",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("Pinned New York exchange key constant not found.");
+
+        string value = Assert.IsType<string>(field.GetValue(null));
+        Assert.Equal("NewYorkNasdaq", value);
+        return value;
+    }
+
+    private static DateTimeOffset Utc(string value)
+        => DateTimeOffset.ParseExact(
+            value,
+            ["yyyy-MM-dd'T'HH:mm:ss'Z'", "yyyy-MM-dd'T'HH:mm:ss.fffffff'Z'"],
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+
+    private static ExchangeTradingCalendar CreateNewYorkMarketOpenCalendar(string cityKey)
+        => new()
+        {
+            CityKey = cityKey,
+            ExchangeSymbol = "^IXIC",
+            CurrentTradingPeriod = new CurrentTradingPeriods(
+                Pre: Window("2026-07-10T08:00:00Z", "2026-07-10T13:30:00Z"),
+                Regular: Window("2026-07-10T13:30:00Z", "2026-07-10T20:00:00Z"),
+                Post: Window("2026-07-10T20:00:00Z", "2026-07-11T00:00:00Z"))
+        };
 
     private static TapeViewModel CreateTapeWithItem()
     {

@@ -23,6 +23,41 @@ public sealed class YFinanceExchangeTimingServiceTests
     private readonly YFinanceExchangeTimingService _service = new();
 
     [Fact]
+    public void ExchangeCalendarSet_AddOrUpdate_ThrowsOnNullCalendar()
+    {
+        ExchangeCalendarSet set = new();
+
+        Assert.Throws<ArgumentNullException>(() => set.AddOrUpdate(null!));
+    }
+
+    [Fact]
+    public void ExchangeCalendarSet_AddOrUpdate_ThrowsOnEmptyCityKey()
+    {
+        ExchangeCalendarSet set = new();
+
+        Assert.Throws<ArgumentException>(() => set.AddOrUpdate(new ExchangeTradingCalendar()));
+    }
+
+    [Fact]
+    public void ExchangeCalendarSet_Overlay_ClonesIncomingCalendarsByCityKey()
+    {
+        ExchangeTradingCalendar incoming = CreateCalendar(
+            regular: Window("2026-05-20T13:30:00Z", "2026-05-20T20:00:00Z"),
+            pre: null,
+            post: null);
+        ExchangeCalendarSet overlay = new();
+        overlay.AddOrUpdate(incoming);
+        ExchangeCalendarSet target = new();
+
+        target.Overlay(overlay);
+        incoming.ExchangeSymbol = "MUTATED";
+
+        ExchangeTradingCalendar? stored = target.TryGetByCityKey("NewYorkNasdaq");
+        Assert.NotNull(stored);
+        Assert.Equal("^IXIC", stored.ExchangeSymbol);
+    }
+
+    [Fact]
     public void ResolveStatus_DuringRegularSession_UsesYahooRegularWindow()
     {
         ExchangeTradingCalendar calendar = CreateCalendar(

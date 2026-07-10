@@ -1079,7 +1079,7 @@
       ],
       "notes": [
         "Adjust the pinned top-left New York status formatting so the countdown line is blank when no countdown target is available.",
-        "Preserve the existing session label such as Regular, Pre-Market, After Hours, or Closed.",
+        "Preserve the existing session label such as Open, Pre-Market, After Hours, or Closed.",
         "Do not introduce a replacement placeholder like N/A, --, or Unknown on that line; leave it empty.",
         "Ensure the world-markets ribbon and pinned NYC card remain visually consistent with the same underlying exchange timing semantics.",
         "Add focused tests for the no-countdown case and prove the top-left block renders without the old wording.",
@@ -10579,6 +10579,61 @@
         "Analyze whether closed-market symbols can safely use a longer refresh interval or calendar-aware deferral without breaking open/close transitions.",
         "Implement a minimal optimization only if it is safe and well-scoped; otherwise document the reason and keep runtime correctness.",
         "Validate with focused tests and VM trace evidence that quote scheduling remains correct and does not increase visible stale-data risk."
+      ]
+    },
+    {
+      "id": "CR-229",
+      "tracking_number": "CR-229",
+      "priority": 1,
+      "area": "Market status UX",
+      "title": "Top-left New York market status can lag the 09:30 ET open because stale quote session overrides exchange calendar",
+      "status": "open",
+      "source": "installed_soak_20260710_091218_market_open_crossover",
+      "severity": "high",
+      "evidence": [
+        "Installed VM soak installed-soak-20260710-091218 crossed the US market open from 09:12 ET through 09:42 ET.",
+        "At 2026-07-10T13:33:25Z, after the 09:30 ET open, WorldMarketsUiPatchComplete still rendered Market (New York): Pre-Market | Closing in 06:26.",
+        "The text was contradictory because YFinance quote metadata for ^IXIC and some ETFs still reported PRE while exchange calendar timing had already entered the regular session.",
+        "Code inspection found BuildPinnedNewYorkStatusBandText preferred QuoteSnapshot.MarketSession over YFinanceExchangeTimingService.ResolveStatus(calendar, referenceUtc)."
+      ],
+      "notes": [
+        "User-visible requirement: on market-open days the top-left New York status should transition to Open exactly at the exchange calendar open time, even if ordinary quote metadata lags for a few minutes.",
+        "Quote freshness/value details may still show the latest fetched symbol and age, but the session label/countdown must be calendar-driven."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-230",
+      "tracking_number": "CR-230",
+      "priority": 1,
+      "area": "Runtime UI performance",
+      "title": "Graph-selection scheduler action blocks the UI scheduler during 10-minute top-mover refresh",
+      "status": "open",
+      "source": "installed_soak_20260710_091218_market_open_crossover",
+      "severity": "high",
+      "evidence": [
+        "Installed VM soak installed-soak-20260710-091218 completed without crash but recorded SceneSchedulerActionSlow spikes for action=graph-selection.",
+        "Custom slow-action distribution found graph-selection count=2 with durations approximately 603 ms and 1536 ms.",
+        "Code inspection found RestartGraphWarmup assigned WarmGraphsAsync, but WarmGraphsAsync performed layout preparation before its first await, so graph-selection inherited synchronous layout cost on the UI scheduler tick."
+      ],
+      "notes": [
+        "The graph selection cadence is correct as a separate 10-minute action, but the scheduling call must yield immediately and let graph warmup/layout work continue asynchronously.",
+        "Acceptance should focus on eliminating actionable graph-selection stalls without destabilizing graph hydration or top-mover refresh."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ]
     }
   ],

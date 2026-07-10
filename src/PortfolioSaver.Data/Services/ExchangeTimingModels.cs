@@ -32,13 +32,27 @@ public sealed class ExchangeCalendarSet
     public string Source { get; set; } = "YFinance";
     public Dictionary<string, ExchangeTradingCalendar> CalendarsByCityKey { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Adds or replaces one exchange calendar by its city key.
+    /// </summary>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="calendar"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when the calendar does not include a city key.</exception>
+    public void AddOrUpdate(ExchangeTradingCalendar calendar)
+    {
+        ArgumentNullException.ThrowIfNull(calendar);
+        if (string.IsNullOrWhiteSpace(calendar.CityKey))
+            throw new ArgumentException("Exchange calendar must include a city key.", nameof(calendar));
+
+        CalendarsByCityKey[calendar.CityKey] = calendar;
+    }
+
     public void Overlay(ExchangeCalendarSet? overlay)
     {
         if (overlay is null)
             return;
 
-        foreach ((string cityKey, ExchangeTradingCalendar incoming) in overlay.CalendarsByCityKey)
-            CalendarsByCityKey[cityKey] = incoming.Clone();
+        foreach (ExchangeTradingCalendar incoming in overlay.CalendarsByCityKey.Values)
+            AddOrUpdate(incoming.Clone());
 
         if (overlay.GeneratedUtc > GeneratedUtc)
             GeneratedUtc = overlay.GeneratedUtc;
