@@ -631,6 +631,59 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
+    public void BufferedSymbolValidationProgress_CoalescesRapidReportsWithoutDroppingEntries()
+    {
+        List<List<YahooSymbolValidationProgress>> batches = [];
+        BufferedSymbolValidationProgress progress = new(
+            Dispatcher.CurrentDispatcher,
+            TimeSpan.FromSeconds(1),
+            batch => batches.Add(batch.ToList()));
+
+        progress.Report(new YahooSymbolValidationProgress("AAPL", true, "Apple", "ok"));
+        progress.Report(new YahooSymbolValidationProgress("MSFT", true, "Microsoft", "ok"));
+        progress.Report(new YahooSymbolValidationProgress("VOO", true, "Vanguard", "ok"));
+
+        PumpDispatcherUntilCondition(() => batches.Count == 1, TimeSpan.FromSeconds(5));
+        progress.Flush();
+
+        List<YahooSymbolValidationProgress> batch = Assert.Single(batches);
+        Assert.Equal(new[] { "AAPL", "MSFT", "VOO" }, batch.Select(item => item.Symbol).ToArray());
+    }
+
+    [Fact]
+    public void BufferedSymbolValidationProgress_FlushDeliversPendingEntries()
+    {
+        List<YahooSymbolValidationProgress> delivered = [];
+        using BufferedSymbolValidationProgress progress = new(
+            Dispatcher.CurrentDispatcher,
+            TimeSpan.FromMinutes(1),
+            batch => delivered.AddRange(batch));
+
+        progress.Report(new YahooSymbolValidationProgress("QUAL", true, "QUAL", "ok"));
+        progress.Report(new YahooSymbolValidationProgress("VTI", true, "VTI", "ok"));
+
+        progress.Flush();
+
+        Assert.Equal(new[] { "QUAL", "VTI" }, delivered.Select(item => item.Symbol).ToArray());
+    }
+
+    [Fact]
+    public void BufferedSymbolValidationProgress_ReportAfterDisposeIsIgnored()
+    {
+        List<YahooSymbolValidationProgress> delivered = [];
+        BufferedSymbolValidationProgress progress = new(
+            Dispatcher.CurrentDispatcher,
+            TimeSpan.Zero,
+            batch => delivered.AddRange(batch));
+
+        progress.Dispose();
+        progress.Report(new YahooSymbolValidationProgress("VOO", true, "VOO", "ok"));
+        progress.Flush();
+
+        Assert.Empty(delivered);
+    }
+
+    [Fact]
     public void EnsureValidationConnectivityAsync_ReturnsFalseWhenFreshProbeStillOffline()
     {
         FakeConnectivityService connectivity = new(initiallyAvailable: false);

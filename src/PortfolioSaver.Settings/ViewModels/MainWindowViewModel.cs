@@ -71,6 +71,7 @@ public sealed class MainWindowViewModel : BindableBase, IDisposable
     private AppSettings? _validatedCandidateSettings;
     private List<QuoteSnapshot> _validatedQuoteSeeds = [];
     private static readonly TimeSpan CachedProfileTrustWindow = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan SymbolValidationProgressUiInterval = TimeSpan.FromMilliseconds(100);
 
     public MainWindowViewModel()
         : this(connectivityService: null, aiNewsAccessValidationService: null, yahooSymbolValidationService: null, dialogService: null)
@@ -590,11 +591,26 @@ public sealed class MainWindowViewModel : BindableBase, IDisposable
         {
             MarkSymbolStates(networkSymbols, SymbolValidationState.Checking, "Checking YFinance.NET...");
 
-            YahooSymbolValidationResult networkResult = await _yahooSymbolValidationService.ValidateAsync(
-                networkSymbols,
-                settings.HttpTimeoutSeconds,
-                new Progress<YahooSymbolValidationProgress>(ReportSymbolValidationProgress),
-                cancellationToken);
+            using BufferedSymbolValidationProgress progress = new(
+                _uiDispatcher,
+                SymbolValidationProgressUiInterval,
+                ReportSymbolValidationProgressBatch);
+            YahooSymbolValidationResult networkResult;
+            try
+            {
+                // Keep the final progress flush on the UI dispatcher; moving this continuation
+                // to a pool thread risks blocking on Dispatcher.Invoke during validation teardown.
+                networkResult = await _yahooSymbolValidationService.ValidateAsync(
+                    networkSymbols,
+                    settings.HttpTimeoutSeconds,
+                    progress,
+                    cancellationToken).ConfigureAwait(true);
+            }
+            finally
+            {
+                progress.Flush();
+            }
+
             aggregate.MergeFrom(networkResult);
         }
         else
@@ -1510,6 +1526,12 @@ public sealed class MainWindowViewModel : BindableBase, IDisposable
             ("resolved_name", progress.ResolvedName));
     }
 
+    private void ReportSymbolValidationProgressBatch(IReadOnlyList<YahooSymbolValidationProgress> progressBatch)
+    {
+        foreach (YahooSymbolValidationProgress progress in progressBatch)
+            ReportSymbolValidationProgress(progress);
+    }
+
     private static void TraceValidation(string eventName, params (string Key, object? Value)[] fields)
         => TraceLog.InfoState(
             "Config.Validation",
@@ -1521,5 +1543,6 @@ public sealed class MainWindowViewModel : BindableBase, IDisposable
         string DisplayName,
         string Message,
         string SourceTag);
+
 }
 

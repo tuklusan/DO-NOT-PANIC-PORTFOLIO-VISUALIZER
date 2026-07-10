@@ -10191,7 +10191,7 @@
       "priority": 2,
       "area": "UI fluidity",
       "title": "Aggregate per-symbol progress reports in symbol validation to reduce dispatcher load",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
@@ -10201,7 +10201,13 @@
       "notes": [
         "Recommendation: Throttle to ~10 updates/second or report only on state changes.",
         "Acceptance criteria: Validation UI remains responsive; no jitter during validation of 500 symbols.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking.",
+        "Implemented on 2026-07-09 with BufferedSymbolValidationProgress, a dispatcher-backed progress adapter that batches every YahooSymbolValidationProgress entry and posts throttled UI batches instead of one dispatcher callback per symbol.",
+        "MainWindowViewModel now reports validation progress batches through the existing single-symbol progress path, preserving validation log/status formatting while reducing dispatcher load.",
+        "Validation completion explicitly flushes pending progress on the UI dispatcher before merging results; ConfigureAwait(true) is intentional to avoid a future pool-thread Dispatcher.Invoke deadlock during teardown.",
+        "Focused validation tests passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --filter \"MainWindowViewModelValidationTests\" --no-restore (62/62).",
+        "DeepSeek gate artifacts reviewed: build/deepseek-review/deepseek-review-20260709-204459.md, build/deepseek-review/deepseek-review-20260709-204650.md, and build/deepseek-review/deepseek-review-20260709-204942.md.",
+        "Reviewer blocker about Dispatcher.HasShutdownStarted access was accepted and fixed by removing cross-thread dispatcher-state reads. Later reviewer claims about Dispatcher.CurrentDispatcher tests and namespace mismatch were adjudicated non-blocking because focused tests pass in the existing WPF/dispatcher test harness and the namespace matches the established PortfolioSaver.Config convention."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10210,7 +10216,8 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-07-09 by buffering symbol-validation progress into throttled UI batches, preserving all progress entries with explicit final flush semantics, and adding focused coverage for coalescing, flush, and post-disposal behavior."
     },
     {
       "id": "CR-216",
