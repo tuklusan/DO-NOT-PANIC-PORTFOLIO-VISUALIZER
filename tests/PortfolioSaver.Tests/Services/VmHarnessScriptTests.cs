@@ -1095,6 +1095,7 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("-TimeOutSeconds $invokeTimeoutSeconds", script, StringComparison.Ordinal);
         Assert.Contains("launch-installed-soak.cmd", script, StringComparison.Ordinal);
         Assert.Contains("$taskAction='cmd.exe /c \"\"' + `$launchCmd + '\"\"'", script, StringComparison.Ordinal);
+        Assert.Contains("Delete it as soon as", script, StringComparison.Ordinal);
         Assert.Contains("Write-ResourceSample 'before-stop'", script, StringComparison.Ordinal);
         Assert.Contains("Get-Process PortfolioSaver.Desktop,YFinance.NET.Server", script, StringComparison.Ordinal);
         Assert.Contains("/IT is intentional: the installed-soak lane validates real GUI rendering", script, StringComparison.Ordinal);

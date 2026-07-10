@@ -104,6 +104,9 @@ schtasks /Run /TN `$taskName | Out-Null
 `$launchDeadline=(Get-Date).AddSeconds(90)
 while ((Get-Date) -lt `$launchDeadline -and -not (Get-Process PortfolioSaver.Desktop -ErrorAction SilentlyContinue)) { Start-Sleep -Seconds 2 }
 if (-not (Get-Process PortfolioSaver.Desktop -ErrorAction SilentlyContinue)) { throw 'Desktop process did not launch.' }
+# The task is only a logged-on desktop-session launch bridge. Delete it as soon as
+# the process exists so the scheduled /ST time cannot trigger a second launch.
+schtasks /Delete /TN `$taskName /F *>`$null 2>&1
 Write-ResourceSample 'startup'
 `$nextEvidenceAt=(Get-Date).AddMinutes(5)
 `$evidenceIndex=0
