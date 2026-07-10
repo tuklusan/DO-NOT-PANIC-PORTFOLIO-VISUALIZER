@@ -148,69 +148,38 @@ function Test-IsSafeProgramFilesInstallRoot {
     }
 }
 
-function Start-DelayedInstallRootCleanup {
+function Assert-InstallRootIsManagedByInno {
     param([Parameter(Mandatory = $true)][string]$Path)
 
     if (-not (Test-IsSafeProgramFilesInstallRoot -Path $Path)) {
-        Write-Warning "Skipping delayed install-root cleanup for unsafe path: $Path"
+        Write-Warning "Skipping install-root cleanup scope confirmation for unsafe path: $Path"
         return
     }
-
-    $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
-    if ($null -ne $item -and ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-        Write-Warning "Skipping delayed install-root cleanup for reparse point: $Path"
-        return
-    }
-
-    $expectedRoot = [IO.Path]::GetFullPath((Join-Path $env:ProgramFiles 'SANYALnet Labs\DoNotPanicPortfolioVisualizer')).TrimEnd('\', '/')
-    $installRootLiteral = ConvertTo-Json -InputObject $Path -Compress
-    $expectedRootLiteral = ConvertTo-Json -InputObject $expectedRoot -Compress
-    $cleanupScript = @'
-Set-StrictMode -Version Latest
-$ErrorActionPreference = 'SilentlyContinue'
-
-$InstallRoot = __INSTALL_ROOT__
-$ExpectedRoot = __EXPECTED_ROOT__
-
-Start-Sleep -Seconds 5
-try {
-    $normalizedInstallRoot = [IO.Path]::GetFullPath($InstallRoot).TrimEnd('\', '/')
-    $normalizedExpectedRoot = [IO.Path]::GetFullPath($ExpectedRoot).TrimEnd('\', '/')
-    if ($normalizedInstallRoot.Equals($normalizedExpectedRoot, [StringComparison]::OrdinalIgnoreCase)) {
-        $item = Get-Item -LiteralPath $InstallRoot -Force -ErrorAction SilentlyContinue
-        if ($null -ne $item -and ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
-            $deadline = (Get-Date).AddSeconds(45)
-            do {
-                Remove-Item -LiteralPath $InstallRoot -Recurse -Force -ErrorAction SilentlyContinue
-                if (-not (Test-Path -LiteralPath $InstallRoot)) {
-                    break
-                }
-
-                Start-Sleep -Seconds 2
-            } while ((Get-Date) -lt $deadline)
-        }
-
-        $publisherRoot = Split-Path -Parent $InstallRoot
-        if ((Test-Path -LiteralPath $publisherRoot) -and -not (Get-ChildItem -LiteralPath $publisherRoot -Force -ErrorAction SilentlyContinue)) {
-            Remove-Item -LiteralPath $publisherRoot -Force -ErrorAction SilentlyContinue
-        }
-    }
-}
-'@
-    $cleanupScript = $cleanupScript.Replace('__INSTALL_ROOT__', $installRootLiteral).Replace('__EXPECTED_ROOT__', $expectedRootLiteral)
-    $encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cleanupScript))
 
     try {
-        Start-Process -FilePath powershell.exe -WindowStyle Hidden -ArgumentList @(
-            '-NoProfile',
-            '-ExecutionPolicy',
-            'Bypass',
-            '-EncodedCommand',
-            $encodedCommand
-        )
+        $expectedRoot = [IO.Path]::GetFullPath((Join-Path $env:ProgramFiles 'SANYALnet Labs\DoNotPanicPortfolioVisualizer')).TrimEnd('\', '/')
+        $normalizedInstallRoot = [IO.Path]::GetFullPath($Path).TrimEnd('\', '/')
+        $normalizedExpectedRoot = [IO.Path]::GetFullPath($expectedRoot).TrimEnd('\', '/')
+        if (-not $normalizedInstallRoot.Equals($normalizedExpectedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            Write-Warning "Install-root cleanup scope mismatch: '$normalizedInstallRoot' is not the expected root '$normalizedExpectedRoot'."
+            return
+        }
+
+        $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+        if ($null -eq $item) {
+            Write-Host "Install root path does not exist; Inno Setup has no app root left to remove: $Path"
+            return
+        }
+
+        if ($null -ne $item -and ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            Write-Warning "Install-root cleanup scope is a reparse point and must be left to Inno safety handling: $Path"
+            return
+        }
+
+        Write-Host "Install-root file removal is delegated to Inno Setup after cleanup script completion: $Path"
     }
     catch {
-        Write-Warning "Could not schedule delayed install-root cleanup: $($_.Exception.Message)"
+        Write-Warning "Install-root cleanup scope confirmation failed: $($_.Exception.Message)"
     }
 }
 
@@ -257,7 +226,7 @@ foreach ($root in Get-ProductLocalAppDataRoots) {
 }
 
 $installRoot = Split-Path -Parent $PSScriptRoot
-Start-DelayedInstallRootCleanup -Path $installRoot
+Assert-InstallRootIsManagedByInno -Path $installRoot
 
 Write-Host 'DO NOT PANIC PORTFOLIO VISUALIZER uninstall cleanup complete.'
 

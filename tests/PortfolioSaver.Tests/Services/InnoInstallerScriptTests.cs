@@ -42,7 +42,7 @@ public sealed class InnoInstallerScriptTests
         Assert.DoesNotContain("if not WizardSilent then", script, StringComparison.Ordinal);
         Assert.Contains("[UninstallDelete]", script, StringComparison.Ordinal);
         Assert.DoesNotContain(@"Type: files; Name: ""{app}\unins*.exe""", script, StringComparison.Ordinal);
-        Assert.Contains(@"Type: dirifempty; Name: ""{app}""", script, StringComparison.Ordinal);
+        Assert.Contains(@"Type: filesandordirs; Name: ""{app}""", script, StringComparison.Ordinal);
         Assert.Contains(@"Type: dirifempty; Name: ""{autopf}\{#AppPublisher}""", script, StringComparison.Ordinal);
         Assert.Contains("DoNotPanicPortfolioVisualizer for local Windows user profiles", script, StringComparison.Ordinal);
         Assert.Contains("CR-133: the public installer creates a standard all-users desktop shortcut by default.", script, StringComparison.Ordinal);
@@ -68,13 +68,21 @@ public sealed class InnoInstallerScriptTests
 
         string cleanupScript = ReadRepoText("build", "installer", "Cleanup-DoNotPanicPortfolioVisualizer.ps1");
         Assert.Contains("function Test-IsSafeProgramFilesInstallRoot", cleanupScript, StringComparison.Ordinal);
-        Assert.Contains("function Start-DelayedInstallRootCleanup", cleanupScript, StringComparison.Ordinal);
-        Assert.Contains("ConvertTo-Json -InputObject $Path", cleanupScript, StringComparison.Ordinal);
-        Assert.Contains("-EncodedCommand", cleanupScript, StringComparison.Ordinal);
+        Assert.Contains("function Assert-InstallRootIsManagedByInno", cleanupScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("-EncodedCommand", cleanupScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("Start-Process -FilePath powershell.exe", cleanupScript, StringComparison.Ordinal);
         Assert.Contains("[IO.FileAttributes]::ReparsePoint", cleanupScript, StringComparison.Ordinal);
-        Assert.Contains("Start-Sleep -Seconds 5", cleanupScript, StringComparison.Ordinal);
-        Assert.Contains("AddSeconds(45)", cleanupScript, StringComparison.Ordinal);
-        Assert.Contains("Could not schedule delayed install-root cleanup", cleanupScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("Start-Sleep -Seconds 5", cleanupScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddSeconds(45)", cleanupScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddSeconds(10)", cleanupScript, StringComparison.Ordinal);
+        Assert.Contains("Install-root file removal is delegated to Inno Setup", cleanupScript, StringComparison.Ordinal);
+        Assert.Equal(2, CountOccurrences(cleanupScript, "Assert-InstallRootIsManagedByInno"));
+        int scopeFunctionStart = cleanupScript.IndexOf("function Assert-InstallRootIsManagedByInno", StringComparison.Ordinal);
+        int nextFunctionStart = cleanupScript.IndexOf("function Get-ProductLocalAppDataRoots", scopeFunctionStart, StringComparison.Ordinal);
+        Assert.True(scopeFunctionStart >= 0);
+        Assert.True(nextFunctionStart > scopeFunctionStart);
+        string scopeFunction = cleanupScript[scopeFunctionStart..nextFunctionStart];
+        Assert.DoesNotContain("Remove-Item", scopeFunction, StringComparison.Ordinal);
         Assert.Contains("$normalizedInstallRoot.Equals($normalizedExpectedRoot", cleanupScript, StringComparison.Ordinal);
 
         string cycleScript = ReadRepoText("build", "installer", "Test-InnoInstallCycle.ps1");
@@ -182,6 +190,19 @@ public sealed class InnoInstallerScriptTests
     {
         string path = Path.Combine(RepoRoot.Value, Path.Combine(relativeParts));
         return File.ReadAllText(path);
+    }
+
+    private static int CountOccurrences(string source, string value)
+    {
+        int count = 0;
+        int index = 0;
+        while ((index = source.IndexOf(value, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += value.Length;
+        }
+
+        return count;
     }
 
     private static string FindRepoRoot()

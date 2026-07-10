@@ -10289,7 +10289,7 @@
       "priority": 3,
       "area": "Uninstall reliability",
       "title": "Fix process leak in delayed cleanup spawned via `Start-DelayedInstallRootCleanup`",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Low",
       "evidence": [
@@ -10299,7 +10299,12 @@
       "notes": [
         "Recommendation: Move retry loop into main script and rely on `waituntilterminated`.",
         "Acceptance criteria: After uninstall completes, no orphaned cleanup processes remain; removal eventually succeeds.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking.",
+        "Implemented on 2026-07-09 by removing the detached encoded PowerShell cleanup process from Cleanup-DoNotPanicPortfolioVisualizer.ps1. The uninstall cleanup script now performs process/app-data cleanup and asserts that install-root file removal is managed by Inno Setup rather than spawning a background child.",
+        "Installer script now explicitly removes the installer-owned Program Files app root through [UninstallDelete] Type: filesandordirs for {app}, while user data remains under Local AppData and is handled by the scoped cleanup functions.",
+        "DeepSeek raised competing concerns: dirifempty can leave install remnants, while filesandordirs can remove untracked files under Program Files. Codex adjudication: {app} is an installer-owned Program Files payload, not a user-data location; reliable uninstall and no orphan cleanup process are the product requirements for this CR.",
+        "Focused validation passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --filter \"InnoInstallerScriptTests\" --no-restore (3/3).",
+        "DeepSeek gate artifacts reviewed: build/deepseek-review/deepseek-review-20260709-210801.md, 20260709-211009.md, 20260709-211253.md, 20260709-211725.md, and 20260709-212220.md. Actionable diagnostics/test-hardening feedback was incorporated; the remaining retry/data-loss tension was explicitly adjudicated."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10308,7 +10313,8 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-07-09 by eliminating the orphan-prone delayed PowerShell cleanup process and moving install-root removal responsibility to Inno's uninstall delete phase for the installer-owned app root."
     },
     {
       "id": "CR-219",
