@@ -34,10 +34,12 @@ public partial class NewsFlasherControl : UserControl
     private const double DefaultPostScrollPauseSeconds = 0.25d;
     private const double DefaultBetweenHeadlinePauseSeconds = 1.6d;
     private const double TelegraphVerticalScrollPixelsPerSecond = 42d;
+    private static readonly TimeSpan RefreshDebounceInterval = TimeSpan.FromMilliseconds(500);
     private const int TypewriterCharactersPerTick = 2;
     private const int MaxWidthMeasurementCacheEntries = 256;
     private const string TeleprinterCursor = " █";
     private readonly DispatcherTimer _playbackTimer = new() { Interval = TimeSpan.FromMilliseconds(40) };
+    private readonly DispatcherTimer _refreshDebounceTimer = new() { Interval = RefreshDebounceInterval };
     private NewsFlasherViewModel? _flasher;
     private int _headlineIndex;
     private int _visibleCharacterCount;
@@ -48,6 +50,8 @@ public partial class NewsFlasherControl : UserControl
     private PlaybackPhase _phase = PlaybackPhase.Idle;
     private PlaybackPhase _lastTracedPhase = PlaybackPhase.Idle;
     private bool _pendingRefresh;
+    private bool _resetToFirstHeadlineOnRefresh;
+    private bool _isUnloaded;
     private IReadOnlyList<string> _wrappedLines = [];
     private readonly Dictionary<MeasurementCacheKey, double> _headlineWidthCache = [];
     private readonly object _headlineWidthCacheGate = new();
@@ -78,10 +82,12 @@ public partial class NewsFlasherControl : UserControl
         SubscribeToLayoutUpdated();
         DataContextChanged += OnDataContextChanged;
         _playbackTimer.Tick += OnPlaybackTick;
+        _refreshDebounceTimer.Tick += OnRefreshDebounceElapsed;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        _isUnloaded = false;
         SubscribeToLayoutUpdated();
         _awaitingViewport = false;
         if (_flasher is null)
@@ -93,7 +99,9 @@ public partial class NewsFlasherControl : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        _isUnloaded = true;
         _playbackTimer.Stop();
+        _refreshDebounceTimer.Stop();
         _awaitingViewport = false;
         CancelHeadlinePreparation();
         UnsubscribeFromLayoutUpdated();
@@ -163,7 +171,7 @@ public partial class NewsFlasherControl : UserControl
     private void OnFlasherPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(NewsFlasherViewModel.Speed))
-            RequestRefresh();
+            RequestRefresh(resetToFirstHeadline: false);
     }
 
     private void OnHeadlinesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -180,13 +188,13 @@ public partial class NewsFlasherControl : UserControl
                 headline.PropertyChanged += OnHeadlinePropertyChanged;
         }
 
-        RequestRefresh();
+        RequestRefresh(resetToFirstHeadline: true);
     }
 
     private void OnHeadlinePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(NewsHeadlineViewModel.Text) or nameof(NewsHeadlineViewModel.Foreground))
-            RequestRefresh();
+            RequestRefresh(resetToFirstHeadline: true);
     }
 
     private void OnPlaybackTick(object? sender, EventArgs e)
@@ -507,10 +515,15 @@ public partial class NewsFlasherControl : UserControl
             ? PlaybackPhase.AdvanceHeadline
             : PlaybackPhase.PauseBetweenHeadlines;
 
-    private void ResetPlayback()
+    private void ResetPlayback() => ResetPlaybackCore(preserveHeadlineIndex: false);
+
+    private void ResetPlaybackCore(bool preserveHeadlineIndex)
     {
+        _refreshDebounceTimer.Stop();
         _pendingRefresh = false;
-        _headlineIndex = 0;
+        _resetToFirstHeadlineOnRefresh = false;
+        if (!preserveHeadlineIndex)
+            _headlineIndex = 0;
         _phase = PlaybackPhase.Idle;
         _lastTracedPhase = PlaybackPhase.Idle;
         _visibleCharacterCount = 0;
@@ -528,15 +541,38 @@ public partial class NewsFlasherControl : UserControl
         ClearDisplay();
     }
 
-    private void RequestRefresh()
+    private void RequestRefresh(bool resetToFirstHeadline)
     {
+        CancelHeadlinePreparation();
+        _pendingRefresh = true;
+        _resetToFirstHeadlineOnRefresh |= resetToFirstHeadline;
         if (_phase == PlaybackPhase.Idle)
         {
-            ResetPlayback();
+            _refreshDebounceTimer.Stop();
+            bool preserveHeadlineIndex = !_resetToFirstHeadlineOnRefresh;
+            _resetToFirstHeadlineOnRefresh = false;
+            ResetPlaybackCore(preserveHeadlineIndex);
+            if (IsLoaded && !_isUnloaded)
+                _playbackTimer.Start();
             return;
         }
 
-        _pendingRefresh = true;
+        _playbackTimer.Stop();
+        _refreshDebounceTimer.Stop();
+        _refreshDebounceTimer.Start();
+    }
+
+    private void OnRefreshDebounceElapsed(object? sender, EventArgs e)
+    {
+        _refreshDebounceTimer.Stop();
+        if (_isUnloaded)
+            return;
+
+        bool preserveHeadlineIndex = !_resetToFirstHeadlineOnRefresh;
+        _resetToFirstHeadlineOnRefresh = false;
+        ResetPlaybackCore(preserveHeadlineIndex);
+        if (IsLoaded)
+            _playbackTimer.Start();
     }
 
     private void ClearDisplay()

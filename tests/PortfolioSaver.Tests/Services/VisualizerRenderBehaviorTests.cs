@@ -1424,6 +1424,15 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("LayoutUpdated += OnLayoutUpdated;", newsCode, StringComparison.Ordinal);
         Assert.Contains("LayoutUpdated -= OnLayoutUpdated;", newsCode, StringComparison.Ordinal);
         Assert.Contains("RecoverPlaybackWhenViewportReady", newsCode, StringComparison.Ordinal);
+        Assert.Contains("RefreshDebounceInterval = TimeSpan.FromMilliseconds(500)", newsCode, StringComparison.Ordinal);
+        Assert.Contains("private readonly DispatcherTimer _refreshDebounceTimer = new() { Interval = RefreshDebounceInterval };", newsCode, StringComparison.Ordinal);
+        Assert.Contains("_refreshDebounceTimer.Tick += OnRefreshDebounceElapsed;", newsCode, StringComparison.Ordinal);
+        Assert.Contains("private void OnRefreshDebounceElapsed", newsCode, StringComparison.Ordinal);
+        Assert.Contains("RequestRefresh(resetToFirstHeadline: false)", newsCode, StringComparison.Ordinal);
+        Assert.Contains("RequestRefresh(resetToFirstHeadline: true)", newsCode, StringComparison.Ordinal);
+        Assert.Contains("ResetPlaybackCore(preserveHeadlineIndex)", newsCode, StringComparison.Ordinal);
+        Assert.Contains("if (_isUnloaded)", newsCode, StringComparison.Ordinal);
+        Assert.Contains("_refreshDebounceTimer.Stop();", newsCode, StringComparison.Ordinal);
         Assert.Contains("if (!IsViewportReady())", newsCode, StringComparison.Ordinal);
         Assert.Contains("double GetSafeViewportWidth()", newsCode, StringComparison.Ordinal);
         Assert.Contains("PausePlaybackUntilViewportReady", newsCode, StringComparison.Ordinal);
@@ -1435,6 +1444,173 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("TelegraphVerticalScrollPixelsPerSecond = 42d", newsCode, StringComparison.Ordinal);
         Assert.Contains("TypewriterCharactersPerTick = 2", newsCode, StringComparison.Ordinal);
         Assert.DoesNotContain("nameof(NewsFlasherViewModel.MarqueeText)", newsCode, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NewsFlasherControl_HeadlineBurstDebounceStopsPlaybackThenRestartsOnce()
+    {
+        RunOnSta(() =>
+        {
+            NewsFlasherViewModel viewModel = new() { Speed = 1d };
+            viewModel.Headlines.Add(new NewsHeadlineViewModel { Text = "Initial financial news item." });
+            viewModel.Headlines.Add(new NewsHeadlineViewModel { Text = "Second financial news item." });
+
+            NewsFlasherControl control = new()
+            {
+                DataContext = viewModel,
+                Width = 520,
+                Height = 54
+            };
+            Window? host = null;
+
+            try
+            {
+                host = HostControlForLayout(control, 520, 54);
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+                DispatcherTimer playbackTimer = (DispatcherTimer)(typeof(NewsFlasherControl)
+                    .GetField("_playbackTimer", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.GetValue(control) ?? throw new InvalidOperationException("NewsFlasherControl._playbackTimer not found."));
+                DispatcherTimer refreshDebounceTimer = (DispatcherTimer)(typeof(NewsFlasherControl)
+                    .GetField("_refreshDebounceTimer", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.GetValue(control) ?? throw new InvalidOperationException("NewsFlasherControl._refreshDebounceTimer not found."));
+                MethodInfo debounceElapsedMethod = typeof(NewsFlasherControl).GetMethod("OnRefreshDebounceElapsed", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?? throw new InvalidOperationException("NewsFlasherControl.OnRefreshDebounceElapsed not found.");
+                FieldInfo headlineIndexField = typeof(NewsFlasherControl).GetField("_headlineIndex", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?? throw new InvalidOperationException("NewsFlasherControl._headlineIndex not found.");
+                FieldInfo phaseField = typeof(NewsFlasherControl).GetField("_phase", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?? throw new InvalidOperationException("NewsFlasherControl._phase not found.");
+                object typingPhase = Enum.Parse(phaseField.FieldType, "Typing");
+
+                Assert.True(playbackTimer.IsEnabled);
+
+                phaseField.SetValue(control, typingPhase);
+                viewModel.Headlines.Add(new NewsHeadlineViewModel { Text = "Replacement financial news item after burst." });
+
+                Assert.False(playbackTimer.IsEnabled);
+                Assert.True(refreshDebounceTimer.IsEnabled);
+
+                debounceElapsedMethod.Invoke(control, [control, EventArgs.Empty]);
+
+                Assert.False(refreshDebounceTimer.IsEnabled);
+                Assert.True(playbackTimer.IsEnabled);
+                Assert.Equal(0, Assert.IsType<int>(headlineIndexField.GetValue(control)));
+
+                headlineIndexField.SetValue(control, 1);
+                phaseField.SetValue(control, typingPhase);
+                viewModel.Speed = 1.5d;
+
+                Assert.False(playbackTimer.IsEnabled);
+                Assert.True(refreshDebounceTimer.IsEnabled);
+
+                debounceElapsedMethod.Invoke(control, [control, EventArgs.Empty]);
+
+                Assert.False(refreshDebounceTimer.IsEnabled);
+                Assert.True(playbackTimer.IsEnabled);
+                Assert.Equal(1, Assert.IsType<int>(headlineIndexField.GetValue(control)));
+            }
+            finally
+            {
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                host?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void NewsFlasherControl_PendingDebounceAfterUnloadDoesNotRestartPlayback()
+    {
+        RunOnSta(() =>
+        {
+            NewsFlasherViewModel viewModel = new() { Speed = 1d };
+            viewModel.Headlines.Add(new NewsHeadlineViewModel { Text = "Initial financial news item." });
+
+            NewsFlasherControl control = new()
+            {
+                DataContext = viewModel,
+                Width = 520,
+                Height = 54
+            };
+            Window? host = null;
+
+            try
+            {
+                host = HostControlForLayout(control, 520, 54);
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+                DispatcherTimer playbackTimer = (DispatcherTimer)(typeof(NewsFlasherControl)
+                    .GetField("_playbackTimer", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.GetValue(control) ?? throw new InvalidOperationException("NewsFlasherControl._playbackTimer not found."));
+                DispatcherTimer refreshDebounceTimer = (DispatcherTimer)(typeof(NewsFlasherControl)
+                    .GetField("_refreshDebounceTimer", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.GetValue(control) ?? throw new InvalidOperationException("NewsFlasherControl._refreshDebounceTimer not found."));
+                MethodInfo debounceElapsedMethod = typeof(NewsFlasherControl).GetMethod("OnRefreshDebounceElapsed", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?? throw new InvalidOperationException("NewsFlasherControl.OnRefreshDebounceElapsed not found.");
+                FieldInfo phaseField = typeof(NewsFlasherControl).GetField("_phase", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?? throw new InvalidOperationException("NewsFlasherControl._phase not found.");
+                object typingPhase = Enum.Parse(phaseField.FieldType, "Typing");
+
+                phaseField.SetValue(control, typingPhase);
+                viewModel.Headlines.Add(new NewsHeadlineViewModel { Text = "Replacement financial news item after burst." });
+
+                Assert.True(refreshDebounceTimer.IsEnabled);
+
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                debounceElapsedMethod.Invoke(control, [control, EventArgs.Empty]);
+
+                Assert.False(refreshDebounceTimer.IsEnabled);
+                Assert.False(playbackTimer.IsEnabled);
+            }
+            finally
+            {
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                host?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void NewsFlasherControl_IdleRefreshPreservesIndexForSpeedAndResetsForHeadlineChanges()
+    {
+        RunOnSta(() =>
+        {
+            NewsFlasherViewModel viewModel = new() { Speed = 1d };
+            viewModel.Headlines.Add(new NewsHeadlineViewModel { Text = "Initial financial news item." });
+            viewModel.Headlines.Add(new NewsHeadlineViewModel { Text = "Second financial news item." });
+
+            NewsFlasherControl control = new()
+            {
+                DataContext = viewModel,
+                Width = 520,
+                Height = 54
+            };
+            Window? host = null;
+
+            try
+            {
+                host = HostControlForLayout(control, 520, 54);
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+                DispatcherTimer refreshDebounceTimer = (DispatcherTimer)(typeof(NewsFlasherControl)
+                    .GetField("_refreshDebounceTimer", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.GetValue(control) ?? throw new InvalidOperationException("NewsFlasherControl._refreshDebounceTimer not found."));
+                FieldInfo headlineIndexField = typeof(NewsFlasherControl).GetField("_headlineIndex", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?? throw new InvalidOperationException("NewsFlasherControl._headlineIndex not found.");
+
+                headlineIndexField.SetValue(control, 1);
+                viewModel.Speed = 1.25d;
+
+                Assert.False(refreshDebounceTimer.IsEnabled);
+                Assert.Equal(1, Assert.IsType<int>(headlineIndexField.GetValue(control)));
+
+                viewModel.Headlines.Add(new NewsHeadlineViewModel { Text = "Replacement financial news item after idle refresh." });
+
+                Assert.False(refreshDebounceTimer.IsEnabled);
+                Assert.Equal(0, Assert.IsType<int>(headlineIndexField.GetValue(control)));
+            }
+            finally
+            {
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                host?.Close();
+            }
+        });
     }
 
     [Fact]

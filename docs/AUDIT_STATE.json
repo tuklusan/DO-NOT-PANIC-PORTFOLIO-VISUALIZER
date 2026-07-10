@@ -10125,7 +10125,7 @@
       "priority": 2,
       "area": "UI responsiveness under burst",
       "title": "Add cancellation and debouncing to `NewsFlasherControl` headline changes",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
@@ -10135,7 +10135,10 @@
       "notes": [
         "Recommendation: Stop and restart playback timer on change; debounce multiple rapid changes (500 ms window).",
         "Acceptance criteria: Rapid headline updates do not cause UI lag; stale headlines are not displayed.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Closure 2026-07-09T19:45:29.9401119-04:00: NewsFlasherControl now cancels in-flight headline preparation and debounces headline/speed refresh bursts for 500ms by pausing playback, coalescing changes, then resetting/restarting once with the latest headlines.",
+        "Reviewer adjudication 2026-07-09T19:54:04.5641950-04:00: Speed-only refresh preserves the current headline index by design; headline collection/text changes reset to the first headline. Idle refresh executes immediately to avoid a blank 500ms startup delay; debounce applies to active playback bursts.",
+        "Validation: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter FullyQualifiedName~VisualizerRenderBehaviorTests passed 86/86 after idle-path and unload-path debounce coverage."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
