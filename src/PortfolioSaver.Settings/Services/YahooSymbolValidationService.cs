@@ -150,7 +150,14 @@ public sealed class YahooSymbolValidationService : IYahooSymbolValidationService
             yield break;
 
         for (int index = 0; index < symbols.Count; index += size)
-            yield return symbols.Skip(index).Take(Math.Min(size, symbols.Count - index)).ToList();
+        {
+            int count = Math.Min(size, symbols.Count - index);
+            List<string> batch = new(count);
+            for (int offset = 0; offset < count; offset++)
+                batch.Add(symbols[index + offset]);
+
+            yield return batch;
+        }
     }
 
     private static string Normalize(string? symbol)

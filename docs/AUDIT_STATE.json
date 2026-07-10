@@ -10225,7 +10225,7 @@
       "priority": 3,
       "area": "Allocation/performance",
       "title": "Use `ArrayPool` or slice instead of LINQ `Skip/Take` for symbol batching",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
@@ -10235,7 +10235,10 @@
       "notes": [
         "Recommendation: Use `symbols.GetRange(index, count)` or span slicing.",
         "Acceptance criteria: Allocation for batching 500 symbols drops by factor >10; no change in batch boundaries.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking.",
+        "Implemented on 2026-07-09 by replacing ChunkSymbols LINQ Skip/Take allocation with direct indexed list construction using exact batch capacity.",
+        "Focused validation passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --filter \"MainWindowViewModelValidationTests|YahooSymbol\" --no-restore (64/64).",
+        "DeepSeek gate artifact reviewed: build/deepseek-review/deepseek-review-20260709-210212.md; no actionable findings."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10244,7 +10247,8 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-07-09 by replacing LINQ-based symbol batching with indexed slicing that preserves ordering and batch boundaries while avoiding repeated enumerable walks."
     },
     {
       "id": "CR-217",
