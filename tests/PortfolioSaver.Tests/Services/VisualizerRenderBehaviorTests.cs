@@ -1526,15 +1526,20 @@ public sealed class VisualizerRenderBehaviorTests
                     "GetGraphMotionBounds",
                     BindingFlags.NonPublic | BindingFlags.Instance)
                     ?? throw new InvalidOperationException("GetGraphMotionBounds method not found.");
+                FieldInfo overlayCanvasField = typeof(VisualizerSceneControl).GetField(
+                    "FloatingOverlayCanvas",
+                    BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException("FloatingOverlayCanvas field not found.");
+                FrameworkElement overlayCanvas = Assert.IsAssignableFrom<FrameworkElement>(overlayCanvasField.GetValue(control));
 
                 Rect bounds = Assert.IsType<Rect>(boundsMethod.Invoke(control, []));
 
                 Assert.Equal(12, bounds.Left);
                 Assert.Equal(12, bounds.Top);
-                Assert.Equal(Math.Max(20, control.ActualWidth - 24), bounds.Width, precision: 1);
-                Assert.Equal(Math.Max(20, control.ActualHeight - 24), bounds.Height, precision: 1);
-                Assert.True(bounds.Right <= control.ActualWidth);
-                Assert.True(bounds.Bottom <= control.ActualHeight);
+                Assert.Equal(Math.Max(20, overlayCanvas.ActualWidth - 24), bounds.Width, precision: 1);
+                Assert.Equal(Math.Max(20, overlayCanvas.ActualHeight - 24), bounds.Height, precision: 1);
+                Assert.True(bounds.Right <= overlayCanvas.ActualWidth);
+                Assert.True(bounds.Bottom <= overlayCanvas.ActualHeight);
             }
             finally
             {
