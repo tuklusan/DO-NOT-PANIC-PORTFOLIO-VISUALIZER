@@ -56,5 +56,6 @@ build/vm/vm-settings.json
 build/vm/vm-credentials.local.json
 build/vm/remote-*.local.txt
 build/vm/*.local.ps1
+build/validation/*.local.ps1
 build/validation/artifacts/
 build/validation/artifact-reviews/

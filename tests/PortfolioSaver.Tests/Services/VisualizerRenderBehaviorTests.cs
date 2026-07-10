@@ -2275,6 +2275,8 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("UpdateFooterAttribution(backgroundPath);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("QueueBackgroundCatalogRescan", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StartBackgroundCatalogRefresh(\"config-resume\")", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("_ = RefreshSceneAfterValidationPauseAsync();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ConfigureTimers();", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Dispatcher.InvokeAsync(() => ApplyBackgroundCatalogRefresh", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RotateBackgroundAsync(forceDifferent: false)", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RotateBackgroundAsync(forceDifferent: true)", sceneCodeBehind, StringComparison.Ordinal);
@@ -2542,7 +2544,7 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("string? resetReason = ResetGraphRefreshImpulseIfNeeded(graph, bounds);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GraphCardFlashStop", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private static readonly TimeSpan GraphSelectionRefreshInterval = TimeSpan.FromMinutes(10);", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("RefreshGraphSelectionIfDue();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RunScheduledSceneAction(\"graph-selection\", RefreshGraphSelectionIfDue);", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("ApplyGraphMotionVariance(", sceneCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("ApplyGraphRefreshTravel(", sceneCodeBehind, StringComparison.Ordinal);
         Assert.Contains("graph.PlotWidth = Math.Max(106d, graphWidth - 62d);", sceneCodeBehind, StringComparison.Ordinal);

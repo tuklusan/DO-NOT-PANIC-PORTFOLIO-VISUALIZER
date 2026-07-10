@@ -82,6 +82,7 @@ public partial class VisualizerSceneControl : UserControl
     private TimeSpan _backgroundSchedulerInterval = TimeSpan.FromMinutes(5);
     private DateTimeOffset _nextClockTickUtc = DateTimeOffset.MaxValue;
     private DateTimeOffset _nextRuntimeQuoteTickUtc = DateTimeOffset.MaxValue;
+    private DateTimeOffset _nextGraphSelectionTickUtc = DateTimeOffset.MaxValue;
     private DateTimeOffset _nextBackgroundRotationTickUtc = DateTimeOffset.MaxValue;
     private DateTimeOffset _nextBackgroundZoomTickUtc = DateTimeOffset.MaxValue;
     private DateTimeOffset _nextWorldDataTickUtc = DateTimeOffset.MaxValue;
@@ -733,6 +734,7 @@ public partial class VisualizerSceneControl : UserControl
         DateTimeOffset now = DateTimeOffset.UtcNow;
         _nextClockTickUtc = now + _clockSchedulerInterval;
         _nextRuntimeQuoteTickUtc = now + RuntimeQuoteDispatchInterval;
+        _nextGraphSelectionTickUtc = now + GraphSelectionRefreshInterval;
         _nextWorldDataTickUtc = now + WorldDataRefreshInterval;
         _lastMotionTick = DateTime.UtcNow;
         _backgroundRotationEnabled = _backgroundPaths.Count > 1;
@@ -806,6 +808,12 @@ public partial class VisualizerSceneControl : UserControl
             {
                 _nextRuntimeQuoteTickUtc = GetNextScheduledDueUtc(_nextRuntimeQuoteTickUtc, RuntimeQuoteDispatchInterval, now);
                 RunScheduledSceneAction("runtime-quote", DispatchNextRuntimeQuoteRequestSafe);
+            }
+
+            if (now >= _nextGraphSelectionTickUtc)
+            {
+                _nextGraphSelectionTickUtc = GetNextScheduledDueUtc(_nextGraphSelectionTickUtc, GraphSelectionRefreshInterval, now);
+                RunScheduledSceneAction("graph-selection", RefreshGraphSelectionIfDue);
             }
 
             if (now >= _nextWorldDataTickUtc)
@@ -1253,7 +1261,6 @@ public partial class VisualizerSceneControl : UserControl
 
         TraceRuntimeQuoteLoopHeartbeatIfDue();
         PruneStaleRuntimeQuoteRequests();
-        RefreshGraphSelectionIfDue();
 
         // Keep the scene cadence strictly surgical: one lookup may be outstanding,
         // so slow transport cannot accumulate a burst of responses for the UI.
@@ -1458,6 +1465,7 @@ public partial class VisualizerSceneControl : UserControl
         _backgroundZoomRunning = false;
         _nextClockTickUtc = DateTimeOffset.MaxValue;
         _nextRuntimeQuoteTickUtc = DateTimeOffset.MaxValue;
+        _nextGraphSelectionTickUtc = DateTimeOffset.MaxValue;
         _nextBackgroundRotationTickUtc = DateTimeOffset.MaxValue;
         _nextBackgroundZoomTickUtc = DateTimeOffset.MaxValue;
         _nextWorldDataTickUtc = DateTimeOffset.MaxValue;
@@ -1585,7 +1593,7 @@ public partial class VisualizerSceneControl : UserControl
             InitializeRuntimeQuoteLoop();
             EnsureBackgroundSlowZoomRunning();
             StartDemoFlashSequence();
-            StartSceneScheduler();
+            ConfigureTimers();
             _ = RefreshNewsLaneAsync(force: true, CancellationToken.None);
         }
         catch (Exception ex)
