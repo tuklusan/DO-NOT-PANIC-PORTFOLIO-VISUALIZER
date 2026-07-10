@@ -1057,6 +1057,22 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("if (Test-IsIgnorableVmPwshFailure -Result $result)", helper, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void InstalledSoakTraceAnalyzer_UsesStrictTransportFailureDetection()
+    {
+        string analyzer = ReadRepoText("build", "validation", "Analyze-InstalledSoakTrace.ps1");
+
+        Assert.Contains("function Select-StrictTransportFailure", analyzer, StringComparison.Ordinal);
+        Assert.Contains("PendingReadDrainFailed", analyzer, StringComparison.Ordinal);
+        Assert.Contains("Unable to read data from the transport connection", analyzer, StringComparison.Ordinal);
+        Assert.Contains("YFinanceServerFaultInjection", analyzer, StringComparison.Ordinal);
+        Assert.Contains("event=ServerStartup", analyzer, StringComparison.Ordinal);
+        Assert.Contains("strictTransportFailure", analyzer, StringComparison.Ordinal);
+        Assert.Contains("runtimeQuoteApplied", analyzer, StringComparison.Ordinal);
+        Assert.Contains("event=RuntimeQuoteApplied", analyzer, StringComparison.Ordinal);
+        Assert.DoesNotContain("transport_fail", analyzer, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static readonly ConcurrentDictionary<string, Lazy<string>> SourceTextCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Lazy<string> RepoRoot = new(GetRepoRoot, LazyThreadSafetyMode.ExecutionAndPublication);
 

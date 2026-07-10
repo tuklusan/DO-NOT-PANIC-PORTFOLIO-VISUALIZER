@@ -163,6 +163,32 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
+    public void VisualizerSceneControl_ResolveTimeZone_CachesLookupResultsForSchedulerTicks()
+    {
+        MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
+            "ResolveTimeZone",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("VisualizerSceneControl.ResolveTimeZone not found.");
+        FieldInfo cacheField = typeof(VisualizerSceneControl).GetField(
+            "TimeZoneLookupCache",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("VisualizerSceneControl.TimeZoneLookupCache not found.");
+
+        object? cache = cacheField.GetValue(null);
+        cache?.GetType().GetMethod("Clear")?.Invoke(cache, []);
+
+        object? first = method.Invoke(null, ["Eastern Standard Time", "America/New_York"]);
+        object? second = method.Invoke(null, ["Eastern Standard Time", "America/New_York"]);
+        object? fallback = method.Invoke(null, ["Not/A/Real/Zone", "Eastern Standard Time"]);
+
+        Assert.Same(first, second);
+        Assert.IsType<TimeZoneInfo>(first);
+        Assert.IsType<TimeZoneInfo>(fallback);
+        int count = (int)(cache?.GetType().GetProperty("Count")?.GetValue(cache) ?? -1);
+        Assert.Equal(2, count);
+    }
+
+    [Fact]
     public void VisualizerSceneControl_CreateFrozenPointCollection_PreservesAndFreezesMiniGraphPoints()
     {
         MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
@@ -1458,6 +1484,66 @@ public sealed class VisualizerRenderBehaviorTests
             "StatusBarControl.xaml"));
         Assert.Contains("DataFreshnessText", statusBarXaml, StringComparison.Ordinal);
         Assert.Contains("DataFreshnessForeground", statusBarXaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RuntimeQuoteScheduler_SlowsRecentlyFetchedClosedWorldMarketSymbolsOnly()
+    {
+        RunOnSta(() =>
+        {
+            VisualizerSceneControl control = new();
+            FloatingClockViewModel clock = new();
+            clock.Cities.Add(new ClockCityViewModel
+            {
+                Key = "Riyadh",
+                ExchangeSymbol = "^TASI.SR",
+                ShowExchangeDetails = true
+            });
+
+            typeof(VisualizerSceneControl)
+                .GetField("_clockViewModel", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .SetValue(control, clock);
+            MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
+                "IsRuntimeQuoteRefreshSuppressedForClosedClockMarket",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("VisualizerSceneControl.IsRuntimeQuoteRefreshSuppressedForClosedClockMarket not found.");
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+
+            typeof(VisualizerSceneControl)
+                .GetField("_latestQuotes", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .SetValue(control, new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["^TASI.SR"] = new()
+                    {
+                        Symbol = "^TASI.SR",
+                        MarketSession = MarketSession.Closed,
+                        FetchTimestampUtc = now - TimeSpan.FromMinutes(2)
+                    },
+                    ["VOO"] = new()
+                    {
+                        Symbol = "VOO",
+                        MarketSession = MarketSession.Closed,
+                        FetchTimestampUtc = now - TimeSpan.FromMinutes(2)
+                    }
+                });
+
+            Assert.True(Assert.IsType<bool>(method.Invoke(control, ["^TASI.SR", now])));
+            Assert.False(Assert.IsType<bool>(method.Invoke(control, ["VOO", now])));
+
+            typeof(VisualizerSceneControl)
+                .GetField("_latestQuotes", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .SetValue(control, new Dictionary<string, QuoteSnapshot>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["^TASI.SR"] = new()
+                    {
+                        Symbol = "^TASI.SR",
+                        MarketSession = MarketSession.Closed,
+                        FetchTimestampUtc = now - TimeSpan.FromMinutes(11)
+                    }
+                });
+
+            Assert.False(Assert.IsType<bool>(method.Invoke(control, ["^TASI.SR", now])));
+        });
     }
 
     [Fact]

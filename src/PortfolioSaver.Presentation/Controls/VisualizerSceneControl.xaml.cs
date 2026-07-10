@@ -11,6 +11,7 @@
 // SANYALnet Labs." See LICENSE for full terms, warranty disclaimer, termination,
 // patent, trademark, and governing-law provisions.
 // ============================================================================
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -53,6 +54,7 @@ public partial class VisualizerSceneControl : UserControl
     private static readonly TimeSpan GraphSelectionRefreshInterval = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan MacroLaneMinimumRefreshInterval = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan WorldMarketsLaneMinimumRefreshInterval = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan ClosedClockMarketQuoteRefreshInterval = TimeSpan.FromMinutes(10);
     // Runtime quotes intentionally use a fixed one-at-a-time transport cadence:
     // dispatch a single symbol, apply that response surgically, then wait for the
     // next timer tick before dispatching another symbol. This avoids UI bursts.
@@ -66,6 +68,7 @@ public partial class VisualizerSceneControl : UserControl
     private static readonly TimeSpan WorldDataRefreshInterval = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan DemoFlashInterval = TimeSpan.FromSeconds(30);
     private const double GraphRefreshTravelMinimumVelocity = 260d;
+    private static readonly ConcurrentDictionary<string, TimeZoneInfo> TimeZoneLookupCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
     private readonly Dictionary<string, FloatingGraphControl> _graphControlsByKey = new(StringComparer.OrdinalIgnoreCase);
     private readonly ObservableCollection<MarketSpriteViewModel> _marketSprites = [];
@@ -1410,6 +1413,9 @@ public partial class VisualizerSceneControl : UserControl
             scanned++;
 
             if (_inFlightQuoteRequests.Contains(symbol))
+                continue;
+
+            if (IsRuntimeQuoteRefreshSuppressedForClosedClockMarket(symbol, DateTimeOffset.UtcNow))
                 continue;
 
             return symbol;
@@ -2819,9 +2825,15 @@ public partial class VisualizerSceneControl : UserControl
         return DateTimeOffset.UtcNow;
     }
 
-    private static TimeZoneInfo ResolveTimeZone(string primaryId, string secondaryId)
+    private static TimeZoneInfo ResolveTimeZone(string? primaryId, string? secondaryId)
     {
-        foreach (string candidate in new[] { primaryId, secondaryId })
+        string cacheKey = $"{(primaryId ?? string.Empty).Trim()}|{(secondaryId ?? string.Empty).Trim()}";
+        return TimeZoneLookupCache.GetOrAdd(cacheKey, _ => ResolveTimeZoneUncached(primaryId, secondaryId));
+    }
+
+    private static TimeZoneInfo ResolveTimeZoneUncached(string? primaryId, string? secondaryId)
+    {
+        foreach (string candidate in new[] { primaryId ?? string.Empty, secondaryId ?? string.Empty })
         {
             if (string.IsNullOrWhiteSpace(candidate))
                 continue;
@@ -4668,6 +4680,21 @@ public partial class VisualizerSceneControl : UserControl
 
     private bool IsClockMarketSymbol(string symbol)
         => _clockViewModel?.Cities.Any(city => string.Equals(city.ExchangeSymbol, symbol, StringComparison.OrdinalIgnoreCase)) ?? false;
+
+    private bool IsRuntimeQuoteRefreshSuppressedForClosedClockMarket(string symbol, DateTimeOffset nowUtc)
+    {
+        if (!IsClockMarketSymbol(symbol))
+            return false;
+
+        if (!_latestQuotes.TryGetValue(symbol, out QuoteSnapshot? quote) || quote.MarketSession != MarketSession.Closed)
+            return false;
+
+        DateTimeOffset fetchUtc = quote.FetchTimestampUtc;
+        if (fetchUtc == DateTimeOffset.MinValue)
+            return false;
+
+        return nowUtc - fetchUtc < ClosedClockMarketQuoteRefreshInterval;
+    }
 
     private bool HasMeaningfulMacroDelta(
         IReadOnlyDictionary<string, QuoteSnapshot> existingQuotes,
