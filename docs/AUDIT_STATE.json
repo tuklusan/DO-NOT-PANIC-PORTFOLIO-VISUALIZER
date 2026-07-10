@@ -10252,7 +10252,7 @@
       "priority": 2,
       "area": "Memory/performance",
       "title": "Replace `MemoryTtlCache<JsonDocument>` with raw string storage to avoid cloning and disposal risk",
-      "status": "open",
+      "status": "closed",
       "source": "deepseek_full_optimization_review_2026_07_03",
       "severity": "Medium",
       "evidence": [
@@ -10262,7 +10262,12 @@
       "notes": [
         "Recommendation: Store the raw JSON string; parse into `JsonDocument` on retrieval.",
         "Acceptance criteria: Per-cache-hit allocation reduces by ~50%; no risk of accessing a disposed `JsonDocument`.\n\n### Priority 3 (Low severity or impact, still testable and worth fixing)",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by Codex developer as worth tracking.",
+        "Implemented on 2026-07-09 by changing YahooFinanceHttpClient from MemoryTtlCache<JsonDocument> to MemoryTtlCache<string> and caching raw Yahoo JSON payloads.",
+        "GetJsonAsync and GetCachedJsonAsync preserve the public JsonDocument contract by parsing raw response strings for callers. Cache misses parse the response before storing it so malformed 2xx payloads cannot poison the cache.",
+        "Verified MemoryTtlCache has no IDisposable-specific eviction contract; moving cached values from JsonDocument to string removes the previous retained-disposable risk without introducing new cleanup requirements.",
+        "Focused validation passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --filter \"YFinanceMemoryTtlCache|Nb040\" --no-restore (58/58).",
+        "DeepSeek gate artifacts reviewed: build/deepseek-review/deepseek-review-20260709-205710.md and build/deepseek-review/deepseek-review-20260709-205901.md. Initial malformed-cache finding was accepted and fixed with parse-before-store semantics; final review had no blocker."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10271,7 +10276,8 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "resolution": "Resolved on 2026-07-09 by storing raw JSON strings in the YFinance HTTP TTL cache, validating payloads before cache insert, and returning fresh JsonDocument instances to callers."
     },
     {
       "id": "CR-218",

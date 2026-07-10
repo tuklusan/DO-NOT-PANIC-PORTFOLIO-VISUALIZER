@@ -27,7 +27,7 @@ public sealed class YahooFinanceHttpClient : IDisposable
     private readonly YFinanceOptions _options;
     private readonly YahooSessionManager _sessionManager;
     private readonly RequestThrottle _throttle;
-    private readonly MemoryTtlCache<JsonDocument> _cache;
+    private readonly MemoryTtlCache<string> _cache;
     private readonly YFinanceTrace _trace;
 
     public YahooFinanceHttpClient(YFinanceOptions? options = null, YFinanceTrace? trace = null)
@@ -36,28 +36,29 @@ public sealed class YahooFinanceHttpClient : IDisposable
         _trace = trace ?? new YFinanceTrace(_options.TraceSink);
         _sessionManager = new YahooSessionManager(_options, _trace);
         _throttle = new RequestThrottle(_options.MinimumRequestSpacing);
-        _cache = new MemoryTtlCache<JsonDocument>();
+        _cache = new MemoryTtlCache<string>();
     }
 
     public async Task<JsonDocument> GetJsonAsync(string relativeOrAbsoluteUrl, IReadOnlyDictionary<string, string?>? query = null, CancellationToken cancellationToken = default)
-        => await SendJsonAsync(relativeOrAbsoluteUrl, query, cancellationToken).ConfigureAwait(false);
+        => JsonDocument.Parse(await SendJsonStringAsync(relativeOrAbsoluteUrl, query, cancellationToken).ConfigureAwait(false));
 
     public async Task<JsonDocument> GetCachedJsonAsync(string relativeOrAbsoluteUrl, IReadOnlyDictionary<string, string?>? query = null, TimeSpan? ttl = null, CancellationToken cancellationToken = default)
     {
-        string cacheKey = MemoryTtlCache<JsonDocument>.BuildKey(relativeOrAbsoluteUrl, BuildQueryKey(query));
-        if (_cache.TryGet(cacheKey, out JsonDocument? cached) && cached is not null)
+        string cacheKey = MemoryTtlCache<string>.BuildKey(relativeOrAbsoluteUrl, BuildQueryKey(query));
+        if (_cache.TryGet(cacheKey, out string? cachedJson) && !string.IsNullOrWhiteSpace(cachedJson))
         {
             _trace.InfoState("YFinance.Http", "CachedJsonHit", ("path", relativeOrAbsoluteUrl), ("cache_key", cacheKey));
-            return JsonDocument.Parse(cached.RootElement.GetRawText());
+            return JsonDocument.Parse(cachedJson);
         }
 
-        JsonDocument json = await SendJsonAsync(relativeOrAbsoluteUrl, query, cancellationToken).ConfigureAwait(false);
-        _cache.Set(cacheKey, JsonDocument.Parse(json.RootElement.GetRawText()), ttl ?? _options.DefaultCacheTtl);
+        string json = await SendJsonStringAsync(relativeOrAbsoluteUrl, query, cancellationToken).ConfigureAwait(false);
+        JsonDocument document = JsonDocument.Parse(json);
+        _cache.Set(cacheKey, json, ttl ?? _options.DefaultCacheTtl);
         _trace.InfoState("YFinance.Http", "CachedJsonStore", ("path", relativeOrAbsoluteUrl), ("cache_key", cacheKey), ("ttl_seconds", (ttl ?? _options.DefaultCacheTtl).TotalSeconds));
-        return json;
+        return document;
     }
 
-    private async Task<JsonDocument> SendJsonAsync(string relativeOrAbsoluteUrl, IReadOnlyDictionary<string, string?>? query, CancellationToken cancellationToken)
+    private async Task<string> SendJsonStringAsync(string relativeOrAbsoluteUrl, IReadOnlyDictionary<string, string?>? query, CancellationToken cancellationToken)
     {
         for (int attempt = 0; attempt <= _options.MaxRetries; attempt++)
         {
@@ -101,7 +102,7 @@ public sealed class YahooFinanceHttpClient : IDisposable
             }
 
             _trace.InfoState("YFinance.Http", "RequestComplete", ("path", relativeOrAbsoluteUrl), ("attempt", attempt + 1), ("status_code", (int)response.StatusCode), ("content_length", content.Length));
-            return JsonDocument.Parse(content);
+            return content;
         }
 
         throw new YFinanceApiException("Yahoo request exhausted retry attempts.");
