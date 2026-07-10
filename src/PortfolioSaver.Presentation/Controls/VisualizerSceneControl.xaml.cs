@@ -1336,7 +1336,11 @@ public partial class VisualizerSceneControl : UserControl
             return;
 
         CancellationTokenSource requestCancellation = new(RuntimeQuoteRequestTimeout);
-        Task<IReadOnlyList<QuoteSnapshot>> requestTask = _runtimeQuoteProvider.GetQuotesAsync([symbol], requestCancellation.Token);
+        // Keep transport startup off the UI scheduler; even async providers can do
+        // synchronous pipe/client setup before returning their Task.
+        Task<IReadOnlyList<QuoteSnapshot>> requestTask = Task.Run(
+            () => _runtimeQuoteProvider.GetQuotesAsync([symbol], requestCancellation.Token),
+            CancellationToken.None);
         _inFlightQuoteRequests.Add(symbol, requestTask, DateTimeOffset.UtcNow, requestCancellation);
         if (ShouldTraceRuntimeQuoteDebug())
         {

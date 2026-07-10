@@ -1078,7 +1078,15 @@ public sealed class Nb040BehaviorTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
-            "Task<IReadOnlyList<QuoteSnapshot>> requestTask = _runtimeQuoteProvider.GetQuotesAsync([symbol], requestCancellation.Token);",
+            "Task<IReadOnlyList<QuoteSnapshot>> requestTask = Task.Run(",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "() => _runtimeQuoteProvider.GetQuotesAsync([symbol], requestCancellation.Token)",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "CancellationToken.None);",
             source,
             StringComparison.Ordinal);
         Assert.Contains(
