@@ -10959,7 +10959,7 @@
       "priority": 2,
       "area": "time-sync",
       "title": "Single NTP host timeout must not poison clean soak validation",
-      "status": "open",
+      "status": "closed",
       "source": "installed-soak-20260711-072511",
       "severity": "medium",
       "evidence": [
@@ -10969,7 +10969,10 @@
       ],
       "notes": [
         "Preserve a warning if all configured NTP hosts fail.",
-        "Do not hide real clock-sync failure; only downgrade per-host retryable timeouts."
+        "Do not hide real clock-sync failure; only downgrade per-host retryable timeouts.",
+        "Resolved by logging per-host HostTimeout/DnsTimeout retry noise at INFO and emitting WARN only for AllHostsFailed.",
+        "Focused tests passed: dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj --filter \"NtpTimeService_BoundsDnsAndHostTimeouts|InstalledSoakTraceAnalyzer_UsesStrictTransportFailureDetection\".",
+        "Fresh installed VM soak installed-soak-20260711-083712 ran 60 minutes with fatalCrashException=0, error=0, warn=0, http429=0, strictTransportFailure=0."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10986,7 +10989,7 @@
       "priority": 1,
       "area": "vm-harness",
       "title": "Installed-soak analyzer must not count request IDs as HTTP 429 rate limits",
-      "status": "open",
+      "status": "closed",
       "source": "installed-soak-20260711-072511",
       "severity": "high",
       "evidence": [
@@ -10996,7 +10999,10 @@
       ],
       "notes": [
         "Count only structured rate-limit evidence such as status_code=429, HTTP 429, Too Many Requests, or explicit rate-limit text.",
-        "Acceptance requires re-running analysis on the same artifact and seeing http429=0 unless a real rate-limit line exists."
+        "Acceptance requires re-running analysis on the same artifact and seeing http429=0 unless a real rate-limit line exists.",
+        "Resolved by adding Select-Http429Evidence with structured status/rate-limit text matching, including HTTP/1.1 429, and no bare numeric 429 match.",
+        "Re-analysis of installed-soak-20260711-072511 changed http429 from the false-positive 1 to 0.",
+        "Fresh installed VM soak installed-soak-20260711-083712 ran 60 minutes with fatalCrashException=0, error=0, warn=0, http429=0, strictTransportFailure=0."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
