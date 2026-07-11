@@ -1,7 +1,7 @@
 {
   "document_type": "audit_state",
   "title": "Release 1.0 Audit State",
-  "date": "2026-05-20",
+  "date": "2026-07-11",
   "current_lane": "1.0",
   "current_snapshot": {
     "product": "DO NOT PANIC PORTFOLIO VISUALIZER",
@@ -10794,7 +10794,7 @@
       "priority": 1,
       "area": "ui-fluidity",
       "title": "Background rotation cancellation must not block the UI scheduler",
-      "status": "open",
+      "status": "closed",
       "source": "installed-soak-20260711-003457",
       "severity": "high",
       "evidence": [
@@ -10813,6 +10813,19 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "closed_at": "2026-07-11T05:38:51.1363239-04:00",
+      "resolution": [
+        "Implemented and committed non-blocking/off-dispatch background rotation fixes in commits 6323d9a and a07d2c6.",
+        "Focused background tests passed locally, including cancellation and off-dispatch preparation coverage.",
+        "DeepSeek code review reported no blocking findings before commit.",
+        "Installed VM soak installed-soak-20260711-035939 completed for 5400 seconds with zero fatal crashes, errors, warnings, HTTP 429s, strict transport failures, or background preparation failures.",
+        "The prior multi-second background-rotation stalls were eliminated; the worst background-rotation scheduler action in the validation run was approximately 214.7 ms, and transitions completed regularly."
+      ],
+      "validation": [
+        "Trace showed BackgroundPreparationSkipped=0, BackgroundPreparationFailed=0, BackgroundRotationSchedulerFailed=0.",
+        "SceneCaptureComplete trace lines proved screenshots were taken throughout the run at roughly 08:01, 08:15, 08:30, 08:45, 09:00, 09:15, and 09:29 UTC.",
+        "DeepSeek artifact review of installed-soak-20260711-035939 was advisory: it confirmed the catastrophic background stall was gone and flagged separate follow-up validation/resource concerns captured as CR-237 and CR-238."
       ]
     },
     {
@@ -10821,7 +10834,7 @@
       "priority": 1,
       "area": "ui-fluidity",
       "title": "Background image preparation must never run on the dispatcher",
-      "status": "open",
+      "status": "closed",
       "source": "installed-soak-20260711-020157",
       "severity": "critical",
       "evidence": [
@@ -10833,6 +10846,74 @@
         "Move background image file read, bitmap decode/freeze, and opacity sampling off the dispatcher.",
         "Dispatcher work should be limited to footer attribution and final image-layer patch/transition.",
         "Acceptance requires focused tests, DeepSeek code review, and installed VM soak evidence with no multi-second background-rotation scheduler action."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "closed_at": "2026-07-11T05:38:51.1363239-04:00",
+      "resolution": [
+        "Implemented and committed non-blocking/off-dispatch background rotation fixes in commits 6323d9a and a07d2c6.",
+        "Focused background tests passed locally, including cancellation and off-dispatch preparation coverage.",
+        "DeepSeek code review reported no blocking findings before commit.",
+        "Installed VM soak installed-soak-20260711-035939 completed for 5400 seconds with zero fatal crashes, errors, warnings, HTTP 429s, strict transport failures, or background preparation failures.",
+        "The prior multi-second background-rotation stalls were eliminated; the worst background-rotation scheduler action in the validation run was approximately 214.7 ms, and transitions completed regularly."
+      ],
+      "validation": [
+        "Trace showed BackgroundPreparationSkipped=0, BackgroundPreparationFailed=0, BackgroundRotationSchedulerFailed=0.",
+        "SceneCaptureComplete trace lines proved screenshots were taken throughout the run at roughly 08:01, 08:15, 08:30, 08:45, 09:00, 09:15, and 09:29 UTC.",
+        "DeepSeek artifact review of installed-soak-20260711-035939 was advisory: it confirmed the catastrophic background stall was gone and flagged separate follow-up validation/resource concerns captured as CR-237 and CR-238."
+      ]
+    },
+    {
+      "id": "CR-237",
+      "tracking_number": "CR-237",
+      "priority": 1,
+      "area": "ui-fluidity",
+      "title": "Bound desktop background memory churn during installed soak",
+      "status": "open",
+      "source": "installed-soak-20260711-035939",
+      "severity": "high",
+      "evidence": [
+        "DeepSeek artifact review for installed-soak-20260711-035939 flagged PortfolioSaver.Desktop private memory fluctuating between roughly 300 MB and 700 MB during a 90-minute run.",
+        "Resource samples showed working set/private memory peaks around 516.6 MB/607.1 MB and one private-memory sample at 690.4 MB, then recovery to 234 MB/318.4 MB before stop.",
+        "The YFinance server stayed near 17-18 MB private memory, so the churn is localized to the desktop visualizer path, most likely background image decode/cache pressure."
+      ],
+      "notes": [
+        "The VM has only two CPUs; do not treat stable CPU alone as a defect. This CR targets avoidable image decode memory pressure and adds harness guardrails rather than over-optimizing.",
+        "Decode large backgrounds to a bounded display-sized width before freezing so normal visual quality is retained while memory pressure is reduced.",
+        "Installed-soak validation should fail loudly if desktop private memory or thread count crosses explicit guardrails."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-238",
+      "tracking_number": "CR-238",
+      "priority": 2,
+      "area": "vm-harness",
+      "title": "DeepSeek artifact review must include app-native scene capture timing evidence",
+      "status": "open",
+      "source": "installed-soak-20260711-035939",
+      "severity": "medium",
+      "evidence": [
+        "DeepSeek artifact review inferred screenshots were clustered at test end from copied file modified timestamps.",
+        "Trace inspection proved SceneCaptureComplete occurred throughout the run at roughly 08:01, 08:15, 08:30, 08:45, 09:00, 09:15, and 09:29 UTC.",
+        "The artifact-review packet did not explicitly provide SceneCaptureComplete and SceneCaptureCleanupQueued trace timing as authoritative evidence."
+      ],
+      "notes": [
+        "This is a validation quality issue, not a product screenshot capture failure.",
+        "Add scene-capture trace timing to the DeepSeek artifact-review packet so advisory review can distinguish actual capture time from artifact copy timestamps."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",

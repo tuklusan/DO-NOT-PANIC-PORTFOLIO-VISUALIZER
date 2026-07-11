@@ -134,6 +134,13 @@ try {
         Where-Object { $_.Extension -match '(?i)^\.(png|jpg|jpeg)$' } |
         Select-Object -First 80 |
         ForEach-Object { "image: $($_.FullName.Substring($resolvedResultRoot.Length).TrimStart('\','/')) bytes=$($_.Length) modified=$($_.LastWriteTime.ToString('o'))" })
+    $sceneCaptureTraceLines = @($artifactFiles |
+        Where-Object { $_.Name -match '(?i)^trace\.circular\.log$' } |
+        ForEach-Object {
+            Select-String -LiteralPath $_.FullName -Pattern 'SceneCaptureComplete|SceneCaptureCleanupQueued' -ErrorAction SilentlyContinue |
+                Select-Object -First 120 |
+                ForEach-Object { "{0}:{1}: {2}" -f (Split-Path -Leaf $_.Path), $_.LineNumber, $_.Line.Trim() }
+        })
     $textArtifactSections = New-Object System.Collections.Generic.List[string]
     foreach ($artifact in @($artifactFiles | Where-Object { $_.Name -match '(?i)(trace|circular|events|log|summary|json|txt|csv)' } | Sort-Object Length | Select-Object -First 30)) {
         [void]$textArtifactSections.Add("# Artifact sample: $($artifact.FullName.Substring($resolvedResultRoot.Length).TrimStart('\','/'))")
@@ -163,6 +170,12 @@ $analysisText
 # Screenshot/Image Artifact Inventory
 
 $($screenshotLines -join "`n")
+
+# App-Native Scene Capture Trace Timing
+
+These trace lines are authoritative for when app-native screenshots were created inside the running application. File modified timestamps may reflect later artifact copy time.
+
+$($sceneCaptureTraceLines -join "`n")
 
 # Trace/Log/Summary Artifact Samples
 

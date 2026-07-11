@@ -494,6 +494,13 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("double opacity = GetBackgroundPresentationOpacity(bitmap);", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("new Thread(() =>", codeBehind, StringComparison.Ordinal);
         Assert.Contains("BitmapImage backgroundBitmap = preparedBackground.Bitmap;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private const int BackgroundDecodePixelWidth = 2560;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("int decodePixelWidth = GetBackgroundDecodePixelWidth(bytes);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("if (decodePixelWidth > 0)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("fileBitmap.DecodePixelWidth = decodePixelWidth;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private static int GetBackgroundDecodePixelWidth(byte[] imageBytes)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("return 0;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("bitmap.DecodePixelWidth = BackgroundDecodePixelWidth;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("fileBitmap.StreamSource = memoryStream;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private int _backgroundTransitionGeneration;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("int transitionGeneration = ++_backgroundTransitionGeneration;", codeBehind, StringComparison.Ordinal);
@@ -635,6 +642,46 @@ public sealed class VisualizerRenderBehaviorTests
             finally
             {
                 File.Delete(imagePath);
+            }
+        });
+    }
+
+    [Fact]
+    public void BackgroundPreparation_DownscalesLargeBackgroundDecodeWidth()
+    {
+        RunOnSta(() =>
+        {
+            MethodInfo prepareMethod = typeof(VisualizerSceneControl).GetMethod(
+                "PrepareBackgroundAsync",
+                BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("PrepareBackgroundAsync method not found.");
+
+            string imagePath = Path.Combine(Path.GetTempPath(), $"dnppv-background-wide-{Guid.NewGuid():N}.png");
+            RenderTargetBitmap wideBitmap = new(3000, 4, 96, 96, PixelFormats.Pbgra32);
+            PngBitmapEncoder encoder = new();
+            encoder.Frames.Add(BitmapFrame.Create(wideBitmap));
+            using (FileStream stream = File.Create(imagePath))
+            {
+                encoder.Save(stream);
+            }
+
+            try
+            {
+                Task preparationTask = (Task)(prepareMethod.Invoke(null, [imagePath, CancellationToken.None])
+                    ?? throw new InvalidOperationException("PrepareBackgroundAsync returned null."));
+                preparationTask.GetAwaiter().GetResult();
+                object prepared = preparationTask.GetType().GetProperty("Result")?.GetValue(preparationTask)
+                    ?? throw new InvalidOperationException("BackgroundPreparationResult was not returned.");
+                BitmapImage bitmap = (BitmapImage)(prepared.GetType().GetProperty("Bitmap")?.GetValue(prepared)
+                    ?? throw new InvalidOperationException("Prepared bitmap was not returned."));
+
+                Assert.True(bitmap.IsFrozen);
+                Assert.Equal(2560, bitmap.PixelWidth);
+            }
+            finally
+            {
+                if (File.Exists(imagePath))
+                    File.Delete(imagePath);
             }
         });
     }

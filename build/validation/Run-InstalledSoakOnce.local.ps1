@@ -147,6 +147,14 @@ Start-Sleep -Seconds 3
     # The app schedules seven scene captures; require five so visual evidence cannot pass on a token capture.
     if ($screenshotCount -lt 5) { throw "Installed soak did not capture sufficient screenshot evidence. Captured screenshots: $screenshotCount. See $localResultRoot" }
     if (-not $summary.ResourceSampleFile) { throw "Installed soak did not capture resource-sample evidence. See $localResultRoot" }
+    $resourceSampleFileName = Split-Path -Leaf ([string]$summary.ResourceSampleFile)
+    $localResourceSamplePath = Join-Path $localResultRoot $resourceSampleFileName
+    $resourceSamples = @(Import-Csv -LiteralPath $localResourceSamplePath | Where-Object { $_.ProcessName -eq 'PortfolioSaver.Desktop' })
+    if ($resourceSamples.Count -lt 2) { throw "Installed soak did not capture enough desktop resource samples. See $localResultRoot" }
+    $maxPrivateMemoryMb = ($resourceSamples | Measure-Object -Property PrivateMemoryMB -Maximum).Maximum
+    $maxThreads = ($resourceSamples | Measure-Object -Property Threads -Maximum).Maximum
+    if ([double]$maxPrivateMemoryMb -gt 1024) { throw "Installed soak exceeded desktop private-memory guardrail: $maxPrivateMemoryMb MB. See $localResultRoot" }
+    if ([int]$maxThreads -gt 64) { throw "Installed soak exceeded desktop thread-count guardrail: $maxThreads. See $localResultRoot" }
   } else {
     throw "Installed soak did not produce summary.json. See $localResultRoot"
   }

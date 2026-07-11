@@ -74,6 +74,7 @@ public partial class VisualizerSceneControl : UserControl
     private static readonly TimeSpan WorldDataRefreshInterval = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan DemoFlashInterval = TimeSpan.FromSeconds(30);
     private static readonly Lazy<BackgroundImagePreparationWorker> BackgroundPreparationWorker = new(() => new BackgroundImagePreparationWorker());
+    private const int BackgroundDecodePixelWidth = 2560;
     private const double GraphRefreshTravelMinimumVelocity = 260d;
     private static readonly ConcurrentDictionary<string, TimeZoneInfo> TimeZoneLookupCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
@@ -4050,6 +4051,9 @@ public partial class VisualizerSceneControl : UserControl
             BitmapImage fileBitmap = new();
             fileBitmap.BeginInit();
             fileBitmap.CacheOption = BitmapCacheOption.OnLoad;
+            int decodePixelWidth = GetBackgroundDecodePixelWidth(bytes);
+            if (decodePixelWidth > 0)
+                fileBitmap.DecodePixelWidth = decodePixelWidth;
             fileBitmap.StreamSource = memoryStream;
             fileBitmap.EndInit();
             if (fileBitmap.CanFreeze)
@@ -4060,11 +4064,35 @@ public partial class VisualizerSceneControl : UserControl
         BitmapImage bitmap = new();
         bitmap.BeginInit();
         bitmap.CacheOption = BitmapCacheOption.OnLoad;
+        bitmap.DecodePixelWidth = BackgroundDecodePixelWidth;
         bitmap.UriSource = new Uri(path, UriKind.Absolute);
         bitmap.EndInit();
         if (bitmap.CanFreeze)
             bitmap.Freeze();
         return bitmap;
+    }
+
+    private static int GetBackgroundDecodePixelWidth(byte[] imageBytes)
+    {
+        try
+        {
+            using MemoryStream metadataStream = new(imageBytes, writable: false);
+            BitmapDecoder decoder = BitmapDecoder.Create(
+                metadataStream,
+                BitmapCreateOptions.DelayCreation,
+                BitmapCacheOption.None);
+            int sourceWidth = decoder.Frames[0].PixelWidth;
+            return sourceWidth > BackgroundDecodePixelWidth ? BackgroundDecodePixelWidth : 0;
+        }
+        catch (Exception ex) when (
+            ex is ArgumentException ||
+            ex is FileFormatException ||
+            ex is IOException ||
+            ex is InvalidOperationException ||
+            ex is NotSupportedException)
+        {
+            return 0;
+        }
     }
 
     private static ImageSource CreateStandbyBackgroundSource(ImageSource source)

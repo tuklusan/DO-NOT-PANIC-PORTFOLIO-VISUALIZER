@@ -1103,6 +1103,13 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("/ST `$taskTime /IT /RU '$remoteUser'", script, StringComparison.Ordinal);
         Assert.Contains("Installed soak did not capture sufficient screenshot evidence.", script, StringComparison.Ordinal);
         Assert.Contains("Installed soak did not capture resource-sample evidence.", script, StringComparison.Ordinal);
+        Assert.Contains("Installed soak exceeded desktop private-memory guardrail", script, StringComparison.Ordinal);
+        Assert.Contains("Installed soak exceeded desktop thread-count guardrail", script, StringComparison.Ordinal);
+        Assert.Contains("$resourceSampleFileName = Split-Path -Leaf ([string]$summary.ResourceSampleFile)", script, StringComparison.Ordinal);
+        Assert.Contains("$localResourceSamplePath = Join-Path $localResultRoot $resourceSampleFileName", script, StringComparison.Ordinal);
+        Assert.Contains("$resourceSamples = @(Import-Csv -LiteralPath $localResourceSamplePath", script, StringComparison.Ordinal);
+        Assert.Contains("$maxPrivateMemoryMb = ($resourceSamples | Measure-Object -Property PrivateMemoryMB -Maximum).Maximum", script, StringComparison.Ordinal);
+        Assert.Contains("$maxThreads = ($resourceSamples | Measure-Object -Property Threads -Maximum).Maximum", script, StringComparison.Ordinal);
         Assert.DoesNotContain("CopyFromScreen", script, StringComparison.Ordinal);
         Assert.Contains("PORTFOLIOSAVER_CAPTURE_DIR", sceneControl, StringComparison.Ordinal);
         Assert.Contains("PORTFOLIOSAVER_CAPTURE_STEM", sceneControl, StringComparison.Ordinal);
@@ -1113,6 +1120,17 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("SceneCaptureCleanupQueued", sceneControl, StringComparison.Ordinal);
         Assert.Contains("GC.Collect(2, GCCollectionMode.Optimized, blocking: false", sceneControl, StringComparison.Ordinal);
         Assert.DoesNotContain("GC.WaitForPendingFinalizers", sceneControl, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DeepSeekArtifactReview_IncludesAppNativeSceneCaptureTiming()
+    {
+        string script = ReadRepoText("build", "validation", "Invoke-DeepSeekArtifactReview.ps1");
+
+        Assert.Contains("$sceneCaptureTraceLines", script, StringComparison.Ordinal);
+        Assert.Contains("SceneCaptureComplete|SceneCaptureCleanupQueued", script, StringComparison.Ordinal);
+        Assert.Contains("# App-Native Scene Capture Trace Timing", script, StringComparison.Ordinal);
+        Assert.Contains("File modified timestamps may reflect later artifact copy time.", script, StringComparison.Ordinal);
     }
 
     private static readonly ConcurrentDictionary<string, Lazy<string>> SourceTextCache = new(StringComparer.OrdinalIgnoreCase);
