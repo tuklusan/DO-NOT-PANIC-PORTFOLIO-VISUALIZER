@@ -11019,7 +11019,7 @@
       "priority": 1,
       "area": "market-data",
       "title": "Transient Yahoo HTTP 5xx quote failures must be retryable upstream failures",
-      "status": "open",
+      "status": "closed",
       "source": "installed-soak-20260711-094238",
       "severity": "high",
       "evidence": [
@@ -11030,7 +11030,12 @@
       "notes": [
         "External Yahoo 5xx failures are upstream/transient, not application internal errors.",
         "Transport should retry 5xx failures within the existing MaxRetries policy before surfacing failure.",
-        "If exhausted, the sidecar protocol should map YFinanceApiException StatusCode >= 500 to upstream_unavailable and retryable=true."
+        "If exhausted, the sidecar protocol should map YFinanceApiException StatusCode >= 500 to upstream_unavailable and retryable=true.",
+        "Resolved by retrying HTTP 5xx responses in YahooFinanceHttpClient while retry budget remains, throwing immediately when exhausted, mapping YFinanceApiException status >= 500 to upstream_unavailable/retryable=true, and preserving YFinanceRateLimitException as upstream_throttled/non-retryable.",
+        "Focused tests passed: YFinanceHttpDegradationPolicy_RetriesTransientServerErrorsUntilRetryBudgetIsExhausted and YFinanceServerErrorMapping_ClassifiesHttpFailuresForClientDegradation.",
+        "DeepSeek code review gate reported no critical, high, or medium findings after the rate-limit mapping fix.",
+        "Installed VM soak installed-soak-20260711-110023 ran 60 minutes with fatalCrashException=0, error=0, warn=0, http429=0, strictTransportFailure=0, runtimeQuoteApplied=230, worldMarketsUiPatchComplete=8, backgroundRotationChosen=13, backgroundTransitionComplete=12.",
+        "Manual trace cross-check showed the 13-vs-12 background count is expected because the initial background selection does not have a transition-complete event; every timed rotation completed. Final screenshot was visually intact."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
