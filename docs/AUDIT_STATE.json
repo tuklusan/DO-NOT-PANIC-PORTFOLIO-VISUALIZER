@@ -11012,6 +11012,34 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-241",
+      "tracking_number": "CR-241",
+      "priority": 1,
+      "area": "market-data",
+      "title": "Transient Yahoo HTTP 5xx quote failures must be retryable upstream failures",
+      "status": "open",
+      "source": "installed-soak-20260711-094238",
+      "severity": "high",
+      "evidence": [
+        "Second 60-minute installed soak reported fatalCrashException=0 but error=5 and warn=3 from one BTC-USD quote request.",
+        "Trace shows Yahoo returned HTTP 500 Internal Server Error for BTC-USD at 2026-07-11T13:44:21Z.",
+        "The protocol response classified this upstream HTTP 500 as code=internal_error and retryable=false, causing validation noise and less resilient degradation behavior."
+      ],
+      "notes": [
+        "External Yahoo 5xx failures are upstream/transient, not application internal errors.",
+        "Transport should retry 5xx failures within the existing MaxRetries policy before surfacing failure.",
+        "If exhausted, the sidecar protocol should map YFinanceApiException StatusCode >= 500 to upstream_unavailable and retryable=true."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

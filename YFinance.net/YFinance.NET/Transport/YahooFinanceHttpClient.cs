@@ -84,6 +84,23 @@ public sealed class YahooFinanceHttpClient : IDisposable
             string content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             if ((int)response.StatusCode >= 400)
             {
+                if ((int)response.StatusCode >= 500)
+                {
+                    if (ShouldRetryServerError(response.StatusCode, attempt, _options.MaxRetries))
+                    {
+                        _trace.WarnState(
+                            "YFinance.Http",
+                            "RequestServerErrorRetry",
+                            ("path", relativeOrAbsoluteUrl),
+                            ("status_code", (int)response.StatusCode),
+                            ("attempt", attempt + 1));
+                        await Task.Delay(GetRetryDelay(response, attempt), cancellationToken).ConfigureAwait(false);
+                        continue;
+                    }
+
+                    throw new YFinanceApiException($"Yahoo request failed with HTTP {(int)response.StatusCode}: {content}", (int)response.StatusCode);
+                }
+
                 if (ShouldRefreshSession(content, response.StatusCode))
                 {
                     _trace.WarnState("YFinance.Http", "SessionRefreshRequested", ("path", relativeOrAbsoluteUrl), ("status_code", (int)response.StatusCode), ("attempt", attempt + 1));
@@ -149,6 +166,9 @@ public sealed class YahooFinanceHttpClient : IDisposable
 
         return TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
     }
+
+    internal static bool ShouldRetryServerError(HttpStatusCode statusCode, int attempt, int maxRetries)
+        => (int)statusCode >= 500 && attempt < maxRetries;
 
     private Uri BuildUri(string relativeOrAbsoluteUrl, IReadOnlyDictionary<string, string?>? query, string crumb)
     {

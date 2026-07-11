@@ -18,6 +18,7 @@ using System.Text.Json;
 using YFinance.NET.Api;
 using YFinance.NET.Config;
 using YFinance.NET.Diagnostics;
+using YFinance.NET.Exceptions;
 using YFinance.NET.Protocol.Constants;
 using YFinance.NET.Protocol.Dtos;
 using YFinance.NET.Protocol.Errors;
@@ -690,6 +691,10 @@ internal static class YFinanceServerProgram
 
     internal static string MapErrorCode(Exception ex)
     {
+        if (ex is YFinanceRateLimitException)
+            return ProtocolErrorCodes.UpstreamThrottled;
+        if (ex is YFinanceApiException { StatusCode: >= 500 })
+            return ProtocolErrorCodes.UpstreamUnavailable;
         if (ex is HttpRequestException { StatusCode: HttpStatusCode.TooManyRequests })
             return ProtocolErrorCodes.UpstreamThrottled;
         if (ex is HttpRequestException { StatusCode: HttpStatusCode.RequestTimeout })
@@ -702,7 +707,8 @@ internal static class YFinanceServerProgram
     }
 
     internal static bool IsRetryable(Exception ex)
-        => ex is HttpRequestException or TaskCanceledException or TimeoutException;
+        => ex is HttpRequestException or TaskCanceledException or TimeoutException
+            || ex is YFinanceApiException { StatusCode: >= 500 };
 
     private static string ResolveTraceRoot()
         => AppDataRootResolver.ResolveInstalledLocalDataRoot();

@@ -280,24 +280,42 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
+    public void YFinanceHttpDegradationPolicy_RetriesTransientServerErrorsUntilRetryBudgetIsExhausted()
+    {
+        Assert.True(YahooFinanceHttpClient.ShouldRetryServerError(HttpStatusCode.InternalServerError, attempt: 0, maxRetries: 3));
+        Assert.True(YahooFinanceHttpClient.ShouldRetryServerError(HttpStatusCode.BadGateway, attempt: 2, maxRetries: 3));
+        Assert.False(YahooFinanceHttpClient.ShouldRetryServerError(HttpStatusCode.InternalServerError, attempt: 3, maxRetries: 3));
+        Assert.False(YahooFinanceHttpClient.ShouldRetryServerError(HttpStatusCode.BadRequest, attempt: 0, maxRetries: 3));
+    }
+
+    [Fact]
     public void YFinanceServerErrorMapping_ClassifiesHttpFailuresForClientDegradation()
     {
         HttpRequestException rateLimited = new("rate limited", null, HttpStatusCode.TooManyRequests);
         HttpRequestException requestTimeout = new("timeout", null, HttpStatusCode.RequestTimeout);
         HttpRequestException serverUnavailable = new("server unavailable", null, HttpStatusCode.ServiceUnavailable);
+        YFinanceRateLimitException exhaustedRateLimit = new("Yahoo returned HTTP 429 Too Many Requests.", 429);
+        YFinanceApiException upstreamServerError = new("Yahoo request failed with HTTP 500", 500);
+        YFinanceApiException clientError = new("Yahoo request failed with HTTP 400", 400);
         TimeoutException timeout = new("operation timeout");
         InvalidOperationException internalError = new("bad payload");
 
         Assert.Equal(ProtocolErrorCodes.UpstreamThrottled, YFinance.NET.Server.Hosting.YFinanceServerProgram.MapErrorCode(rateLimited));
+        Assert.Equal(ProtocolErrorCodes.UpstreamThrottled, YFinance.NET.Server.Hosting.YFinanceServerProgram.MapErrorCode(exhaustedRateLimit));
         Assert.Equal(ProtocolErrorCodes.Timeout, YFinance.NET.Server.Hosting.YFinanceServerProgram.MapErrorCode(requestTimeout));
         Assert.Equal(ProtocolErrorCodes.UpstreamUnavailable, YFinance.NET.Server.Hosting.YFinanceServerProgram.MapErrorCode(serverUnavailable));
+        Assert.Equal(ProtocolErrorCodes.UpstreamUnavailable, YFinance.NET.Server.Hosting.YFinanceServerProgram.MapErrorCode(upstreamServerError));
         Assert.Equal(ProtocolErrorCodes.Timeout, YFinance.NET.Server.Hosting.YFinanceServerProgram.MapErrorCode(timeout));
+        Assert.Equal(ProtocolErrorCodes.InternalError, YFinance.NET.Server.Hosting.YFinanceServerProgram.MapErrorCode(clientError));
         Assert.Equal(ProtocolErrorCodes.InternalError, YFinance.NET.Server.Hosting.YFinanceServerProgram.MapErrorCode(internalError));
 
         Assert.True(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(rateLimited));
+        Assert.False(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(exhaustedRateLimit));
         Assert.True(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(requestTimeout));
         Assert.True(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(serverUnavailable));
+        Assert.True(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(upstreamServerError));
         Assert.True(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(timeout));
+        Assert.False(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(clientError));
         Assert.False(YFinance.NET.Server.Hosting.YFinanceServerProgram.IsRetryable(internalError));
     }
 
