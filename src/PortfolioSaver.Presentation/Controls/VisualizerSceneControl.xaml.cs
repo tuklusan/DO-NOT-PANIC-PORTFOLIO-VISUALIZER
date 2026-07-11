@@ -64,11 +64,12 @@ public partial class VisualizerSceneControl : UserControl
     private static readonly TimeSpan RuntimeQuoteRequestTimeout = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan RuntimeTapeStructuralSyncInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan RuntimeQuoteAppliedTraceInterval = TimeSpan.FromSeconds(15);
-    private static readonly TimeSpan MotionFrameInterval = TimeSpan.FromMilliseconds(33);
+    // CR-234: 20 FPS keeps motion smooth enough while reducing UI-thread pressure on 2-CPU validation VMs.
+    private static readonly TimeSpan MotionFrameInterval = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan MaxMotionStepInterval = TimeSpan.FromMilliseconds(100);
     private static readonly TimeSpan GraphRefreshTravelFlashMaximumDuration = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan GraphRefreshTravelTargetDuration = TimeSpan.FromSeconds(1.4);
-    private static readonly TimeSpan SceneSchedulerInterval = TimeSpan.FromMilliseconds(33);
+    private static readonly TimeSpan SceneSchedulerInterval = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan BackgroundZoomInterval = TimeSpan.FromMilliseconds(120);
     private static readonly TimeSpan WorldDataRefreshInterval = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan DemoFlashInterval = TimeSpan.FromSeconds(30);

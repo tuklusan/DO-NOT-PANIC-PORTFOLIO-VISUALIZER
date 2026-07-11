@@ -449,7 +449,7 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("CompositionTarget.Rendering += OnMotionRendering;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("CompositionTarget.Rendering -= OnMotionRendering;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnMotionRendering(object? sender, EventArgs e)", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("MotionFrameInterval = TimeSpan.FromMilliseconds(33)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("MotionFrameInterval = TimeSpan.FromMilliseconds(50)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("MaxMotionStepInterval = TimeSpan.FromMilliseconds(100)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("Do not advance _lastMotionTick on skipped render callbacks.", codeBehind, StringComparison.Ordinal);
         Assert.Contains("if (currentTick - _lastMotionTick < MotionFrameInterval)", codeBehind, StringComparison.Ordinal);
@@ -1702,7 +1702,7 @@ public sealed class VisualizerRenderBehaviorTests
                 DateTimeOffset afterConfigure = DateTimeOffset.UtcNow;
                 DispatcherTimer sceneTimer = Assert.IsType<DispatcherTimer>(sceneTimerField.GetValue(control));
                 DateTimeOffset nextRuntimeQuoteTick = Assert.IsType<DateTimeOffset>(nextRuntimeQuoteTickField.GetValue(control));
-                Assert.Equal(TimeSpan.FromMilliseconds(33), sceneTimer.Interval);
+                Assert.Equal(TimeSpan.FromMilliseconds(50), sceneTimer.Interval);
                 Assert.True(Assert.IsType<bool>(motionRenderingSubscribedField.GetValue(control)));
                 Assert.InRange(nextRuntimeQuoteTick - beforeConfigure, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(2000));
                 Assert.InRange(nextRuntimeQuoteTick - afterConfigure, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(2000));
