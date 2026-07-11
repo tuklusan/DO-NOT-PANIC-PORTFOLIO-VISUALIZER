@@ -13,12 +13,14 @@
 // ============================================================================
 using System.Reflection;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Xml.Linq;
 using System.Globalization;
@@ -469,6 +471,16 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("Interlocked.Exchange(ref _backgroundRotationCancellation, null)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_backgroundRotationInFlight = false;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("\"BackgroundRotationCancelQueued\"", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private sealed record BackgroundPreparationResult", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("PrepareBackgroundAsync(backgroundPath, cancellationToken)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("Debug.Assert(Dispatcher.CheckAccess()", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"BackgroundPreparationSkipped\"", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"BackgroundPreparationFailed\"", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private static readonly Lazy<BackgroundImagePreparationWorker> BackgroundPreparationWorker", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("BackgroundPreparationWorker.Value.PrepareAsync(path, preloadedBytes, cancellationToken)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private sealed class BackgroundImagePreparationWorker", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("BlockingCollection<BackgroundPreparationWorkItem>", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("_thread.SetApartmentState(ApartmentState.STA);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("cancellation.Dispose();", codeBehind, StringComparison.Ordinal);
         Assert.Contains("\"BackgroundRotationChosen\"", codeBehind, StringComparison.Ordinal);
         Assert.Contains("\"BackgroundTransitionComplete\"", codeBehind, StringComparison.Ordinal);
@@ -476,10 +488,12 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("\"BackgroundZoomStopped\"", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void SetBackgroundZoomRunning(bool enabled, string reason)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("if (bitmap.CanFreeze)", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("private static async Task<byte[]?> PreloadBackgroundBytesAsync(string path, CancellationToken cancellationToken = default)", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("byte[]? preloadedBytes = await PreloadBackgroundBytesAsync(backgroundPath, cancellationToken).ConfigureAwait(true);", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("return await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);", codeBehind, StringComparison.Ordinal);
-        Assert.Contains("BitmapImage backgroundBitmap = CreateBackgroundBitmap(backgroundPath, preloadedBytes);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private static async Task<BackgroundPreparationResult> PrepareBackgroundAsync(string path, CancellationToken cancellationToken)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("BitmapImage bitmap = CreateBackgroundBitmap(item.Path, item.PreloadedBytes);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("double opacity = GetBackgroundPresentationOpacity(bitmap);", codeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("new Thread(() =>", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("BitmapImage backgroundBitmap = preparedBackground.Bitmap;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("fileBitmap.StreamSource = memoryStream;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private int _backgroundTransitionGeneration;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("int transitionGeneration = ++_backgroundTransitionGeneration;", codeBehind, StringComparison.Ordinal);
@@ -582,6 +596,45 @@ public sealed class VisualizerRenderBehaviorTests
             {
                 releaseCancellation.Set();
                 Assert.True(cancellationFinished.Wait(TimeSpan.FromSeconds(1)));
+            }
+        });
+    }
+
+    [Fact]
+    public void BackgroundPreparation_LoadsFrozenBitmapAndOpacityOffDispatcher()
+    {
+        RunOnSta(() =>
+        {
+            MethodInfo prepareMethod = typeof(VisualizerSceneControl).GetMethod(
+                "PrepareBackgroundAsync",
+                BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("PrepareBackgroundAsync method not found.");
+
+            string imagePath = Path.Combine(Path.GetTempPath(), $"dnppv-background-{Guid.NewGuid():N}.png");
+            byte[] onePixelPng = Convert.FromBase64String(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=");
+            File.WriteAllBytes(imagePath, onePixelPng);
+
+            try
+            {
+                Task preparationTask = (Task)(prepareMethod.Invoke(null, [imagePath, CancellationToken.None])
+                    ?? throw new InvalidOperationException("PrepareBackgroundAsync returned null."));
+                preparationTask.GetAwaiter().GetResult();
+                object prepared = preparationTask.GetType().GetProperty("Result")?.GetValue(preparationTask)
+                    ?? throw new InvalidOperationException("BackgroundPreparationResult was not returned.");
+                BitmapImage bitmap = (BitmapImage)(prepared.GetType().GetProperty("Bitmap")?.GetValue(prepared)
+                    ?? throw new InvalidOperationException("Prepared bitmap was not returned."));
+                double opacity = (double)(prepared.GetType().GetProperty("Opacity")?.GetValue(prepared)
+                    ?? throw new InvalidOperationException("Prepared opacity was not returned."));
+
+                Assert.True(bitmap.IsFrozen);
+                Assert.Equal(1, bitmap.PixelWidth);
+                Assert.Equal(1, bitmap.PixelHeight);
+                Assert.InRange(opacity, 0.0d, 1.0d);
+            }
+            finally
+            {
+                File.Delete(imagePath);
             }
         });
     }

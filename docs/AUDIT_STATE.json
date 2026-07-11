@@ -10814,6 +10814,34 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-236",
+      "tracking_number": "CR-236",
+      "priority": 1,
+      "area": "ui-fluidity",
+      "title": "Background image preparation must never run on the dispatcher",
+      "status": "open",
+      "source": "installed-soak-20260711-020157",
+      "severity": "critical",
+      "evidence": [
+        "Installed VM soak installed-soak-20260711-020157 traced SceneSchedulerActionSlow action=background-rotation elapsed_milliseconds=67914.4 after BackgroundRotationChosen.",
+        "Trace shows runtime quote, news, world markets, and transition completion delayed until the background rotation action returned.",
+        "Code inspection shows LoadBackgroundAsync can continue synchronously on the dispatcher when File.ReadAllBytesAsync completes immediately, then performs bitmap decode and opacity sampling on the UI thread."
+      ],
+      "notes": [
+        "Move background image file read, bitmap decode/freeze, and opacity sampling off the dispatcher.",
+        "Dispatcher work should be limited to footer attribution and final image-layer patch/transition.",
+        "Acceptance requires focused tests, DeepSeek code review, and installed VM soak evidence with no multi-second background-rotation scheduler action."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

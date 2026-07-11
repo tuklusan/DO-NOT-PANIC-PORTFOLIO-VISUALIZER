@@ -73,6 +73,7 @@ public partial class VisualizerSceneControl : UserControl
     private static readonly TimeSpan BackgroundZoomInterval = TimeSpan.FromMilliseconds(120);
     private static readonly TimeSpan WorldDataRefreshInterval = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan DemoFlashInterval = TimeSpan.FromSeconds(30);
+    private static readonly Lazy<BackgroundImagePreparationWorker> BackgroundPreparationWorker = new(() => new BackgroundImagePreparationWorker());
     private const double GraphRefreshTravelMinimumVelocity = 260d;
     private static readonly ConcurrentDictionary<string, TimeZoneInfo> TimeZoneLookupCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly ObservableCollection<FloatingGraphViewModel> _graphs = [];
@@ -3287,6 +3288,7 @@ public partial class VisualizerSceneControl : UserControl
 
     private async Task LoadBackgroundAsync(string? path, CancellationToken cancellationToken = default)
     {
+        Debug.Assert(Dispatcher.CheckAccess(), "Background UI application must run on the dispatcher.");
         ClearScheduledBackgroundTransition();
 
         if (!IsSupportedBackgroundReference(path))
@@ -3304,10 +3306,37 @@ public partial class VisualizerSceneControl : UserControl
 
         string backgroundPath = path!;
         UpdateFooterAttribution(backgroundPath);
-        byte[]? preloadedBytes = await PreloadBackgroundBytesAsync(backgroundPath, cancellationToken).ConfigureAwait(true);
+        BackgroundPreparationResult preparedBackground;
+        try
+        {
+            preparedBackground = await PrepareBackgroundAsync(backgroundPath, cancellationToken).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (
+            ex is FileNotFoundException ||
+            ex is DirectoryNotFoundException ||
+            ex is IOException ||
+            ex is UnauthorizedAccessException)
+        {
+            _backgroundTransitionInFlight = false;
+            TraceSceneState(
+                "BackgroundPreparationSkipped",
+                new KeyValuePair<string, object?>("path", Path.GetFileName(backgroundPath)),
+                new KeyValuePair<string, object?>("error", ex.Message));
+            return;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _backgroundTransitionInFlight = false;
+            TraceSceneState(
+                "BackgroundPreparationFailed",
+                new KeyValuePair<string, object?>("path", Path.GetFileName(backgroundPath)),
+                new KeyValuePair<string, object?>("error", ex.Message));
+            throw;
+        }
+
         cancellationToken.ThrowIfCancellationRequested();
-        BitmapImage backgroundBitmap = CreateBackgroundBitmap(backgroundPath, preloadedBytes);
-        _currentBackgroundOpacity = GetBackgroundPresentationOpacity(backgroundBitmap);
+        BitmapImage backgroundBitmap = preparedBackground.Bitmap;
+        _currentBackgroundOpacity = preparedBackground.Opacity;
 
         if (_activeBackgroundImage is null || _inactiveBackgroundImage is null)
         {
@@ -3333,6 +3362,74 @@ public partial class VisualizerSceneControl : UserControl
         }
 
         BeginBackgroundTransition(backgroundPath, backgroundBitmap);
+    }
+
+    private sealed record BackgroundPreparationResult(BitmapImage Bitmap, double Opacity);
+
+    private static async Task<BackgroundPreparationResult> PrepareBackgroundAsync(string path, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        byte[] preloadedBytes = await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        return await BackgroundPreparationWorker.Value.PrepareAsync(path, preloadedBytes, cancellationToken).ConfigureAwait(false);
+    }
+
+    private sealed record BackgroundPreparationWorkItem(
+        string Path,
+        byte[] PreloadedBytes,
+        CancellationToken CancellationToken,
+        TaskCompletionSource<BackgroundPreparationResult> Completion);
+
+    private sealed class BackgroundImagePreparationWorker
+    {
+        private readonly BlockingCollection<BackgroundPreparationWorkItem> _queue = new();
+        private readonly Thread _thread;
+
+        public BackgroundImagePreparationWorker()
+        {
+            _thread = new Thread(Run)
+            {
+                IsBackground = true,
+                Name = "DNPPV background image preparation"
+            };
+            _thread.SetApartmentState(ApartmentState.STA);
+            _thread.Start();
+        }
+
+        public Task<BackgroundPreparationResult> PrepareAsync(
+            string path,
+            byte[] preloadedBytes,
+            CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<BackgroundPreparationResult>(cancellationToken);
+
+            TaskCompletionSource<BackgroundPreparationResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            _queue.Add(new BackgroundPreparationWorkItem(path, preloadedBytes, cancellationToken, completion));
+            return completion.Task;
+        }
+
+        private void Run()
+        {
+            foreach (BackgroundPreparationWorkItem item in _queue.GetConsumingEnumerable())
+            {
+                try
+                {
+                    item.CancellationToken.ThrowIfCancellationRequested();
+                    BitmapImage bitmap = CreateBackgroundBitmap(item.Path, item.PreloadedBytes);
+                    double opacity = GetBackgroundPresentationOpacity(bitmap);
+                    item.Completion.TrySetResult(new BackgroundPreparationResult(bitmap, opacity));
+                }
+                catch (OperationCanceledException) when (item.CancellationToken.IsCancellationRequested)
+                {
+                    item.Completion.TrySetCanceled(item.CancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    item.Completion.TrySetException(ex);
+                }
+            }
+        }
     }
 
 
@@ -4034,14 +4131,6 @@ public partial class VisualizerSceneControl : UserControl
         {
             return 0.45d;
         }
-    }
-
-    private static async Task<byte[]?> PreloadBackgroundBytesAsync(string path, CancellationToken cancellationToken = default)
-    {
-        if (!File.Exists(path))
-            return null;
-
-        return await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
     }
 
     private static bool IsSupportedBackgroundReference(string? path)
