@@ -350,6 +350,73 @@ public sealed class Nb040BehaviorTests
     }
 
     [Fact]
+    public void YFinanceComputedChangePercent_UsesReportedChangeOverPreviousCloseWhenAvailable()
+    {
+        YQuoteSnapshot quote = CreateYFinanceQuote("SIGN") with
+        {
+            RegularMarketPrice = 3996.1616m,
+            RegularMarketPreviousClose = 3970.872m,
+            RegularMarketChange = -40.42627m,
+            RegularMarketChangePercent = 0.6366749939559996776533161400m
+        };
+
+        Assert.True(quote.ComputedChangePercent < 0m);
+        Assert.Equal((-40.42627m / 3970.872m) * 100m, quote.ComputedChangePercent);
+
+        YTickerInfo info = CreateYFinanceTickerInfo("SIGN") with
+        {
+            RegularMarketPrice = 15046.67m,
+            RegularMarketPreviousClose = 14939.71m,
+            RegularMarketChange = -352.0586m,
+            RegularMarketChangePercent = 0.7160117003688159735469922400m
+        };
+
+        Assert.True(info.ComputedChangePercent < 0m);
+        Assert.Equal((-352.0586m / 14939.71m) * 100m, info.ComputedChangePercent);
+    }
+
+    [Fact]
+    public void YFinanceComputedChangePercent_CoercesReportedPercentSignWhenPreviousCloseUnavailable()
+    {
+        YQuoteSnapshot quote = CreateYFinanceQuote("SIGN") with
+        {
+            RegularMarketPreviousClose = null,
+            RegularMarketChange = -40.42627m,
+            RegularMarketChangePercent = 0.6366749939559996776533161400m
+        };
+
+        Assert.Equal(-0.6366749939559996776533161400m, quote.ComputedChangePercent);
+    }
+
+    [Fact]
+    public void YFinanceComputedChangePercent_FallsBackToPriceMinusPreviousCloseWhenChangeMissing()
+    {
+        YQuoteSnapshot quote = CreateYFinanceQuote("PRICE") with
+        {
+            RegularMarketPrice = 102m,
+            RegularMarketPreviousClose = 100m,
+            RegularMarketChange = null,
+            RegularMarketChangePercent = -5m
+        };
+
+        Assert.Equal(2m, quote.ComputedChangePercent);
+    }
+
+    [Fact]
+    public void YFinanceComputedChangePercent_KeepsReportedPercentWhenNoComputableInputsExist()
+    {
+        YQuoteSnapshot quote = CreateYFinanceQuote("RAW") with
+        {
+            RegularMarketPrice = null,
+            RegularMarketPreviousClose = null,
+            RegularMarketChange = null,
+            RegularMarketChangePercent = 1.25m
+        };
+
+        Assert.Equal(1.25m, quote.ComputedChangePercent);
+    }
+
+    [Fact]
     public void YFinanceRequestIdentifiers_DoNotContainApplicationBranding()
     {
         using YahooFinanceHttpClient client = new(new YFinanceOptions());
@@ -1460,6 +1527,43 @@ public sealed class Nb040BehaviorTests
             TrailingPe: 20m,
             ForwardPe: 18m,
             Raw: JsonDocument.Parse("{}").RootElement.Clone());
+
+    private static YTickerInfo CreateYFinanceTickerInfo(string symbol)
+        => new(
+            symbol,
+            ShortName: symbol,
+            LongName: symbol,
+            DisplayName: symbol,
+            Currency: "USD",
+            Exchange: "TEST",
+            ExchangeTimezoneName: "America/New_York",
+            ExchangeTimezoneShortName: "EST",
+            QuoteType: "EQUITY",
+            MarketState: "REGULAR",
+            RegularMarketPrice: 100m,
+            RegularMarketPreviousClose: 99m,
+            RegularMarketOpen: 99m,
+            RegularMarketDayHigh: 101m,
+            RegularMarketDayLow: 98m,
+            RegularMarketChange: 1m,
+            RegularMarketChangePercent: 1m,
+            FiftyTwoWeekLow: 80m,
+            FiftyTwoWeekHigh: 120m,
+            FiftyDayAverage: 100m,
+            TwoHundredDayAverage: 95m,
+            RegularMarketVolume: 1000,
+            AverageVolume: 1000,
+            AverageVolume10Day: 1000,
+            SharesOutstanding: 1000000,
+            MarketCap: 100000000,
+            TrailingPe: 20m,
+            ForwardPe: 18m,
+            DividendYield: 0.01m,
+            Sector: "Test",
+            Industry: "Test",
+            LongBusinessSummary: "Test",
+            Website: "https://example.invalid",
+            FlatFields: new Dictionary<string, object?>());
 
     private sealed class ControlledQuoteProvider : IQuoteProvider
     {

@@ -50,7 +50,5 @@ public sealed record TickerInfo(
     IReadOnlyDictionary<string, object?> FlatFields)
 {
     public decimal? ComputedChangePercent =>
-        RegularMarketPrice.HasValue && RegularMarketPreviousClose is not null && RegularMarketPreviousClose.Value != 0m
-            ? ((RegularMarketPrice.Value - RegularMarketPreviousClose.Value) / RegularMarketPreviousClose.Value) * 100m
-            : RegularMarketChangePercent;
+        QuoteMath.ComputeChangePercent(RegularMarketPrice, RegularMarketPreviousClose, RegularMarketChange, RegularMarketChangePercent);
 }

@@ -47,7 +47,5 @@ public sealed record QuoteSnapshot(
     JsonElement Raw)
 {
     public decimal? ComputedChangePercent =>
-        RegularMarketPrice.HasValue && RegularMarketPreviousClose.HasValue && RegularMarketPreviousClose.Value != 0m
-            ? ((RegularMarketPrice.Value - RegularMarketPreviousClose.Value) / RegularMarketPreviousClose.Value) * 100m
-            : RegularMarketChangePercent;
+        QuoteMath.ComputeChangePercent(RegularMarketPrice, RegularMarketPreviousClose, RegularMarketChange, RegularMarketChangePercent);
 }
