@@ -10875,7 +10875,7 @@
       "priority": 1,
       "area": "ui-fluidity",
       "title": "Bound desktop background memory churn during installed soak",
-      "status": "open",
+      "status": "closed",
       "source": "installed-soak-20260711-035939",
       "severity": "high",
       "evidence": [
@@ -10895,6 +10895,21 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "closed_at": "2026-07-11T07:24:39.2697696-04:00",
+      "resolution": [
+        "Capped background bitmap decode width at 2560 pixels for large images while preserving native size for smaller images.",
+        "Moved metadata width probing into a guarded helper that falls back safely on corrupt or unsupported metadata.",
+        "Added installed-soak private-memory and thread-count guardrails: fail above 1024 MB private memory or 64 desktop threads.",
+        "Added focused large-background decode test proving a 3000px-wide input decodes to 2560px."
+      ],
+      "validation": [
+        "Focused tests passed: BackgroundPreparation_LoadsFrozenBitmapAndOpacityOffDispatcher, BackgroundPreparation_DownscalesLargeBackgroundDecodeWidth, InstalledSoakHarness_CapturesVisualAndResourceEvidence, DeepSeekArtifactReview_IncludesAppNativeSceneCaptureTiming.",
+        "DeepSeek pre-commit code review reported no critical, high, or medium findings after requested hardening.",
+        "Installed VM soak installed-soak-20260711-055023 completed for 5400 seconds with zero fatal crashes, errors, warnings, HTTP 429s, or strict transport failures.",
+        "Resource samples improved from prior 600-690 MB private-memory peaks to a bounded range around 288-385 MB during the 90-minute run, ending at 322.9 MB private memory with 23 desktop threads.",
+        "Trace showed BackgroundPreparationSkipped=0, BackgroundPreparationFailed=0, runtime quote sign mismatches=0, 346 RuntimeQuoteApplied events, 19 background rotations chosen, and 18 transitions complete.",
+        "SceneCaptureComplete trace lines proved seven app-native screenshots were captured throughout the run from 09:52 through 11:20 UTC, and manual screenshot inspection found no blank background, modal dialog, or obvious layout failure."
       ]
     },
     {
@@ -10903,7 +10918,7 @@
       "priority": 2,
       "area": "vm-harness",
       "title": "DeepSeek artifact review must include app-native scene capture timing evidence",
-      "status": "open",
+      "status": "closed",
       "source": "installed-soak-20260711-035939",
       "severity": "medium",
       "evidence": [
@@ -10922,6 +10937,20 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "closed_at": "2026-07-11T07:24:39.2697696-04:00",
+      "resolution": [
+        "Added authoritative SceneCaptureComplete and SceneCaptureCleanupQueued trace timing to the DeepSeek artifact-review packet.",
+        "Documented in the review packet that copied image modified timestamps may reflect artifact copy time rather than in-app capture time.",
+        "Added a focused harness test proving the artifact-review script includes the scene-capture timing section."
+      ],
+      "validation": [
+        "Focused tests passed: BackgroundPreparation_LoadsFrozenBitmapAndOpacityOffDispatcher, BackgroundPreparation_DownscalesLargeBackgroundDecodeWidth, InstalledSoakHarness_CapturesVisualAndResourceEvidence, DeepSeekArtifactReview_IncludesAppNativeSceneCaptureTiming.",
+        "DeepSeek pre-commit code review reported no critical, high, or medium findings after requested hardening.",
+        "Installed VM soak installed-soak-20260711-055023 completed for 5400 seconds with zero fatal crashes, errors, warnings, HTTP 429s, or strict transport failures.",
+        "Resource samples improved from prior 600-690 MB private-memory peaks to a bounded range around 288-385 MB during the 90-minute run, ending at 322.9 MB private memory with 23 desktop threads.",
+        "Trace showed BackgroundPreparationSkipped=0, BackgroundPreparationFailed=0, runtime quote sign mismatches=0, 346 RuntimeQuoteApplied events, 19 background rotations chosen, and 18 transitions complete.",
+        "SceneCaptureComplete trace lines proved seven app-native screenshots were captured throughout the run from 09:52 through 11:20 UTC, and manual screenshot inspection found no blank background, modal dialog, or obvious layout failure."
       ]
     }
   ],
