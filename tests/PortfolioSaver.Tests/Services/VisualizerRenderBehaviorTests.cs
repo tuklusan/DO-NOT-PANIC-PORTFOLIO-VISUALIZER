@@ -274,6 +274,85 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
+    public void ClockCityViewModel_DefaultFreezables_AreSafeForCrossThreadStartupSnapshots()
+    {
+        ClockCityViewModel city = new();
+
+        Assert.True(city.MarketStatusForeground.IsFrozen);
+        Assert.True(city.IndexChangeForeground.IsFrozen);
+        Assert.True(city.MiniGraphStroke.IsFrozen);
+        Assert.True(city.MiniGraphPoints.IsFrozen);
+        Assert.True(city.CardBackground.IsFrozen);
+        Assert.True(city.CardBorderBrush.IsFrozen);
+    }
+
+    [Fact]
+    public void WorldMarketCityState_FromViewModel_FreezesWorkerSnapshotFreezables()
+    {
+        Type stateType = typeof(VisualizerSceneControl).GetNestedType(
+            "WorldMarketCityState",
+            BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("WorldMarketCityState nested type not found.");
+        MethodInfo factory = stateType.GetMethod(
+            "FromViewModel",
+            BindingFlags.Public | BindingFlags.Static)
+            ?? throw new InvalidOperationException("WorldMarketCityState.FromViewModel not found.");
+        SolidColorBrush statusBrush = new(Colors.Goldenrod);
+        SolidColorBrush changeBrush = new(Colors.LimeGreen);
+        SolidColorBrush graphBrush = new(Colors.OrangeRed);
+        SolidColorBrush backgroundBrush = new(Color.FromArgb(0x66, 1, 2, 3));
+        SolidColorBrush borderBrush = new(Color.FromArgb(0x77, 4, 5, 6));
+        ClockCityViewModel city = new()
+        {
+            Key = "TestCity",
+            MarketStatusForeground = statusBrush,
+            IndexChangeForeground = changeBrush,
+            MiniGraphStroke = graphBrush,
+            CardBackground = backgroundBrush,
+            CardBorderBrush = borderBrush
+        };
+        Point[] points = [new(1, 2), new(3, 4)];
+
+        object state = factory.Invoke(null, [city, points])
+            ?? throw new InvalidOperationException("WorldMarketCityState.FromViewModel returned null.");
+
+        AssertFrozenBrushSnapshot(stateType, state, "MarketStatusForeground", statusBrush);
+        AssertFrozenBrushSnapshot(stateType, state, "IndexChangeForeground", changeBrush);
+        AssertFrozenBrushSnapshot(stateType, state, "MiniGraphStroke", graphBrush);
+        AssertFrozenBrushSnapshot(stateType, state, "CardBackground", backgroundBrush);
+        AssertFrozenBrushSnapshot(stateType, state, "CardBorderBrush", borderBrush);
+        IReadOnlyList<Point> snapshotPoints = Assert.IsAssignableFrom<IReadOnlyList<Point>>(
+            stateType.GetProperty("MiniGraphPoints")?.GetValue(state));
+        Assert.IsNotType<PointCollection>(snapshotPoints);
+        Assert.Equal(points.Length, snapshotPoints.Count);
+        Assert.Equal(points[0], snapshotPoints[0]);
+        Assert.Equal(points[1], snapshotPoints[1]);
+    }
+
+    [Fact]
+    public void WorldMarketCityState_FromViewModel_ReusesAlreadyFrozenBrushSnapshots()
+    {
+        Type stateType = typeof(VisualizerSceneControl).GetNestedType(
+            "WorldMarketCityState",
+            BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("WorldMarketCityState nested type not found.");
+        MethodInfo factory = stateType.GetMethod(
+            "FromViewModel",
+            BindingFlags.Public | BindingFlags.Static)
+            ?? throw new InvalidOperationException("WorldMarketCityState.FromViewModel not found.");
+        ClockCityViewModel city = new();
+
+        object state = factory.Invoke(null, [city, Array.Empty<Point>()])
+            ?? throw new InvalidOperationException("WorldMarketCityState.FromViewModel returned null.");
+
+        Assert.Same(city.MarketStatusForeground, stateType.GetProperty("MarketStatusForeground")?.GetValue(state));
+        Assert.Same(city.IndexChangeForeground, stateType.GetProperty("IndexChangeForeground")?.GetValue(state));
+        Assert.Same(city.MiniGraphStroke, stateType.GetProperty("MiniGraphStroke")?.GetValue(state));
+        Assert.Same(city.CardBackground, stateType.GetProperty("CardBackground")?.GetValue(state));
+        Assert.Same(city.CardBorderBrush, stateType.GetProperty("CardBorderBrush")?.GetValue(state));
+    }
+
+    [Fact]
     public void NetworkWaitingOverlay_DefinesOverlayTemplateAndBounceMotion()
     {
         string xaml = File.ReadAllText(Path.Combine(
@@ -3443,6 +3522,36 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
+    public void GlobalMarketsTapeControl_BindsClockCreatedOffDispatcherWithoutCrossThreadFreezableCrash()
+    {
+        FloatingClockViewModel clock = CreateClockWithExchangeCityOnBackgroundThread();
+
+        RunOnSta(() =>
+        {
+            GlobalMarketsTapeControl control = new()
+            {
+                DataContext = clock,
+                Width = 900,
+                Height = 80
+            };
+            Window? window = null;
+
+            try
+            {
+                window = HostControlForLayout(control, 900, 80);
+                control.RefreshMotionMetricsForTests();
+
+                Assert.True(control.AnimationControllerForTests.IsRunning);
+            }
+            finally
+            {
+                control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+                window?.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void GlobalMarketsTapeControl_StopsAndRestartsAcrossDataTransitions()
     {
         RunOnSta(() =>
@@ -4005,6 +4114,40 @@ public sealed class VisualizerRenderBehaviorTests
             MarketStatusText = "OPEN"
         });
         return clock;
+    }
+
+    private static FloatingClockViewModel CreateClockWithExchangeCityOnBackgroundThread()
+    {
+        FloatingClockViewModel? clock = null;
+        Exception? error = null;
+        Thread thread = new(() =>
+        {
+            try
+            {
+                clock = CreateClockWithExchangeCity();
+            }
+            catch (Exception ex)
+            {
+                error = ex;
+            }
+        });
+
+        thread.Start();
+        thread.Join();
+
+        if (error is not null)
+            ExceptionDispatchInfo.Capture(error).Throw();
+
+        return clock ?? throw new InvalidOperationException("Background clock creation did not produce a view model.");
+    }
+
+    private static void AssertFrozenBrushSnapshot(Type ownerType, object owner, string propertyName, Brush original)
+    {
+        Brush snapshot = Assert.IsAssignableFrom<Brush>(
+            ownerType.GetProperty(propertyName)?.GetValue(owner));
+        Assert.True(snapshot.IsFrozen);
+        Assert.NotSame(original, snapshot);
+        Assert.False(original.IsFrozen);
     }
 
     private static string ExtractMethodBody(string source, string methodSignature)

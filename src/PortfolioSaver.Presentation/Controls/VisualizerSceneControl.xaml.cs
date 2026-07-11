@@ -2850,21 +2850,25 @@ public partial class VisualizerSceneControl : UserControl
         IReadOnlyList<Point> MiniGraphPoints)
     {
         public static WorldMarketCityState FromViewModel(ClockCityViewModel source, IReadOnlyList<Point> miniGraphPoints)
-            => new(
-                source.Key,
-                source.TimeText,
-                source.ZoneText,
-                source.WeatherGlyph,
-                source.WeatherText,
-                source.MarketStatusText,
-                source.MarketStatusForeground,
-                source.IndexValueText,
-                source.IndexChangeText,
-                source.IndexChangeForeground,
-                source.MiniGraphStroke,
-                source.CardBackground,
-                source.CardBorderBrush,
-                miniGraphPoints);
+        {
+            ArgumentNullException.ThrowIfNull(miniGraphPoints);
+
+            return new(
+                    source.Key,
+                    source.TimeText,
+                    source.ZoneText,
+                    source.WeatherGlyph,
+                    source.WeatherText,
+                    source.MarketStatusText,
+                    FreezeForCrossThreadSnapshot(source.MarketStatusForeground),
+                    source.IndexValueText,
+                    source.IndexChangeText,
+                    FreezeForCrossThreadSnapshot(source.IndexChangeForeground),
+                    FreezeForCrossThreadSnapshot(source.MiniGraphStroke),
+                    FreezeForCrossThreadSnapshot(source.CardBackground),
+                    FreezeForCrossThreadSnapshot(source.CardBorderBrush),
+                    miniGraphPoints.ToArray());
+        }
     }
 
     private sealed record WorldMarketsInputSnapshot(
@@ -3257,6 +3261,8 @@ public partial class VisualizerSceneControl : UserControl
         return brush;
     }
 
+    // Already-frozen brushes are immutable and dispatcher-safe, so preserve
+    // identity; mutable brushes are cloned before freezing for worker snapshots.
     private static Brush FreezeForCrossThreadSnapshot(Brush brush)
     {
         ArgumentNullException.ThrowIfNull(brush);

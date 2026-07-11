@@ -19,6 +19,9 @@ namespace PortfolioSaver.Render.ViewModels;
 
 public sealed class ClockCityViewModel : BindableBase
 {
+    private static readonly PointCollection EmptyMiniGraphPoints = CreateFrozenPointCollection(Array.Empty<Point>());
+    private static readonly Brush DefaultCardBackground = CreateFrozenBrush(Color.FromArgb(0x66, 0x1D, 0x27, 0x33));
+    private static readonly Brush DefaultCardBorderBrush = CreateFrozenBrush(Color.FromArgb(0x33, 0x4D, 0x6B, 0x85));
     private string _key = string.Empty;
     private string _label = string.Empty;
     private string _primaryTimeZoneId = string.Empty;
@@ -43,9 +46,9 @@ public sealed class ClockCityViewModel : BindableBase
     private string _indexChangeText = "--";
     private Brush _indexChangeForeground = Brushes.Gainsboro;
     private Brush _miniGraphStroke = Brushes.SlateGray;
-    private PointCollection _miniGraphPoints = [];
-    private Brush _cardBackground = new SolidColorBrush(Color.FromArgb(0x66, 0x1D, 0x27, 0x33));
-    private Brush _cardBorderBrush = new SolidColorBrush(Color.FromArgb(0x33, 0x4D, 0x6B, 0x85));
+    private PointCollection _miniGraphPoints = EmptyMiniGraphPoints;
+    private Brush _cardBackground = DefaultCardBackground;
+    private Brush _cardBorderBrush = DefaultCardBorderBrush;
 
     public string Key
     {
@@ -236,5 +239,19 @@ public sealed class ClockCityViewModel : BindableBase
     {
         get => _cardBorderBrush;
         set => SetProperty(ref _cardBorderBrush, value);
+    }
+
+    private static SolidColorBrush CreateFrozenBrush(Color color)
+    {
+        SolidColorBrush brush = new(color);
+        brush.Freeze();
+        return brush;
+    }
+
+    private static PointCollection CreateFrozenPointCollection(IEnumerable<Point> points)
+    {
+        PointCollection collection = new(points);
+        collection.Freeze();
+        return collection;
     }
 }
