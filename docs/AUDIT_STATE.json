@@ -10787,6 +10787,33 @@
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ],
       "closed_at": "2026-07-11T00:34:13.5374536-04:00"
+    },
+    {
+      "id": "CR-235",
+      "tracking_number": "CR-235",
+      "priority": 1,
+      "area": "ui-fluidity",
+      "title": "Background rotation cancellation must not block the UI scheduler",
+      "status": "open",
+      "source": "installed-soak-20260711-003457",
+      "severity": "high",
+      "evidence": [
+        "Installed VM soak installed-soak-20260711-003457 completed cleanly but traced SceneSchedulerActionSlow action=background-rotation elapsed_milliseconds=1628.9.",
+        "QueueBackgroundRotationFromScheduler runs on the dispatcher and synchronously cancels the prior background rotation token before queuing the next async rotation.",
+        "A 1.6-second dispatcher action is user-visible jank and must be removed even on the 2-CPU validation VM."
+      ],
+      "notes": [
+        "Make background rotation cancellation non-blocking on the dispatcher.",
+        "Acceptance requires focused tests, DeepSeek code review, and installed VM soak evidence with no multi-second background-rotation scheduler action."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

@@ -12,6 +12,7 @@
 // patent, trademark, and governing-law provisions.
 // ============================================================================
 using System.Reflection;
+using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -463,6 +464,12 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("RunScheduledSceneAction(\"background-zoom\", StepBackgroundSlowZoom);", codeBehind, StringComparison.Ordinal);
         Assert.Contains("private void StepBackgroundSlowZoom()", codeBehind, StringComparison.Ordinal);
         Assert.Contains("\"BackgroundTimerArmed\"", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("CancelBackgroundRotationWithoutBlocking(\"scheduler-replace\")", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("CancelBackgroundRotationWithoutBlocking(\"stop-live-timers\")", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("Interlocked.Exchange(ref _backgroundRotationCancellation, null)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("_backgroundRotationInFlight = false;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"BackgroundRotationCancelQueued\"", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("cancellation.Dispose();", codeBehind, StringComparison.Ordinal);
         Assert.Contains("\"BackgroundRotationChosen\"", codeBehind, StringComparison.Ordinal);
         Assert.Contains("\"BackgroundTransitionComplete\"", codeBehind, StringComparison.Ordinal);
         Assert.Contains("\"BackgroundZoomStarted\"", codeBehind, StringComparison.Ordinal);
@@ -518,6 +525,65 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.DoesNotContain("AnimateBackgroundTranslation(incoming", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("fileBitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("outgoing.Source = null;", codeBehind, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BackgroundRotationCancellation_DoesNotBlockDispatcherAndClearsInFlightFlag()
+    {
+        RunOnSta(() =>
+        {
+            VisualizerSceneControl control = new();
+            FieldInfo cancellationField = typeof(VisualizerSceneControl).GetField(
+                "_backgroundRotationCancellation",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_backgroundRotationCancellation field not found.");
+            FieldInfo inFlightField = typeof(VisualizerSceneControl).GetField(
+                "_backgroundRotationInFlight",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_backgroundRotationInFlight field not found.");
+            MethodInfo cancelMethod = typeof(VisualizerSceneControl).GetMethod(
+                "CancelBackgroundRotationWithoutBlocking",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("CancelBackgroundRotationWithoutBlocking method not found.");
+
+            using CancellationTokenSource cancellation = new();
+            using ManualResetEventSlim cancellationStarted = new(false);
+            using ManualResetEventSlim cancellationFinished = new(false);
+            using ManualResetEventSlim releaseCancellation = new(false);
+            using CancellationTokenRegistration registration = cancellation.Token.Register(() =>
+            {
+                try
+                {
+                    cancellationStarted.Set();
+                    releaseCancellation.Wait(TimeSpan.FromSeconds(2));
+                }
+                finally
+                {
+                    cancellationFinished.Set();
+                }
+            });
+
+            cancellationField.SetValue(control, cancellation);
+            inFlightField.SetValue(control, true);
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            cancelMethod.Invoke(control, ["unit-test"]);
+            stopwatch.Stop();
+
+            try
+            {
+                Assert.True(stopwatch.Elapsed < TimeSpan.FromMilliseconds(200), $"Cancellation helper blocked for {stopwatch.Elapsed.TotalMilliseconds:0.0} ms.");
+                Assert.Null(cancellationField.GetValue(control));
+                Assert.False((bool)(inFlightField.GetValue(control) ?? true));
+                Assert.True(cancellationStarted.Wait(TimeSpan.FromSeconds(1)));
+                Assert.True(cancellation.IsCancellationRequested);
+            }
+            finally
+            {
+                releaseCancellation.Set();
+                Assert.True(cancellationFinished.Wait(TimeSpan.FromSeconds(1)));
+            }
+        });
     }
 
     [Fact]

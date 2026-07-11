@@ -1004,7 +1004,7 @@ public partial class VisualizerSceneControl : UserControl
         // Background image loading is async and guarded separately so the scheduler tick never blocks on file IO or decoding.
         int rotationGeneration = ++_backgroundRotationGeneration;
         CancellationTokenSource cancellation = new();
-        _backgroundRotationCancellation?.Cancel();
+        CancelBackgroundRotationWithoutBlocking("scheduler-replace");
         _backgroundRotationCancellation = cancellation;
         _backgroundRotationInFlight = true;
         _ = RotateBackgroundFromSchedulerCoreAsync(rotationGeneration, cancellation);
@@ -1577,9 +1577,7 @@ public partial class VisualizerSceneControl : UserControl
         _nextWorldDataTickUtc = DateTimeOffset.MaxValue;
         _nextDemoFlashTickUtc = DateTimeOffset.MaxValue;
         _backgroundRotationGeneration++;
-        _backgroundRotationCancellation?.Cancel();
-        _backgroundRotationCancellation = null;
-        _backgroundRotationInFlight = false;
+        CancelBackgroundRotationWithoutBlocking("stop-live-timers");
         _backgroundTransitionCompletionDueUtc = null;
         _backgroundTransitionCompletionBitmap = null;
         _backgroundTransitionCompletionPath = null;
@@ -3849,6 +3847,44 @@ public partial class VisualizerSceneControl : UserControl
                 "BackgroundRecoveryReloadCancelFailed",
                 new KeyValuePair<string, object?>("error", ex.Message));
         }
+    }
+
+    private void CancelBackgroundRotationWithoutBlocking(string reason)
+    {
+        CancellationTokenSource? cancellation = Interlocked.Exchange(ref _backgroundRotationCancellation, null);
+        if (cancellation is null)
+            return;
+
+        _backgroundRotationInFlight = false;
+        TraceSceneState(
+            "BackgroundRotationCancelQueued",
+            new KeyValuePair<string, object?>("reason", reason));
+        // The rotation core owns disposal in its finally block; this helper only
+        // moves potentially slow cancellation callbacks off the dispatcher.
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                cancellation.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    _ = Dispatcher.InvokeAsync(() => TraceSceneState(
+                        "BackgroundRotationCancelFailed",
+                        new KeyValuePair<string, object?>("reason", reason),
+                        new KeyValuePair<string, object?>("error", ex.Message)));
+                }
+                catch (Exception traceEx)
+                {
+                    Debug.WriteLine($"Background rotation cancellation trace failed ({reason}): {traceEx.Message}");
+                }
+            }
+        });
     }
 
     private void FinalizeBackgroundTransition(Image activeImage, Image standbyImage, ImageSource source)
