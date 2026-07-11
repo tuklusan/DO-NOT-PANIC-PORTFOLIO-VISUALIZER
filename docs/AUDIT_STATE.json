@@ -11052,26 +11052,38 @@
       "priority": 1,
       "area": "Startup / WPF threading / global markets ribbon",
       "title": "Installed startup must not crash when AI access check fails and global markets ribbon initializes",
-      "status": "open",
+      "status": "closed",
       "severity": "Critical",
       "evidence": [
         "Manual VM install and launch with an installer-provided OpenRouter API key crashed on startup.",
         "build/validation/artifacts/manual-crash-20260711-135326/manual-crash-pull/Trace/trace.circular.log",
         "build/validation/artifacts/manual-crash-20260711-135326/manual-crash-pull/windows-application-events.json",
         "Windows .NET Runtime Event 1026: PortfolioSaver.Desktop.exe terminated due to System.ArgumentException in GlobalMarketsTapeControl.RefreshMotionMetrics.",
-        "Trace sequence: OpenRouterAutoModelSelected, NewsSummaryAccessCheckFailed reason=http-429, ApplySceneState, WorldMarketsRefreshQueued, DispatcherUnhandledException."
+        "Trace sequence: OpenRouterAutoModelSelected, NewsSummaryAccessCheckFailed reason=http-429, ApplySceneState, WorldMarketsRefreshQueued, DispatcherUnhandledException.",
+        "Commit be8d192 fixed clock-city/global-market WPF Freezable thread-safety and added regression coverage.",
+        "DeepSeek code review build/deepseek-review/deepseek-review-20260711-142628.md: no critical/high/medium findings; changes safe to commit.",
+        "Focused local tests passed: VisualizerRenderBehaviorTests 114/114.",
+        "Full local suite passed: 720/720.",
+        "Installer rebuilt successfully: build/artifacts/inno/output/DoNotPanicPortfolioVisualizerSetup-1.0.exe.",
+        "Installed VM run build/validation/artifacts/installed-soak-20260711-143228: DesktopProcessDiedEarly=false, analyzer fatalCrashException=0, error=0, warn=0.",
+        "AI-configured VM startup probe build/validation/artifacts/ai-startup-probe-20260711-143916: DesktopProcessDiedEarly=false, DesktopProcessAliveAtEndBeforeStop=true, Windows Application crash events=[].",
+        "AI probe trace shows NewsSummaryAccessCheckFailed reason=http-401, non-fatal startup warning, RSS fallback, MotionRenderingStarted, SceneSchedulerStarted, WorldMarketsUiPatchComplete.",
+        "Broad trace scan found no DispatcherUnhandledException, UnhandledException, ERROR, FATAL, CRITICAL, common .NET exception names, or Must create DependencySource signature.",
+        "DeepSeek artifact advisory build/validation/artifacts/deepseek-artifact-review-20260711-144236.md agreed deterministic pass/fail criteria are clean for CR-242."
       ],
       "notes": [
         "The OpenRouter 429 was non-fatal; the fatal issue was WPF Freezables crossing worker/UI boundaries during global markets ribbon startup layout.",
         "AI access-check failures, including OpenRouter 429, must remain non-modal and non-fatal at startup.",
         "Global/world markets view models and snapshots must not carry unfrozen WPF Freezables across worker/UI threads.",
-        "GlobalMarketsTapeControl must initialize and refresh layout without WPF cross-thread DependencySource exceptions."
+        "GlobalMarketsTapeControl must initialize and refresh layout without WPF cross-thread DependencySource exceptions.",
+        "Closed on 2026-07-11 after installed and AI-configured VM startup validation proved the original WPF cross-thread DependencySource crash signature absent."
       ],
       "acceptance": [
         "Focused tests prove ClockCityViewModel and world-market snapshot freezables are dispatcher-safe.",
         "GlobalMarketsTapeControl binding/layout test covers a clock view model created off-dispatcher.",
         "Full test suite passes locally.",
-        "Fresh installer is built, installed on the VM, launched with AI settings present, and shows no startup crash in Windows Application events or circular traces."
+        "Fresh installer is built, installed on the VM, launched with AI settings present, and shows no startup crash in Windows Application events or circular traces.",
+        "CR-242 closed with VM trace/event/screenshot evidence and advisory artifact review."
       ]
     }
   ],
