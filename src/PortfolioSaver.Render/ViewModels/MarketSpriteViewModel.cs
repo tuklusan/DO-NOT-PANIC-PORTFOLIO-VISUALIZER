@@ -40,7 +40,7 @@ public sealed class MarketSpriteViewModel : FloatingSpriteViewModel
     public Brush Foreground
     {
         get => _foreground;
-        set => SetProperty(ref _foreground, value);
+        set => SetProperty(ref _foreground, RenderThreadSafety.FreezeBrush(value, Brushes.White));
     }
 
     public double ScaleX

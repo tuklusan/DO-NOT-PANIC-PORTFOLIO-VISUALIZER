@@ -48,7 +48,7 @@ public sealed class MacroMeterViewModel : BindableBase
     public Brush AccentBrush
     {
         get => _accentBrush;
-        set => SetProperty(ref _accentBrush, value);
+        set => SetProperty(ref _accentBrush, RenderThreadSafety.FreezeBrush(value, Brushes.SlateGray));
     }
 
     public string ArcPath

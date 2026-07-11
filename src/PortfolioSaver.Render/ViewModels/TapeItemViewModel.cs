@@ -53,25 +53,25 @@ public sealed class TapeItemViewModel : BindableBase
     public Brush SymbolForeground
     {
         get => _symbolForeground;
-        set => SetProperty(ref _symbolForeground, value);
+        set => SetProperty(ref _symbolForeground, RenderThreadSafety.FreezeBrush(value, Brushes.DarkOrange));
     }
 
     public Brush LastForeground
     {
         get => _lastForeground;
-        set => SetProperty(ref _lastForeground, value);
+        set => SetProperty(ref _lastForeground, RenderThreadSafety.FreezeBrush(value, Brushes.White));
     }
 
     public Brush ChangeForeground
     {
         get => _changeForeground;
-        set => SetProperty(ref _changeForeground, value);
+        set => SetProperty(ref _changeForeground, RenderThreadSafety.FreezeBrush(value, Brushes.White));
     }
 
     public Brush ValueFlashBrush
     {
         get => _valueFlashBrush;
-        set => SetProperty(ref _valueFlashBrush, value);
+        set => SetProperty(ref _valueFlashBrush, RenderThreadSafety.FreezeBrush(value, Brushes.Transparent));
     }
 
     public bool IsWaitingOnData
@@ -95,7 +95,7 @@ public sealed class TapeItemViewModel : BindableBase
     public Brush WaitingGlyphForeground
     {
         get => _waitingGlyphForeground;
-        set => SetProperty(ref _waitingGlyphForeground, value);
+        set => SetProperty(ref _waitingGlyphForeground, RenderThreadSafety.FreezeBrush(value, Brushes.Goldenrod));
     }
 
     public int UpdateSequence

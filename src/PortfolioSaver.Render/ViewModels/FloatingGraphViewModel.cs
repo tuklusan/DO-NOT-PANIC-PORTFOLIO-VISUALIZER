@@ -18,6 +18,9 @@ namespace PortfolioSaver.Render.ViewModels;
 
 public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
 {
+    private static readonly PointCollection EmptyPoints = RenderThreadSafety.FreezePoints(Array.Empty<Point>());
+    private static readonly Brush DefaultCardBackground = CreateFrozenBrush(Color.FromArgb(0x7A, 0x0D, 0x13, 0x1B));
+    private static readonly Brush DefaultCardBorderBrush = CreateFrozenBrush(Color.FromArgb(0x55, 0x8A, 0xA2, 0xB8));
     private string _symbol = string.Empty;
     private string _tapeName = string.Empty;
     private string? _overlayText;
@@ -32,8 +35,8 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
     private string _rightTimeScaleText = string.Empty;
     private double _plotWidth;
     private double _plotHeight;
-    private Brush _cardBackground = new SolidColorBrush(Color.FromArgb(0x7A, 0x0D, 0x13, 0x1B));
-    private Brush _cardBorderBrush = new SolidColorBrush(Color.FromArgb(0x55, 0x8A, 0xA2, 0xB8));
+    private Brush _cardBackground = DefaultCardBackground;
+    private Brush _cardBorderBrush = DefaultCardBorderBrush;
     private Brush _flashBrush = Brushes.Transparent;
     private bool _isVisible = true;
     private int _flashSequence;
@@ -44,18 +47,13 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
     private double? _refreshTravelTargetY;
     private bool _isRefreshTravelFlashActive;
     private DateTimeOffset _refreshTravelFlashStartedUtc = DateTimeOffset.MinValue;
-    private PointCollection _greenPoints = [];
-    private PointCollection _redPoints = [];
-    private PointCollection _latestSegmentPoints = [];
+    private PointCollection _greenPoints = EmptyPoints;
+    private PointCollection _redPoints = EmptyPoints;
+    private PointCollection _latestSegmentPoints = EmptyPoints;
     private Brush _latestSegmentBrush = Brushes.Gainsboro;
 
     public FloatingGraphViewModel()
     {
-        _cardBackground.Freeze();
-        _cardBorderBrush.Freeze();
-        _greenPoints.Freeze();
-        _redPoints.Freeze();
-        _latestSegmentPoints.Freeze();
     }
 
     public string Symbol
@@ -91,7 +89,7 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
     public Brush ChangeForeground
     {
         get => _changeForeground;
-        set => SetProperty(ref _changeForeground, value);
+        set => SetProperty(ref _changeForeground, RenderThreadSafety.FreezeBrush(value, Brushes.Gainsboro));
     }
 
     public string MaxScaleText
@@ -145,19 +143,19 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
     public Brush CardBackground
     {
         get => _cardBackground;
-        set => SetProperty(ref _cardBackground, value);
+        set => SetProperty(ref _cardBackground, RenderThreadSafety.FreezeBrush(value, DefaultCardBackground));
     }
 
     public Brush CardBorderBrush
     {
         get => _cardBorderBrush;
-        set => SetProperty(ref _cardBorderBrush, value);
+        set => SetProperty(ref _cardBorderBrush, RenderThreadSafety.FreezeBrush(value, DefaultCardBorderBrush));
     }
 
     public Brush FlashBrush
     {
         get => _flashBrush;
-        set => SetProperty(ref _flashBrush, value);
+        set => SetProperty(ref _flashBrush, RenderThreadSafety.FreezeBrush(value, Brushes.Transparent));
     }
 
     public bool IsVisible
@@ -219,33 +217,55 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
     public PointCollection GreenPoints
     {
         get => _greenPoints;
-        set => SetProperty(ref _greenPoints, value);
+        set => SetProperty(ref _greenPoints, RenderThreadSafety.FreezePoints(value));
     }
 
     public PointCollection RedPoints
     {
         get => _redPoints;
-        set => SetProperty(ref _redPoints, value);
+        set => SetProperty(ref _redPoints, RenderThreadSafety.FreezePoints(value));
     }
 
-    public List<PointCollection> GreenSegments { get; set; } = [];
-    public List<PointCollection> RedSegments { get; set; } = [];
+    private IReadOnlyList<PointCollection> _greenSegments = [];
+    private IReadOnlyList<PointCollection> _redSegments = [];
+
+    // Replace the full segment collection through these setters. Direct
+    // mutation would bypass the freeze boundary that keeps WPF bindings
+    // dispatcher-safe after worker-thread graph construction.
+    public IReadOnlyList<PointCollection> GreenSegments
+    {
+        get => _greenSegments;
+        set => SetProperty(ref _greenSegments, RenderThreadSafety.FreezePointSegments(value));
+    }
+
+    public IReadOnlyList<PointCollection> RedSegments
+    {
+        get => _redSegments;
+        set => SetProperty(ref _redSegments, RenderThreadSafety.FreezePointSegments(value));
+    }
 
     public PointCollection LatestSegmentPoints
     {
         get => _latestSegmentPoints;
-        set => SetProperty(ref _latestSegmentPoints, value);
+        set => SetProperty(ref _latestSegmentPoints, RenderThreadSafety.FreezePoints(value));
     }
 
     public Brush LatestSegmentBrush
     {
         get => _latestSegmentBrush;
-        set => SetProperty(ref _latestSegmentBrush, value);
+        set => SetProperty(ref _latestSegmentBrush, RenderThreadSafety.FreezeBrush(value, Brushes.Gainsboro));
     }
 
     public void TriggerCardFlash(Brush? brush)
     {
         FlashBrush = brush ?? Brushes.Goldenrod;
         FlashSequence++;
+    }
+
+    private static SolidColorBrush CreateFrozenBrush(Color color)
+    {
+        SolidColorBrush brush = new(color);
+        brush.Freeze();
+        return brush;
     }
 }

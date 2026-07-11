@@ -353,6 +353,191 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
+    public void RenderViewModels_FreezeMutableBrushesAssignedFromWorkerThread()
+    {
+        (ClockCityViewModel city, FloatingGraphViewModel graph, TapeItemViewModel tapeItem, MacroMeterViewModel meter, NewsHeadlineViewModel headline, StatusBarViewModel status, MarketSpriteViewModel sprite) =
+            RunOnBackgroundThread(() =>
+            {
+                ClockCityViewModel city = new()
+                {
+                    MarketStatusForeground = new SolidColorBrush(Colors.Goldenrod),
+                    IndexChangeForeground = new SolidColorBrush(Colors.LimeGreen),
+                    MiniGraphStroke = new SolidColorBrush(Colors.DeepSkyBlue),
+                    MiniGraphPoints = [new Point(0, 3), new Point(4, 1)],
+                    CardBackground = new SolidColorBrush(Color.FromArgb(0x77, 1, 2, 3)),
+                    CardBorderBrush = new SolidColorBrush(Color.FromArgb(0x88, 4, 5, 6))
+                };
+
+                FloatingGraphViewModel graph = new()
+                {
+                    ChangeForeground = new SolidColorBrush(Colors.LimeGreen),
+                    LatestSegmentBrush = new SolidColorBrush(Colors.OrangeRed),
+                    LatestSegmentPoints = [new Point(0, 10), new Point(10, 1)],
+                    GreenSegments = [new PointCollection([new Point(0, 8), new Point(8, 2)])],
+                    RedSegments = [new PointCollection([new Point(0, 2), new Point(8, 8)])],
+                    FlashBrush = new SolidColorBrush(Colors.DeepSkyBlue)
+                };
+
+                TapeItemViewModel tapeItem = new()
+                {
+                    SymbolForeground = new SolidColorBrush(Colors.DarkOrange),
+                    LastForeground = new SolidColorBrush(Colors.WhiteSmoke),
+                    ChangeForeground = new SolidColorBrush(Colors.LimeGreen),
+                    WaitingGlyphForeground = new SolidColorBrush(Colors.Goldenrod),
+                    ValueFlashBrush = new SolidColorBrush(Colors.LimeGreen)
+                };
+
+                MacroMeterViewModel meter = new()
+                {
+                    AccentBrush = new SolidColorBrush(Colors.OrangeRed)
+                };
+
+                NewsHeadlineViewModel headline = new()
+                {
+                    Foreground = new SolidColorBrush(Colors.LightSteelBlue)
+                };
+
+                StatusBarViewModel status = new()
+                {
+                    UpdatedTickerFieldForeground = new SolidColorBrush(Colors.LimeGreen),
+                    DataFreshnessForeground = new SolidColorBrush(Colors.Goldenrod)
+                };
+
+                MarketSpriteViewModel sprite = new()
+                {
+                    Foreground = new SolidColorBrush(Colors.WhiteSmoke)
+                };
+
+                return (city, graph, tapeItem, meter, headline, status, sprite);
+            });
+
+        Assert.True(city.MarketStatusForeground.IsFrozen);
+        Assert.True(city.IndexChangeForeground.IsFrozen);
+        Assert.True(city.MiniGraphStroke.IsFrozen);
+        Assert.True(city.MiniGraphPoints.IsFrozen);
+        Assert.True(city.CardBackground.IsFrozen);
+        Assert.True(city.CardBorderBrush.IsFrozen);
+        Assert.True(graph.ChangeForeground.IsFrozen);
+        Assert.True(graph.LatestSegmentBrush.IsFrozen);
+        Assert.True(graph.LatestSegmentPoints.IsFrozen);
+        Assert.All(graph.GreenSegments, segment => Assert.True(segment.IsFrozen));
+        Assert.All(graph.RedSegments, segment => Assert.True(segment.IsFrozen));
+        Assert.True(Assert.IsAssignableFrom<ICollection<PointCollection>>(graph.GreenSegments).IsReadOnly);
+        Assert.True(Assert.IsAssignableFrom<ICollection<PointCollection>>(graph.RedSegments).IsReadOnly);
+        Assert.True(graph.FlashBrush.IsFrozen);
+        Assert.True(tapeItem.SymbolForeground.IsFrozen);
+        Assert.True(tapeItem.LastForeground.IsFrozen);
+        Assert.True(tapeItem.ChangeForeground.IsFrozen);
+        Assert.True(tapeItem.WaitingGlyphForeground.IsFrozen);
+        Assert.True(tapeItem.ValueFlashBrush.IsFrozen);
+        Assert.True(meter.AccentBrush.IsFrozen);
+        Assert.True(headline.Foreground.IsFrozen);
+        Assert.True(status.UpdatedTickerFieldForeground.IsFrozen);
+        Assert.True(status.DataFreshnessForeground.IsFrozen);
+        Assert.True(sprite.Foreground.IsFrozen);
+    }
+
+    [Fact]
+    public void FloatingGraphViewModel_DefaultAndNullStyleFallbacksPreserveFrozenCardChrome()
+    {
+        FloatingGraphViewModel graph = new();
+        Brush defaultBackground = graph.CardBackground;
+        Brush defaultBorder = graph.CardBorderBrush;
+
+        Assert.True(graph.GreenPoints.IsFrozen);
+        Assert.True(graph.RedPoints.IsFrozen);
+        Assert.True(graph.LatestSegmentPoints.IsFrozen);
+
+        graph.CardBackground = null!;
+        graph.CardBorderBrush = null!;
+
+        Assert.Same(defaultBackground, graph.CardBackground);
+        Assert.Same(defaultBorder, graph.CardBorderBrush);
+        Assert.True(graph.CardBackground.IsFrozen);
+        Assert.True(graph.CardBorderBrush.IsFrozen);
+    }
+
+    [Fact]
+    public void RenderControls_BindWorkerCreatedViewModelsWithoutCrossThreadFreezableCrash()
+    {
+        (FloatingGraphViewModel graph, TapeViewModel tape, StatusBarViewModel status, NewsFlasherViewModel news) =
+            RunOnBackgroundThread(() =>
+            {
+                FloatingGraphViewModel graph = new()
+                {
+                    Symbol = "VOO",
+                    TapeName = "TEST",
+                    Width = 142,
+                    Height = 88,
+                    PlotWidth = 76,
+                    PlotHeight = 28,
+                    LastText = "512.34",
+                    ChangeText = "+0.45%",
+                    ChangeForeground = new SolidColorBrush(Colors.LimeGreen),
+                    LatestSegmentBrush = new SolidColorBrush(Colors.LimeGreen),
+                    LatestSegmentPoints = [new Point(0, 18), new Point(36, 10), new Point(72, 2)],
+                    GreenSegments = [new PointCollection([new Point(0, 18), new Point(36, 10), new Point(72, 2)])]
+                };
+
+                TapeViewModel tape = new()
+                {
+                    Title = "TEST"
+                };
+                tape.Items.Add(new TapeItemViewModel
+                {
+                    SymbolText = "VOO",
+                    LastText = "512.34",
+                    ChangeText = "+0.45%",
+                    ChangeForeground = new SolidColorBrush(Colors.LimeGreen),
+                    ValueFlashBrush = new SolidColorBrush(Colors.LimeGreen)
+                });
+
+                StatusBarViewModel status = new();
+                status.MacroMeters.Add(new MacroMeterViewModel
+                {
+                    Label = "VIX",
+                    ValueText = "16.20",
+                    ChangeText = "-0.4%",
+                    AccentBrush = new SolidColorBrush(Colors.LimeGreen)
+                });
+
+                NewsFlasherViewModel news = new();
+                news.Headlines.Add(new NewsHeadlineViewModel
+                {
+                    Text = "Markets remain mostly harmless.",
+                    Foreground = new SolidColorBrush(Colors.WhiteSmoke)
+                });
+
+                return (graph, tape, status, news);
+            });
+
+        RunOnSta(() =>
+        {
+            FloatingGraphControl graphControl = new() { DataContext = graph };
+            graphControl.Measure(new Size(220, 140));
+            graphControl.Arrange(new Rect(0, 0, 220, 140));
+            graphControl.UpdateLayout();
+
+            TickerTapeControl tapeControl = new() { DataContext = tape, Width = 600, Height = 44 };
+            tapeControl.Measure(new Size(600, 44));
+            tapeControl.Arrange(new Rect(0, 0, 600, 44));
+            tapeControl.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            tapeControl.UpdateLayout();
+            tapeControl.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+
+            StatusBarControl statusControl = new() { DataContext = status };
+            statusControl.Measure(new Size(1200, 100));
+            statusControl.Arrange(new Rect(0, 0, 1200, 100));
+            statusControl.UpdateLayout();
+
+            NewsFlasherControl newsControl = new() { DataContext = news };
+            newsControl.Measure(new Size(1200, 54));
+            newsControl.Arrange(new Rect(0, 0, 1200, 54));
+            newsControl.UpdateLayout();
+        });
+    }
+
+    [Fact]
     public void NetworkWaitingOverlay_DefinesOverlayTemplateAndBounceMotion()
     {
         string xaml = File.ReadAllText(Path.Combine(
@@ -3001,7 +3186,7 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
-    public void ClockCityViewModel_SetMiniGraphPointsIfChanged_CopiesFrozenSnapshotIntoMutableUiCollection()
+    public void ClockCityViewModel_SetMiniGraphPointsIfChanged_CopiesFrozenSnapshotIntoFrozenUiCollection()
     {
         ClockCityViewModel city = new();
         PointCollection frozenSnapshot = new([new Point(7, 8), new Point(9, 10)]);
@@ -3011,7 +3196,7 @@ public sealed class VisualizerRenderBehaviorTests
 
         Assert.True(changed);
         Assert.NotSame(frozenSnapshot, city.MiniGraphPoints);
-        Assert.False(city.MiniGraphPoints.IsFrozen);
+        Assert.True(city.MiniGraphPoints.IsFrozen);
         Assert.Equal(frozenSnapshot.Count, city.MiniGraphPoints.Count);
         Assert.Equal(frozenSnapshot[0], city.MiniGraphPoints[0]);
         Assert.Equal(frozenSnapshot[1], city.MiniGraphPoints[1]);
@@ -4002,6 +4187,32 @@ public sealed class VisualizerRenderBehaviorTests
 
         if (error is not null)
             ExceptionDispatchInfo.Capture(error).Throw();
+    }
+
+    private static T RunOnBackgroundThread<T>(Func<T> action)
+    {
+        Exception? error = null;
+        T? result = default;
+        Thread thread = new(() =>
+        {
+            try
+            {
+                result = action();
+            }
+            catch (Exception ex)
+            {
+                error = ex;
+            }
+        });
+
+        thread.SetApartmentState(ApartmentState.MTA);
+        thread.Start();
+        thread.Join();
+
+        if (error is not null)
+            ExceptionDispatchInfo.Capture(error).Throw();
+
+        return result!;
     }
 
     private static void PumpDispatcherUntil(Func<bool> condition)

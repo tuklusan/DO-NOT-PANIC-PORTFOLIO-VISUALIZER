@@ -19,7 +19,7 @@ namespace PortfolioSaver.Render.ViewModels;
 
 public sealed class ClockCityViewModel : BindableBase
 {
-    private static readonly PointCollection EmptyMiniGraphPoints = CreateFrozenPointCollection(Array.Empty<Point>());
+    private static readonly PointCollection EmptyMiniGraphPoints = RenderThreadSafety.FreezePoints(Array.Empty<Point>());
     private static readonly Brush DefaultCardBackground = CreateFrozenBrush(Color.FromArgb(0x66, 0x1D, 0x27, 0x33));
     private static readonly Brush DefaultCardBorderBrush = CreateFrozenBrush(Color.FromArgb(0x33, 0x4D, 0x6B, 0x85));
     private string _key = string.Empty;
@@ -167,7 +167,7 @@ public sealed class ClockCityViewModel : BindableBase
     public Brush MarketStatusForeground
     {
         get => _marketStatusForeground;
-        set => SetProperty(ref _marketStatusForeground, value);
+        set => SetProperty(ref _marketStatusForeground, RenderThreadSafety.FreezeBrush(value, Brushes.Gainsboro));
     }
 
     public string IndexValueText
@@ -185,19 +185,19 @@ public sealed class ClockCityViewModel : BindableBase
     public Brush IndexChangeForeground
     {
         get => _indexChangeForeground;
-        set => SetProperty(ref _indexChangeForeground, value);
+        set => SetProperty(ref _indexChangeForeground, RenderThreadSafety.FreezeBrush(value, Brushes.Gainsboro));
     }
 
     public Brush MiniGraphStroke
     {
         get => _miniGraphStroke;
-        set => SetProperty(ref _miniGraphStroke, value);
+        set => SetProperty(ref _miniGraphStroke, RenderThreadSafety.FreezeBrush(value, Brushes.SlateGray));
     }
 
     public PointCollection MiniGraphPoints
     {
         get => _miniGraphPoints;
-        set => SetProperty(ref _miniGraphPoints, value);
+        set => SetProperty(ref _miniGraphPoints, RenderThreadSafety.FreezePoints(value));
     }
 
     /// <summary>
@@ -232,13 +232,13 @@ public sealed class ClockCityViewModel : BindableBase
     public Brush CardBackground
     {
         get => _cardBackground;
-        set => SetProperty(ref _cardBackground, value);
+        set => SetProperty(ref _cardBackground, RenderThreadSafety.FreezeBrush(value, DefaultCardBackground));
     }
 
     public Brush CardBorderBrush
     {
         get => _cardBorderBrush;
-        set => SetProperty(ref _cardBorderBrush, value);
+        set => SetProperty(ref _cardBorderBrush, RenderThreadSafety.FreezeBrush(value, DefaultCardBorderBrush));
     }
 
     private static SolidColorBrush CreateFrozenBrush(Color color)
@@ -248,10 +248,4 @@ public sealed class ClockCityViewModel : BindableBase
         return brush;
     }
 
-    private static PointCollection CreateFrozenPointCollection(IEnumerable<Point> points)
-    {
-        PointCollection collection = new(points);
-        collection.Freeze();
-        return collection;
-    }
 }

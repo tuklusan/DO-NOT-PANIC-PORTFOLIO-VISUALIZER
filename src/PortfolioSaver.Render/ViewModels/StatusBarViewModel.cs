@@ -50,7 +50,7 @@ public sealed class StatusBarViewModel : BindableBase
     public Brush UpdatedTickerFieldForeground
     {
         get => _updatedTickerFieldForeground;
-        set => SetProperty(ref _updatedTickerFieldForeground, value);
+        set => SetProperty(ref _updatedTickerFieldForeground, RenderThreadSafety.FreezeBrush(value, Brushes.Gainsboro));
     }
 
     public string DataFreshnessText
@@ -62,7 +62,7 @@ public sealed class StatusBarViewModel : BindableBase
     public Brush DataFreshnessForeground
     {
         get => _dataFreshnessForeground;
-        set => SetProperty(ref _dataFreshnessForeground, value);
+        set => SetProperty(ref _dataFreshnessForeground, RenderThreadSafety.FreezeBrush(value, Brushes.Gainsboro));
     }
 
     public string ClockText

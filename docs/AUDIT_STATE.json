@@ -11085,6 +11085,228 @@
         "Fresh installer is built, installed on the VM, launched with AI settings present, and shows no startup crash in Windows Application events or circular traces.",
         "CR-242 closed with VM trace/event/screenshot evidence and advisory artifact review."
       ]
+    },
+    {
+      "id": "CR-243",
+      "tracking_number": "CR-243",
+      "priority": 1,
+      "area": "render-threading",
+      "title": "Harden render view models against cross-thread WPF Freezable leakage",
+      "status": "closed",
+      "source": "cr242_followup_threading_hardening",
+      "severity": "high",
+      "evidence": [
+        "CR-242 showed a WPF DependencyObject/Freezable thread-affinity crash during first-launch startup layout.",
+        "Developer risk review identified equivalent exposure areas: macro cards, graph cards, ticker tapes, news scroller collections, background images, config apply, fullscreen layout, shutdown callbacks."
+      ],
+      "notes": [
+        "Audit Brush, ImageSource, Geometry, PointCollection and related WPF objects in render view models and ensure defaults are frozen/system-owned or created only on dispatcher."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Added RenderThreadSafety helper to freeze WPF Freezable values at render view-model assignment boundaries and reject non-freezable brush inputs instead of silently changing visuals.",
+        "Hardened render view model brush/point setters and graph segment snapshots.",
+        "Added cross-thread render binding regression coverage for graph, ticker, status, and news controls.",
+        "Validated with focused render tests, full local suite, segment mutation audit, and DeepSeek review."
+      ],
+      "validation": [
+        "Focused render validation passed: 117/117.",
+        "Full local validation passed: 723/723.",
+        "Segment mutation audit returned NO_DIRECT_SEGMENT_MUTATION_FOUND.",
+        "DeepSeek review gate artifacts: deepseek-review-20260711-150713.md, deepseek-review-20260711-151214.md, deepseek-review-20260711-151616.md."
+      ]
+    },
+    {
+      "id": "CR-244",
+      "tracking_number": "CR-244",
+      "priority": 1,
+      "area": "test-coverage",
+      "title": "Add cross-thread binding regression tests for macro, graph, tape, and news render models",
+      "status": "closed",
+      "source": "cr242_followup_threading_hardening",
+      "severity": "high",
+      "evidence": [
+        "CR-242 showed a WPF DependencyObject/Freezable thread-affinity crash during first-launch startup layout.",
+        "Developer risk review identified equivalent exposure areas: macro cards, graph cards, ticker tapes, news scroller collections, background images, config apply, fullscreen layout, shutdown callbacks."
+      ],
+      "notes": [
+        "Every UI control/model family that can bind WPF state should have an off-thread construction plus STA layout/binding regression test where feasible."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Added RenderThreadSafety helper to freeze WPF Freezable values at render view-model assignment boundaries and reject non-freezable brush inputs instead of silently changing visuals.",
+        "Hardened render view model brush/point setters and graph segment snapshots.",
+        "Added cross-thread render binding regression coverage for graph, ticker, status, and news controls.",
+        "Validated with focused render tests, full local suite, segment mutation audit, and DeepSeek review."
+      ],
+      "validation": [
+        "Focused render validation passed: 117/117.",
+        "Full local validation passed: 723/723.",
+        "Segment mutation audit returned NO_DIRECT_SEGMENT_MUTATION_FOUND.",
+        "DeepSeek review gate artifacts: deepseek-review-20260711-150713.md, deepseek-review-20260711-151214.md, deepseek-review-20260711-151616.md."
+      ]
+    },
+    {
+      "id": "CR-245",
+      "tracking_number": "CR-245",
+      "priority": 2,
+      "area": "runtime-lifecycle",
+      "title": "Guard scene apply and config-apply callbacks against stale dispatcher updates",
+      "status": "closed",
+      "source": "cr242_followup_threading_hardening",
+      "severity": "medium",
+      "evidence": [
+        "CR-242 showed a WPF DependencyObject/Freezable thread-affinity crash during first-launch startup layout.",
+        "Developer risk review identified equivalent exposure areas: macro cards, graph cards, ticker tapes, news scroller collections, background images, config apply, fullscreen layout, shutdown callbacks."
+      ],
+      "notes": [
+        "Async worker callbacks must not apply stale scene snapshots after config close, scene rebuild, unload, or shutdown."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Added RenderThreadSafety helper to freeze WPF Freezable values at render view-model assignment boundaries and reject non-freezable brush inputs instead of silently changing visuals.",
+        "Hardened render view model brush/point setters and graph segment snapshots.",
+        "Added cross-thread render binding regression coverage for graph, ticker, status, and news controls.",
+        "Validated with focused render tests, full local suite, segment mutation audit, and DeepSeek review."
+      ],
+      "validation": [
+        "Focused render validation passed: 117/117.",
+        "Full local validation passed: 723/723.",
+        "Segment mutation audit returned NO_DIRECT_SEGMENT_MUTATION_FOUND.",
+        "DeepSeek review gate artifacts: deepseek-review-20260711-150713.md, deepseek-review-20260711-151214.md, deepseek-review-20260711-151616.md."
+      ]
+    },
+    {
+      "id": "CR-246",
+      "tracking_number": "CR-246",
+      "priority": 2,
+      "area": "media-threading",
+      "title": "Verify background and icon image pipelines freeze cross-thread ImageSource values",
+      "status": "closed",
+      "source": "cr242_followup_threading_hardening",
+      "severity": "medium",
+      "evidence": [
+        "CR-242 showed a WPF DependencyObject/Freezable thread-affinity crash during first-launch startup layout.",
+        "Developer risk review identified equivalent exposure areas: macro cards, graph cards, ticker tapes, news scroller collections, background images, config apply, fullscreen layout, shutdown callbacks."
+      ],
+      "notes": [
+        "Background decode, standby clone, flag cache, and future image caches must freeze ImageSource values before cross-thread reuse."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Added RenderThreadSafety helper to freeze WPF Freezable values at render view-model assignment boundaries and reject non-freezable brush inputs instead of silently changing visuals.",
+        "Hardened render view model brush/point setters and graph segment snapshots.",
+        "Added cross-thread render binding regression coverage for graph, ticker, status, and news controls.",
+        "Validated with focused render tests, full local suite, segment mutation audit, and DeepSeek review."
+      ],
+      "validation": [
+        "Focused render validation passed: 117/117.",
+        "Full local validation passed: 723/723.",
+        "Segment mutation audit returned NO_DIRECT_SEGMENT_MUTATION_FOUND.",
+        "DeepSeek review gate artifacts: deepseek-review-20260711-150713.md, deepseek-review-20260711-151214.md, deepseek-review-20260711-151616.md."
+      ]
+    },
+    {
+      "id": "CR-247",
+      "tracking_number": "CR-247",
+      "priority": 1,
+      "area": "harness",
+      "title": "Add first-launch installed AI-failure startup regression coverage",
+      "status": "closed",
+      "source": "cr242_followup_threading_hardening",
+      "severity": "high",
+      "evidence": [
+        "CR-242 showed a WPF DependencyObject/Freezable thread-affinity crash during first-launch startup layout.",
+        "Developer risk review identified equivalent exposure areas: macro cards, graph cards, ticker tapes, news scroller collections, background images, config apply, fullscreen layout, shutdown callbacks."
+      ],
+      "notes": [
+        "The failed path was fresh installed launch with AI settings present and AI access rejected; validation harness should preserve this as a repeatable probe."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Added RenderThreadSafety helper to freeze WPF Freezable values at render view-model assignment boundaries and reject non-freezable brush inputs instead of silently changing visuals.",
+        "Hardened render view model brush/point setters and graph segment snapshots.",
+        "Added cross-thread render binding regression coverage for graph, ticker, status, and news controls.",
+        "Validated with focused render tests, full local suite, segment mutation audit, and DeepSeek review."
+      ],
+      "validation": [
+        "Focused render validation passed: 117/117.",
+        "Full local validation passed: 723/723.",
+        "Segment mutation audit returned NO_DIRECT_SEGMENT_MUTATION_FOUND.",
+        "DeepSeek review gate artifacts: deepseek-review-20260711-150713.md, deepseek-review-20260711-151214.md, deepseek-review-20260711-151616.md."
+      ]
+    },
+    {
+      "id": "CR-248",
+      "tracking_number": "CR-248",
+      "priority": 2,
+      "area": "ui-lifecycle",
+      "title": "Audit fullscreen and resize layout activation for latent cross-thread binding failures",
+      "status": "closed",
+      "source": "cr242_followup_threading_hardening",
+      "severity": "medium",
+      "evidence": [
+        "CR-242 showed a WPF DependencyObject/Freezable thread-affinity crash during first-launch startup layout.",
+        "Developer risk review identified equivalent exposure areas: macro cards, graph cards, ticker tapes, news scroller collections, background images, config apply, fullscreen layout, shutdown callbacks."
+      ],
+      "notes": [
+        "Maximize/fullscreen/update-layout paths can activate bindings later than startup and should be covered by layout tests."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Added RenderThreadSafety helper to freeze WPF Freezable values at render view-model assignment boundaries and reject non-freezable brush inputs instead of silently changing visuals.",
+        "Hardened render view model brush/point setters and graph segment snapshots.",
+        "Added cross-thread render binding regression coverage for graph, ticker, status, and news controls.",
+        "Validated with focused render tests, full local suite, segment mutation audit, and DeepSeek review."
+      ],
+      "validation": [
+        "Focused render validation passed: 117/117.",
+        "Full local validation passed: 723/723.",
+        "Segment mutation audit returned NO_DIRECT_SEGMENT_MUTATION_FOUND.",
+        "DeepSeek review gate artifacts: deepseek-review-20260711-150713.md, deepseek-review-20260711-151214.md, deepseek-review-20260711-151616.md."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
