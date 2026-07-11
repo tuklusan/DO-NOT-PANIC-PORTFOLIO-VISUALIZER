@@ -10730,7 +10730,7 @@
       "priority": 1,
       "area": "market-data",
       "title": "YFinance quote traces must report sign-consistent change percentages",
-      "status": "open",
+      "status": "closed",
       "source": "installed-soak-20260710-205551",
       "severity": "high",
       "evidence": [
@@ -10740,7 +10740,11 @@
       ],
       "notes": [
         "Normalize computed quote percentage so its sign follows RegularMarketChange when Yahoo provides both values.",
-        "Acceptance requires focused tests and a VM soak trace without opposite-signed QuoteResponseObserved change/change_percent pairs."
+        "Acceptance requires focused tests and a VM soak trace without opposite-signed QuoteResponseObserved change/change_percent pairs.",
+        "Implemented QuoteMath.ComputeChangePercent so explicit RegularMarketChange drives percent direction when Yahoo fields disagree.",
+        "Focused tests passed: YFinanceComputedChangePercent branch coverage and transport trace guard.",
+        "DeepSeek code review passed after helper extraction and branch-test hardening.",
+        "Installed VM soak installed-soak-20260710-221041 and follow-up installed-soak-20260710-232422 both showed SIGN_MISMATCH_COUNT=0."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10749,7 +10753,8 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "closed_at": "2026-07-11T00:34:13.5374536-04:00"
     },
     {
       "id": "CR-234",
@@ -10757,7 +10762,7 @@
       "priority": 2,
       "area": "ui-fluidity",
       "title": "Reduce episodic scene scheduler and graph-motion frame jitter during installed soak",
-      "status": "open",
+      "status": "closed",
       "source": "installed-soak-20260710-221041",
       "severity": "medium",
       "evidence": [
@@ -10767,7 +10772,11 @@
       ],
       "notes": [
         "Inspect scene scheduler and graph-card motion paths for avoidable per-frame allocations or layout work.",
-        "Acceptance requires local tests and at least one installed VM soak with no crashes/errors and materially lower or justified slow-frame evidence."
+        "Acceptance requires local tests and at least one installed VM soak with no crashes/errors and materially lower or justified slow-frame evidence.",
+        "Reduced scene and graph motion cadence from 33 ms to 50 ms to lower UI-thread render pressure on 2-CPU validation VMs while preserving elapsed-time motion speed.",
+        "Kept the original 15 ms SceneSchedulerActionSlow diagnostic threshold after DeepSeek review advised against hiding early regressions.",
+        "Render behavior tests passed; DeepSeek code review had no remaining blocking findings for the committed cadence change.",
+        "Installed VM soak installed-soak-20260710-232422 completed with fatal/error/warn/http429/strictTransportFailure all zero, MotionFrameSlow reduced from 48 in the prior run to 16, and final screenshot was visually coherent."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10776,7 +10785,8 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
-      ]
+      ],
+      "closed_at": "2026-07-11T00:34:13.5374536-04:00"
     }
   ],
   "remaining_validation_gaps": [],
