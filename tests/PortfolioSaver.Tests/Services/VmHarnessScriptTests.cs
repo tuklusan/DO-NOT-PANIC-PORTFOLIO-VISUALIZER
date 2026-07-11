@@ -1070,6 +1070,10 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("strictTransportFailure", analyzer, StringComparison.Ordinal);
         Assert.Contains("runtimeQuoteApplied", analyzer, StringComparison.Ordinal);
         Assert.Contains("event=RuntimeQuoteApplied(?!\\w)", analyzer, StringComparison.Ordinal);
+        Assert.Contains("function Select-Http429Evidence", analyzer, StringComparison.Ordinal);
+        Assert.Contains("status(_code)?=429", analyzer, StringComparison.Ordinal);
+        Assert.Contains("Too Many Requests", analyzer, StringComparison.Ordinal);
+        Assert.DoesNotContain("\\b429\\b|rate limit", analyzer, StringComparison.Ordinal);
         Assert.DoesNotContain("transport_fail", analyzer, StringComparison.OrdinalIgnoreCase);
     }
 

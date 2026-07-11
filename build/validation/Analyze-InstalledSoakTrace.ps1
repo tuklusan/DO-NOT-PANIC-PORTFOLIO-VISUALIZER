@@ -48,6 +48,13 @@ function Measure-LineCount {
     return @($Lines).Count
 }
 
+function Select-Http429Evidence {
+    param([Parameter(Mandatory = $true)][string[]]$Lines)
+
+    $rateLimitPattern = '(?i)(status(_code)?=429|http_status=429|response_status=429|\bHTTP\s*429\b|HTTP/\d+(?:\.\d+)?\s+429\b|Too Many Requests|rate limit(?:ed)?)'
+    return @($Lines | Where-Object { $_ -match $rateLimitPattern })
+}
+
 $root = (Resolve-Path -LiteralPath $ResultRoot).Path
 $traceDir = Join-Path $root 'trace'
 $desktopLines = @(Read-CircularTraceText -Path (Join-Path $traceDir 'trace.circular.log'))
@@ -57,6 +64,7 @@ $summaryPath = Join-Path $root 'summary.json'
 $summary = if (Test-Path -LiteralPath $summaryPath) { Get-Content -Raw -LiteralPath $summaryPath | ConvertFrom-Json } else { $null }
 $slowScene = @($desktopLines | Where-Object { $_ -match 'event=SceneSchedulerActionSlow' })
 $transportFailures = @(Select-StrictTransportFailure -Lines $yfinanceLines)
+$http429Evidence = @(Select-Http429Evidence -Lines $allLines)
 
 $report = [ordered]@{
     resultRoot = $root
@@ -65,7 +73,7 @@ $report = [ordered]@{
         fatalCrashException = @($allLines | Where-Object { $_ -match '(?i)(DispatcherUnhandledException|UnhandledException|Fatal|crash)' }).Count
         error = @($allLines | Where-Object { $_ -match '(?i)\bERROR\b' }).Count
         warn = @($allLines | Where-Object { $_ -match '(?i)\bWARN\b' }).Count
-        http429 = @($allLines | Where-Object { $_ -match '(?i)(\b429\b|rate limit)' }).Count
+        http429 = Measure-LineCount $http429Evidence
         sceneSchedulerActionSlow = Measure-LineCount $slowScene
         strictTransportFailure = Measure-LineCount $transportFailures
         runtimeQuoteApplied = @($desktopLines | Where-Object { $_ -match 'event=RuntimeQuoteApplied(?!\w)' }).Count
@@ -78,6 +86,7 @@ $report = [ordered]@{
     samples = [ordered]@{
         slowScene = @($slowScene | Select-Object -First 20)
         strictTransportFailure = @($transportFailures | Select-Object -First 20)
+        http429 = @($http429Evidence | Select-Object -First 20)
         runtimeErrors = @($allLines | Where-Object { $_ -match '(?i)(DispatcherUnhandledException|UnhandledException|Fatal|crash|\bERROR\b)' } | Select-Object -First 20)
     }
 }

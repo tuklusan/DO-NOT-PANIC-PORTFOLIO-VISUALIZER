@@ -1323,6 +1323,9 @@ public sealed class Nb040BehaviorTests
         Assert.Contains("Dns.GetHostAddressesAsync(host, dnsTimeout.Token)", source, StringComparison.Ordinal);
         Assert.Contains("catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)", source, StringComparison.Ordinal);
         Assert.Contains("HostTimeout", source, StringComparison.Ordinal);
+        Assert.Contains("TraceLog.InfoState(", source, StringComparison.Ordinal);
+        Assert.Contains("\"AllHostsFailed\"", source, StringComparison.Ordinal);
+        Assert.Contains("TraceLog.WarnState(", source, StringComparison.Ordinal);
     }
 
     [Fact]

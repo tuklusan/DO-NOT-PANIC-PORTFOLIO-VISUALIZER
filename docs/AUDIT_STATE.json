@@ -10952,6 +10952,60 @@
         "Trace showed BackgroundPreparationSkipped=0, BackgroundPreparationFailed=0, runtime quote sign mismatches=0, 346 RuntimeQuoteApplied events, 19 background rotations chosen, and 18 transitions complete.",
         "SceneCaptureComplete trace lines proved seven app-native screenshots were captured throughout the run from 09:52 through 11:20 UTC, and manual screenshot inspection found no blank background, modal dialog, or obvious layout failure."
       ]
+    },
+    {
+      "id": "CR-239",
+      "tracking_number": "CR-239",
+      "priority": 2,
+      "area": "time-sync",
+      "title": "Single NTP host timeout must not poison clean soak validation",
+      "status": "open",
+      "source": "installed-soak-20260711-072511",
+      "severity": "medium",
+      "evidence": [
+        "Installed clean-soak pass 1 produced one WARN: NtpTimeService HostTimeout for pool.ntp.org after 4000 ms.",
+        "The app continued normally and can try alternate NTP hosts or local clock fallback, so a single per-host timeout is environmental noise rather than a product failure.",
+        "WARN-level logging should be reserved for all-host NTP failure, while individual host timeouts should remain INFO telemetry."
+      ],
+      "notes": [
+        "Preserve a warning if all configured NTP hosts fail.",
+        "Do not hide real clock-sync failure; only downgrade per-host retryable timeouts."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-240",
+      "tracking_number": "CR-240",
+      "priority": 1,
+      "area": "vm-harness",
+      "title": "Installed-soak analyzer must not count request IDs as HTTP 429 rate limits",
+      "status": "open",
+      "source": "installed-soak-20260711-072511",
+      "severity": "high",
+      "evidence": [
+        "Analyze-InstalledSoakTrace reported http429=1 for installed-soak-20260711-072511.",
+        "Trace inspection showed the apparent 429 was caused by generated IDs such as req-00000429 or operation_id=quotes-00000429, not an HTTP status 429 response.",
+        "The analyzer used a broad \\\\b429\\\\b pattern that treats numeric request identifiers as rate-limit evidence."
+      ],
+      "notes": [
+        "Count only structured rate-limit evidence such as status_code=429, HTTP 429, Too Many Requests, or explicit rate-limit text.",
+        "Acceptance requires re-running analysis on the same artifact and seeing http429=0 unless a real rate-limit line exists."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

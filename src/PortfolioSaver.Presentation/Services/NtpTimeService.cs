@@ -25,6 +25,8 @@ public sealed class NtpTimeService
 
     public async Task<NtpSyncResult> TryGetUtcNowAsync(CancellationToken cancellationToken = default)
     {
+        int failureCount = 0;
+        string? lastFailure = null;
         foreach (string host in Hosts)
         {
             try
@@ -41,11 +43,21 @@ public sealed class NtpTimeService
             {
                 throw;
             }
-            catch
+            catch (Exception ex)
             {
+                failureCount++;
+                lastFailure = ex.GetType().Name;
             }
         }
 
+        TraceLog.WarnState(
+            "NtpTimeService",
+            "AllHostsFailed",
+            [
+                new("host_count", Hosts.Length),
+                new("failure_count", failureCount),
+                new("last_failure", lastFailure ?? "none")
+            ]);
         return new NtpSyncResult
         {
             Success = false,
@@ -97,7 +109,7 @@ public sealed class NtpTimeService
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            TraceLog.WarnState(
+            TraceLog.InfoState(
                 "NtpTimeService",
                 "HostTimeout",
                 [new("host", host), new("timeout_ms", PerHostTimeout.TotalMilliseconds)]);
@@ -115,7 +127,7 @@ public sealed class NtpTimeService
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            TraceLog.WarnState(
+            TraceLog.InfoState(
                 "NtpTimeService",
                 "DnsTimeout",
                 [new("host", host), new("timeout_ms", DnsTimeout.TotalMilliseconds)]);
