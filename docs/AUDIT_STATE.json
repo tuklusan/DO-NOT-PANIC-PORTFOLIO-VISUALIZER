@@ -10661,7 +10661,7 @@
       "priority": 2,
       "area": "vm-harness",
       "title": "Installed-soak harness must not self-trigger duplicate desktop launch",
-      "status": "open",
+      "status": "closed",
       "source": "installed-soak-20260710-165435",
       "severity": "medium",
       "evidence": [
@@ -10678,6 +10678,15 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Closed on 2026-07-10 after rebuilt installed-soak-20260710-195156 completed for 3600 seconds with zero crashes, zero errors, zero warnings, zero HTTP 429s, seven scene captures, and stable end-state resource samples."
+      ],
+      "validation": [
+        "Local focused tests passed: VmHarnessScriptTests and VisualizerRenderBehaviorTests.",
+        "Validation script smoke test passed.",
+        "DeepSeek code review passed before commit.",
+        "DeepSeek artifact review for installed-soak-20260710-195156 was advisory-only; deterministic trace analysis showed no functional faults."
       ]
     },
     {
@@ -10686,7 +10695,7 @@
       "priority": 2,
       "area": "vm-harness",
       "title": "Validation scene-capture hook must not distort soak memory evidence",
-      "status": "open",
+      "status": "closed",
       "source": "installed-soak-20260710-183226",
       "severity": "medium",
       "evidence": [
@@ -10704,6 +10713,15 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Closed on 2026-07-10 after rebuilt installed-soak-20260710-195156 completed for 3600 seconds with zero crashes, zero errors, zero warnings, zero HTTP 429s, seven scene captures, and stable end-state resource samples."
+      ],
+      "validation": [
+        "Local focused tests passed: VmHarnessScriptTests and VisualizerRenderBehaviorTests.",
+        "Validation script smoke test passed.",
+        "DeepSeek code review passed before commit.",
+        "DeepSeek artifact review for installed-soak-20260710-195156 was advisory-only; deterministic trace analysis showed no functional faults."
       ]
     }
   ],
