@@ -288,6 +288,14 @@ public sealed class StartupCoordinator
     {
         const int graphLookbackDays = 1;
 
+        Dictionary<string, QuoteSnapshot> completedStartupQuotes = new(StringComparer.OrdinalIgnoreCase);
+        QuotePipelineDrainResult startupDrain = await DrainCompletedQuotePipelineAsync(completedStartupQuotes).ConfigureAwait(false);
+        if (startupDrain.CompletedCount > 0)
+        {
+            PrimeRuntimeQuotes(completedStartupQuotes);
+            TraceGraph($"Graph warmup adopted {startupDrain.CompletedCount} completed startup quote(s) without waiting.");
+        }
+
         if (!settings.EnableFloatingGraphs)
             yield break;
 
