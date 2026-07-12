@@ -1,7 +1,7 @@
 {
   "document_type": "audit_state",
   "title": "Release 1.0 Audit State",
-  "date": "2026-07-11",
+  "date": "2026-07-12",
   "current_lane": "1.0",
   "current_snapshot": {
     "product": "DO NOT PANIC PORTFOLIO VISUALIZER",
@@ -11,11 +11,11 @@
     "version_lane": "1.0",
     "target_framework": "net10.0-windows",
     "primary_host": "PortfolioSaver.Desktop",
-    "legacy_host": "PortfolioSaver.Screensaver",
+    "legacy_host": null,
     "repository_history": "main starts at the BETA-5.4 baseline; BETA-5.5 is frozen at tag BETA-5.5 on commit d60e6ed; BETA-5.6 is frozen at tag BETA-5.6 on commit 816708a; BETA-6 begins immediately after that freeze. BETA-7 begins after the degraded-mode validation ticketization baseline.",
     "current_baseline_label": "1.0"
   },
-  "latest_recorded_validation_state": {
+  "previous_recorded_validation_state": {
     "automated_tests": {
       "command": "dotnet test .\\\\tests\\\\PortfolioSaver.Tests\\\\PortfolioSaver.Tests.csproj -c Release --nologo",
       "result": "210 / 210 passing",
@@ -128,6 +128,34 @@
         "0b987d7 fixed the PowerShell collection-shape error in the VM reference spot-check harness and added a static regression guard."
       ]
     }
+  },
+  "latest_recorded_validation_state": {
+    "recorded_at": "2026-07-12",
+    "baseline": "1.0",
+    "source_commit": "012a193591a20c1b1b72f485e4ab76670005cd6e",
+    "automated_tests": {
+      "command": "dotnet test .\\tests\\PortfolioSaver.Tests\\PortfolioSaver.Tests.csproj -c Release --nologo",
+      "result": "latest focused regression batch passed 114 / 114 (focused batch; full suite is larger)",
+      "scope_note": "This is the latest recorded focused batch, not a claim about the total discovered test count."
+    },
+    "build_and_install": {
+      "installer": "build/artifacts/inno/output/DoNotPanicPortfolioVisualizerSetup-1.0.exe",
+      "result": "fresh installer rebuilt and installed successfully in the Windows VM",
+      "sha256": "651ABC11B9DF0959C50EB87420B2A6F489A6B61A9C5B8FB69AB7E386ADF8CAD7"
+    },
+    "installed_vm_soaks": [
+      { "run": "installed-soak-20260712-074029", "duration_minutes": 120, "result": "clean", "findings": 0 },
+      { "run": "installed-soak-20260712-100642", "duration_minutes": 120, "result": "clean", "findings": 0 }
+    ],
+    "evidence_summary": [
+      "Both consecutive installed-app runs completed their full two-hour duration without fatal, error, or warning trace events requiring product action.",
+      "Deterministic analyzers reported zero findings for both runs.",
+      "DeepSeek artifact reviews independently recommended PASS.",
+      "Manual inspection of beginning, midpoint, and ending screenshots confirmed a rendered, responsive scene with changing quote, graph-card, world-market, and news content.",
+      "The final run produced 62 distinct screenshots; all 62 SHA-256 hashes were unique and image sizes remained within the expected rendered-scene range.",
+      "CR-249 through CR-252 were resolved and closed before the final consecutive-clean proof.",
+      "The recurring soak automation was paused after the objective completed, and VM test processes and temporary run artifacts were removed."
+    ]
   },
   "post_remote_recovery_replay": {
     "baseline_remote_commit": "3eec8e7395b81e680312560ebd34d5f87babf4b5",
@@ -11638,6 +11666,19 @@
       "low_count": 2,
       "status": "crs_created",
       "tracked_manifest": "build/deepseek-review/docs-consistency-20260703-093111/document-manifest.json"
+    },
+    {
+      "id": "documentation-consistency-review-2026-07-12",
+      "date": "2026-07-12",
+      "reviewer": "Codex owner/developer with DeepSeek advisory review",
+      "scope": "Two-pass forensic internal and cross-document consistency review of all tracked project documentation and documentation-support artifacts, cross-checked against current implementation and build metadata.",
+      "versioned_document": "docs/DOCUMENTATION_CONSISTENCY_REVIEW_2026-07-12.md",
+      "review_artifact": "build/deepseek-review/deepseek-review-20260712-150337.md",
+      "verdict": "Confirmed inconsistencies corrected; repeat scan found no unresolved current-document contradiction.",
+      "high_count": 0,
+      "medium_count": 0,
+      "low_count": 0,
+      "status": "completed"
     }
   ]
 }

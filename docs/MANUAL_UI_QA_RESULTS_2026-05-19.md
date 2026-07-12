@@ -16,10 +16,14 @@ patent, trademark, and governing-law provisions.
 
 # Manual UI QA Results - 2026-05-19
 
+> Historical validation record. Paths and product terminology below describe
+> the environment and implementation as they existed on the stated date; use
+> `docs/AUDIT_STATE.json` for current release state.
+
 ## Execution summary
 
-- Canonical desktop-first VM proof bundle:
-  - [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\artifacts\ssh-runs\ux-deep-ssh-20260519-130940\ux-deep-summary.json](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\artifacts\ssh-runs\ux-deep-ssh-20260519-130940\ux-deep-summary.json)
+- Canonical desktop-first VM proof bundle at execution time:
+  - `build/vm/artifacts/ssh-runs/ux-deep-ssh-20260519-130940/ux-deep-summary.json` (historical generated artifact; not retained in Git)
 - Key proof values:
   - `ConfigPhaseStatus = Completed`
   - `DesktopPhaseStatus = Completed`
@@ -136,7 +140,7 @@ Observed behavior:
 
 The canonical trace confirms the intended validation flow:
 
-- [D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\artifacts\ssh-runs\ux-deep-ssh-20260519-130940\trace\trace.circular.log](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\build\vm\artifacts\ssh-runs\ux-deep-ssh-20260519-130940\trace\trace.circular.log)
+- `build/vm/artifacts/ssh-runs/ux-deep-ssh-20260519-130940/trace/trace.circular.log` (historical generated artifact; not retained in Git)
 
 Key lines show:
 

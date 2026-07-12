@@ -16,7 +16,8 @@ patent, trademark, and governing-law provisions.
 
 # YFinance.NET Client-Server ICD
 
-Document status: Initial revision 0.1  
+Document status: Implemented and maintained protocol contract
+Document revision: 1.0 (2026-07-12)
 Applies to ticket: `NB-031`  
 Baseline: `1.0`
 
@@ -519,8 +520,8 @@ Listener security hardening is a runtime behavior breaking change for non-local 
 ### 18.3 Backward compatibility
 No backward compatibility guarantee is assumed until explicitly declared in a later ICD revision.
 
-## 19. Non-goals for initial revision
-The initial revision does not require:
+## 19. Current non-goals
+The current protocol does not require:
 - binary encoding
 - Yahoo-shaped wire payloads
 - unsolicited market-data pushes
@@ -528,8 +529,8 @@ The initial revision does not require:
 - UI-driven mutation of server cache policy
 - generalized remote administration beyond minimal health/control needs
 
-## 20. Initial implementation guidance
-The first implementation should prioritize:
+## 20. Maintenance priorities
+Protocol maintenance should continue to prioritize:
 1. clean TCP framing
 2. stable request/response envelope
 3. owned-mode lifecycle correctness

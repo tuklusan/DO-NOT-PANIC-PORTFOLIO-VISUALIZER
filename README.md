@@ -42,16 +42,16 @@ This repository is maintained as a **Visual Studio 2022-first** codebase for Win
 - Slow, continuous free-roaming motion for graph cards and other floating overlay elements
 - News headline scroller with configurable RSS mode or OpenAI-compatible AI summarized-financial-news mode
 - Dynamic background image system with managed exchange photos or user custom folders
-- YFinance.NET-backed Yahoo retrieval with 1-second one-by-one pacing, batch quote refreshes, and observable rate-limit controls
+- YFinance.NET-backed Yahoo retrieval with one-symbol-at-a-time requests, 1-second request pacing, asynchronous responses, and observable rate-limit controls
 - Offline-aware UI behavior and network gating for validation workflows
 
 ## Configuration App (WPF)
 
 - Rich settings UI for:
-  - YFinance.NET runtime status and refresh controls
   - AI API key, endpoint URL, and model ID for summarized financial news
   - Ticker tapes and graph overlays
-  - Refresh intervals (portfolio, off-hours, news, backgrounds)
+  - News and background refresh intervals
+  - Managed or user-selected background image sources
 - Real-time and apply-time symbol validation flow
 - Auto-name support for symbols when provider metadata resolves display names
 - Bundled help/about/license reference content shipped with the config app assets
@@ -104,7 +104,7 @@ To obtain a free OpenRouter API key for personal non-commercial use:
 
 OpenRouter free-model accounts may be limited to 50 free-model requests per day unless credits are added, so the shipped app enforces a 30-minute minimum/default headline refresh for summarized-news mode. That cadence yields at most 48 scheduled AI refreshes per day before occasional startup or manual validation checks.
 
-At startup, if summarized news is enabled and the configured AI access check fails, the app warns once, uses RSS-backed fallback content, and keeps retrying AI access on the normal refresh cadence so a temporarily unavailable provider can recover without restarting.
+At startup, if summarized news is enabled, the app performs a bounded AI access probe and records failure in the trace without blocking startup or showing a modal warning. Each news refresh independently retries AI access; while it is unavailable, the scroller identifies the RSS fallback in-band and continues with RSS-backed content so a temporarily unavailable provider can recover without restarting.
 
 When using the default OpenRouter-compatible endpoint with **AI model ID** set to `openrouter/free` or `auto`, the app first queries OpenRouter's public models list and chooses a concrete free instruct/chat model for the news request. It excludes mandatory/default-on reasoning models, then ranks candidates by detected parameter-size signal, context length, and model ID for deterministic tie-breaking. This avoids the generic free router randomly selecting a reasoning-oriented model for a short style-transfer task. If model discovery fails, the app falls back to `openrouter/free` so summarized news can still attempt to run.
 

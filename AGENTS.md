@@ -39,7 +39,7 @@ Historical cache belongs under `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer\Cac
 
 ## Canonical Codex operational rule
 When running Codex-Agent, cloud requests initiated by the agent must be spaced out by at least 15 seconds after the last response.
-This is a Codex operational constraint only and is not a product/runtime throttling requirement for the screensaver codebase.
+This is a Codex operational constraint only and is not a product/runtime throttling requirement for the desktop visualizer codebase.
 
 ## Mandatory DeepSeek code-review gate
 For any code modification, including application code, XAML, scripts, harnesses, tests, project files, or build tooling, run a DeepSeek code-review pass before committing, pushing, or starting local/VM validation cycles.

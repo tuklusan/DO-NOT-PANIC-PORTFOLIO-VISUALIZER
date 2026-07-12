@@ -38,13 +38,19 @@ During 1.0 development, do not update public distribution channels:
 
 Local, VM, and private installer builds are allowed for development validation, but they must not be treated as public distribution artifacts.
 
-## Open Deferred Work
+## Deferred Design Record
 
-`CR-174` remains open and explicitly deferred:
+`CR-174` was administratively closed with no product action. Its Microsoft
+Store/MSIX proposal remains deferred and must not be implemented unless the
+owner explicitly approves and reopens it:
+
+This status follows the owner's 2026-07-11 directive to close all historical
+still-open tickets as `CLOSED/NO-ACTION`; the canonical record remains in
+`docs/AUDIT_STATE.json`.
 
 `DEFERRED UNTIL APPROVED, KEEP OPEN WITH NO ACTION FOR NOW`
 
-No Microsoft Store/MSIX migration work is part of the 1.0 baseline unless it is later approved and reactivated.
+No Microsoft Store/MSIX migration work is part of the 1.0 baseline unless it is later approved and reactivated as new tracked work.
 
 ## Baseline Sanity Checks
 

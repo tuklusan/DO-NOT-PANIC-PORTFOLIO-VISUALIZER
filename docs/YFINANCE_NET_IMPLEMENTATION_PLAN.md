@@ -16,18 +16,19 @@ patent, trademark, and governing-law provisions.
 
 # YFinance.NET Client-Server Implementation Plan
 
-Document status: Initial revision 0.1  
+Document status: Implemented architecture reference; maintained with the ICD
+Document revision: 1.0 (2026-07-12)
 Primary ticket: `NB-031`  
-Companion ICD: [YFINANCE_NET_ICD.md](D:\Users\vagab\Documents\SOFTWARE-DEV\Don't-Panic-Portfolio-Visualizer\docs\YFINANCE_NET_ICD.md)  
+Companion ICD: [YFINANCE_NET_ICD.md](YFINANCE_NET_ICD.md)
 Baseline: `1.0`
 
 ## 1. Objective
-Implement the `NB-031` architecture transition from in-process `YFinance.NET` usage to a standalone client-server runtime while preserving current product behavior and keeping the codebase sync-friendly with the upstream Python yfinance concepts.
+Document the implemented `NB-031` transition from in-process `YFinance.NET` usage to a standalone client-server runtime while preserving current product behavior and keeping the codebase sync-friendly with the upstream Python yfinance concepts.
 
-The implementation should proceed in small, testable layers.
+Future protocol changes should proceed in small, testable layers and update this plan and the companion ICD together.
 
 ## 2. Outcome definition
-The ticket is complete when:
+The implemented architecture remains conformant when:
 1. `YFinance.NET` runs as its own server process
 2. the PortfolioSaver UI consumes market data only through the server protocol
 3. the server owns Yahoo transport, cache freshness, and error normalization
