@@ -18,20 +18,20 @@ public static class ExchangeTimeZoneResolver
     public static TimeZoneInfo Resolve(string? timeZoneId)
     {
         if (TryFind(timeZoneId, out TimeZoneInfo? zone))
-            return zone;
+            return zone!;
 
         if (!string.IsNullOrWhiteSpace(timeZoneId) &&
             TimeZoneInfo.TryConvertIanaIdToWindowsId(timeZoneId, out string? windowsId) &&
             TryFind(windowsId, out zone))
         {
-            return zone;
+            return zone!;
         }
 
         if (!string.IsNullOrWhiteSpace(timeZoneId) &&
             TimeZoneInfo.TryConvertWindowsIdToIanaId(timeZoneId, out string? ianaId) &&
             TryFind(ianaId, out zone))
         {
-            return zone;
+            return zone!;
         }
 
         return TimeZoneInfo.Utc;
