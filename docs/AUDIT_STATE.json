@@ -11450,7 +11450,7 @@
       "priority": 2,
       "area": "vm_harness",
       "title": "Long-run VM soak leaves desktop version verification pending after successful detection",
-      "status": "open",
+      "status": "closed",
       "source": "DeepSeek artifact advisory identified the inconsistent version-check state.",
       "severity": "medium",
       "evidence": [
@@ -11466,6 +11466,12 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Harness logic corrected and committed in c3a94cb; assertion diagnostics refined in 4296e7e."
+      ],
+      "validation": [
+        "Focused VmHarnessScriptTests passed 30/30. Fresh installed-app VM soak installed-soak-20260712-052401 completed 120 minutes with DesktopVersionCheck=Passed, RuntimeVersionCheck=Passed, TargetCaptureFrames=60, and no end-of-run capture burst."
       ]
     },
     {
@@ -11474,7 +11480,7 @@
       "priority": 2,
       "area": "vm_harness",
       "title": "VM soak capture loop bursts frames when the next interval exceeds the deadline",
-      "status": "open",
+      "status": "closed",
       "source": "Capture-loop branch sleeps 100 ms whenever nextCaptureAt is beyond captureDeadline, repeatedly capturing until the deadline.",
       "severity": "medium",
       "evidence": [
@@ -11490,6 +11496,12 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Harness logic corrected and committed in c3a94cb; assertion diagnostics refined in 4296e7e."
+      ],
+      "validation": [
+        "Focused VmHarnessScriptTests passed 30/30. Fresh installed-app VM soak installed-soak-20260712-052401 completed 120 minutes with DesktopVersionCheck=Passed, RuntimeVersionCheck=Passed, TargetCaptureFrames=60, and no end-of-run capture burst."
       ]
     },
     {
