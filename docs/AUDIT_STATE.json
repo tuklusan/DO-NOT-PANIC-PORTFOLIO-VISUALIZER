@@ -265,7 +265,7 @@
       "priority": 3,
       "area": "macro_data",
       "title": "CRUDE and GOLD macros are not updating reliably",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -274,7 +274,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-002",
@@ -282,7 +283,7 @@
       "priority": 3,
       "area": "config_ui",
       "title": "Advanced tab of the config applet is too large for the screen",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -291,7 +292,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-003",
@@ -299,7 +301,7 @@
       "priority": 3,
       "area": "top_band_layout",
       "title": "Top-left market open/close info needs to split across lines without widening the band",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -308,7 +310,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-004",
@@ -316,7 +319,7 @@
       "priority": 3,
       "area": "ai_news",
       "title": "DeepSeek summarized news must only restyle supplied current facts",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -326,7 +329,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-005",
@@ -334,7 +338,7 @@
       "priority": 3,
       "area": "graph_cards",
       "title": "Vary graph-card swimming speed dynamically in a plus/minus 20 percent range",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -344,7 +348,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-006",
@@ -352,7 +357,7 @@
       "priority": 3,
       "area": "backgrounds",
       "title": "Optionally mix in remote open-source cityscape images when not using a custom folder",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -362,7 +367,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-007",
@@ -370,7 +376,7 @@
       "priority": 3,
       "area": "ticker_tape",
       "title": "Ticker scrolling should be smooth",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -380,7 +386,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-008",
@@ -388,7 +395,7 @@
       "priority": 3,
       "area": "global_markets",
       "title": "Pinned New York card is too wide and Sydney/London delimiter needs visual correction",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -398,7 +405,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-009",
@@ -406,7 +414,7 @@
       "priority": 3,
       "area": "clock_widget",
       "title": "Top-right date/time widget is too wide",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -416,7 +424,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-010",
@@ -424,7 +433,7 @@
       "priority": 3,
       "area": "graph_cards",
       "title": "Graph-card refresh direction cue needs visible fast travel, not teleportation",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -434,7 +443,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-034",
@@ -442,7 +452,7 @@
       "priority": 1,
       "area": "vm_harness_tests",
       "title": "Make AppSettingsNormalizer placeholder tests immune to ambient DeepSeek environment variables",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "visible_validation_sequence",
       "severity": "unspecified",
       "evidence": [
@@ -458,7 +468,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-035",
@@ -466,7 +477,7 @@
       "priority": 1,
       "area": "release_packaging",
       "title": "Repair publish-safe-temp workspace staging to include YFinance.NET after the Yahoo migration",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "visible_validation_sequence",
       "severity": "unspecified",
       "evidence": [
@@ -482,7 +493,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-036",
@@ -490,7 +502,7 @@
       "priority": 2,
       "area": "global_markets",
       "title": "Remove duplicate NYC lane from scrolling Global Markets cards when NYC is already pinned",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -506,7 +518,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-037",
@@ -514,7 +527,7 @@
       "priority": 3,
       "area": "global_markets_assets",
       "title": "Locate and wire Wikimedia country flags for the missing Global Markets entries",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -530,7 +543,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-038",
@@ -538,7 +552,7 @@
       "priority": 1,
       "area": "startup_quotes",
       "title": "Startup quote hydration is too slow to populate visible values during short VM UX runs",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "visible_validation_sequence",
       "severity": "unspecified",
       "evidence": [
@@ -552,7 +566,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-039",
@@ -560,7 +575,7 @@
       "priority": 2,
       "area": "top_left_typography",
       "title": "Use the same clock font for the top-left text block",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -576,7 +591,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-040",
@@ -584,7 +600,7 @@
       "priority": 1,
       "area": "yfinance_runtime_contract",
       "title": "Validate cache-first YFinance behavior and sequential UI polling behavior",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -604,7 +620,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-041",
@@ -612,7 +629,7 @@
       "priority": 2,
       "area": "vm_config_ui_exerciser",
       "title": "Make VM config-tab exercise fast and visibly scrolling during input activity",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -628,7 +645,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-042",
@@ -636,7 +654,7 @@
       "priority": 2,
       "area": "news_scroller_redesign",
       "title": "Redesign the news scroller to a two-line teleprinter reveal",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -653,7 +671,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-043",
@@ -661,7 +680,7 @@
       "priority": 1,
       "area": "yfinance_market_timing",
       "title": "Move exchange timing ownership into YFinance.NET and remove ExchangeMarketCalendarService",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -678,7 +697,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-044",
@@ -686,7 +706,7 @@
       "priority": 1,
       "area": "config_validation_workflow",
       "title": "Replace post-validation auto-close with explicit OK and Cancel workflow",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -705,7 +725,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-045",
@@ -713,7 +734,7 @@
       "priority": 1,
       "area": "ticker_tape_runtime_population",
       "title": "Progressive runtime quote loop is leaving some visible tape symbols without populated values",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "vm_1_to_7_rerun",
       "severity": "unspecified",
       "evidence": [
@@ -734,7 +755,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-046",
@@ -742,7 +764,7 @@
       "priority": 2,
       "area": "ui_polish",
       "title": "Stabilize macro-card clipping and Last Updated ribbon layout",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -757,7 +779,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-047",
@@ -765,7 +788,7 @@
       "priority": 2,
       "area": "floating_graphs",
       "title": "Limit floating graph carts to the top 16 biggest movers and refresh the selection every 10 minutes",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -782,7 +805,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-048",
@@ -790,7 +814,7 @@
       "priority": 2,
       "area": "news_scroller_runtime",
       "title": "Move the Financial News scroller to an independent non-blocking update lane",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -817,7 +841,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-049",
@@ -825,7 +850,7 @@
       "priority": 2,
       "area": "macro_runtime",
       "title": "Move macro indicator refresh to its own non-blocking background update lane",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -848,7 +873,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-050",
@@ -856,7 +882,7 @@
       "priority": 2,
       "area": "local_data_storage",
       "title": "Audit and consolidate all application data stores under Local AppData with installer lifecycle support",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -878,7 +904,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-051",
@@ -886,7 +913,7 @@
       "priority": 2,
       "area": "world_markets_runtime",
       "title": "Move the World Markets ribbon to an independent non-blocking update lane",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -909,7 +936,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-052",
@@ -917,7 +945,7 @@
       "priority": 1,
       "area": "background_runtime",
       "title": "Background transition intermittently clears the active image during long fullscreen soak",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "soak_trace_analysis",
       "severity": "unspecified",
       "evidence": [
@@ -935,7 +963,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-053",
@@ -943,7 +972,7 @@
       "priority": 2,
       "area": "vm_harness_backgrounds",
       "title": "Long-soak VM harness overrides background rotation far below the product default",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "soak_trace_analysis",
       "severity": "unspecified",
       "evidence": [
@@ -960,7 +989,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-054",
@@ -968,7 +998,7 @@
       "priority": 1,
       "area": "world_markets_runtime",
       "title": "World Markets lane is still refreshing far too often and creating avoidable UI churn",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "soak_trace_analysis",
       "severity": "unspecified",
       "evidence": [
@@ -985,7 +1015,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-055",
@@ -993,7 +1024,7 @@
       "priority": 1,
       "area": "macro_runtime",
       "title": "Macro lane is still refreshing in bursty clusters that undercut UI fluidity",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "soak_trace_analysis",
       "severity": "unspecified",
       "evidence": [
@@ -1010,7 +1041,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-056",
@@ -1018,7 +1050,7 @@
       "priority": 2,
       "area": "news_runtime",
       "title": "Summarized-news fallback repeatedly misses cache and reparses RSS instead of using a stable cached fallback mode",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "soak_trace_analysis",
       "severity": "unspecified",
       "evidence": [
@@ -1035,7 +1067,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-057",
@@ -1043,7 +1076,7 @@
       "priority": 2,
       "area": "graph_cards",
       "title": "Graph-card hydration remains too strict and leaves fewer than 16 visible movers during healthy market hours",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -1062,7 +1095,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-058",
@@ -1070,7 +1104,7 @@
       "priority": 2,
       "area": "market_status_ui",
       "title": "Suppress top-left \"Timing unavailable\" when countdown timing is unknown",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -1088,7 +1122,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-059",
@@ -1096,7 +1131,7 @@
       "priority": 1,
       "area": "deepseek_configuration",
       "title": "Future-proof DeepSeek configuration and model usage beyond API key and endpoint only",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -1119,7 +1154,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-060",
@@ -1127,7 +1163,7 @@
       "priority": 1,
       "area": "runtime_fetch_order",
       "title": "Enforce staged runtime fetch order across macros, world markets, and tape symbols",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -1150,7 +1186,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-062",
@@ -1158,7 +1195,7 @@
       "priority": 2,
       "area": "branding_assets",
       "title": "Incorporate revision-3 branding images into app icon, splash, installer, and About surfaces",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -1177,7 +1214,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-063",
@@ -1185,7 +1223,7 @@
       "priority": 2,
       "area": "news_scroller",
       "title": "Preserve Vogon finance-news formatting across refreshes and add a per-item reader pause",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -1202,7 +1240,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-064",
@@ -1210,7 +1249,7 @@
       "priority": 2,
       "area": "graph_cards",
       "title": "Tighten graph-card flash trigger to require actual raw price change",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -1226,7 +1265,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-065",
@@ -1234,7 +1274,7 @@
       "priority": 2,
       "area": "news_scroller",
       "title": "Harden summarized-news parsing against markerless DeepSeek responses",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "vm_trace_followup",
       "severity": "unspecified",
       "evidence": [
@@ -1250,7 +1290,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-066",
@@ -1258,7 +1299,7 @@
       "priority": 2,
       "area": "deepseek_configuration",
       "title": "Re-audit DeepSeek configuration against the latest official API docs and future-proof the configurable call surface",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -1276,7 +1317,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-067",
@@ -1284,7 +1326,7 @@
       "priority": 1,
       "area": "backgrounds_config",
       "title": "Simplify background configuration and default-background download/cache flow",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -1373,7 +1415,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-068",
@@ -1381,7 +1424,7 @@
       "priority": 1,
       "area": "config_ui",
       "title": "Simplify General config tab to user-facing controls only",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -1415,7 +1458,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-069",
@@ -1423,7 +1467,7 @@
       "priority": 2,
       "area": "background_attribution",
       "title": "Shorten on-screen background image attribution strings",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -1443,7 +1487,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-001",
@@ -1451,7 +1496,7 @@
       "priority": 0,
       "area": "rc_review_async_lifecycle",
       "title": "Remove UI-thread sync blocking from owned YFinance server startup/shutdown",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_full_rc_review_2026_06_05",
       "severity": "unspecified",
       "evidence": [
@@ -1474,7 +1519,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-002",
@@ -1482,7 +1528,7 @@
       "priority": 0,
       "area": "yfinance_server_security",
       "title": "Default YFinance.NET server bind address to localhost",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_full_rc_review_2026_06_05",
       "severity": "unspecified",
       "evidence": [
@@ -1505,7 +1551,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-003",
@@ -1513,7 +1560,7 @@
       "priority": 0,
       "area": "quote_pipeline_resilience",
       "title": "Preserve partial quote results instead of dropping whole batches",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_full_rc_review_2026_06_05",
       "severity": "unspecified",
       "evidence": [
@@ -1536,7 +1583,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-004",
@@ -1544,7 +1592,7 @@
       "priority": 0,
       "area": "secret_redaction",
       "title": "Prevent DeepSeek API key and other secrets from reaching settings files or trace logs",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_full_rc_review_2026_06_05",
       "severity": "unspecified",
       "evidence": [
@@ -1567,7 +1615,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-005",
@@ -1575,7 +1624,7 @@
       "priority": 0,
       "area": "ai_news_prompt_security",
       "title": "Harden FinanceNewsService prompt construction against prompt injection",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_full_rc_review_2026_06_05",
       "severity": "unspecified",
       "evidence": [
@@ -1598,7 +1647,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-006",
@@ -1606,7 +1656,7 @@
       "priority": 0,
       "area": "refresh_policy",
       "title": "Replace static QuoteRefreshPolicy values with real settings-aware cadence logic",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_full_rc_review_2026_06_05",
       "severity": "unspecified",
       "evidence": [
@@ -1629,7 +1679,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-007",
@@ -1637,7 +1688,7 @@
       "priority": 0,
       "area": "yfinance_server_launch",
       "title": "Make YFinance server executable resolution deterministic and safe",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_full_rc_review_2026_06_05",
       "severity": "unspecified",
       "evidence": [
@@ -1664,7 +1715,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-008",
@@ -1672,7 +1724,7 @@
       "priority": 1,
       "area": "vm_harness_credentials",
       "title": "Reduce plaintext autologon password exposure in VM harness registry setup",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_full_rc_review_2026_06_05",
       "severity": "unspecified",
       "evidence": [
@@ -1698,7 +1750,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-009",
@@ -1706,7 +1759,7 @@
       "priority": 1,
       "area": "vm_harness_credentials",
       "title": "Remove or mitigate PsExec command-line password exposure",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_full_rc_review_2026_06_05",
       "severity": "unspecified",
       "evidence": [
@@ -1732,7 +1785,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-010",
@@ -1740,7 +1794,7 @@
       "priority": 1,
       "area": "startup_quote_pipeline",
       "title": "Make StartupCoordinator quote pipeline fully async and observed",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_full_rc_review_2026_06_05",
       "severity": "unspecified",
       "evidence": [
@@ -1767,7 +1821,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-011",
@@ -1775,7 +1830,7 @@
       "priority": 1,
       "area": "ntp_timeouts",
       "title": "Add bounded DNS timeout/cancellation to NtpTimeService",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_full_rc_review_2026_06_05",
       "severity": "unspecified",
       "evidence": [
@@ -1803,7 +1858,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-012",
@@ -1811,7 +1867,7 @@
       "priority": 1,
       "area": "provider_budget_ledger",
       "title": "Harden ProviderBudgetLedgerService locking and file I/O",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_full_rc_review_2026_06_05",
       "severity": "unspecified",
       "evidence": [
@@ -1836,7 +1892,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-013",
@@ -1844,7 +1901,7 @@
       "priority": 1,
       "area": "finance_news_resilience",
       "title": "Add backoff and bounded external-call behavior to FinanceNewsService",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_full_rc_review_2026_06_05",
       "severity": "unspecified",
       "evidence": [
@@ -1869,7 +1926,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-014",
@@ -1877,7 +1935,7 @@
       "priority": 1,
       "area": "settings_persistence",
       "title": "Make SettingsFileService.Save atomic and corruption-resistant",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_full_rc_review_2026_06_05",
       "severity": "unspecified",
       "evidence": [
@@ -1902,7 +1960,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-015",
@@ -1910,7 +1969,7 @@
       "priority": 1,
       "area": "UI fluidity / Async",
       "title": "UI thread blocked by synchronous InternetProbeService probe every second",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Critical",
       "evidence": [
@@ -1936,7 +1995,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-016",
@@ -1944,7 +2004,7 @@
       "priority": 1,
       "area": "Build infrastructure / Pipe I/O",
       "title": "Process output stream deadlock in `Invoke-ProcessWithTimeout`",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Critical",
       "evidence": [
@@ -1969,7 +2029,8 @@
         "Ticket is marked resolved in docs/AUDIT_STATE.json with evidence."
       ],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-017",
@@ -2480,7 +2541,7 @@
       "priority": 3,
       "area": "Performance / Memory",
       "title": "High‑frequency heap allocations for mini‑graph points",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2505,7 +2566,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260611-200533.md reported no high-severity findings; focused local Release tests for ClockCityViewModel and GlobalMarkets source contracts passed 3/3; full local Release tests passed 359/359."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-033",
@@ -2513,7 +2575,7 @@
       "priority": 3,
       "area": "Performance",
       "title": "`CompositionTarget.Rendering` handler fires when not needed",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2538,7 +2600,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260611-204534.md reported no blocking findings; focused local Release tests for ticker/global tape animation lifecycle passed 11/11; full local Release tests passed 370/370."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-034",
@@ -2546,7 +2609,7 @@
       "priority": 3,
       "area": "Thread safety",
       "title": "`ProviderHealthService` is not thread‑safe",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2571,7 +2634,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260611-205451.md reported no high-severity defects; focused local Release tests for ProviderHealthService passed 6/6; full local Release tests passed 376/376."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-035",
@@ -2579,7 +2643,7 @@
       "priority": 3,
       "area": "Thread safety / Caching",
       "title": "`InternetProbeService` cache expiry race condition",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2604,7 +2668,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260611-205846.md reported no actionable findings; focused local Release tests for InternetProbeService passed 6/6; full local Release tests passed 377/377."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-036",
@@ -2612,7 +2677,7 @@
       "priority": 3,
       "area": "Resource management",
       "title": "`VmAgent` unbounded log growth",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2637,7 +2702,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260611-211031.md reported no actionable bugs; focused local Release CappedFileLogWriter tests passed 2/2, direct VmAgent Release build passed, and full local Release tests passed 379/379."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-037",
@@ -2645,7 +2711,7 @@
       "priority": 3,
       "area": "Build / Cancellation",
       "title": "Missing `CancellationToken` support for long‑running remote/local operations in build scripts",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2670,7 +2736,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260611-212319.md reported no critical or high-severity findings. Focused local Release VmHarnessScriptTests passed 18/18 and full local Release tests passed 381/381 after commit/push."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-038",
@@ -2678,7 +2745,7 @@
       "priority": 3,
       "area": "Async cleanup",
       "title": "Unobserved background receive loop exception in `YFinanceServerClient` dispose path",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2703,7 +2770,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-001404.md reported no blocking findings; final follow-up review build/deepseek-review/deepseek-review-20260612-001404.md plus local focused YFinanceServerClientPipelineTests passed 9/9 and full local Release tests passed 389/389."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-039",
@@ -2711,7 +2779,7 @@
       "priority": 3,
       "area": "Thread safety",
       "title": "Thread‑safe initialization of `YFinanceCircularTraceSink` not verified",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2736,7 +2804,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-002609.md reported no actionable findings. Focused local Release YFinanceCircularTraceSinkTests passed 3/3 and full local Release tests passed 390/390 after commit/push."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-040",
@@ -2744,7 +2813,7 @@
       "priority": 3,
       "area": "UI robustness",
       "title": "`NewsFlasherControl` may use zero width causing layout errors",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2769,7 +2838,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-092421.md reported no critical/high findings after final fixes. Focused local Release VisualizerRenderBehaviorTests passed 67/67. Full local Release tests passed 393/393 after commit/push."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-041",
@@ -2777,7 +2847,7 @@
       "priority": 3,
       "area": "Diagnostics",
       "title": "`GlobalMarketsTapeControl` swallows exceptions for missing flag images",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Medium",
       "evidence": [
@@ -2802,7 +2872,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-093435.md reported no blocking findings after final fixes. Focused local Release VisualizerRenderBehaviorTests passed 67/67. Full local Release tests passed 393/393 after commit/push."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-042",
@@ -2810,7 +2881,7 @@
       "priority": 4,
       "area": "Test isolation",
       "title": "`YFinanceRuntimeClientFactory` `AsyncLocal` test suppression may leak across parallel tests",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2835,7 +2906,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-094012.md reported no actionable findings. Focused local Release Nb040BehaviorTests passed 16/16. Full local Release tests passed 394/394 after commit/push."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-043",
@@ -2843,7 +2915,7 @@
       "priority": 4,
       "area": "Resource management",
       "title": "Multiple services create raw `HttpClient` inside method bodies",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2868,7 +2940,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-095359.md reported no blocking findings. Focused local Release Nb040BehaviorTests passed 17/17. Full local Release tests passed 395/395 after commit/push."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-044",
@@ -2876,7 +2949,7 @@
       "priority": 4,
       "area": "Performance / Concurrency",
       "title": "`HybridHistoricalDataProvider` fetches symbols one‑by‑one",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2901,7 +2974,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-102126.md reported no remaining blocking findings after final fallback fix. Focused local Release Nb040BehaviorTests passed 20/20. Full local Release tests passed 398/398 after commit/push."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-045",
@@ -2909,7 +2983,7 @@
       "priority": 4,
       "area": "Performance",
       "title": "`TickerInfoService` resolves summaries sequentially",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2934,7 +3008,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-103308.md had no remaining blocking findings after semaphore disposal fix. Focused local Release Nb040BehaviorTests passed 21/21. Full local Release tests passed 399/399 after commit/push."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-046",
@@ -2942,7 +3017,7 @@
       "priority": 4,
       "area": "Thread safety",
       "title": "`RateLimitGuard` not thread‑safe when shared",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -2967,7 +3042,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-104629.md raised no remaining code-correctness blockers after repository usage audit. Focused local Release Nb040BehaviorTests passed 26/26. Full local Release tests passed 404/404 after commit/push."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-047",
@@ -2975,7 +3051,7 @@
       "priority": 4,
       "area": "Concurrency / I/O",
       "title": "`SaveLedger` writes occur inside a lock, potentially blocking other threads",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -3000,7 +3076,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-105429.md reported no high/critical issues and cleared the change for commit. Focused local Release Nb040BehaviorTests passed 27/27. Full local Release tests passed 405/405 after commit/push."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-048",
@@ -3008,7 +3085,7 @@
       "priority": 4,
       "area": "Async",
       "title": "Synchronous `File.Exists` in async path of `YFinanceServerProcessManager.ResolveLaunchCommand`",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -3033,7 +3110,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-110407.md reported no blocking implementation issues after audit that only YFinanceClientServerProtocolTests touches YFinanceServerProcessManager static state. Focused local Release YFinanceClientServerProtocolTests passed 18/18. Full local Release tests passed 406/406 after commit/push."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-049",
@@ -3041,7 +3119,7 @@
       "priority": 4,
       "area": "Performance / Memory",
       "title": "`HistoricalGraphBuilder` allocates new `PointCollection` on every build",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -3066,7 +3144,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-111909.md reported no high/medium findings after final bounce-setting signature update. Focused local Release StartupCoordinatorGraphSelectionTests passed 9/9. Full local Release tests passed 413/413 after commit/push."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-050",
@@ -3074,7 +3153,7 @@
       "priority": 4,
       "area": "Thread safety",
       "title": "Static flag image cache not guarded against concurrent access",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -3099,7 +3178,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-112352.md confirmed the thread-safety improvement is correct and reported no blocking findings. Focused local Release VisualizerRenderBehaviorTests passed 67/67. Full local Release tests passed 413/413 after commit/push."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-051",
@@ -3107,7 +3187,7 @@
       "priority": 4,
       "area": "Robustness",
       "title": "Aggressive connection teardown on a single integrity failure",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -3132,7 +3212,8 @@
       ],
       "validation": [
         "DeepSeek reviews build/deepseek-review/deepseek-review-20260612-113858.md, 20260612-114219.md, and 20260612-114540.md reported no actionable findings after cleanup. Focused local Release YFinanceServerClientPipelineTests passed 12/12. Full local Release tests passed 416/416 after commit/push."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-052",
@@ -3140,7 +3221,7 @@
       "priority": 4,
       "area": "Shutdown",
       "title": "Server does not await active client handlers before process exit",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -3165,7 +3246,8 @@
       ],
       "validation": [
         "DeepSeek reviews build/deepseek-review/deepseek-review-20260612-141631.md and build/deepseek-review/deepseek-review-20260612-141819.md found no critical blockers after fixes; remaining integration-test suggestion noted as medium future coverage risk. Focused local Release YFinanceClientServerProtocolTests passed 21/21. Full local Release suite passed 419/419."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-053",
@@ -3173,7 +3255,7 @@
       "priority": 4,
       "area": "Test harness",
       "title": "UI Automation Fixed‑Delay Sleeps in `Guest-UxDeepExercise` increase flakiness",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -3198,7 +3280,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-143247.md reported no high or medium blockers after fixes. Local PowerShell parser validation passed for build/vm/Guest-UxDeepExercise.ps1."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-054",
@@ -3206,7 +3289,7 @@
       "priority": 4,
       "area": "Build",
       "title": "Remote Polling Loop Blocks Host Pipeline",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -3231,7 +3314,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-144425.md reported no blocking or high-severity findings. Local PowerShell parser validation passed for build/vm/Invoke-VmBuildTest.ps1."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-055",
@@ -3239,7 +3323,7 @@
       "priority": 4,
       "area": "Build robustness",
       "title": "File‑Replacement Atomicity retry loop excessive",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -3264,7 +3348,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-145618.md reported no critical or blocking issues. Focused local Release VmHarnessScriptTests passed 19/19. PowerShell parser validation passed for build/vm/Guest-UxDeepExercise.ps1."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-056",
@@ -3272,7 +3357,7 @@
       "priority": 4,
       "area": "Test harness / Performance",
       "title": "Redundant `Get-AvailableDisplayModes` enumeration",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -3297,7 +3382,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-150724.md reported no blocking findings. Focused local Release VmHarnessScriptTests passed 19/19. PowerShell parser validation passed for build/vm/Guest-UxDeepExercise.ps1."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-057",
@@ -3305,7 +3391,7 @@
       "priority": 4,
       "area": "Performance",
       "title": "`TraceLog.WriteCircular` holds lock during synchronous index‑file I/O",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -3330,7 +3416,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-151751.md reported no high-severity blockers after cleanup. Focused local Release TraceLogTests passed 5/5."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-058",
@@ -3338,7 +3425,7 @@
       "priority": 4,
       "area": "Test infrastructure",
       "title": "Repeated synchronous `File.ReadAllText` in test fixtures slows test suite",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -3363,7 +3450,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-152255.md reported no blocking findings. Focused local Release VmHarnessScriptTests passed 19/19."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-059",
@@ -3371,7 +3459,7 @@
       "priority": 4,
       "area": "Test quality",
       "title": "Race condition in concurrent `ProviderBudgetLedger` reservation test may mask thread‑safety issues",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -3396,7 +3484,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-153046.md reported no real blocking findings; its only concrete disposal recommendation was already satisfied by using Barrier. Focused local Release ProviderBudgetLedgerService_SerializesConcurrentReservationsAndPersistsValidLedger passed 1/1 on 2026-06-12."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-060",
@@ -3404,7 +3493,7 @@
       "priority": 4,
       "area": "Test infrastructure",
       "title": "Blocking `.GetAwaiter().GetResult()` in test HTTP handler risks deadlock under `SynchronizationContext`",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "deepseek_threading_optimization_review_2026_06_11",
       "severity": "Low",
       "evidence": [
@@ -3428,7 +3517,8 @@
       ],
       "validation": [
         "DeepSeek review build/deepseek-review/deepseek-review-20260612-154038.md returned \"Clean commit; proceed\" with no actionable issues. Focused local Release FinanceNewsServiceTests passed 16/16 on 2026-06-12. Only known pre-existing xUnit1030 warnings in YFinanceServerClientPipelineTests appeared."
-      ]
+      ],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-061",
@@ -6448,7 +6538,7 @@
       "priority": 1,
       "area": "unspecified",
       "title": "DeepSeek news integrity and quote append",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -6457,7 +6547,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "BL-002",
@@ -6465,7 +6556,7 @@
       "priority": 2,
       "area": "unspecified",
       "title": "Brent crude consistency across runtime and support assets",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -6474,7 +6565,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "BL-003",
@@ -6482,7 +6574,7 @@
       "priority": 3,
       "area": "unspecified",
       "title": "Refresh smoothing and first-population quality",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -6491,7 +6583,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "BL-004",
@@ -6499,7 +6592,7 @@
       "priority": 4,
       "area": "unspecified",
       "title": "Animated bulls and bears overlay",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -6508,7 +6601,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "BL-005",
@@ -6516,7 +6610,7 @@
       "priority": 5,
       "area": "unspecified",
       "title": "Longer confidence validation on latest baseline",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "schema_migration",
       "severity": "unspecified",
       "evidence": [],
@@ -6525,7 +6619,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "TRC-001",
@@ -6533,7 +6628,7 @@
       "priority": 1,
       "area": "macro_data",
       "title": "Brent crude macro symbol BZ=F remains unresolved during soak runs",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_circular_trace",
       "severity": "unspecified",
       "evidence": [
@@ -6549,7 +6644,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "TRC-002",
@@ -6557,7 +6653,7 @@
       "priority": 2,
       "area": "provider_limits",
       "title": "Yahoo warmup for Brent crude is rate-limited with HTTP 429 at startup",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_circular_trace",
       "severity": "unspecified",
       "evidence": [
@@ -6573,7 +6669,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "TRC-003",
@@ -6581,7 +6678,7 @@
       "priority": 3,
       "area": "graph_cards",
       "title": "Graph cards never materialize during the latest one-hour soak",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_circular_trace",
       "severity": "unspecified",
       "evidence": [
@@ -6597,7 +6694,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "TRC-004",
@@ -6605,7 +6703,7 @@
       "priority": 4,
       "area": "provider_label_quality",
       "title": "Scene stays in Live+Cache (Partial) because Brent never resolves",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_circular_trace",
       "severity": "unspecified",
       "evidence": [
@@ -6621,7 +6719,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "TRC-005",
@@ -6629,7 +6728,7 @@
       "priority": 5,
       "area": "diagnostics",
       "title": "Displayed-vs-reference comparison capture yields empty comparison arrays",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_reference_artifact",
       "severity": "unspecified",
       "evidence": [
@@ -6645,7 +6744,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NWS-001",
@@ -6653,7 +6753,7 @@
       "priority": 6,
       "area": "ai_news",
       "title": "Douglas Adams / William Shakespeare closing quote repeats distractingly in the news ticker",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "live_ui_observation",
       "severity": "unspecified",
       "evidence": [],
@@ -6664,7 +6764,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "SOAK-001",
@@ -6672,7 +6773,7 @@
       "priority": 2,
       "area": "diagnostics",
       "title": "Reference spot-checking remains functionally broken in the latest soak bundle",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_soak_audit",
       "severity": "unspecified",
       "evidence": [
@@ -6687,7 +6788,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "SOAK-002",
@@ -6695,7 +6797,7 @@
       "priority": 3,
       "area": "startup_quality",
       "title": "Startup still presents a rough stale-data warmup window before recovering",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_soak_audit",
       "severity": "unspecified",
       "evidence": [
@@ -6710,7 +6812,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "SOAK-003",
@@ -6718,7 +6821,7 @@
       "priority": 1,
       "area": "graph_cards",
       "title": "Graph carts are present again but the latest soak only shows a single card",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_soak_audit",
       "severity": "unspecified",
       "evidence": [
@@ -6734,7 +6837,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "SOAK-004",
@@ -6742,7 +6846,7 @@
       "priority": 4,
       "area": "trace_hygiene",
       "title": "Pulled circular trace still includes non-run testhost noise at the front",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_soak_audit",
       "severity": "unspecified",
       "evidence": [
@@ -6757,7 +6861,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "SOAK-005",
@@ -6765,7 +6870,7 @@
       "priority": 5,
       "area": "macro_bootstrap",
       "title": "Initial macro state is briefly inconsistent before settling",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_soak_audit",
       "severity": "unspecified",
       "evidence": [
@@ -6780,7 +6885,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-011",
@@ -6788,7 +6894,7 @@
       "priority": 3,
       "area": "startup_status_band",
       "title": "Use the Updated line for initial-value loading feedback instead of the large waiting overlay",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -6804,7 +6910,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-012",
@@ -6812,7 +6919,7 @@
       "priority": 3,
       "area": "news_ticker",
       "title": "Replace scrolling news ticker with telegraph-style item playback",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -6830,7 +6937,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-013",
@@ -6838,7 +6946,7 @@
       "priority": 2,
       "area": "status_freshness",
       "title": "Drive the Updated time from the last S&P 500 refresh in Global Markets",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -6854,7 +6962,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-014",
@@ -6862,7 +6971,7 @@
       "priority": 1,
       "area": "global_markets_accuracy",
       "title": "Investigate stale or inaccurate S&P 500 values in Global Markets",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -6878,7 +6987,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-015",
@@ -6886,7 +6996,7 @@
       "priority": 2,
       "area": "desktop_window_shell",
       "title": "Constrain window sizing and formalize restored, maximized, and fullscreen behaviors",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -6903,7 +7013,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-016",
@@ -6911,7 +7022,7 @@
       "priority": 2,
       "area": "graph_cards",
       "title": "Graph cards should align the visually emphasized latest segment with the current quote direction",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -6924,7 +7035,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-017",
@@ -6932,7 +7044,7 @@
       "priority": 2,
       "area": "news_ticker",
       "title": "Refine teleprinter news playback to better match the YouTube reference effect",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -6945,7 +7057,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-018",
@@ -6953,7 +7066,7 @@
       "priority": 3,
       "area": "animated_overlays",
       "title": "Disable the bull and bear critters for now",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -6966,7 +7079,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-019",
@@ -6974,7 +7088,7 @@
       "priority": 2,
       "area": "startup_freshness_policy",
       "title": "Audit remaining startup surfaces so no stale value is shown where a waiting state would be safer",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -6988,7 +7102,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-020",
@@ -6996,7 +7111,7 @@
       "priority": 2,
       "area": "desktop_launch_flow",
       "title": "Make test launches follow true application flow by opening the desktop app first and launching configuration from the menu",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -7009,7 +7124,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-021",
@@ -7017,7 +7133,7 @@
       "priority": 1,
       "area": "manual_ui_qa",
       "title": "Create and execute a full manual UI QA suite covering every configurable option and resilience edge case",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -7031,7 +7147,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-022",
@@ -7039,7 +7156,7 @@
       "priority": 2,
       "area": "display_compatibility",
       "title": "Validate the product across a range of monitor sizes and aspect ratios supported by the VM",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -7051,7 +7168,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-023",
@@ -7059,7 +7177,7 @@
       "priority": 1,
       "area": "architecture_refactor",
       "title": "Extract a clean service-ready data engine boundary between retrieval/orchestration and UI rendering",
-      "status": "superseded",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -7088,7 +7206,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-024",
@@ -7096,7 +7215,7 @@
       "priority": 3,
       "area": "branding",
       "title": "Create and wire an app-specific icon to replace the current generic icon",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -7109,7 +7228,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "TRC-006",
@@ -7117,7 +7237,7 @@
       "priority": 1,
       "area": "data_accuracy",
       "title": "Investigate reference drift for core ETF values during otherwise healthy retrieval passes",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_circular_trace",
       "severity": "unspecified",
       "evidence": [
@@ -7134,7 +7254,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "TRC-007",
@@ -7142,7 +7263,7 @@
       "priority": 2,
       "area": "startup_recovery",
       "title": "Startup stale-data burn-down still takes multiple refresh cycles before the scene becomes fully live",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_circular_trace",
       "severity": "unspecified",
       "evidence": [
@@ -7158,7 +7279,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "TRC-008",
@@ -7166,7 +7288,7 @@
       "priority": 3,
       "area": "status_telemetry",
       "title": "Provider label still reports Live+Cache even when stale_quote_count has fallen to zero",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_circular_trace",
       "severity": "unspecified",
       "evidence": [
@@ -7180,7 +7302,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-025",
@@ -7188,7 +7311,7 @@
       "priority": 2,
       "area": "diagnostics",
       "title": "Completely remove the feature that sends traces to remote syslog",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -7201,7 +7324,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "TRC-009",
@@ -7209,7 +7333,7 @@
       "priority": 4,
       "area": "trace_semantics",
       "title": "Startup recovery/loading trace semantics do not match actual scene behavior",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_circular_trace",
       "severity": "unspecified",
       "evidence": [
@@ -7224,7 +7348,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "TRC-010",
@@ -7232,7 +7357,7 @@
       "priority": 5,
       "area": "trace_semantics",
       "title": "ClockMarketDataSummary startup counts are misleading when exchanges are intentionally hidden pending fresh values",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_circular_trace",
       "severity": "unspecified",
       "evidence": [
@@ -7245,7 +7370,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "TRC-011",
@@ -7253,7 +7379,7 @@
       "priority": 6,
       "area": "startup_status",
       "title": "Updated field is blank at initial startup instead of explicitly signaling loading",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "latest_circular_trace",
       "severity": "unspecified",
       "evidence": [
@@ -7266,7 +7392,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-026",
@@ -7274,7 +7401,7 @@
       "priority": 1,
       "area": "release_readiness",
       "title": "Run a full code-review, cleanup, dry-run, smoke-test, documentation, and final check-in pass",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -7293,7 +7420,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-027",
@@ -7301,7 +7429,7 @@
       "priority": 1,
       "area": "config_validation_flow",
       "title": "Stabilize desktop-first config validation so the UI QA harness can Validate and close naturally",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -7315,7 +7443,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-028",
@@ -7323,7 +7452,7 @@
       "priority": 2,
       "area": "status_band",
       "title": "After warmup, show the latest updated ticker symbols after 'Updated:' and before the time counter",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -7337,7 +7466,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-029",
@@ -7345,7 +7475,7 @@
       "priority": 3,
       "area": "yahoo_data_provider",
       "title": "Evaluate and port the core yfinance-style Yahoo retrieval stack into a native .NET provider framework",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -7369,7 +7499,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-030",
@@ -7377,7 +7508,7 @@
       "priority": 2,
       "area": "symbol_sets",
       "title": "Align global exchange and macro gauge symbol sets to the new Yahoo/YFinance canonical lists",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -7396,7 +7527,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-031",
@@ -7404,7 +7536,7 @@
       "priority": 1,
       "area": "client_server_refactor",
       "title": "Replace the in-process YFinance runtime with a standalone YFinance.NET client-server architecture",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -7444,7 +7576,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-032",
@@ -7452,7 +7585,7 @@
       "priority": 2,
       "area": "market_status",
       "title": "Unify global exchange open-closed status with the top-left NYC market status display",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -7471,7 +7604,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "NB-033",
@@ -7479,7 +7613,7 @@
       "priority": 2,
       "area": "market_status",
       "title": "Drive all open-close state and time indicators from YFinance itself",
-      "status": "resolved",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_followup",
       "severity": "unspecified",
       "evidence": [
@@ -7494,7 +7628,8 @@
       ],
       "acceptance": [],
       "resolution": [],
-      "validation": []
+      "validation": [],
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-064-CR-085",
@@ -8840,7 +8975,7 @@
       "priority": 2,
       "area": "Distribution",
       "title": "Analyze Microsoft Store migration from Inno installer to MSIX packaging",
-      "status": "open",
+      "status": "CLOSED/NO-ACTION",
       "source": "user_distribution_request_2026_07_01",
       "severity": "Medium",
       "evidence": [
@@ -8878,7 +9013,8 @@
         "Pending analysis document and project decision."
       ],
       "deferred_until_approved": true,
-      "defer_note": "DEFERRED UNTIL APPROVED, KEEP OPEN WITH NO ACTION FOR NOW"
+      "defer_note": "DEFERRED UNTIL APPROVED, KEEP OPEN WITH NO ACTION FOR NOW",
+      "administrative_closure": "Historical ticket closed without further action on 2026-07-11T23:52:25-04:00. No product code or runtime behavior was changed by this closure."
     },
     {
       "id": "CR-176",
