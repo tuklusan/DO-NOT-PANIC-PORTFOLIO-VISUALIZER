@@ -1264,14 +1264,7 @@ public sealed class MainWindowViewModel : BindableBase, IDisposable
     private void OnEditorChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (_isApplying)
-        {
-            TraceValidation(
-                "EditorChangeIgnored",
-                ("reason", "applying"),
-                ("property", e.PropertyName),
-                ("sender_type", sender?.GetType().Name ?? "<null>"));
             return;
-        }
 
         if (IsValidationStatusProperty(e.PropertyName) ||
             !IsPersistedEditorProperty(sender, e.PropertyName))

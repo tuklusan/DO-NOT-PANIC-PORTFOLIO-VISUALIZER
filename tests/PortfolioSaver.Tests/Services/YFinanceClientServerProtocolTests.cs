@@ -592,6 +592,22 @@ public sealed class YFinanceClientServerProtocolTests
     }
 
     [Fact]
+    public void ServerProgram_ClassifiesExpectedPendingReadShutdownAsInformational()
+    {
+        string serverSource = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "YFinance.net",
+            "YFinance.NET.Server",
+            "Hosting",
+            "YFinanceServerProgram.cs"));
+
+        Assert.Contains("ex is OperationCanceledException or ObjectDisposedException or IOException", serverSource, StringComparison.Ordinal);
+        Assert.Contains("\"PendingReadDrainEnded\"", serverSource, StringComparison.Ordinal);
+        Assert.Contains("\"connection-closing\"", serverSource, StringComparison.Ordinal);
+        Assert.Contains("\"PendingReadDrainFailed\"", serverSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ServerProgram_AwaitsActiveClientHandlersOnShutdown()
     {
         object gate = new();

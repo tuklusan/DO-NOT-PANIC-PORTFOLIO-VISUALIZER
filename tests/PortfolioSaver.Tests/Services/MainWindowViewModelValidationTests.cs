@@ -115,6 +115,19 @@ public sealed class MainWindowViewModelValidationTests
     }
 
     [Fact]
+    public void OnEditorChanged_WhileApplying_DoesNotEmitPerPropertyTraceNoise()
+    {
+        string source = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Settings",
+            "ViewModels",
+            "MainWindowViewModel.cs"));
+
+        Assert.DoesNotContain("(\"reason\", \"applying\")", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void OnEditorChanged_WithNonPersistedTickerProperty_DoesNotInvalidate()
     {
         MainWindowViewModel vm = CreateIsolatedViewModel();

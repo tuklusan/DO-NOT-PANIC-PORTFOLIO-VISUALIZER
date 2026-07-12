@@ -11491,6 +11491,54 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-251",
+      "tracking_number": "CR-251",
+      "priority": 2,
+      "area": "config_tracing",
+      "title": "Suppress per-property EditorChangeIgnored trace storms during configuration apply",
+      "status": "open",
+      "source": "DeepSeek artifact review identified circular-trace displacement risk from redundant ignored-change events.",
+      "severity": "medium",
+      "evidence": [
+        "installed-soak-20260712-052401 emitted hundreds of EditorChangeIgnored reason=applying records within milliseconds while applying ticker configuration."
+      ],
+      "notes": [
+        "The applying guard should return silently; validation state behavior must remain unchanged."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-252",
+      "tracking_number": "CR-252",
+      "priority": 3,
+      "area": "yfinance_server_tracing",
+      "title": "Classify expected pending-read cancellation during server shutdown as informational",
+      "status": "open",
+      "source": "DeepSeek artifact review determined the forced socket close was a benign shutdown artifact, but the warning triggered a false high-severity anomaly.",
+      "severity": "low",
+      "evidence": [
+        "installed-soak-20260712-052401 ended with PendingReadDrainFailed exactly during harness shutdown."
+      ],
+      "notes": [
+        "Expected cancellation, disposal, and cleanup-time IO exceptions should not be emitted as failure warnings; unexpected exceptions remain warnings."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

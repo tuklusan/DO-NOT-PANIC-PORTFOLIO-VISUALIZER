@@ -522,6 +522,13 @@ internal static class YFinanceServerProgram
             if (pendingRead is not null)
                 payload = await pendingRead.ConfigureAwait(false);
         }
+        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException or IOException)
+        {
+            YFinanceCircularTraceSink.Instance.InfoState(
+                "YFinanceServer",
+                "PendingReadDrainEnded",
+                [new("remote", remote), new("reason", "connection-closing"), new("exception_type", ex.GetType().Name)]);
+        }
         catch (Exception ex)
         {
             YFinanceCircularTraceSink.Instance.WarnState("YFinanceServer", "PendingReadDrainFailed", [new("remote", remote), new("message", ex.Message)]);
