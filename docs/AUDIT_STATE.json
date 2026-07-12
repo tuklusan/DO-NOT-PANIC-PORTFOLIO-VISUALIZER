@@ -11630,7 +11630,7 @@
       "priority": 1,
       "area": "graph_card_hydration",
       "title": "Hydrate graph cards immediately across weekend, holiday, and market-open transitions",
-      "status": "open",
+      "status": "closed",
       "source": "local_live_trace_investigation_2026_07_12",
       "severity": "high",
       "evidence": [
@@ -11674,6 +11674,21 @@
         "A local or VM visual validation starts with no current-session history and demonstrates prompt graph hydration followed by a stable live transition.",
         "Trace evidence records the selected fallback source, point count, immediate quote-driven hydration, live-series promotion, and top-16 membership changes without per-frame noise.",
         "DeepSeek review reports no blocking findings, applicable project documentation is updated, and the CR is closed with implementation and validation evidence."
+      ],
+      "resolution": [
+        "Implemented in c6dbe5e, 95e9b43, 8ee4fdd, and 036bb41: graph history now falls back from one-day intraday data to the latest five distinct daily market closes, with a bounded extended lookback for unusual closures.",
+        "Completed startup quotes are drained without waiting and yield keyed quote-fallback cards immediately; richer daily or intraday snapshots replace the same symbol in place while preserving motion state.",
+        "Runtime portfolio quotes create missing selected cards surgically and accumulate current-session points independently of the ten-minute top-16 membership timer.",
+        "Current-session series are seeded from a valid previous close, never zero, and promote atomically after two distinct points.",
+        "Graph snapshots now carry explicit series kind and exchange timezone. Daily labels use exchange-local MM/dd; intraday and quote-fallback labels use exchange-local HH:mm through IANA/Windows timezone resolution.",
+        "DeepSeek review findings on synchronization, timezone portability, nullable safety, and disabled-graph pipeline draining were incorporated. Duplicate-yield concerns were verified as intentional keyed replacement by ApplyOrUpdateGraph and SyncGraphVisuals, with existing focused coverage."
+      ],
+      "validation": [
+        "Focused graph/render suite passed 137/137 after the primary implementation; the full PortfolioSaver.Tests suite passed 728/728 from pushed commit 95e9b43; final focused keyed-replacement and graph tests passed 14/14 from pushed commits 8ee4fdd and 036bb41.",
+        "Installed VM pass installed-soak-20260712-184850 performed full uninstall/install and proved all 16 Sunday graph cards used five daily closes with visible MM/dd labels; deterministic analyzer found 0 crashes, errors, warnings, HTTP 429, slow graph actions, or transport failures.",
+        "Installed VM pass installed-soak-20260712-191616 performed another fresh build and full uninstall/install. Warmup adopted two completed startup quotes in 18 ms; QUAL and VOO quote-fallback cards yielded within about 90 ms; VOO was later replaced by five daily closes under the same key; all 16 daily graphs completed without errors or warnings.",
+        "The first timed screenshot from installed-soak-20260712-191616 visibly shows the provisional QUAL graph before daily history completed; later screenshots show the full daily-close graph set.",
+        "DeepSeek artifact advisory agreed the critical graph-hydration path passed. Its generic short-run memory/handle trend observations are covered by the project's recent clean two-hour installed-soak baseline and did not identify a CR-254 graph defect."
       ]
     }
   ],
