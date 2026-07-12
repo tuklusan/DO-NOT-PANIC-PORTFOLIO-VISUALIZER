@@ -13,6 +13,7 @@
 // ============================================================================
 using System.Windows;
 using System.Windows.Media;
+using PortfolioSaver.Core.Enums;
 
 namespace PortfolioSaver.Render.ViewModels;
 
@@ -91,6 +92,8 @@ public sealed class FloatingGraphViewModel : FloatingSpriteViewModel
         get => _changeForeground;
         set => SetProperty(ref _changeForeground, RenderThreadSafety.FreezeBrush(value, Brushes.Gainsboro));
     }
+
+    public GraphSeriesKind SeriesKind { get; set; } = GraphSeriesKind.Intraday;
 
     public string MaxScaleText
     {

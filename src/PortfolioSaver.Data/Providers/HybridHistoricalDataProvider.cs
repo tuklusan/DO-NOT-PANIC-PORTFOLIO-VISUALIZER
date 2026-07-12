@@ -13,6 +13,7 @@
 // ============================================================================
 using System.Collections.Concurrent;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Data.Interfaces;
 using PortfolioSaver.Data.Services;
 using PortfolioSaver.Shared.Diagnostics;
@@ -280,6 +281,10 @@ public sealed class HybridHistoricalDataProvider : IHistoricalDataProvider
         {
             Symbol = originalSymbol,
             LookbackDays = lookbackDays,
+            SeriesKind = lookbackDays <= 1 ? GraphSeriesKind.Intraday : GraphSeriesKind.DailyCloseFallback,
+            ExchangeTimeZoneId = string.IsNullOrWhiteSpace(response.Metadata?.ExchangeTimezoneName)
+                ? "UTC"
+                : response.Metadata.ExchangeTimezoneName,
             FetchTimestampUtc = DateTimeOffset.UtcNow,
             Points = response.Bars
                 .Where(static bar => bar.Close.HasValue)

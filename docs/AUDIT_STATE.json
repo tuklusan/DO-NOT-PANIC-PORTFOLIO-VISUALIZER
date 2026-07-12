@@ -11623,6 +11623,58 @@
         "DeepSeek documentation review completed; governance and hard-stop feedback incorporated.",
         "No product code, packaging, Partner Center registration, submission, or public distribution action was performed."
       ]
+    },
+    {
+      "id": "CR-254",
+      "tracking_number": "CR-254",
+      "priority": 1,
+      "area": "graph_card_hydration",
+      "title": "Hydrate graph cards immediately across weekend, holiday, and market-open transitions",
+      "status": "open",
+      "source": "local_live_trace_investigation_2026_07_12",
+      "severity": "high",
+      "evidence": [
+        "A local Sunday startup selected 16 graph symbols, but every one-day YFinance.NET history request returned zero bars and every symbol logged insufficient live history.",
+        "Quote fallback ran before sequential portfolio quotes populated StartupCoordinator runtime quote memory, so no graph cards were yielded at startup.",
+        "Successful portfolio quotes subsequently arrived one by one, but ApplyQuoteToGraph could not hydrate symbols because no graph objects existed.",
+        "All cards eventually appeared from quote fallback at the scheduled graph-selection refresh, leaving an avoidable interval of approximately ten minutes with no graph cards.",
+        "The deterministic diagnosis was independently confirmed by the DeepSeek artifact advisory in build/validation/artifacts/local-graph-investigation-20260712-180422."
+      ],
+      "notes": [
+        "Graph-card startup must not depend on the immediately preceding 24 hours containing an open market session.",
+        "Attempt normal intraday history first. If fewer than two usable points are returned, request daily history until the latest five distinct market-session closing prices are obtained; start with approximately ten calendar days and extend the bounded lookback when an unusual closure yields fewer than five sessions.",
+        "If fewer than two daily closes are available, construct a minimal graph from the latest accepted quote and previous close when available.",
+        "As each relevant portfolio quote arrives, immediately create or hydrate its missing selected graph card. Do not wait for the ten-minute top-mover reselection cadence.",
+        "The ten-minute cadence remains responsible only for recomputing top-16 mover membership, not for initial hydration or recovery from missing history.",
+        "Before regular-session open, show the latest five market-session closes. A valid YFinance.NET pre-market quote may update the card's displayed value immediately, but must not be appended to the daily chart as a lone mixed-mode point.",
+        "Collect accepted pre-market and regular-session samples for the exchange's current market date separately from the displayed fallback series. Promote the graph only after at least two points with distinct timestamps form a coherent current-session intraday series.",
+        "Seed the current-session intraday series from the latest known valid closing price, normally the quote's previous close or the final daily-fallback close, followed by the first accepted current-session quote. Never start a promoted graph from zero or inject a zero-valued continuity point.",
+        "Label fallback daily-close points with the exchange-local market date in MM/dd format. Label current-session intraday points with the exchange-local market time in HH:mm 24-hour format; do not format either series in the host computer's unrelated local timezone.",
+        "A daily-close fallback series must use MM/dd labels throughout. When the displayed series is atomically promoted to current-session intraday data, its labels must switch atomically to HH:mm without a mixed-label frame, stale fallback labels, or visible blanking.",
+        "At regular-session open, update market status independently and promptly without clearing, hiding, recreating, or repositioning graph cards.",
+        "On the first accepted regular-session quote, update the card surgically and trigger red or green flash plus accelerated edge travel only when the raw price changed from the preceding accepted raw quote.",
+        "A market-state transition, fallback-to-live transition, percent-only text change, unchanged quote, stale quote, or duplicate quote must not trigger flashing or accelerated movement.",
+        "Retain closing-price context while regular-session samples accumulate. Once at least two meaningful intraday points exist, atomically replace the fallback series with intraday history without an empty frame.",
+        "Deduplicate history and quote points by symbol and timestamp, and avoid adding duplicate values that do not represent a new meaningful sample.",
+        "Preserve card position, velocity, direction, selection identity, and active motion state while replacing fallback data with live data.",
+        "During each top-16 recalculation, preserve existing selected cards and modify only symbols whose membership changed; do not rebuild all cards.",
+        "Temporary history, quote, or network failures must leave the best available fallback graph visible and eligible for surgical recovery when data resumes.",
+        "Closed-to-pre-market, pre-market-to-open, holiday/weekend-to-open, late startup after open, and half-day session transitions must not create duplicate cards or prolonged blank graph areas.",
+        "Owner accuracy review completed on 2026-07-12. It resolved the ambiguity between a lone pre-market point and the no-mixed-label requirement by separating immediate value updates from atomic chart-series promotion.",
+        "DeepSeek documentation/code-review advisory completed on 2026-07-12. Its JSON-validity concern was disproven by successful PowerShell JSON parsing; its schema-consistency recommendation was accepted by using the established notes field. Its missing-test-evidence observations remain applicable acceptance work because CR-254 is intentionally open and not yet implemented."
+      ],
+      "acceptance": [
+        "Automated tests prove zero-bar intraday history falls back to the latest five available market-session closes.",
+        "Automated tests prove the first usable portfolio quote immediately creates a missing selected graph card without waiting for graph reselection.",
+        "Automated tests cover weekend, holiday, pre-market-to-open, direct closed-to-open, late-after-open startup, stale data, duplicate data, and temporary provider failure scenarios.",
+        "Tests prove fallback-to-live replacement is atomic and preserves graph-card layout and motion state.",
+        "Tests and visual validation prove daily-close fallback labels use exchange-local MM/dd, current-session labels use exchange-local HH:mm, and series promotion never displays mixed, stale, or host-timezone labels.",
+        "Tests prove the promoted current-session graph begins at the latest known valid closing price and never falls to an artificial zero baseline.",
+        "Tests prove flashing and accelerated edge movement occur only for an actual accepted raw-price change and stop under the existing edge-arrival contract.",
+        "A local or VM visual validation starts with no current-session history and demonstrates prompt graph hydration followed by a stable live transition.",
+        "Trace evidence records the selected fallback source, point count, immediate quote-driven hydration, live-series promotion, and top-16 membership changes without per-frame noise.",
+        "DeepSeek review reports no blocking findings, applicable project documentation is updated, and the CR is closed with implementation and validation evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

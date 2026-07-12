@@ -4706,6 +4706,43 @@ public partial class VisualizerSceneControl : UserControl
             ApplyQuoteToGraph(graph);
     }
 
+    private void ApplyImmediateGraphHydration(QuoteSnapshot quote)
+    {
+        if (!_settings.EnableFloatingGraphs ||
+            !_startupCoordinator.TryBuildImmediateGraph(_settings, quote.Symbol, out FloatingGraphViewModel? graph) ||
+            graph is null)
+        {
+            return;
+        }
+
+        FloatingGraphViewModel? existing = _graphs.FirstOrDefault(candidate =>
+            string.Equals(candidate.Symbol, quote.Symbol, StringComparison.OrdinalIgnoreCase));
+        if (existing is null && _graphs.Count >= 16)
+            return;
+
+        if (existing is not null && graph.SeriesKind == GraphSeriesKind.QuoteFallback)
+            return;
+
+        bool suppressMotionCue = existing?.RawLastValue is null;
+        bool previousSuppression = _suppressGraphRefreshMotionCues;
+        _suppressGraphRefreshMotionCues = previousSuppression || suppressMotionCue;
+        try
+        {
+            ApplyOrUpdateGraph(graph, preserveLayout: true);
+        }
+        finally
+        {
+            _suppressGraphRefreshMotionCues = previousSuppression;
+        }
+
+        TraceSceneState(
+            "GraphImmediateHydration",
+            new KeyValuePair<string, object?>("symbol", quote.Symbol),
+            new KeyValuePair<string, object?>("series_kind", graph.SeriesKind),
+            new KeyValuePair<string, object?>("point_count", graph.Points.Count),
+            new KeyValuePair<string, object?>("created", existing is null));
+    }
+
     private void ApplyQuoteToGraph(FloatingGraphViewModel graph)
     {
         if (!_latestQuotes.TryGetValue(graph.Symbol, out QuoteSnapshot? quote))
@@ -4932,6 +4969,9 @@ public partial class VisualizerSceneControl : UserControl
         _latestQuotes = MergeQuotes(_latestQuotes, deltaQuotes);
         _startupCoordinator.PrimeRuntimeQuotes(deltaQuotes);
         ResetRuntimeQuoteFailureStreak();
+
+        foreach (QuoteSnapshot quote in deltaQuotes.Values)
+            ApplyImmediateGraphHydration(quote);
 
         bool tapeStructureStillMatched = ApplyQuotesToDisplayedTapeItems(deltaQuotes.Values);
         // Config apply performs a full scene/tape sync immediately. During ordinary

@@ -39,6 +39,8 @@ public sealed class StartupCoordinator
     private const int MinimumTapeItemCount = 18;
     private const int SequentialQuotePipelineDepth = 4;
     private const int MaxSceneGraphCards = 16;
+    private const int DailyFallbackPointCount = 5;
+    private static readonly int[] DailyFallbackLookbackDays = [10, 30];
     private const int MaxGraphBuildCacheEntries = 64;
     private const string StatusFreshnessAnchorSymbol = "^SPX";
     private static readonly string[] LegacyRuntimeAiApiKeyEnvironmentVariableNames =
@@ -60,6 +62,8 @@ public sealed class StartupCoordinator
     private readonly FinanceNewsService _financeNewsService = new();
     private readonly SymbolProfileStore _symbolProfileStore = new(Path.Combine(PathHelper.GetLocalDataDirectory(), "symbol-profiles.json"));
     private readonly Dictionary<string, QuoteSnapshot> _runtimeQuoteMemory = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, List<HistoricalPricePoint>> _currentSessionGraphPoints = new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _graphStateGate = new();
     private readonly object _graphBuildCacheGate = new();
     private readonly Dictionary<GraphBuildCacheKey, CachedGraphBuild> _graphBuildCache = [];
     private long _graphBuildCacheSequence;
@@ -96,10 +100,7 @@ public sealed class StartupCoordinator
         WarnIfIgnoredLegacyRuntimeAiApiKeyEnvironmentVariableIsPresent(settings);
         bool networkAvailable = _isNetworkAvailable();
         IReadOnlyList<string> backgroundPaths = _exchangePhotoCacheService.GetImmediateBackgrounds(settings);
-        Dictionary<string, QuoteSnapshot> cachedQuotes = _runtimeQuoteMemory.ToDictionary(
-            pair => pair.Key,
-            pair => CloneQuote(pair.Value),
-            StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, QuoteSnapshot> cachedQuotes = SnapshotRuntimeQuotes();
         IReadOnlyList<string> headlines = _financeNewsService.GetCachedHeadlines(settings.NewsScrollerMode, settings.AiWritingStyle);
         DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
         bool showNetworkWaitingOverlay = !networkAvailable;
@@ -256,8 +257,14 @@ public sealed class StartupCoordinator
 
     public void PrimeRuntimeQuotes(IReadOnlyDictionary<string, QuoteSnapshot> quotes)
     {
-        foreach ((string symbol, QuoteSnapshot quote) in quotes)
-            _runtimeQuoteMemory[symbol] = CloneQuote(quote);
+        lock (_graphStateGate)
+        {
+            foreach ((string symbol, QuoteSnapshot quote) in quotes)
+            {
+                _runtimeQuoteMemory[symbol] = CloneQuote(quote);
+                RememberCurrentSessionGraphPoint(quote);
+            }
+        }
     }
 
     public async Task<NewsFlasherViewModel> BuildNewsViewModelAsync(
@@ -338,12 +345,50 @@ public sealed class StartupCoordinator
             .Select(group => group.Last())
             .ToDictionary(snapshot => snapshot.Symbol, StringComparer.OrdinalIgnoreCase);
 
+        List<string> dailyFallbackSymbols = liveFetchSymbols
+            .Where(symbol => !refreshedBySymbol.ContainsKey(symbol))
+            .ToList();
+        Dictionary<string, TickerHistorySnapshot> dailyFallbackBySymbol = new(StringComparer.OrdinalIgnoreCase);
+        foreach (int fallbackLookbackDays in DailyFallbackLookbackDays)
+        {
+            if (dailyFallbackSymbols.Count == 0)
+                break;
+
+            IReadOnlyList<TickerHistorySnapshot> fallbackSnapshots = await historicalProvider.GetHistoryAsync(
+                dailyFallbackSymbols,
+                fallbackLookbackDays,
+                cancellationToken).ConfigureAwait(false);
+            foreach (TickerHistorySnapshot fallback in fallbackSnapshots)
+            {
+                TickerHistorySnapshot normalized = CreateDailyCloseFallbackSnapshot(fallback);
+                if (normalized.Points.Count < 2)
+                    continue;
+
+                dailyFallbackBySymbol[fallback.Symbol] = normalized;
+            }
+
+            dailyFallbackSymbols = dailyFallbackSymbols
+                .Where(symbol => !dailyFallbackBySymbol.TryGetValue(symbol, out TickerHistorySnapshot? snapshot) ||
+                                 snapshot.Points.Count < DailyFallbackPointCount)
+                .ToList();
+        }
+
         foreach ((TickerGroup group, TickerItem ticker) in graphPairs)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!refreshedBySymbol.TryGetValue(ticker.Symbol, out TickerHistorySnapshot? refreshed))
             {
-                TraceGraph($"Graph warmup received insufficient live history for {ticker.Symbol}.");
+                if (dailyFallbackBySymbol.TryGetValue(ticker.Symbol, out TickerHistorySnapshot? dailyFallback))
+                {
+                    TraceGraph($"Graph warmup using daily-close fallback for {ticker.Symbol} with {dailyFallback.Points.Count} points.");
+                    yieldedSymbols.Add(ticker.Symbol);
+                    yield return BuildGraph(group.Name, dailyFallback, settings);
+                }
+                else
+                {
+                    TraceGraph($"Graph warmup received insufficient live and daily history for {ticker.Symbol}.");
+                }
+
                 continue;
             }
 
@@ -393,10 +438,7 @@ public sealed class StartupCoordinator
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        Dictionary<string, QuoteSnapshot> cachedQuotes = _runtimeQuoteMemory.ToDictionary(
-            pair => pair.Key,
-            pair => CloneQuote(pair.Value),
-            StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, QuoteSnapshot> cachedQuotes = SnapshotRuntimeQuotes();
         DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
 
         if (!networkAvailable)
@@ -481,16 +523,24 @@ public sealed class StartupCoordinator
 
     private IReadOnlyList<(TickerGroup Group, TickerItem Ticker)> SelectGraphTickerPairs(AppSettings settings)
     {
+        Dictionary<string, decimal?> moverScores;
+        lock (_graphStateGate)
+        {
+            moverScores = _runtimeQuoteMemory.ToDictionary(
+                pair => pair.Key,
+                pair => pair.Value.ChangePercent,
+                StringComparer.OrdinalIgnoreCase);
+        }
+
         List<GraphCandidate> candidates = settings.Groups
             .Where(group => group.Enabled)
             .SelectMany((group, groupOrder) => group.Tickers
                 .Where(ticker => ticker.Enabled && !string.IsNullOrWhiteSpace(ticker.Symbol))
                 .Select((ticker, tickerOrder) =>
                 {
-                    QuoteSnapshot? quote = _runtimeQuoteMemory.TryGetValue(ticker.Symbol, out QuoteSnapshot? cached)
+                    decimal? changePercent = moverScores.TryGetValue(ticker.Symbol, out decimal? cached)
                         ? cached
                         : null;
-                    decimal? changePercent = quote?.ChangePercent;
                     return new GraphCandidate(
                         group,
                         ticker,
@@ -707,6 +757,8 @@ public sealed class StartupCoordinator
         AppendGraphSignatureField(builder, snapshot.Symbol.ToUpperInvariant());
         AppendGraphSignatureField(builder, snapshot.FetchTimestampUtc.UtcTicks.ToString(CultureInfo.InvariantCulture));
         AppendGraphSignatureField(builder, snapshot.LookbackDays.ToString(CultureInfo.InvariantCulture));
+        AppendGraphSignatureField(builder, snapshot.SeriesKind.ToString());
+        AppendGraphSignatureField(builder, snapshot.ExchangeTimeZoneId);
         AppendGraphSignatureField(builder, plotWidth.ToString("0.###", CultureInfo.InvariantCulture));
         AppendGraphSignatureField(builder, plotHeight.ToString("0.###", CultureInfo.InvariantCulture));
         AppendGraphSignatureField(builder, bounceWithinViewport ? "1" : "0");
@@ -729,40 +781,146 @@ public sealed class StartupCoordinator
 
     private bool TryCreateFallbackGraphSnapshot(string symbol, int lookbackDays, out TickerHistorySnapshot? snapshot)
     {
-        snapshot = null;
-        if (!_runtimeQuoteMemory.TryGetValue(symbol, out QuoteSnapshot? quote))
-            return false;
-
-        decimal? last = quote.Last ?? quote.PreviousClose;
-        if (last is not decimal lastValue)
-            return false;
-
-        decimal anchorValue = quote.PreviousClose ?? lastValue;
-        DateTimeOffset nowUtc = quote.FetchTimestampUtc == DateTimeOffset.MinValue
-            ? DateTimeOffset.UtcNow
-            : quote.FetchTimestampUtc;
-
-        snapshot = new TickerHistorySnapshot
+        lock (_graphStateGate)
         {
-            Symbol = symbol,
-            FetchTimestampUtc = nowUtc,
-            LookbackDays = lookbackDays,
-            Points =
-            [
-                new HistoricalPricePoint
-                {
-                    TimestampUtc = nowUtc.AddMinutes(-15),
-                    Close = anchorValue
-                },
-                new HistoricalPricePoint
-                {
-                    TimestampUtc = nowUtc,
-                    Close = lastValue
-                }
-            ]
-        };
+            snapshot = null;
+            if (!_runtimeQuoteMemory.TryGetValue(symbol, out QuoteSnapshot? quote))
+                return false;
+
+            decimal? last = quote.Last ?? quote.PreviousClose;
+            if (last is not decimal lastValue)
+                return false;
+
+            decimal anchorValue = quote.PreviousClose ?? lastValue;
+            DateTimeOffset nowUtc = quote.FetchTimestampUtc == DateTimeOffset.MinValue
+                ? DateTimeOffset.UtcNow
+                : quote.FetchTimestampUtc;
+
+            snapshot = new TickerHistorySnapshot
+            {
+                Symbol = symbol,
+                FetchTimestampUtc = nowUtc,
+                LookbackDays = lookbackDays,
+                SeriesKind = GraphSeriesKind.QuoteFallback,
+                ExchangeTimeZoneId = quote.ExchangeTimeZoneId,
+                Points =
+                [
+                    new HistoricalPricePoint
+                    {
+                        TimestampUtc = nowUtc.AddMinutes(-15),
+                        Close = anchorValue
+                    },
+                    new HistoricalPricePoint
+                    {
+                        TimestampUtc = nowUtc,
+                        Close = lastValue
+                    }
+                ]
+            };
+            return true;
+        }
+    }
+
+    public bool TryBuildImmediateGraph(AppSettings settings, string symbol, out FloatingGraphViewModel? graph)
+    {
+        graph = null;
+        (TickerGroup Group, TickerItem Ticker) pair = SelectGraphTickerPairs(settings)
+            .FirstOrDefault(candidate => string.Equals(candidate.Ticker.Symbol, symbol, StringComparison.OrdinalIgnoreCase));
+        if (pair.Ticker is null)
+            return false;
+
+        TickerHistorySnapshot? snapshot = TryCreateCurrentSessionGraphSnapshot(symbol)
+            ?? (TryCreateFallbackGraphSnapshot(symbol, 1, out TickerHistorySnapshot? fallback) ? fallback : null);
+        if (snapshot is null)
+            return false;
+
+        graph = BuildGraph(pair.Group.Name, snapshot, settings);
         return true;
     }
+
+    private TickerHistorySnapshot? TryCreateCurrentSessionGraphSnapshot(string symbol)
+    {
+        lock (_graphStateGate)
+        {
+            if (!_currentSessionGraphPoints.TryGetValue(symbol, out List<HistoricalPricePoint>? points) || points.Count < 2 ||
+                !_runtimeQuoteMemory.TryGetValue(symbol, out QuoteSnapshot? quote))
+            {
+                return null;
+            }
+
+            return new TickerHistorySnapshot
+            {
+                Symbol = symbol,
+                FetchTimestampUtc = quote.FetchTimestampUtc,
+                LookbackDays = 1,
+                SeriesKind = GraphSeriesKind.Intraday,
+                ExchangeTimeZoneId = quote.ExchangeTimeZoneId,
+                Points = points.Select(CloneHistoryPoint).ToList()
+            };
+        }
+    }
+
+    private void RememberCurrentSessionGraphPoint(QuoteSnapshot quote)
+    {
+        if (quote.IsStale || quote.MarketSession is not (MarketSession.PreMarket or MarketSession.Regular) ||
+            (quote.Last ?? quote.PreviousClose) is not decimal value)
+        {
+            return;
+        }
+
+        DateTimeOffset timestampUtc = quote.ProviderTimestampUtc ?? quote.FetchTimestampUtc;
+        if (!_currentSessionGraphPoints.TryGetValue(quote.Symbol, out List<HistoricalPricePoint>? points))
+        {
+            points = [];
+            _currentSessionGraphPoints[quote.Symbol] = points;
+        }
+
+        TimeZoneInfo exchangeTimeZone = ExchangeTimeZoneResolver.Resolve(quote.ExchangeTimeZoneId);
+        DateOnly marketDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(timestampUtc, exchangeTimeZone).Date);
+        points.RemoveAll(point => DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(point.TimestampUtc, exchangeTimeZone).Date) != marketDate);
+        if (points.Count == 0 && quote.PreviousClose is decimal previousClose && previousClose > 0m)
+        {
+            points.Add(new HistoricalPricePoint
+            {
+                TimestampUtc = timestampUtc.AddMinutes(-1),
+                Close = previousClose
+            });
+        }
+
+        if (points.Any(point => point.TimestampUtc == timestampUtc))
+            return;
+
+        points.Add(new HistoricalPricePoint { TimestampUtc = timestampUtc, Close = value });
+        points.Sort((left, right) => left.TimestampUtc.CompareTo(right.TimestampUtc));
+        if (points.Count > 128)
+            points.RemoveRange(0, points.Count - 128);
+    }
+
+    private static TickerHistorySnapshot CreateDailyCloseFallbackSnapshot(TickerHistorySnapshot source)
+    {
+        TimeZoneInfo exchangeTimeZone = ExchangeTimeZoneResolver.Resolve(source.ExchangeTimeZoneId);
+        List<HistoricalPricePoint> points = source.Points
+            .Where(point => point.Close > 0m)
+            .OrderBy(point => point.TimestampUtc)
+            .GroupBy(point => DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(point.TimestampUtc, exchangeTimeZone).Date))
+            .Select(group => group.Last())
+            .TakeLast(DailyFallbackPointCount)
+            .Select(CloneHistoryPoint)
+            .ToList();
+
+        return new TickerHistorySnapshot
+        {
+            Symbol = source.Symbol,
+            FetchTimestampUtc = source.FetchTimestampUtc,
+            LookbackDays = source.LookbackDays,
+            SeriesKind = GraphSeriesKind.DailyCloseFallback,
+            ExchangeTimeZoneId = source.ExchangeTimeZoneId,
+            Points = points
+        };
+    }
+
+    private static HistoricalPricePoint CloneHistoryPoint(HistoricalPricePoint source)
+        => new() { TimestampUtc = source.TimestampUtc, Close = source.Close };
 
     private static bool SnapshotsEquivalent(TickerHistorySnapshot left, TickerHistorySnapshot right)
     {
@@ -1007,6 +1165,7 @@ public sealed class StartupCoordinator
             ChangePercent = source.ChangePercent,
             PreviousClose = source.PreviousClose,
             Currency = source.Currency,
+            ExchangeTimeZoneId = source.ExchangeTimeZoneId,
             MarketSession = source.MarketSession,
             ProviderTimestampUtc = source.ProviderTimestampUtc,
             FetchTimestampUtc = source.FetchTimestampUtc,
@@ -1274,8 +1433,18 @@ public sealed class StartupCoordinator
 
     private void ConsumePendingRuntimeQuoteSeeds()
     {
-        foreach ((string symbol, QuoteSnapshot quote) in RuntimeQuoteSeedStore.ConsumeAll())
-            _runtimeQuoteMemory[symbol] = CloneQuote(quote);
+        PrimeRuntimeQuotes(RuntimeQuoteSeedStore.ConsumeAll());
+    }
+
+    private Dictionary<string, QuoteSnapshot> SnapshotRuntimeQuotes()
+    {
+        lock (_graphStateGate)
+        {
+            return _runtimeQuoteMemory.ToDictionary(
+                pair => pair.Key,
+                pair => CloneQuote(pair.Value),
+                StringComparer.OrdinalIgnoreCase);
+        }
     }
 
     public static string FormatUpdatedTickerField(string? latestSymbol, decimal? changePercent, DateTimeOffset fetchUtc)

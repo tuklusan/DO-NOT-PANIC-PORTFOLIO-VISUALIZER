@@ -242,6 +242,7 @@ public sealed class YahooFinanceQuoteProvider : IQuoteProvider
             ChangePercent = changePercent,
             PreviousClose = previousClose,
             Currency = quote.Currency ?? "USD",
+            ExchangeTimeZoneId = string.IsNullOrWhiteSpace(quote.ExchangeTimezoneName) ? "UTC" : quote.ExchangeTimezoneName,
             MarketSession = YFinanceSymbolMapper.MapMarketSession(quote.MarketState),
             ProviderTimestampUtc = null,
             FetchTimestampUtc = DateTimeOffset.UtcNow,

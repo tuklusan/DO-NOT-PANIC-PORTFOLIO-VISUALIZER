@@ -14,6 +14,8 @@
 using System.Windows;
 using System.Windows.Media;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Core.Enums;
+using PortfolioSaver.Core.Services;
 using PortfolioSaver.Render.ViewModels;
 
 namespace PortfolioSaver.Render.Services;
@@ -27,6 +29,7 @@ public sealed class HistoricalGraphBuilder
             Symbol = snapshot.Symbol,
             TapeName = tapeName,
             OverlayText = $"{tapeName} | {snapshot.LookbackDays}D",
+            SeriesKind = snapshot.SeriesKind,
             Width = Math.Max(1, targetSize.Width),
             Height = Math.Max(1, targetSize.Height),
             PlotWidth = Math.Max(1, targetSize.Width),
@@ -103,9 +106,10 @@ public sealed class HistoricalGraphBuilder
         vm.MaxScaleText = FormatScaleValue(max);
         vm.MidScaleText = FormatScaleValue((min + max) / 2m);
         vm.MinScaleText = FormatScaleValue(min);
-        vm.LeftTimeScaleText = FormatTimeScale(snapshot.Points.First().TimestampUtc, snapshot.LookbackDays);
-        vm.MiddleTimeScaleText = FormatTimeScale(snapshot.Points[snapshot.Points.Count / 2].TimestampUtc, snapshot.LookbackDays);
-        vm.RightTimeScaleText = FormatTimeScale(snapshot.Points.Last().TimestampUtc, snapshot.LookbackDays);
+        TimeZoneInfo exchangeTimeZone = ExchangeTimeZoneResolver.Resolve(snapshot.ExchangeTimeZoneId);
+        vm.LeftTimeScaleText = FormatTimeScale(snapshot.Points.First().TimestampUtc, snapshot.SeriesKind, exchangeTimeZone);
+        vm.MiddleTimeScaleText = FormatTimeScale(snapshot.Points[snapshot.Points.Count / 2].TimestampUtc, snapshot.SeriesKind, exchangeTimeZone);
+        vm.RightTimeScaleText = FormatTimeScale(snapshot.Points.Last().TimestampUtc, snapshot.SeriesKind, exchangeTimeZone);
         decimal latestClose = snapshot.Points.Last().Close;
         vm.LastText = latestClose.ToString("0.00");
         if (snapshot.Points.Count >= 2)
@@ -136,8 +140,12 @@ public sealed class HistoricalGraphBuilder
         return value.ToString("0.00");
     }
 
-    private static string FormatTimeScale(DateTimeOffset pointInTime, int lookbackDays)
-        => lookbackDays <= 1
-            ? pointInTime.ToLocalTime().ToString("HH:mm")
-            : pointInTime.ToLocalTime().ToString("M/d");
+    private static string FormatTimeScale(DateTimeOffset pointInTime, GraphSeriesKind seriesKind, TimeZoneInfo exchangeTimeZone)
+    {
+        DateTimeOffset exchangeTime = TimeZoneInfo.ConvertTime(pointInTime, exchangeTimeZone);
+        return seriesKind == GraphSeriesKind.DailyCloseFallback
+            ? exchangeTime.ToString("MM/dd")
+            : exchangeTime.ToString("HH:mm");
+    }
+
 }

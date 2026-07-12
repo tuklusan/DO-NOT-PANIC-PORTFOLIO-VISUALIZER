@@ -14,7 +14,9 @@
 using System.Reflection;
 using System.Windows.Media;
 using PortfolioSaver.Core.Models;
+using PortfolioSaver.Core.Enums;
 using PortfolioSaver.Render.ViewModels;
+using PortfolioSaver.Render.Services;
 using PortfolioSaver.Presentation.Services;
 using Xunit;
 
@@ -134,6 +136,130 @@ public sealed class StartupCoordinatorGraphSelectionTests
         Assert.Equal(2, snapshot.Points.Count);
         Assert.Equal(509.11m, snapshot.Points[0].Close);
         Assert.Equal(512.34m, snapshot.Points[1].Close);
+    }
+
+    [Fact]
+    public void CreateDailyCloseFallbackSnapshot_KeepsLatestFiveDistinctExchangeDates()
+    {
+        DateTimeOffset start = new(2026, 6, 29, 20, 0, 0, TimeSpan.Zero);
+        TickerHistorySnapshot source = new()
+        {
+            Symbol = "VOO",
+            LookbackDays = 10,
+            ExchangeTimeZoneId = "America/New_York",
+            Points = Enumerable.Range(0, 7)
+                .Select(index => new HistoricalPricePoint
+                {
+                    TimestampUtc = start.AddDays(index),
+                    Close = 500m + index
+                })
+                .Append(new HistoricalPricePoint { TimestampUtc = start.AddDays(6).AddHours(1), Close = 507m })
+                .ToList()
+        };
+
+        MethodInfo method = typeof(StartupCoordinator).GetMethod(
+            "CreateDailyCloseFallbackSnapshot",
+            BindingFlags.Static | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("CreateDailyCloseFallbackSnapshot not found.");
+
+        TickerHistorySnapshot actual = Assert.IsType<TickerHistorySnapshot>(method.Invoke(null, [source]));
+
+        Assert.Equal(GraphSeriesKind.DailyCloseFallback, actual.SeriesKind);
+        Assert.Equal(5, actual.Points.Count);
+        Assert.Equal(502m, actual.Points[0].Close);
+        Assert.Equal(507m, actual.Points[^1].Close);
+    }
+
+    [Fact]
+    public void HistoricalGraphBuilder_UsesExchangeLocalLabelsForDailyAndIntradaySeries()
+    {
+        HistoricalGraphBuilder builder = new();
+        TickerHistorySnapshot daily = new()
+        {
+            Symbol = "VOO",
+            LookbackDays = 10,
+            SeriesKind = GraphSeriesKind.DailyCloseFallback,
+            ExchangeTimeZoneId = "America/New_York",
+            Points =
+            [
+                new HistoricalPricePoint { TimestampUtc = new DateTimeOffset(2026, 7, 2, 20, 0, 0, TimeSpan.Zero), Close = 500m },
+                new HistoricalPricePoint { TimestampUtc = new DateTimeOffset(2026, 7, 6, 20, 0, 0, TimeSpan.Zero), Close = 501m }
+            ]
+        };
+
+        FloatingGraphViewModel dailyGraph = builder.Build("CORE", daily, new System.Windows.Size(132, 40));
+        Assert.Equal("07/02", dailyGraph.LeftTimeScaleText);
+        Assert.Equal("07/06", dailyGraph.RightTimeScaleText);
+
+        daily.SeriesKind = GraphSeriesKind.Intraday;
+        daily.Points =
+        [
+            new HistoricalPricePoint { TimestampUtc = new DateTimeOffset(2026, 7, 6, 13, 30, 0, TimeSpan.Zero), Close = 500m },
+            new HistoricalPricePoint { TimestampUtc = new DateTimeOffset(2026, 7, 6, 14, 30, 0, TimeSpan.Zero), Close = 501m }
+        ];
+        FloatingGraphViewModel intradayGraph = builder.Build("CORE", daily, new System.Windows.Size(132, 40));
+        Assert.Equal("09:30", intradayGraph.LeftTimeScaleText);
+        Assert.Equal("10:30", intradayGraph.RightTimeScaleText);
+    }
+
+    [Fact]
+    public void TryBuildImmediateGraph_SeedsCurrentSessionFromPreviousCloseWithoutZeroBaseline()
+    {
+        StartupCoordinator coordinator = new();
+        AppSettings settings = new()
+        {
+            EnableFloatingGraphs = true,
+            Groups =
+            [
+                new TickerGroup
+                {
+                    Name = "CORE",
+                    Enabled = true,
+                    Tickers = [new TickerItem { Symbol = "VOO", Enabled = true }]
+                }
+            ]
+        };
+        DateTimeOffset firstFetch = new(2026, 7, 6, 13, 31, 0, TimeSpan.Zero);
+        coordinator.PrimeRuntimeQuotes(new Dictionary<string, QuoteSnapshot>
+        {
+            ["VOO"] = new()
+            {
+                Symbol = "VOO",
+                Last = 501m,
+                PreviousClose = 500m,
+                MarketSession = MarketSession.Regular,
+                ExchangeTimeZoneId = "America/New_York",
+                FetchTimestampUtc = firstFetch
+            }
+        });
+
+        Assert.True(coordinator.TryBuildImmediateGraph(settings, "VOO", out FloatingGraphViewModel? first));
+        Assert.NotNull(first);
+        Assert.Equal(GraphSeriesKind.Intraday, first.SeriesKind);
+        Assert.Equal(2, first.Points.Count);
+        Assert.Equal("09:30", first.LeftTimeScaleText);
+        Assert.Equal("09:31", first.RightTimeScaleText);
+        Assert.DoesNotContain(first.Points, point => point.Y > first.PlotHeight || point.Y < 0);
+        Assert.Equal("500.0", first.MinScaleText);
+
+        coordinator.PrimeRuntimeQuotes(new Dictionary<string, QuoteSnapshot>
+        {
+            ["VOO"] = new()
+            {
+                Symbol = "VOO",
+                Last = 502m,
+                PreviousClose = 500m,
+                MarketSession = MarketSession.Regular,
+                ExchangeTimeZoneId = "America/New_York",
+                FetchTimestampUtc = firstFetch.AddSeconds(30)
+            }
+        });
+
+        Assert.True(coordinator.TryBuildImmediateGraph(settings, "VOO", out FloatingGraphViewModel? second));
+        Assert.NotNull(second);
+        Assert.Equal(3, second.Points.Count);
+        Assert.Equal("500.0", second.MinScaleText);
+        Assert.Equal("09:31", second.RightTimeScaleText);
     }
 
     [Fact]
