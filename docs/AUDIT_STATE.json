@@ -11510,7 +11510,7 @@
       "priority": 2,
       "area": "config_tracing",
       "title": "Suppress per-property EditorChangeIgnored trace storms during configuration apply",
-      "status": "open",
+      "status": "closed",
       "source": "DeepSeek artifact review identified circular-trace displacement risk from redundant ignored-change events.",
       "severity": "medium",
       "evidence": [
@@ -11526,6 +11526,12 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Implemented in c7177be: configuration apply now returns silently from the applying guard instead of emitting one ignored-change trace per editor property."
+      ],
+      "validation": [
+        "Focused MainWindowViewModelValidationTests passed as part of a 114/114 focused suite. Fresh installed-app soak installed-soak-20260712-074029 completed 120 minutes; deterministic analyzer clean with 0 findings; DeepSeek artifact advisory reviewed; manual trace scan found 0 applying EditorChangeIgnored events."
       ]
     },
     {
@@ -11534,7 +11540,7 @@
       "priority": 3,
       "area": "yfinance_server_tracing",
       "title": "Classify expected pending-read cancellation during server shutdown as informational",
-      "status": "open",
+      "status": "closed",
       "source": "DeepSeek artifact review determined the forced socket close was a benign shutdown artifact, but the warning triggered a false high-severity anomaly.",
       "severity": "low",
       "evidence": [
@@ -11550,6 +11556,12 @@
         "Local build/test validation passes when the change affects code.",
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ],
+      "resolution": [
+        "Implemented in c7177be: expected pending-read cancellation, disposal, and cleanup-time IO exceptions are logged as informational PendingReadDrainEnded events; unexpected exceptions remain PendingReadDrainFailed warnings."
+      ],
+      "validation": [
+        "Focused YFinanceClientServerProtocolTests passed as part of a 114/114 focused suite. Fresh installed-app soak installed-soak-20260712-074029 completed 120 minutes; deterministic analyzer clean with 0 findings; DeepSeek artifact advisory reviewed; manual trace scan found 0 warnings, 0 PendingReadDrainFailed events, and 1 expected PendingReadDrainEnded event at shutdown."
       ]
     }
   ],
