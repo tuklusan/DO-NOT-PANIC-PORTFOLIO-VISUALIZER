@@ -315,6 +315,16 @@ public sealed class StartupCoordinator
                 yieldedSymbols.Add(ticker.Symbol);
                 yield return BuildGraph(group.Name, cached, settings);
             }
+            else if (TryCreateFallbackGraphSnapshot(ticker.Symbol, graphLookbackDays, out TickerHistorySnapshot? immediateFallback) &&
+                     immediateFallback is not null &&
+                     immediateFallback.Points.Count >= 2)
+            {
+                // A later yield for the same symbol is an intentional atomic upgrade. The scene
+                // applies graphs by symbol key, preserving motion instead of adding a duplicate card.
+                TraceGraph($"Graph warmup yielding immediate quote fallback for {ticker.Symbol}; richer history remains eligible for keyed replacement.");
+                yieldedSymbols.Add(ticker.Symbol);
+                yield return BuildGraph(group.Name, immediateFallback, settings);
+            }
 
             if (!networkAvailable)
             {
