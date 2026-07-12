@@ -52,6 +52,10 @@ still-open tickets as `CLOSED/NO-ACTION`; the canonical record remains in
 
 No Microsoft Store/MSIX migration work is part of the 1.0 baseline unless it is later approved and reactivated as new tracked work.
 
+The current research and phased implementation proposal is maintained in
+`docs/MICROSOFT_STORE_PUBLICATION_PLAN.md`. That plan does not itself authorize
+packaging work or public submission.
+
 ## Baseline Sanity Checks
 
 The baseline is considered coherent when:

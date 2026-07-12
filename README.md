@@ -191,6 +191,7 @@ The active documentation set has been intentionally reduced to a small core:
 
 - `BUILD_AND_DEPLOY.md` - Visual Studio build, run, publish, and installer-sandbox workflow
 - `docs/RELEASE_1_0_BASELINE.md` - active 1.0 development baseline and distribution-freeze rule
+- `docs/MICROSOFT_STORE_PUBLICATION_PLAN.md` - researched MSIX/Partner Center certification and publication plan; implementation remains approval-gated
 - `docs/AUDIT_STATE.json` - single canonical machine-maintained audit, test, and release-gate state
 - `build/vm/VM_OPERATIONS_RUNBOOK.md` - repeatable SSH-first remote Windows UX validation workflow using PortfolioSaver.VmAgent and WinAppDriver in the interactive session
 - `YFinance.net/PORTING_PLAN.md` - upstream sync rules, responsibility map, and standalone YFinance.NET proof plan

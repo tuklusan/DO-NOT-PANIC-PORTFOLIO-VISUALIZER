@@ -11591,6 +11591,38 @@
       "validation": [
         "Focused YFinanceClientServerProtocolTests passed as part of a 114/114 focused suite. Fresh installed-app soak installed-soak-20260712-074029 completed 120 minutes; deterministic analyzer clean with 0 findings; DeepSeek artifact advisory reviewed; manual trace scan found 0 warnings, 0 PendingReadDrainFailed events, and 1 expected PendingReadDrainEnded event at shutdown."
       ]
+    },
+    {
+      "id": "CR-253",
+      "tracking_number": "CR-253",
+      "priority": 2,
+      "area": "Distribution",
+      "title": "Research and plan Microsoft Store review and publication",
+      "status": "closed",
+      "source": "user_store_research_request_2026_07_12",
+      "severity": "Medium",
+      "evidence": [
+        "The owner requested deep current research and a concrete plan for Microsoft Store review and publication.",
+        "Official Microsoft documentation was reviewed for account onboarding, Store policy, MSIX packaging/signing, restricted capabilities, listing assets, certification, privacy, live generative AI, submission holds, and gradual rollout.",
+        "The current WPF, multi-process YFinance.NET, Local AppData, Inno installer, licensing, AI-news, and release workflows were mapped against MSIX and Store constraints."
+      ],
+      "acceptance": [
+        "Recommend the appropriate Store distribution artifact and explain rejected alternatives.",
+        "Document account type, cost, publisher identity, policy, privacy, AI, and third-party-content gates.",
+        "Define package architecture and code-compatibility spikes for the desktop, config, and YFinance.NET server processes.",
+        "Define Store listing, certification, test, submission, rollout, and operational phases.",
+        "Do not authorize implementation or public submission."
+      ],
+      "notes": [
+        "The plan recommends Store-ingested MSIX because Microsoft signs it after certification; Store submission of the current Inno EXE would require CA-trusted Authenticode signatures for all PE files.",
+        "Phase 0 is a hard stop: account/publisher eligibility, privacy, live-AI reporting, and third-party-content rights must be resolved and owner-approved before packaging work.",
+        "CR-174 remains administratively closed and unchanged; any implementation requires newly approved follow-on CRs."
+      ],
+      "validation": [
+        "Research and phased plan completed in docs/MICROSOFT_STORE_PUBLICATION_PLAN.md.",
+        "DeepSeek documentation review completed; governance and hard-stop feedback incorporated.",
+        "No product code, packaging, Partner Center registration, submission, or public distribution action was performed."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
