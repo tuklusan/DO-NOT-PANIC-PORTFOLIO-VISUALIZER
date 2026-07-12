@@ -16,10 +16,14 @@ patent, trademark, and governing-law provisions.
 
 # YFinance.NET Porting Plan
 
-## Goal
-Build a standalone .NET 10 port of the core `tuklusan/yfinance` logic inside `YFinance.net`, independent of the existing Yahoo code in the main Portfolio Visualizer app.
+Document status: Implemented foundation; maintained upstream-alignment map
 
-The first proving target is a VM-run console exerciser that:
+## Goal
+Maintain the standalone .NET 10 port of the core `tuklusan/yfinance` logic
+inside `YFinance.net`, independent of application-side market-data transport.
+
+The original proving target, now completed and retained as a regression surface,
+is a VM-run console exerciser that:
 
 1. determines the top 100 S&P 500 symbols by market cap with caching,
 2. refreshes them every 5 minutes,

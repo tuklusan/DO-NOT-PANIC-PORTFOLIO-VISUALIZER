@@ -16,15 +16,22 @@ patent, trademark, and governing-law provisions.
 
 # Anomaly and Degradation Validation Test Plan
 
-Document status: Initial ticketization pass
+Document status: Completed ticket set; maintained degraded-validation matrix
 Date: 2026-06-13
 Applies to: CR-064 through CR-085
 
 ## Purpose
 
-The healthy-path autonomous VM validation loop is now available. The next validation frontier is proving that the application behaves intentionally under degraded, anomalous, and exceptional conditions instead of merely passing when the internet, Yahoo/YFinance, AI-provider access, local storage, graphics, and harness infrastructure are healthy.
+The healthy-path autonomous VM validation loop and its degraded-mode extensions
+are available. This matrix records how the application is expected to behave
+under degraded, anomalous, and exceptional conditions instead of merely
+passing when internet, Yahoo/YFinance, AI-provider access, local storage,
+graphics, and harness infrastructure are healthy.
 
-These tickets define a repeatable degraded-mode validation matrix. Each scenario should be reproducible through deterministic local or VM harness injection, should produce clear trace evidence, and should never rely on a lucky live outage.
+These completed tickets define a repeatable degraded-mode validation matrix.
+Each scenario remains reproducible through deterministic local or VM harness
+injection, produces clear trace evidence, and does not rely on a lucky live
+outage.
 
 ## Test Tickets
 
@@ -280,7 +287,7 @@ These tickets define a repeatable degraded-mode validation matrix. Each scenario
 - Severity: Medium
 - Area: news_degradation
 - Status: closed
-- Closure evidence: commit `b4fb1d4` added explicit RSS-only structured fallback for summarized-news mode when no AI API key is configured and preserved the waiting placeholder when RSS is also unavailable; DeepSeek review `build/deepseek-review/deepseek-review-20260622-004326.md` was reviewed and its no-key behavior advisory was accepted as the intended RSS-only fallback requirement; focused local validation passed 95/95 on 2026-06-22 for `FinanceNewsServiceTests`, `StartupCoordinatorNewsTests`, and `ScreensaverRenderBehaviorTests` using `dotnet test tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj -c Release --filter "FullyQualifiedName~FinanceNewsServiceTests|FullyQualifiedName~StartupCoordinatorNewsTests|FullyQualifiedName~ScreensaverRenderBehaviorTests" --nologo`; validation-script smoke returned `VALIDATION_SCRIPT_SMOKE_TEST=Passed`. Concrete coverage includes `FinanceNewsServiceTests.GetHeadlinesAsync_SummarizedMode_WithoutApiKey_UsesRssBackedStructuredFallback`, `AiHttpFailureUsesStructuredFallback`, `SlowAiResponseUsesStructuredFallbackWithinBudget`, `RetriesOnceAfterMalformedAiJson`, and scroller-liveness tests such as `NewsFlasherControl_ScrollsAfterSecondLineAndDefersRefreshUntilAfterAdvance`, `CarriesPriorBottomLineWithoutRetypingIt`, and `PausesAfterFinalSegmentBeforeNextHeadline`. The off-UI-thread independent news lane remains covered by the previously closed NB-048 proof and `Nb048BehaviorTests.ScreensaverSceneControl_UsesIndependentBackgroundNewsRefreshLane`.
+- Closure evidence: commit `b4fb1d4` added explicit RSS-only structured fallback for summarized-news mode when no AI API key is configured and preserved the waiting placeholder when RSS is also unavailable; transient DeepSeek review artifact `build/deepseek-review/deepseek-review-20260622-004326.md` (not retained in Git) was reviewed and its no-key behavior advisory was accepted as the intended RSS-only fallback requirement; focused local validation passed 95/95 on 2026-06-22 for `FinanceNewsServiceTests`, `StartupCoordinatorNewsTests`, and `ScreensaverRenderBehaviorTests` using `dotnet test tests\PortfolioSaver.Tests\PortfolioSaver.Tests.csproj -c Release --filter "FullyQualifiedName~FinanceNewsServiceTests|FullyQualifiedName~StartupCoordinatorNewsTests|FullyQualifiedName~ScreensaverRenderBehaviorTests" --nologo`; validation-script smoke returned `VALIDATION_SCRIPT_SMOKE_TEST=Passed`. Concrete coverage includes `FinanceNewsServiceTests.GetHeadlinesAsync_SummarizedMode_WithoutApiKey_UsesRssBackedStructuredFallback`, `AiHttpFailureUsesStructuredFallback`, `SlowAiResponseUsesStructuredFallbackWithinBudget`, `RetriesOnceAfterMalformedAiJson`, and scroller-liveness tests such as `NewsFlasherControl_ScrollsAfterSecondLineAndDefersRefreshUntilAfterAdvance`, `CarriesPriorBottomLineWithoutRetypingIt`, and `PausesAfterFinalSegmentBeforeNextHeadline`. The off-UI-thread independent news lane remains covered by the previously closed NB-048 proof and `Nb048BehaviorTests.ScreensaverSceneControl_UsesIndependentBackgroundNewsRefreshLane`.
 - Evidence / rationale:
   - News scroller uses AI provider when configured and RSS-only fallback when unavailable.
   - We previously proved RSS-only fallback once, but not as a repeatable degraded-mode matrix.
@@ -498,7 +505,7 @@ DeepSeek reviewed CR-064 through CR-085 on 2026-06-13 with a specific prompt to 
 - Area: ux_degradation_feedback
 - Status: closed
 - Closure evidence: VM degraded runtime run `ux-deep-ssh-20260621-235045` completed config, desktop, and fullscreen phases under `FaultProfile=offline-during-runtime`; analyzer `visual-validation-analysis-20260622-003551.json` reported clean with 0 deterministic findings; DeepSeek artifact advisory `deepseek-artifact-review-20260622-003551.md` was reviewed; trace evidence shows fault activation at `2026-06-22T04:02:56.9495866+00:00` and user-visible `RuntimeDataFreshnessChanged` to `OFFLINE - showing last values` at `2026-06-22T04:02:58.7418313+00:00`, a `1.792s` transition within the 2-second target.
-- Prior evidence: VM degraded runtime run `ux-deep-ssh-20260620-090405` proved visible offline freshness feedback; `visual-validation-analysis-20260620-095412.json` and DeepSeek artifact review `deepseek-artifact-review-20260620-095412.md` reported clean results with no blocking user-visible degradation findings; DeepSeek documentation gate `build/deepseek-review/deepseek-review-20260621-175406.md` drove the explicit timing proof added by commits `af83f75` and `9556ecb`.
+- Prior evidence: VM degraded runtime run `ux-deep-ssh-20260620-090405` proved visible offline freshness feedback; `visual-validation-analysis-20260620-095412.json` and DeepSeek artifact review `deepseek-artifact-review-20260620-095412.md` reported clean results with no blocking user-visible degradation findings; transient DeepSeek documentation-gate artifact `build/deepseek-review/deepseek-review-20260621-175406.md` (not retained in Git) drove the explicit timing proof added by commits `af83f75` and `9556ecb`.
 - UX rationale:
   - DeepSeek UX anomaly review identified that CR-064 through CR-085 cover functional degradation but do not fully define what the human user sees for each degraded state.
   - Users do not have trace logs; they infer system health from visual status indicators, placeholders, color states, and concise messages.

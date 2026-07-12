@@ -116,3 +116,31 @@ belongs to fatal startup handling, not the bounded AI-access probe.
 `docs/RELEASE_1_0_BASELINE.md` are living documents. Date-stamped QA and review
 reports are immutable historical evidence unless a clarification is required
 to prevent them from being mistaken for current state.
+
+## Convergence Continuation
+
+The audit was resumed under the stricter rule that corrections discovered in a
+pass reset the clean-pass count. The first resumed semantic scan found that the
+implemented YFinance.NET plan still contained unfinished future-tense headings
+and that the completed anomaly matrix still described itself as an initial
+ticketization frontier. The maintained porting plan also opened with an
+unqualified future build goal even though its closing status recorded delivery.
+
+Those gaps were corrected without rewriting historical decisions:
+
+- the implementation plan now distinguishes completed phases, delivered file
+  areas, maintenance contracts, and the original completed first step
+- the anomaly plan now identifies itself as a completed, maintained validation
+  matrix
+- the porting plan now identifies the implemented foundation and retained
+  exerciser regression surface
+- transient ignored review-artifact paths are explicitly labeled as not
+  retained in Git
+
+After those corrections, two independent full forensic scans completed with
+zero new gaps. The first validated all tracked JSON, local Markdown links,
+living-document paths, ticket state, release/version claims, machine-path
+portability, and stale terminology. The second independently cross-checked
+living prose against build metadata, Settings XAML, AI startup code, runtime
+defaults, installer hash, and YFinance.NET protocol constants. Both reported
+clean results.
