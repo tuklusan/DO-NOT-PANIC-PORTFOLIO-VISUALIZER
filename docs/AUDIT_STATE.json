@@ -11443,6 +11443,54 @@
         "Segment mutation audit returned NO_DIRECT_SEGMENT_MUTATION_FOUND.",
         "DeepSeek review gate artifacts: deepseek-review-20260711-150713.md, deepseek-review-20260711-151214.md, deepseek-review-20260711-151616.md."
       ]
+    },
+    {
+      "id": "CR-249",
+      "tracking_number": "CR-249",
+      "priority": 2,
+      "area": "vm_harness",
+      "title": "Long-run VM soak leaves desktop version verification pending after successful detection",
+      "status": "open",
+      "source": "DeepSeek artifact advisory identified the inconsistent version-check state.",
+      "severity": "medium",
+      "evidence": [
+        "installed-soak-20260712-025848 ux-deep-summary.json: DesktopVersionCheck=Pending while RuntimeVersionCheck=Passed and the 1.0 version element is recorded in Notes."
+      ],
+      "notes": [
+        "Set DesktopVersionCheck=Passed whenever the desktop 1.0 marker is detected, including long-run soak mode."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
+    },
+    {
+      "id": "CR-250",
+      "tracking_number": "CR-250",
+      "priority": 2,
+      "area": "vm_harness",
+      "title": "VM soak capture loop bursts frames when the next interval exceeds the deadline",
+      "status": "open",
+      "source": "Capture-loop branch sleeps 100 ms whenever nextCaptureAt is beyond captureDeadline, repeatedly capturing until the deadline.",
+      "severity": "medium",
+      "evidence": [
+        "installed-soak-20260712-025848 captured desktop-061 through desktop-074 at 5-18 second intervals after 60 normal 120-second captures."
+      ],
+      "notes": [
+        "Exit the capture loop after the final scheduled frame when the next capture would be at or beyond the deadline."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

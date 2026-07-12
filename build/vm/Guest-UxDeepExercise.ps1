@@ -3638,11 +3638,9 @@ try {
             }
         }
         if ($null -ne $versionMatch) {
+            $summary.DesktopVersionCheck = "Passed"
             if ($isLongRunSoak) {
                 $summary.RuntimeVersionCheck = "Passed"
-            }
-            else {
-                $summary.DesktopVersionCheck = "Passed"
             }
             $summary.Notes += ("Visual host version element observed: name='{0}' automation_id='{1}' help='{2}'" -f
                 $versionMatch.Name,
@@ -3808,8 +3806,18 @@ try {
             $lastCaptureIndex = $i
             Write-SummaryFiles
             $nextCaptureAt = $frameStartedAt.AddSeconds($effectiveCaptureIntervalSeconds)
-            $sleepSeconds = [int][Math]::Round(($nextCaptureAt - (Get-Date)).TotalSeconds)
-            if ($sleepSeconds -gt 0 -and (Get-Date).AddSeconds($sleepSeconds) -lt $captureDeadline) {
+            if ($nextCaptureAt -ge $captureDeadline) {
+                break
+            }
+            $sleepSeconds = [int][Math]::Floor(($nextCaptureAt - (Get-Date)).TotalSeconds)
+            if ($sleepSeconds -le 0) {
+                $nextCaptureAt = (Get-Date).AddSeconds($effectiveCaptureIntervalSeconds)
+                if ($nextCaptureAt -ge $captureDeadline) {
+                    break
+                }
+                $sleepSeconds = [int][Math]::Floor(($nextCaptureAt - (Get-Date)).TotalSeconds)
+            }
+            if ($sleepSeconds -gt 0) {
                 Start-Sleep -Seconds $sleepSeconds
             }
             elseif ((Get-Date) -lt $captureDeadline) {
