@@ -775,7 +775,8 @@ public sealed class VmHarnessScriptTests
         Assert.True(captureSleepStart >= 0 && captureSleepEnd > captureSleepStart);
         string captureSleepBlock = script[captureSleepStart..captureSleepEnd];
         Assert.Contains("break", captureSleepBlock, StringComparison.Ordinal);
-        Assert.Equal(1, Regex.Matches(captureSleepBlock, Regex.Escape("elseif ((Get-Date) -lt $captureDeadline)")).Count);
+        MatchCollection deadlineFallbackMatches = Regex.Matches(captureSleepBlock, Regex.Escape("elseif ((Get-Date) -lt $captureDeadline)"));
+        Assert.Single(deadlineFallbackMatches.Cast<Match>());
         Assert.Contains("[Math]::Floor", captureSleepBlock, StringComparison.Ordinal);
         Assert.Contains("if ($sleepSeconds -le 0)", captureSleepBlock, StringComparison.Ordinal);
         Assert.Contains("$nextCaptureAt = (Get-Date).AddSeconds($effectiveCaptureIntervalSeconds)", captureSleepBlock, StringComparison.Ordinal);
