@@ -11772,6 +11772,73 @@
         "Independent confirmation soak installed-soak-20260713-050234 completed a second consecutive clean two-hour installed run with zero new tickets; deterministic and DeepSeek analyses passed, memory remained bounded, VIX data stayed internally consistent, and inspected startup/late-run captures showed complete expected hydration.",
         "DeepSeek review feedback about preserving the protocol contract was incorporated; its accessibility warning was a false positive because YFinance.NET.Server already grants InternalsVisibleTo to PortfolioSaver.Tests."
       ]
+    },
+    {
+      "id": "CR-257",
+      "tracking_number": "CR-257",
+      "priority": 1,
+      "area": "desktop_rendering_reliability",
+      "title": "Diagnose and mitigate local WPF composition termination",
+      "status": "open",
+      "source": "local_installed_windows_incident_2026_07_13",
+      "severity": "critical",
+      "evidence": [
+        "The installed Windows desktop application disappeared unexpectedly on the local PC on 2026-07-13 after approximately 69 minutes and 55 seconds of otherwise successful market-data and UI activity.",
+        "The owned YFinance.NET server process disappeared at the same time; desktop and server circular traces ended abruptly with no orderly shutdown, managed unhandled exception, release-integrity failure, transport failure, or explicit fatal event.",
+        "Windows did not create a new Application Error event, Windows Error Reporting record, or crash dump for the current incident, so the exact termination mechanism is not proven.",
+        "A retained historical dump from the same installed WPF product on the same PC records a native access violation in wpfgfx_cor3.dll at CHwSurfaceRenderTarget::ComposeEffect+0x160 on the WPF composition/render partition thread.",
+        "The historical wpfgfx_cor3.dll dump makes another native WPF hardware-composition failure the leading hypothesis for the current incident, but it is not proof that the current termination had the same cause.",
+        "The bounded local review packet is stored under the ignored artifact path build/validation/artifacts/local-crash-20260713-135538; historical dump and WER files remain outside the repository and must not be committed.",
+        "Follow-up local pull on 2026-07-13 preserved the current circular traces under ignored artifact path build/validation/artifacts/local-cr257-20260713-150447. Desktop trace SHA-256 is C994AF28660D315FA2AABF7C9D7FEAE31DAEDCC614005D7AEFA450DCE63860B9; YFinance.NET trace SHA-256 is 52784C7978CA4AD14F5D579352A3D1FF55BE8362D80B00444FD9193BC6FCE901.",
+        "The pulled desktop trace contains 44,287 timestamped lines from PortfolioSaver.Desktop PID 19400 and related local processes. Its first chronological installed-desktop line is startup at 2026-07-13T16:36:54.7966331+00:00; its final installed-desktop line is a normal NewsFlasher PauseBetweenHeadlines event at 2026-07-13T17:46:50.1749358+00:00.",
+        "The pulled YFinance.NET trace shows owned server PID 5772 starting at 2026-07-13T16:36:56.2945523+00:00 with loopback bind, owned mode, and owner PID 19400. Its final installed-server response is a successful get_quotes response for VSS at 2026-07-13T17:46:49.7535581+00:00.",
+        "The installed desktop trace has zero ERROR lines. Its only installed-desktop WARN line is expected AI-news startup fallback from provider HTTP 429; the other desktop-trace warnings came from local testhost processes sharing the trace sink.",
+        "The Windows Application log query for 2026-07-13 found no PortfolioSaver, YFinance.NET, or wpfgfx Application Error or WER event for the current incident. The only matching event was an unrelated ChatGPT AppHangTransient at 2026-07-13T14:48:28-04:00.",
+        "Local GPU inventory records Intel HD Graphics 630 driver 26.20.100.6812 from 2019-05-20 on a 3840x2160 display and NVIDIA GeForce GTX 1060 driver 32.0.15.8157 from 2025-10-08 on a 1920x1080 display, confirming a hybrid-GPU topology materially different from the VM.",
+        "Local mitigation work on 2026-07-13 added WPF render-mode decision logging, explicit hardware/software overrides, previous-run abnormal-exit detection, software-rendering recovery selection, and a HKCU WER LocalDumps support script so future local reproductions can preserve stronger native evidence."
+      ],
+      "notes": [
+        "Do not attribute the current incident to a specific ticker, the final graph update, the news scroller, OpenRouter HTTP 429 responses, YFinance.NET quote cadence, or managed background-task failure without fresh causal evidence.",
+        "Configure reliable native crash capture for PortfolioSaver.Desktop.exe before attempting to close this ticket. Candidate mechanisms include Windows Error Reporting LocalDumps, a narrowly scoped support-mode diagnostic script, a lightweight process-exit monitor, or a carefully bounded MiniDumpWriteDump path where appropriate.",
+        "Crash artifacts may contain sensitive process memory, user paths, or credentials. They must remain local/private, must not be committed, and must be handled under explicit evidence-retention rules.",
+        "Collect lifecycle and graphics evidence with low-noise tracing: process identity, main-window loaded/closed events, OnExit start/completion, owned-server shutdown request/completion, WPF rendering tier, selected render mode, GPU adapter/driver identity where safely available, abnormal previous-run detection, and recovery-mode reason.",
+        "Run matched installed hardware/default and WPF SoftwareOnly rendering soaks on the affected local PC using the same installer build, settings, data, screen arrangement, and host conditions. Use 2-hour and 8-hour runs, and repeat any apparent hardware/software differential before accepting it as strong evidence.",
+        "If rendering-mode comparison does not isolate the cause, test one variable at a time: background transition, slow background zoom, graph-card effects, tape flash effects, news animation, window state, monitor topology, and adapter selection when controllable.",
+        "If hardware WPF composition failure is confirmed, prefer an evidence-driven mitigation such as abnormal-exit detection plus software-rendering recovery mode rather than an unconditional global software-rendering switch.",
+        "Any diagnostic, rendering-policy, abnormal-exit marker, watchdog, or recovery-mode implementation must pass the mandatory DeepSeek code-review gate before commit/push and before local or VM validation.",
+        "DeepSeek artifact advisory for build/validation/artifacts/local-cr257-20260713-150447 agreed that CR-257 must remain open, that the strongest current hypothesis remains native WPF hardware composition, and that the absence of fresh crash evidence is the critical diagnostic gap.",
+        "DeepSeek's concern that concurrent testhost activity may have shared or stressed the installed server is accepted as a clean-reproduction requirement but not as a proven fact. The trace evidence shows testhost processes wrote to the same app-owned trace sink; it does not by itself prove they used installed server PID 5772. Future local soaks must run without concurrent test suites or harness processes.",
+        "Installed-app visual state during the incident is unobserved because scene-capture evidence in the artifact bundle belongs to testhost processes, not PortfolioSaver.Desktop PID 19400. Future local reproduction must include periodic installed-app screenshots or app-native scene captures.",
+        "The absence of a current WER event means the investigation must also consider silent external termination, resource-manager termination, WER configuration/disk-space failure, heap corruption that prevented WER, or process kill by another actor; these remain unproven alternatives to the WPF composition hypothesis.",
+        "The short local GPU smoke is not close-out evidence. It did not capture app screenshots or exported circular trace payload text, and it was shorter than the roughly 70-minute incident window; use it only as startup and diagnostic-path evidence.",
+        "The 2026-07-13 implementation intentionally keeps hardware rendering as the default after clean exits and selects WPF software rendering only for explicit override or an abnormal previous run, matching the acceptance preference for evidence-driven recovery rather than an unconditional software switch."
+      ],
+      "acceptance": [
+        "A fresh causal dump, process-exit record, or repeatable hardware/software rendering differential identifies the failure class.",
+        "Reliable native crash evidence is captured on a forced diagnostic test or a naturally reproduced failure without publishing private dump contents.",
+        "A minimal mitigation is implemented for the identified failure class, and tests cover any new rendering policy, abnormal-exit marker, watchdog, lifecycle, or recovery-mode logic.",
+        "Clean shutdown updates the clean-exit marker atomically; abrupt previous-run state selects the intended recovery policy; stale or corrupt marker state fails safely; recovery mode cannot create a launch loop; and explicit test overrides select hardware or software mode deterministically.",
+        "Render-mode selection is logged once without per-frame noise, owned-server cleanup remains correct on normal exit, and no API key or credential is written to diagnostic files.",
+        "Existing fullscreen, background, graph-card, tape, news, configuration, market-data, and degraded-mode behavior remains unchanged unless the mitigation explicitly requires a scoped change.",
+        "The complete automated test suite passes after implementation.",
+        "DeepSeek code review has no unresolved blocking finding.",
+        "The affected local PC passes matched installed validation appropriate to the mitigation, and the VM passes a fresh installed UI/runtime regression soak.",
+        "Trace, screenshot, resource, WER, dump, and process-exit artifacts receive deterministic analysis and the mandatory DeepSeek artifact-review second opinion.",
+        "No new critical or high defect remains open from the validation cycle.",
+        "Documentation records the proven root cause, implemented mitigation, limitations, and validation evidence, and docs/AUDIT_STATE.json marks CR-257 closed with commit and run evidence."
+      ],
+      "validation": [
+        "Local traces, WER reports, dump metadata, GPU inventory, Windows Application log query, deterministic analysis, and DeepSeek artifact advisory were collected under ignored artifact path build/validation/artifacts/local-cr257-20260713-150447.",
+        "Historical dump contents were not copied into the repository artifact tree. Only metadata and SHA-256 hashes were recorded; the retained PortfolioSaver.Desktop.exe.12096.dmp hash is 973060415975A8670769F7A4C29D7C9D7D7CE6A0D445FB21E6F12993E1DC84DF.",
+        "Deterministic analysis concluded that the current incident is a confirmed abrupt termination with no fresh causal dump, no current WER/Application Error record, and normal desktop/server trace activity immediately before trace cessation.",
+        "DeepSeek artifact second opinion completed in build/validation/artifacts/local-cr257-20260713-150447/deepseek-artifact-review.md. It found no basis to close the CR, confirmed the fresh-crash-capture gap, requested investigation of why WER did not fire, and recommended a clean local soak without testhost interference.",
+        "DeepSeek code review for the render recovery and diagnostic implementation completed with no unresolved critical, high, or medium finding in build/deepseek-review/deepseek-review-20260713-164359.md after addressing review findings about provider-key redaction, exit-marker arbitration, last-resort data-root creation, and fail-safe run-id behavior when the start marker cannot be written.",
+        "Focused recovery/WER/redaction test run passed 52/52 tests with dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~DesktopRenderRecovery|FullyQualifiedName~DesktopWerLocalDumps|FullyQualifiedName~SensitiveDataRedactor\" --nologo.",
+        "Full PortfolioSaver.Tests Release suite passed 781/781 tests with dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --nologo after the CR-257 implementation and documentation baseline wording fix.",
+        "WER LocalDumps was enabled under HKCU for PortfolioSaver.Desktop.exe on the affected local PC with full dumps, count 10, and dump folder C:/Users/vagab/AppData/Local/DoNotPanicPortfolioVisualizer/CrashDumps.",
+        "Local GPU hardware-mode smoke on the affected PC ran the direct Release desktop executable for 45 seconds with --hardware-rendering and an isolated local data root under ignored artifact path build/validation/artifacts/local-cr257-smoke-/+/20260713-161851; the process remained alive before explicit stop, no new dump was created, and no PortfolioSaver.Desktop, PortfolioSaver.Config, or YFinance.NET.Server process remained afterward.",
+        "DeepSeek artifact second opinion for the local GPU smoke completed in build/validation/artifacts/local-cr257-smoke-/+/20260713-161851/deepseek-artifact-review.md. It marked the smoke insufficient for closure because no app screenshots or exported trace payload were captured and duration was below the original incident window; CR-257 remains open pending long hardware/software installed soaks and VM regression validation."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

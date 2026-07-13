@@ -24,7 +24,7 @@ non-prerelease `1.0` release of DO NOT PANIC PORTFOLIO VISUALIZER.
 - Product version: `1.0`
 - Retired predecessor release: `v0.9.0-beta7`
 - Starting Git baseline: the commit immediately after `v0.9.0-beta7` that deferred `CR-174` pending approval
-- Distribution status: published and verified on GitHub Releases and itch.io on 2026-07-13
+- Distribution status: explicitly approved for controlled publication; published and verified on GitHub Releases and itch.io on 2026-07-13
 
 The project intentionally uses one project-owned version string, `1.0`, across build metadata, UI labels, audit state, validation harnesses, and release-script defaults.
 

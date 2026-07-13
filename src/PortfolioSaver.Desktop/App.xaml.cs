@@ -14,6 +14,7 @@
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using PortfolioSaver.Config.Services;
 using PortfolioSaver.Core.Enums;
@@ -33,18 +34,37 @@ public partial class App : Application
     private static readonly TimeSpan AiNewsStartupProbeTimeout = TimeSpan.FromSeconds(15);
     private static Mutex? singleInstanceMutex;
     private static bool ownsSingleInstance;
+    private static DesktopRenderRunRegistration? renderRunRegistration;
+    // 0 = unclaimed, 1 = WPF OnExit owns clean-exit marking, 2 = AppDomain.ProcessExit fallback owns abnormal marking.
+    private static int exitMarkerClaim;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
         DispatcherUnhandledException += (_, args) =>
         {
             TraceLog.Error("Desktop.App", "DispatcherUnhandledException", args.Exception);
+            DesktopRenderRecoveryPolicy.TryMarkManagedFatalException(renderRunRegistration, args.Exception, DateTimeOffset.UtcNow, LogRenderRecoveryWarning);
+            args.Handled = true;
+            Shutdown(-1);
         };
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
         {
             TraceLog.Error("Desktop.App", $"UnhandledException: {args.ExceptionObject}");
+            if (args.ExceptionObject is Exception ex)
+                DesktopRenderRecoveryPolicy.TryMarkManagedFatalException(renderRunRegistration, ex, DateTimeOffset.UtcNow, LogRenderRecoveryWarning);
+        };
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        {
+            if (Interlocked.CompareExchange(ref exitMarkerClaim, 2, 0) == 0)
+            {
+                bool marked = DesktopRenderRecoveryPolicy.TryMarkProcessExitObserved(renderRunRegistration, Environment.ExitCode, DateTimeOffset.UtcNow, LogRenderRecoveryWarning);
+                if (!marked)
+                    LogRenderRecoveryWarning("Render recovery process-exit marker was not written; previous running state may remain for next launch.");
+            }
         };
 
+        DesktopRenderRecoveryDataRoot dataRoot = DesktopRenderRecoveryDataRootResolver.Resolve(LogRenderRecoveryWarning);
+        DesktopRenderRecoveryDecision renderDecision = DesktopRenderRecoveryPolicy.Select(e.Args, dataRoot.Root);
         TraceLog.Info("Desktop.App", $"Startup args: {string.Join(" ", e.Args)}");
         if (!TryAcquireSingleInstance())
         {
@@ -54,6 +74,17 @@ public partial class App : Application
             Shutdown(0);
             return;
         }
+
+        renderRunRegistration = DesktopRenderRecoveryPolicy.MarkRunStarted(
+            dataRoot.Root,
+            renderDecision,
+            Environment.ProcessId,
+            DateTimeOffset.UtcNow,
+            wpfRenderingTier: null,
+            processRenderMode: "pending_apply",
+            LogRenderRecoveryWarning);
+        ApplyRenderPolicy(renderDecision);
+        TraceRenderPolicy(renderDecision);
 
         try
         {
@@ -86,6 +117,35 @@ public partial class App : Application
         QueueConfiguredAiNewsAccessCheck();
         QueueReleaseIntegrityValidation();
     }
+
+    private static void ApplyRenderPolicy(DesktopRenderRecoveryDecision decision)
+    {
+        RenderOptions.ProcessRenderMode = decision.ForceSoftwareRendering
+            ? System.Windows.Interop.RenderMode.SoftwareOnly
+            : System.Windows.Interop.RenderMode.Default;
+    }
+
+    private static void TraceRenderPolicy(DesktopRenderRecoveryDecision decision)
+        => TraceLog.InfoState(
+            "Desktop.Render",
+            "RenderPolicySelected",
+            [
+                new("selected_mode", decision.SelectedModeName),
+                new("reason", decision.Reason),
+                new("is_explicit_override", decision.IsExplicitOverride),
+                new("recovery_was_disabled", decision.RecoveryWasDisabled),
+                new("previous_run_was_abnormal", decision.PreviousRunWasAbnormal),
+                new("previous_run_status", decision.PreviousRunStatus),
+                new("previous_run_id", decision.PreviousRunId ?? "<none>"),
+                new("wpf_rendering_tier", GetWpfRenderingTier()),
+                new("process_render_mode", RenderOptions.ProcessRenderMode)
+            ]);
+
+    private static int GetWpfRenderingTier()
+        => RenderCapability.Tier >> 16;
+
+    private static void LogRenderRecoveryWarning(string message)
+        => TraceLog.Warn("Desktop.Render", message);
 
     private static void QueueConfiguredAiNewsAccessCheck()
     {
@@ -202,20 +262,43 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        if (ownsSingleInstance)
+        int previousExitMarkerClaim = Interlocked.Exchange(ref exitMarkerClaim, 1);
+        bool shouldMarkCleanExit = previousExitMarkerClaim == 0;
+        TraceLog.InfoState("Desktop.App", "OnExitStart", [new("exit_code", e.ApplicationExitCode)]);
+        try
         {
-            OwnedServerShutdownQueue.QueueShutdown("Desktop.App");
-            try
+            if (ownsSingleInstance)
             {
-                singleInstanceMutex?.ReleaseMutex();
-            }
-            catch (ApplicationException ex)
-            {
-                TraceLog.Warn("Desktop.App", $"Single instance mutex release skipped: {ex.Message}");
+                try
+                {
+                    OwnedServerShutdownQueue.QueueShutdown("Desktop.App");
+                    singleInstanceMutex?.ReleaseMutex();
+                }
+                catch (Exception ex) when (ex is ApplicationException or ObjectDisposedException)
+                {
+                    TraceLog.Warn("Desktop.App", $"Single instance mutex release skipped: {ex.Message}");
+                }
+                catch (Exception ex)
+                {
+                    TraceLog.Error("Desktop.App", "OnExit owned-resource cleanup failed.", ex);
+                }
             }
         }
+        finally
+        {
+            if (shouldMarkCleanExit)
+                DesktopRenderRecoveryPolicy.TryMarkCleanExit(renderRunRegistration, e.ApplicationExitCode, DateTimeOffset.UtcNow, LogRenderRecoveryWarning);
 
-        singleInstanceMutex?.Dispose();
-        base.OnExit(e);
+            TraceLog.InfoState(
+                "Desktop.App",
+                "OnExitComplete",
+                [
+                    new("exit_code", e.ApplicationExitCode),
+                    new("marked_clean_exit", shouldMarkCleanExit),
+                    new("previous_exit_marker_claim", previousExitMarkerClaim)
+                ]);
+            singleInstanceMutex?.Dispose();
+            base.OnExit(e);
+        }
     }
 }

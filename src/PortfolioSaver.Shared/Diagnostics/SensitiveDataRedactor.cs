@@ -26,6 +26,9 @@ public static class SensitiveDataRedactor
     private static readonly Regex BearerPattern = new(
         @"(?i)\bbearer\s+[^\s\|;]+",
         RegexOptions.Compiled);
+    private static readonly Regex ProviderKeyPattern = new(
+        @"(?i)\b(?:sk|whsec|ghp|github_pat|xoxb|xoxp)[_-][a-zA-Z0-9_-]{8,}\b",
+        RegexOptions.Compiled);
 
     public static bool IsSensitiveKey(string key)
         => SensitiveKeyFragments.Any(fragment => key.Contains(fragment, StringComparison.OrdinalIgnoreCase));
@@ -38,6 +41,7 @@ public static class SensitiveDataRedactor
             return separator < 0 ? RedactedValue : match.Value[..(separator + 1)] + RedactedValue;
         });
 
-        return BearerPattern.Replace(redacted, "Bearer " + RedactedValue);
+        redacted = BearerPattern.Replace(redacted, "Bearer " + RedactedValue);
+        return ProviderKeyPattern.Replace(redacted, RedactedValue);
     }
 }
