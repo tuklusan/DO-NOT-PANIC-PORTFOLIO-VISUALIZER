@@ -38,6 +38,7 @@ using YFinance.NET.Features.Quotes;
 using YFinance.NET.Protocol.Constants;
 using YFinance.NET.Protocol.Dtos;
 using YFinance.NET.Transport;
+using YFinance.NET.Server.Mapping;
 using YQuoteSnapshot = YFinance.NET.Models.QuoteSnapshot;
 using YTickerInfo = YFinance.NET.Models.TickerInfo;
 
@@ -418,6 +419,55 @@ public sealed class Nb040BehaviorTests
         };
 
         Assert.Equal(2m, quote.ComputedChangePercent);
+    }
+
+    [Fact]
+    public void YFinanceComputedChange_NormalizesImpossibleTotalLossWithPositivePrice()
+    {
+        YQuoteSnapshot quote = CreateYFinanceQuote("^VIX") with
+        {
+            RegularMarketPrice = 15.03m,
+            RegularMarketPreviousClose = 15.84m,
+            RegularMarketChange = -15.84m,
+            RegularMarketChangePercent = -5.11363888888888888888888889m
+        };
+
+        Assert.Equal(-0.81m, quote.ComputedChange);
+        Assert.Equal((-0.81m / 15.84m) * 100m, quote.ComputedChangePercent);
+
+        YTickerInfo info = CreateYFinanceTickerInfo("^VIX") with
+        {
+            RegularMarketPrice = 15.03m,
+            RegularMarketPreviousClose = 15.84m,
+            RegularMarketChange = -15.84m,
+            RegularMarketChangePercent = -5.11363888888888888888888889m
+        };
+
+        Assert.Equal(-0.81m, info.ComputedChange);
+        Assert.Equal((-0.81m / 15.84m) * 100m, info.ComputedChangePercent);
+
+        QuoteDto mapped = ProtocolMapper.MapQuote(quote);
+        Assert.Equal(-0.81m, mapped.RegularMarketChange);
+        Assert.Equal((-0.81m / 15.84m) * 100m, mapped.RegularMarketChangePercent);
+    }
+
+    [Fact]
+    public void YFinanceComputedChange_PreservesOrdinaryOrMissingReportedChange()
+    {
+        YQuoteSnapshot ordinary = CreateYFinanceQuote("SIGN") with
+        {
+            RegularMarketPrice = 3996.1616m,
+            RegularMarketPreviousClose = 3970.872m,
+            RegularMarketChange = -40.42627m
+        };
+        YQuoteSnapshot missing = ordinary with { RegularMarketChange = null };
+
+        Assert.Equal(-40.42627m, ordinary.ComputedChange);
+        Assert.Null(missing.ComputedChange);
+        Assert.Equal(((3996.1616m - 3970.872m) / 3970.872m) * 100m, missing.ComputedChangePercent);
+
+        QuoteDto mapped = ProtocolMapper.MapQuote(missing);
+        Assert.Null(mapped.RegularMarketChange);
     }
 
     [Fact]
