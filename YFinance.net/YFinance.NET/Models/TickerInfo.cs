@@ -49,6 +49,9 @@ public sealed record TickerInfo(
     string? Website,
     IReadOnlyDictionary<string, object?> FlatFields)
 {
+    public decimal? ComputedChange =>
+        QuoteMath.ComputeChange(RegularMarketPrice, RegularMarketPreviousClose, RegularMarketChange);
+
     public decimal? ComputedChangePercent =>
         QuoteMath.ComputeChangePercent(RegularMarketPrice, RegularMarketPreviousClose, RegularMarketChange, RegularMarketChangePercent);
 }

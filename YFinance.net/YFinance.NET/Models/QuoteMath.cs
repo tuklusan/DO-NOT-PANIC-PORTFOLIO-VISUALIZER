@@ -15,22 +15,33 @@ namespace YFinance.NET.Models;
 
 internal static class QuoteMath
 {
+    public static decimal? ComputeChange(decimal? price, decimal? previousClose, decimal? reportedChange)
+    {
+        // Yahoo can transiently report change == -previousClose while retaining
+        // a positive price. Normalize only that impossible total-loss tuple.
+        if (price is > 0m && previousClose is > 0m && reportedChange is decimal reported && reported <= -previousClose.Value)
+            return price.Value - previousClose.Value;
+
+        return reportedChange;
+    }
+
     public static decimal? ComputeChangePercent(decimal? price, decimal? previousClose, decimal? change, decimal? reportedPercent)
     {
+        decimal? normalizedChange = ComputeChange(price, previousClose, change);
         if (previousClose.HasValue && previousClose.Value != 0m)
         {
             // Yahoo can occasionally publish price/previous-close pairs that do
             // not reconcile with its absolute change. Prefer the explicit change
             // because it is the field users see as the direction cue.
-            if (change.HasValue)
-                return (change.Value / previousClose.Value) * 100m;
+            if (normalizedChange.HasValue)
+                return (normalizedChange.Value / previousClose.Value) * 100m;
 
             if (price.HasValue)
                 return ((price.Value - previousClose.Value) / previousClose.Value) * 100m;
         }
 
-        if (change.HasValue && reportedPercent.HasValue && change.Value != 0m && reportedPercent.Value != 0m && Math.Sign(change.Value) != Math.Sign(reportedPercent.Value))
-            return Math.Abs(reportedPercent.Value) * (change.Value < 0m ? -1m : 1m);
+        if (normalizedChange.HasValue && reportedPercent.HasValue && normalizedChange.Value != 0m && reportedPercent.Value != 0m && Math.Sign(normalizedChange.Value) != Math.Sign(reportedPercent.Value))
+            return Math.Abs(reportedPercent.Value) * (normalizedChange.Value < 0m ? -1m : 1m);
 
         return reportedPercent;
     }

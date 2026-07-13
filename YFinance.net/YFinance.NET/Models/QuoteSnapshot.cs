@@ -46,6 +46,9 @@ public sealed record QuoteSnapshot(
     decimal? ForwardPe,
     JsonElement Raw)
 {
+    public decimal? ComputedChange =>
+        QuoteMath.ComputeChange(RegularMarketPrice, RegularMarketPreviousClose, RegularMarketChange);
+
     public decimal? ComputedChangePercent =>
         QuoteMath.ComputeChangePercent(RegularMarketPrice, RegularMarketPreviousClose, RegularMarketChange, RegularMarketChangePercent);
 }
