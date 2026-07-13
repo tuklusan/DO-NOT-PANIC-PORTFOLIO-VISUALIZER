@@ -11734,6 +11734,34 @@
         "Seven VM scene captures were inspected and showed a complete, stable scene with populated tape lanes and graph cards.",
         "DeepSeek's advisory found no CR-255 behavioral defect. Its request for primary flash evidence was resolved against the full circular trace; generic long-run memory and visual-baseline suggestions are outside this focused behavior change and remain covered by the established soak-validation workflow."
       ]
+    },
+    {
+      "id": "CR-256",
+      "tracking_number": "CR-256",
+      "priority": 1,
+      "area": "market_data_integrity",
+      "title": "Reject impossible nonzero-price minus-100-percent quote tuples",
+      "status": "open",
+      "source": "two_hour_installed_vm_soak_2026_07_13",
+      "severity": "high",
+      "evidence": [
+        "The second two-hour installed-VM soak visibly rendered VIX at 15.03 with -100.0% during startup.",
+        "YFinance.NET received price=15.03, previousClose=15.84, change=-15.84 and a usable reported percentage; QuoteMath preferred change/previousClose and produced -100% even though a nonzero price makes that tuple mathematically impossible.",
+        "The cached bad presentation persisted until the ten-minute provider refresh, when the same price corrected to change=-0.81 and changePercent=-5.1136%."
+      ],
+      "notes": [
+        "Normalize this specific impossible total-loss tuple inside YFinance.NET so all consumers receive internally consistent absolute and percentage changes.",
+        "When price and previous close are positive but the reported change implies a complete or greater loss, derive change from price minus previous close and compute the percentage from that normalized change.",
+        "Do not broadly discard Yahoo's explicit change field for ordinary price/change disagreements; existing correction behavior for global-index sign inconsistencies must remain intact.",
+        "Add focused regression tests for QuoteSnapshot, TickerInfo, and protocol mapping, then verify the installed application no longer renders the impossible VIX startup percentage."
+      ],
+      "acceptance": [
+        "A positive current price can never be paired with an application-visible change percentage at or below -100% when positive previous-close data is available.",
+        "The VIX tuple price=15.03, previousClose=15.84, change=-15.84 normalizes to change=-0.81 and approximately -5.1136%.",
+        "Existing ordinary Yahoo sign-correction tests continue to pass unchanged.",
+        "Full automated tests pass and a fresh installed-VM soak provides clean trace and visual evidence.",
+        "DeepSeek review has no unresolved blocking findings and the CR is committed, pushed, and closed."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
