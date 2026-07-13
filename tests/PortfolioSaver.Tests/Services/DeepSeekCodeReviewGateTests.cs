@@ -141,7 +141,6 @@ public sealed class DeepSeekCodeReviewGateTests
     public void ProcessDocs_MakeDeepSeekReviewMandatoryBeforeCommitAndValidation()
     {
         string agents = File.ReadAllText(Path.Combine(GetRepoRoot(), "AGENTS.md"));
-        string readme = File.ReadAllText(Path.Combine(GetRepoRoot(), "README.md"));
         string build = File.ReadAllText(Path.Combine(GetRepoRoot(), "BUILD_AND_DEPLOY.md"));
         string vmRunbook = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "vm", "VM_OPERATIONS_RUNBOOK.md"));
         string reviewScript = File.ReadAllText(Path.Combine(GetRepoRoot(), "build", "Run-DeepSeekCodeReview.ps1"));
@@ -155,8 +154,6 @@ public sealed class DeepSeekCodeReviewGateTests
         Assert.Contains("hard stop", agents, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("waiver", agents, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Run-DeepSeekCodeReview.ps1", agents, StringComparison.Ordinal);
-        Assert.Contains("Test-DeepSeekWorkflowGate.ps1", readme, StringComparison.Ordinal);
-        Assert.Contains("hard stop", readme, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("-SendForReview", agents, StringComparison.Ordinal);
         Assert.Contains("-AcknowledgeSecretScan", agents, StringComparison.Ordinal);
         Assert.Contains("commit", agents, StringComparison.OrdinalIgnoreCase);

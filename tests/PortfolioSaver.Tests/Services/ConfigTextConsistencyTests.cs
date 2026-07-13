@@ -36,15 +36,16 @@ public sealed class ConfigTextConsistencyTests
     }
 
     [Fact]
-    public void Release10BaselineDocument_Exists_AndDefinesDistributionFreeze()
+    public void Release10BaselineDocument_Exists_AndDefinesPublicationAuthorization()
     {
         string baselinePath = Path.Combine(GetRepoRoot(), "docs", "RELEASE_1_0_BASELINE.md");
         string baselineText = File.ReadAllText(baselinePath);
         string normalizedBaselineText = baselineText.Replace("`", string.Empty, StringComparison.Ordinal);
 
         Assert.Contains("Product version: 1.0", normalizedBaselineText, StringComparison.Ordinal);
-        Assert.Contains("Distribution status: frozen", normalizedBaselineText, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Do not publish or replace GitHub Release assets.", baselineText, StringComparison.Ordinal);
+        Assert.Contains("Distribution status: explicitly approved for controlled publication", normalizedBaselineText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("GitHub Releases remains the canonical binary source.", baselineText, StringComparison.Ordinal);
+        Assert.Contains("Itch.io mirrors the complete GitHub asset set", baselineText, StringComparison.Ordinal);
         Assert.Contains("CR-174", baselineText, StringComparison.Ordinal);
     }
 
@@ -53,7 +54,7 @@ public sealed class ConfigTextConsistencyTests
     {
         string repoRoot = GetRepoRoot();
         string auditPath = Path.Combine(repoRoot, "docs", "AUDIT_STATE.json");
-        string readmeText = File.ReadAllText(Path.Combine(repoRoot, "README.md"));
+        string baselineText = File.ReadAllText(Path.Combine(repoRoot, "docs", "RELEASE_1_0_BASELINE.md"));
         string addCrScript = File.ReadAllText(Path.Combine(repoRoot, "build", "validation", "Add-AuditChangeRequest.ps1"));
         string sandboxScript = File.ReadAllText(Path.Combine(repoRoot, "build", "sandbox", "Run-PortfolioSaverSandboxUiValidation.ps1"));
         string vmRunbook = File.ReadAllText(Path.Combine(repoRoot, "build", "vm", "VM_OPERATIONS_RUNBOOK.md"));
@@ -66,8 +67,8 @@ public sealed class ConfigTextConsistencyTests
         Assert.Contains("\"version_lane\": \"1.0\"", auditText, StringComparison.Ordinal);
         Assert.DoesNotContain("semantic" + "_version_lane", auditText, StringComparison.Ordinal);
         Assert.Contains("\"current_baseline_label\": \"1.0\"", auditText, StringComparison.Ordinal);
-        Assert.Contains("docs/AUDIT_STATE.json", readmeText, StringComparison.Ordinal);
-        Assert.DoesNotContain("BETA6_AUDIT_STATE.json", readmeText, StringComparison.Ordinal);
+        Assert.Contains("docs/AUDIT_STATE.json", baselineText, StringComparison.Ordinal);
+        Assert.DoesNotContain("BETA6_AUDIT_STATE.json", baselineText, StringComparison.Ordinal);
         Assert.Contains("docs\\AUDIT_STATE.json", addCrScript, StringComparison.Ordinal);
         Assert.DoesNotContain("BETA6_AUDIT_STATE.json", addCrScript, StringComparison.Ordinal);
         Assert.Contains("DO NOT PANIC PORTFOLIO VISUALIZER Config - 1.0", sandboxScript, StringComparison.Ordinal);
