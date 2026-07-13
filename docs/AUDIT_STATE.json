@@ -8913,7 +8913,7 @@
         "DeepSeek review passes completed before commits; final actionable findings were addressed or advisory only.",
         "Focused validation passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter VirusTotalReleaseReportScriptTests; Passed 4/4.",
         "Live VirusTotal URL scan completed for the public v0.9.0-beta7 installer URL with analysis ID u-39af96d0d870b0a32402fe3cb902f5c71846c78cad327ac0581553b5f5ed117a-141b3276.",
-        "Generated report releases/v0.9.0-beta7/virustotal-advisory-report.md records status=completed, malicious=0, suspicious=0, harmless=62, undetected=30, installer SHA-256 64b0d6b100cb4e5184fb5343191b79e2fb0eacc7472f3bcdfe577cba7d088143."
+        "A historical v0.9.0-beta7 report (removed when the predecessor release was retired after the 1.0 cutover) recorded status=completed, malicious=0, suspicious=0, harmless=62, undetected=30, installer SHA-256 64b0d6b100cb4e5184fb5343191b79e2fb0eacc7472f3bcdfe577cba7d088143."
       ]
     },
     {

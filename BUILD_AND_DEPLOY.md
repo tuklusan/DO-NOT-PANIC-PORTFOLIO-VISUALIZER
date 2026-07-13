@@ -112,6 +112,12 @@ The approved baseline is maintained in `docs\RELEASE_1_0_BASELINE.md`.
 Public tags use the project version with a lowercase `v` prefix, so version
 `1.0` is published under tag `v1.0`.
 
+Publication completed on 2026-07-13. GitHub Release `v1.0` and the itch.io
+mirror were independently verified with matching 1.0 assets and public copy;
+the obsolete `v0.9.0-beta7` GitHub release/tag and user-visible itch.io beta
+downloads were retired. Final evidence is in
+`releases\v1.0\RELEASE_1_0_PUBLICATION_EVIDENCE.md`.
+
 ## Publish
 
 Preferred path:

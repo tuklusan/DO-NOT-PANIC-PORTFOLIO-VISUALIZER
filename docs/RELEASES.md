@@ -16,13 +16,14 @@ patent, trademark, and governing-law provisions.
 
 # Public Releases
 
-## Release 1.0 publication approval
+## Release 1.0 publication record
 
 The owner explicitly approved the first non-prerelease `1.0` publication on
-2026-07-13. Public distribution is authorized only through the controlled
-sequence in this document. The prior `v0.9.0-beta7` release remains available
-only until the complete 1.0 asset set has been independently verified on both
-public download surfaces.
+2026-07-13. The controlled cutover completed that day: GitHub Release `v1.0`
+is canonical, the complete four-file set is mirrored on itch.io, the public
+descriptions were verified, and the obsolete `v0.9.0-beta7` GitHub release and
+tag were deleted. No beta download remains visible on itch.io. See
+`releases/v1.0/RELEASE_1_0_PUBLICATION_EVIDENCE.md` for the final evidence.
 
 The release cutover is transactional:
 
@@ -38,9 +39,9 @@ The release cutover is transactional:
 7. Only after 1.0 is complete at both locations, delete the old GitHub beta
    release/tag and remove or replace every beta/obsolete itch.io download.
 
-If any step before final verification fails, keep the existing public beta
-available while correcting the 1.0 release. See
-`docs/RELEASE_1_0_BASELINE.md` for the approved baseline.
+For a future transactional cutover, retain the prior public release until every
+verification step succeeds. See `docs/RELEASE_1_0_BASELINE.md` for the approved
+1.0 baseline.
 
 Public release tags use a lowercase `v` prefix followed by the project version;
 the tag for this release is exactly `v1.0`, while the product and installer
@@ -86,11 +87,12 @@ page from that file as a deliberate release step; Butler manages downloads but
 does not edit store-page prose. The GitHub README remains repository-specific
 and retains the canonical GitHub Releases download link.
 
-For the 1.0 cutover, the four named Butler channels replace their existing
-public downloads with version `v1.0`. After the pushes complete, inspect the
-itch.io page and remove any obsolete manually uploaded file or archive-style
-channel. Prior Butler revisions may remain in itch.io's internal patch history,
-but no beta installer or stale archive may remain as a user-visible download.
+For the completed 1.0 cutover, the four named Butler channels replaced their
+existing public downloads with version `v1.0`. The itch.io page was verified to
+show only the installer, SHA-256, MD5, and VirusTotal report for 1.0. Prior
+Butler revisions may remain in itch.io's internal patch history, but no beta
+installer or stale archive is user-visible. The canonical end-user description
+from `distribution/itch/description.md` was applied and verified on 2026-07-13.
 
 SourceForge or another mirror is not required for the current public non-commercial release. Revisit mirroring only if GitHub download availability, analytics, or audience reach becomes a product requirement.
 

@@ -22,9 +22,9 @@ non-prerelease `1.0` release of DO NOT PANIC PORTFOLIO VISUALIZER.
 ## Baseline Identity
 
 - Product version: `1.0`
-- Prior public fallback release: `v0.9.0-beta7`
+- Retired predecessor release: `v0.9.0-beta7`
 - Starting Git baseline: the commit immediately after `v0.9.0-beta7` that deferred `CR-174` pending approval
-- Distribution status: explicitly approved for controlled publication on 2026-07-13
+- Distribution status: published and verified on GitHub Releases and itch.io on 2026-07-13
 
 The project intentionally uses one project-owned version string, `1.0`, across build metadata, UI labels, audit state, validation harnesses, and release-script defaults.
 
@@ -40,8 +40,9 @@ unreviewed future releases.
   certification, warranty, or substitute for code signing.
 - Itch.io mirrors the complete GitHub asset set only after the VirusTotal report
   is present and the checksum is verified.
-- `v0.9.0-beta7` is retained during cutover and retired only after 1.0 is proven
-  complete at both public locations.
+- `v0.9.0-beta7` was retained during cutover, then its GitHub release/tag was
+  deleted after 1.0 was proven complete at both public locations; no beta
+  download remains user-visible on itch.io.
 - Development/test installers remain private artifacts and must not be confused
   with the released installer.
 
@@ -69,7 +70,7 @@ The baseline is considered coherent when:
 
 - project version metadata reports `1.0`
 - app-visible labels report `1.0`
-- living documentation identifies `v0.9.0-beta7` only as the prior fallback
+- living documentation identifies `v0.9.0-beta7` only as the retired predecessor
 - release documentation records the explicit approval date and controlled
   GitHub-to-VirusTotal-to-Itch sequence
 - the public descriptions are end-user focused, accurate, and maintained
