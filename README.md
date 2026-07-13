@@ -14,236 +14,229 @@ patent, trademark, and governing-law provisions.
 ============================================================================
 -->
 
-# DO NOT PANIC PORTFOLIO VISUALIZER
+# DO NOT PANIC PORTFOLIO VISUALIZER 1.0
 
-Market-aware Windows desktop visualizer and configuration suite by **SANYALnet Labs**, written by **Supratim Sanyal**.
+## [Download the latest Windows release](https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER/releases/latest)
 
-**Download:** use the [latest GitHub Release](https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER/releases/latest) for the public Windows installer and SHA-256 checksum. Installer binaries are distributed through GitHub Releases rather than stored in the source tree.
+**Windows SmartScreen notice:** Version 1.0 is an unsigned, independently
+published Windows application. If you downloaded the installer from this
+official GitHub repository or the official
+[itch.io page](https://tuklusan.itch.io/do-not-panic-portfolio-viewer), and its
+SHA-256 checksum matches the published checksum, choose **More info** and then
+**Run anyway** when Windows displays "Windows protected your PC." The complete
+source code is publicly available here for inspection, and every official 1.0
+download set includes its checksum and a VirusTotal advisory report. VirusTotal
+is an independent multi-engine scan, not a certification, warranty, or
+guarantee of safety.
+
+**DO NOT PANIC PORTFOLIO VISUALIZER** is a cinematic, fullscreen stock market
+dashboard for Windows 10 and Windows 11. It turns delayed market data, custom
+portfolio ticker tapes, floating stock charts, global market information,
+financial news, and city or stock-exchange photography into an ambient finance
+display designed for a desktop, office monitor, television, or dedicated
+market-information screen.
+
+![DO NOT PANIC Portfolio Visualizer fullscreen stock market dashboard](docs/screenshot.png)
+
+### [Watch the video demonstration](https://youtu.be/sEtRox-geWM)
+
+[![Watch the DO NOT PANIC Portfolio Visualizer video](https://img.youtube.com/vi/sEtRox-geWM/maxresdefault.jpg)](https://youtu.be/sEtRox-geWM)
 
-**License: SANYALnet Labs Non-Commercial License**
+## A Stock Market Dashboard Designed to Be Seen
+
+Many portfolio applications are dense grids of controls. DO NOT PANIC takes a
+different approach: it is a visual market display that can remain open while
+you work, read, relax, or watch the trading day unfold. The scene fills itself
+progressively, updating one market symbol at a time so the display remains
+alive without repainting the whole interface.
+
+Use it as a:
+
+- fullscreen stock ticker display for a second monitor or wall-mounted screen
+- customizable ETF and equity portfolio visualizer
+- ambient financial markets dashboard for Windows
+- global stock market and macro-market display
+- floating stock-chart and finance-news visualization
+- screensaver-style market display without legacy screensaver integration
 
-This repository ships with the full [LICENSE](LICENSE) text in-tree and is licensed under the **SANYALnet Labs Non-Commercial License**, including the standard warranty and liability disclaimer.
+This application is for visualization, education, and entertainment. Market
+data is delayed by at least 15 minutes. It is **not** a trading terminal,
+financial-planning application, portfolio-accounting system, alerting service,
+or dependable financial monitoring tool. Never use it to make trading,
+investment, tax, valuation, or financial-planning decisions.
+
+## Visual Features
+
+### Four customizable portfolio ticker tapes
+
+Build up to four independent ticker lanes with the stocks, ETFs, indexes, or
+other supported symbols you want to see. Each lane can move in its own
+direction and at its own speed. A fresh quote produces a brief color signal:
+blue when the displayed value is unchanged, green when it rises, and red when
+it falls.
 
-### 📺 [Click Here to Watch the Video Demo](https://youtu.be/sEtRox-geWM)
-
-[![Watch the Video](https://img.youtube.com/vi/sEtRox-geWM/maxresdefault.jpg)](https://youtu.be/sEtRox-geWM)
-## Overview
-
-**DO NOT PANIC PORTFOLIO VISUALIZER** is a .NET 10 / WPF project centered on a Windows desktop app with an immersive fullscreen mode, live market display, ticker tapes, floating graph cards, news, exchange backgrounds, and animated overlays.
-
-This repository is maintained as a **Visual Studio 2022-first** codebase for Windows x64 development and deployment.
-
-## Core Features
-
-- Multi-tape portfolio ticker display with configurable symbols, directions, and speed presets
-- Floating graph cards designed as compact sparkline overlays
-- UTC-pinned top-right status clock plus exchange-local times in the Global Markets lane
-- Direction-colored graph rendering: green for rising segments, red for falling segments
-- Slow, continuous free-roaming motion for graph cards and other floating overlay elements
-- News headline scroller with configurable RSS mode or OpenAI-compatible AI summarized-financial-news mode
-- Dynamic background image system with managed exchange photos or user custom folders
-- YFinance.NET-backed Yahoo retrieval with one-symbol-at-a-time requests, 1-second request pacing, asynchronous responses, and observable rate-limit controls
-- Offline-aware UI behavior and network gating for validation workflows
-
-## Configuration App (WPF)
-
-- Rich settings UI for:
-  - AI API key, endpoint URL, and model ID for summarized financial news
-  - Ticker tapes and graph overlays
-  - News and background refresh intervals
-  - Managed or user-selected background image sources
-- Real-time and apply-time symbol validation flow
-- Auto-name support for symbols when provider metadata resolves display names
-- Bundled help/about/license reference content shipped with the config app assets
-- Revision-3 branding assets are now wired into desktop/config icons and the desktop About dialog splash surface
-
-## Installer and Licensing UX
-
-- Primary public installer: Inno Setup package generated by `build/publish-inno-installer.ps1`
-- Elevated all-users install into `%PROGRAMFILES%\SANYALnet Labs\DoNotPanicPortfolioVisualizer`
-- SANYALnet Labs Non-Commercial License agreement page is shown by Inno Setup before installation can proceed
-- Uninstall removes the app-owned `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer` storage roots for local profiles while leaving external user-selected folders alone
-- Local fallback license text is bundled so license display still works without network access
-- Distribution outputs include the root `LICENSE`, `THIRD-PARTY-NOTICES.md`, and `THIRD-PARTY-LICENSES/APACHE-2.0.txt` beside the Windows binaries.
-- YFinance/yfinance attribution and the financial-data disclaimer are maintained in `THIRD-PARTY-NOTICES.md`.
-
-## Data, Caching, and Runtime Paths
-
-- Settings file: `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer\settings.json`
-- Protected secret store: `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer\provider-secrets.json`
-- News cache: `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer\finance-news-cache.json`
-- Historical cache: `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer\Caches\History`
-- Legacy `%LOCALAPPDATA%\PortfolioSaver` data is treated only as an upgrade/migration source.
-- Startup migration is automatic: `AppDataRootResolver` copies startup-critical legacy settings/secrets into the product root without overwriting newer product-root settings.
-- Cache policy:
-  - Runtime YFinance.NET memory and metadata caches are capped at 10 minutes
-  - No separate app-level quote cache is maintained; quote reuse comes from YFinance.NET
-  - Per-symbol JSON history files
-  - Automatic purge of history files older than 14 days
-
-## Optional AI-Summarized Finance News
-
-The app ships with **RSS Feed** selected for financial news and no AI API key configured. It includes OpenRouter-ready defaults as a convenient starting point, but summarized-news access is provider-configurable through the endpoint URL, model ID, and API key fields:
-
-- Endpoint URL: `https://openrouter.ai/api/v1`
-- Model ID: `openrouter/free`
-
-The target application does not read AI API keys from environment variables. Enter the key through **Settings -> Advanced -> News Scroller** or the installer AI setup page so it can be validated and saved in the protected local secret store.
-
-The Settings applet intentionally shows the AI API key as plain text rather than masking it. Keep this in mind during screenshots, screen sharing, or public demos.
-
-To obtain a free OpenRouter API key for personal non-commercial use:
-
-1. Visit [openrouter.ai](https://openrouter.ai/) and sign up or sign in.
-2. Open the API Keys area for an individual account.
-3. Create an API key.
-4. In **Settings -> Advanced -> News Scroller**, choose **Summarized Financial News**.
-5. Paste the key into **AI API key**.
-6. Leave **AI endpoint URL** as `https://openrouter.ai/api/v1` and **AI model ID** as `openrouter/free`, unless you intentionally want a different OpenAI-compatible provider/model.
-7. Validate and choose **OK** so the new configuration is saved and applied.
-
-OpenRouter free-model accounts may be limited to 50 free-model requests per day unless credits are added, so the shipped app enforces a 30-minute minimum/default headline refresh for summarized-news mode. That cadence yields at most 48 scheduled AI refreshes per day before occasional startup or manual validation checks.
-
-At startup, if summarized news is enabled, the app performs a bounded AI access probe and records failure in the trace without blocking startup or showing a modal warning. Each news refresh independently retries AI access; while it is unavailable, the scroller identifies the RSS fallback in-band and continues with RSS-backed content so a temporarily unavailable provider can recover without restarting.
-
-When using the default OpenRouter-compatible endpoint with **AI model ID** set to `openrouter/free` or `auto`, the app first queries OpenRouter's public models list and chooses a concrete free instruct/chat model for the news request. It excludes mandatory/default-on reasoning models, then ranks candidates by detected parameter-size signal, context length, and model ID for deterministic tie-breaking. This avoids the generic free router randomly selecting a reasoning-oriented model for a short style-transfer task. If model discovery fails, the app falls back to `openrouter/free` so summarized news can still attempt to run.
-
-OpenRouter requests include OpenRouter's optional app-attribution headers: `HTTP-Referer` points to the public GitHub repository and `X-OpenRouter-Title` identifies the app name. Other OpenAI-compatible providers can be used by changing **AI endpoint URL** and **AI model ID**. Custom model IDs are sent directly and are not auto-substituted.
-
-Installer upgrades preserve existing custom AI endpoint URLs and model IDs, including values migrated from earlier settings files. To reset to the shipped defaults, clear or edit the AI endpoint/model fields in Settings.
-
-## Desktop App Modes
-
-- `PortfolioSaver.Desktop` is the primary app host
-- fullscreen toggle from `View -> Full Screen` targets the current monitor
-- double-clicking anywhere in the main desktop visualization window toggles fullscreen mode
-- `Esc` exits fullscreen back to windowed mode
-
-## Project Structure
-
-- `src/PortfolioSaver.Desktop` - primary desktop executable host
-- `src/PortfolioSaver.Config` - thin configuration launcher
-- `src/PortfolioSaver.Settings` - shared settings window, view models, services, and content
-- `src/PortfolioSaver.Presentation` - reusable scene host and runtime presentation services
-- `src/PortfolioSaver.VmAgent` - remote desktop-session agent for Windows target UX automation
-- `src/PortfolioSaver.Render` - WPF visual controls and scene rendering
-- `src/PortfolioSaver.Data` - runtime YFinance.NET integration, caches, and scheduling services
-- `src/PortfolioSaver.Core` - domain models, constants, validation rules
-- `src/PortfolioSaver.Media` - background image and transition services
-- `src/PortfolioSaver.Shared` - shared helpers, identity/version, licensing utilities
-- `YFinance.net` - standalone sync-friendly .NET port of `tuklusan/yfinance` plus the VM-proven exerciser
-- `src/PortfolioSaver.Installer` - standalone installer bootstrap app
-- `tests/PortfolioSaver.Tests` - automated unit tests
-
-## Build and Run (Visual Studio 2022)
-
-## Prerequisites
-
-- Windows 10/11 x64
-- Visual Studio 2022
-- Desktop development with .NET workload
-- .NET 10 SDK
-- PowerShell 7 (`pwsh`) for mandatory DeepSeek workflow gates and autonomous validation scripts
-
-## Recommended workflow
-
-1. Open `DoNotPanicPortfolioVisualizer.sln` in Visual Studio 2022.
-2. Select `Debug | x64` for development.
-3. Rebuild solution.
-4. Use startup project:
-   - `PortfolioSaver.Desktop` for runtime/visual behavior
-   - `PortfolioSaver.Config` for settings work
-
-Project workflow hard stop: DeepSeek API access is mandatory before commit, push, local validation, VM validation, or automated workflow execution. Verify access with:
-
-```powershell
-.\build\Test-DeepSeekWorkflowGate.ps1
-```
-
-If the gate cannot find a key or cannot reach DeepSeek, stop until access is restored. The developer workflow key may come from `DEEPSEEK_API_KEY`, `PORTFOLIOSAVER_DEEPSEEK_API_KEY`, or ignored local `build\vm\test-secrets.json`.
-Missing-key waivers and skip-review switches are intentionally unsupported; the live gate makes one minimal DeepSeek API probe before the normal review step.
-
-## Installer Build Path
-
-Use the scripts under `build/` for publish and packaging workflows, especially:
-
-- `build/build-safe-temp.ps1`
-- `build/publish-safe-temp.ps1`
-- `build/publish-inno-installer.ps1`
-
-`build/publish-safe-temp.ps1` is the canonical publish proof path. It mirrors the repository into a temporary workspace before invoking `dotnet publish`, which avoids MSBuild item-transform quoting hazards when a developer's repository path contains apostrophes or other awkward shell characters. Do not use ad-hoc publish output directories under such paths for release validation.
-
-`build/publish-inno-installer.ps1` assembles the safe-temp desktop/config payload and compiles the primary public Inno Setup installer when `ISCC.exe` is available. Automated install/uninstall validation uses `build/installer/Test-InnoInstallCycle.ps1` from an already elevated administrator context; UAC prompts are intentionally not bypassed from a non-elevated process.
-
-## Current Baseline
-
-- Remote Git history has been intentionally rebased to start at the `BETA-5.4` baseline
-- Current development/version lane is release `1.0`
-- Last public fallback release is `v0.9.0-beta7`; public distribution channels remain frozen until 1.0 development is complete and explicitly approved for publication
-- Product identity:
-  - Application: **DO NOT PANIC PORTFOLIO VISUALIZER**
-  - Publisher: **SANYALnet Labs**
-  - Author: **Supratim Sanyal**
-
-## Documentation
-
-The active documentation set has been intentionally reduced to a small core:
-
-- `BUILD_AND_DEPLOY.md` - Visual Studio build, run, publish, and installer-sandbox workflow
-- `docs/RELEASE_1_0_BASELINE.md` - active 1.0 development baseline and distribution-freeze rule
-- `docs/MICROSOFT_STORE_PUBLICATION_PLAN.md` - researched MSIX/Partner Center certification and publication plan; implementation remains approval-gated
-- `docs/AUDIT_STATE.json` - single canonical machine-maintained audit, test, and release-gate state
-- `build/vm/VM_OPERATIONS_RUNBOOK.md` - repeatable SSH-first remote Windows UX validation workflow using PortfolioSaver.VmAgent and WinAppDriver in the interactive session
-- `YFinance.net/PORTING_PLAN.md` - upstream sync rules, responsibility map, and standalone YFinance.NET proof plan
-- `build/vm/test-secrets.json` - ignored local-only remote-test secret overlay for API keys, including DeepSeek, when you need live remote validation
-
-## Remote Harness Policy
-
-The current remote Windows validation harness is now the pinned supported approach:
-
-- local green tests first
-- `build/publish-safe-temp.ps1`
-- `build/vm/Push-VmWorkspace.ps1`
-- agent-based interactive UX validation through `PortfolioSaver.VmAgent`
-
-Current canonical harness guardrails also include:
-
-- automatic purge of obsolete VM build/test artifacts whenever free space under `C:\vmharness\portfolio-saver` falls below `8 GB`
-- a quiet no-op startup launcher for `PortfolioSaver.VmAgent` when the staged agent executable is not present yet
-- reference spot checks do not call Yahoo APIs directly; they compare displayed UI values against `QuoteResponseObserved` values in the YFinance.NET circular trace, proving UI/rendering consistency while YFinance.NET remains the sole Yahoo-facing runtime boundary
-- independent upstream market-data correctness is owned by YFinance.NET-specific tests and VM proofs, not by desktop harness scripts
-
-The current known-good clean proof path is:
-
-- session-1 `PortfolioSaver.VmAgent`
-- `Guest-UxDeepExercise.ps1` launched by the agent inside the interactive desktop
-- config window discovery by process-bound UI Automation with keyboard-first tab traversal and Validate
-- config validation now trusts recent local quote/profile evidence before falling back to YFinance.NET network lookups, so harness Validate runs avoid re-triggering full-symbol 429 storms
-- desktop fullscreen entry triggered through the `ViewFullScreenMenuItem` automation hook
-- fullscreen validation by comparing live window bounds against the virtual screen
-- result bundle pullback from `build/vm/artifacts/ssh-runs/ux-deep-ssh-20260511-154444`
-
-This harness is considered **locked in** for current development work.
-Do not spend time re-optimizing or re-architecting the working harness glue unless:
-
-- it is broken, or
-- a new product requirement cannot be met with the current flow
-
-## Autonomous Validation
-
-For unattended visual and logic validation, use:
-
-```powershell
-.\build\validation\Invoke-AutonomousVisualValidation.ps1 -VmHost 192.168.56.102 -VmCycles 2 -RequiredConsecutiveCleanRuns 2 -GuestVisualizerRuntimeDurationMinutes 30 -CaptureIntervalSeconds 10 -CreateChangeRequests -CommitBeforeValidation -PushBeforeValidation -AcknowledgeExternalReviewSecretScan
-```
-
-This wrapper runs the mandatory DeepSeek review gate, local Release restore/build/tests, optionally commits and pushes declared pending changes before VM validation, executes the SSH-first UX harness, scans pulled screenshots and trace files, and appends project-native CRs for detected anomalies. The default VM path uses 30-minute runs and the guest harness' 120-second background interval so background rotation can be observed without a multi-hour soak.
-
-Test-artifact analysis also has a mandatory DeepSeek second-opinion step. Obtaining the report is mandatory, while the report content is advisory: the analyzer remains responsible for final pass/fail and CR creation. DeepSeek reviews bounded trace/log/screenshot metadata and writes an ignored advisory report beside each analysis JSON. Traces/logs must remain credential-free before this step runs.
-
-## License
-This project is licensed under the **SANYALnet Labs Non-Commercial License**.
-
-- Bundled full text: [LICENSE](LICENSE)
-- Third-party notices: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)
-- Apache 2.0 text for YFinance/yfinance lineage: [THIRD-PARTY-LICENSES/APACHE-2.0.txt](THIRD-PARTY-LICENSES/APACHE-2.0.txt)
+### Floating graph cards for the biggest movers
+
+The scene selects up to 16 of the largest movers and represents them as compact
+floating graph cards. Current-session charts use time labels, while off-hours
+fallback charts use recent market-day labels. When a fresh raw price rises, the
+corresponding card flashes green and moves quickly toward the ceiling; when it
+falls, it flashes red and moves toward the floor. At the edge, it stops
+flashing and resumes its normal drifting motion.
+
+### Macro-market ribbon
+
+The upper market ribbon fills one symbol at a time with a broad view of market
+conditions, including volatility, major US indexes, Treasury yields, gold,
+crude oil, the US dollar index, and Bitcoin. The upper-left panel also shows
+New York market status and the most recently updated symbol.
+
+### World markets and local conditions
+
+The Global Markets ribbon presents major financial centers around the world
+with local exchange time, index direction, session state, and available local
+weather. It operates independently so slow world-market or weather data does
+not block the rest of the visualization.
+
+### Financial news scroller
+
+The bottom ribbon reveals financial headlines character by character, wraps
+them across two lines, pauses for reading, and then advances to the next item.
+The default RSS mode requires no AI account. Optional AI-summarized news can
+present current financial stories in Douglas Adams-inspired Vogon haiku or
+classical Shakespearean style.
+
+### Rotating financial and city backgrounds
+
+The app includes three built-in high-resolution backgrounds and can download a
+curated set of public financial-center and skyline images. Backgrounds rotate
+with a slow zoom effect. You can instead select your own image folder,
+including subfolders, and use the visualizer as a personalized market backdrop.
+
+## Window and Fullscreen Controls
+
+- Press **F11** to enter or leave fullscreen mode.
+- Double-click anywhere in the visualization to toggle fullscreen.
+- Press **Esc** to leave fullscreen.
+- Maximize the normal window when you want Windows menus and taskbar behavior.
+- Fullscreen uses the current monitor and removes the normal menu area.
+
+## Installation
+
+1. Open the [latest GitHub Release](https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER/releases/latest).
+2. Download `DoNotPanicPortfolioVisualizerSetup-1.0.exe`, its SHA-256 file, and
+   the VirusTotal advisory report.
+3. Verify the installer checksum if you are comfortable using a checksum tool.
+4. Run the installer. If SmartScreen appears, confirm that the file came from
+   this official project, choose **More info**, and select **Run anyway**.
+5. Read and accept the SANYALnet Labs Non-Commercial License.
+6. Launch the app from the Desktop or Start menu shortcut.
+
+The installer performs an all-users installation under Program Files and adds
+standard Desktop and Start menu shortcuts. The uninstaller removes the
+application and its app-owned Local AppData, but does not delete an external
+image folder selected by the user.
+
+## Configuration
+
+Open **Options > Configure** to customize:
+
+- portfolio tape names, symbols, directions, and speeds
+- background rotation interval and custom image folder
+- RSS or AI-summarized financial news
+- news writing style and refresh interval
+- OpenAI-compatible AI API key, endpoint URL, and model ID
+
+Validation checks ticker symbols and, when AI news is selected, verifies the
+configured AI access before applying settings. Successful changes take effect
+when you select **OK**. **Cancel** closes the configuration window without
+applying the proposed changes.
+
+## Optional AI Financial News
+
+RSS financial news is selected by default and works without an API key. For
+optional AI summaries, the shipped configuration is ready for OpenRouter:
+
+- Endpoint: `https://openrouter.ai/api/v1`
+- Model: `openrouter/free`
+- API key: empty until supplied by the user
+
+To obtain a free personal key, visit [OpenRouter](https://openrouter.ai/),
+create an individual account, create an API key, and enter it under
+**Options > Configure > Advanced**. The app can discover a suitable free
+instruct/chat model at runtime. Other OpenAI-compatible providers can be used
+by changing the endpoint, model ID, and key.
+
+Free-provider quotas and model availability can change. The app uses a minimum
+30-minute AI-news refresh interval and falls back to RSS when AI access is
+unavailable. API keys entered in the application are stored in the protected
+local application-data area and are not read from environment variables.
+
+## Market Data, Network Use, and Local Storage
+
+- Market quotes and chart history are retrieved through the bundled
+  YFinance.NET service.
+- Quote requests are paced one symbol at a time, approximately once per second,
+  while responses are processed asynchronously.
+- Market data may be incomplete, delayed, unavailable, revised, or inaccurate.
+- Settings, protected provider secrets, news cache, chart cache, traces, and
+  downloaded backgrounds are stored under
+  `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer`.
+- The application uses network access for market data, RSS news, optional AI
+  news, world-market weather, and managed background downloads.
+- Degraded and offline states are designed to preserve the visible scene where
+  possible and communicate when fresh data is unavailable.
+
+## System Requirements
+
+- Windows 10 or Windows 11, 64-bit
+- Internet access for fresh market data and news
+- A display resolution suitable for the dashboard; fullscreen and maximized
+  layouts scale across standard laptop, desktop, and ultrawide screens
+- Optional OpenAI-compatible API key only if AI-summarized news is enabled
+
+The public installer is self-contained; end users do not need Visual Studio or
+the .NET SDK.
+
+## Trust and Release Verification
+
+The GitHub Release is the canonical source for versioned binaries. The itch.io
+page is a convenience mirror populated only after the GitHub installer,
+SHA-256 checksum, and VirusTotal advisory report are complete.
+
+For each official 1.0 release:
+
+- the source revision is published in this repository
+- the installer has a published SHA-256 checksum
+- a VirusTotal URL analysis is requested after GitHub publication
+- the resulting advisory report is attached to the release and mirrored to
+  itch.io
+
+Unsigned software has no verified Authenticode publisher identity, and
+SmartScreen reputation starts over for each unsigned build. The VirusTotal
+report and public source improve transparency, but they do not replace your own
+judgment or endpoint security.
+
+## License and Attribution
+
+Copyright (c) 2026 Supratim Sanyal of SANYALnet Labs. This software is
+source-available under the [SANYALnet Labs Non-Commercial License](LICENSE) for
+strictly non-commercial personal, educational, and hobbyist use. Commercial
+use, corporate internal use, monetization, and AI model training are
+prohibited. This is not a public-domain or OSI open-source release.
+
+Third-party notices and the Apache 2.0 license applicable to the YFinance.NET /
+yfinance lineage are included in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)
+and [THIRD-PARTY-LICENSES](THIRD-PARTY-LICENSES).
+
+## Source, Support, and Technical Documentation
+
+The source is published so users can inspect how the visualizer works and so
+non-commercial developers can study or improve it under the license terms.
+
+- [Report a problem or request a feature](https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER/issues)
+- [Build and deployment guide](BUILD_AND_DEPLOY.md)
+- [Public release workflow](docs/RELEASES.md)
+- [YFinance.NET protocol documentation](docs/YFINANCE_NET_ICD.md)
+
+Developed by **Supratim Sanyal** of **SANYALnet Labs**.

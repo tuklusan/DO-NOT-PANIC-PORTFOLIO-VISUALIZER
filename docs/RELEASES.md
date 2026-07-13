@@ -16,18 +16,35 @@ patent, trademark, and governing-law provisions.
 
 # Public Releases
 
-## Release 1.0 development freeze
+## Release 1.0 publication approval
 
-The active development lane is `1.0`, but public distribution remains frozen until 1.0 development is complete and explicitly approved. The current public fallback remains `v0.9.0-beta7`.
+The owner explicitly approved the first non-prerelease `1.0` publication on
+2026-07-13. Public distribution is authorized only through the controlled
+sequence in this document. The prior `v0.9.0-beta7` release remains available
+only until the complete 1.0 asset set has been independently verified on both
+public download surfaces.
 
-During the freeze:
+The release cutover is transactional:
 
-- do not publish or replace GitHub Release assets
-- do not mirror development builds to Itch.io
-- do not retag `v0.9.0-beta7`
-- do not publish VirusTotal reports for unpublished development installers
+1. Commit and push the reviewed 1.0 source, documentation, and release tooling.
+2. Build and validate a fresh `DoNotPanicPortfolioVisualizerSetup-1.0.exe`.
+3. Create the GitHub `v1.0` release with the installer and matching SHA-256.
+4. Submit the public installer URL to VirusTotal and attach the completed
+   `virustotal-advisory-report.md`.
+5. Allow the gated GitHub Actions workflow to mirror the installer, SHA-256,
+   generated MD5, and VirusTotal report to Itch.io.
+6. Verify the GitHub assets, checksum, workflow result, itch.io downloads, and
+   public-facing descriptions.
+7. Only after 1.0 is complete at both locations, delete the old GitHub beta
+   release/tag and remove or replace every beta/obsolete itch.io download.
 
-Local and VM installer builds are private validation artifacts only. See `docs/RELEASE_1_0_BASELINE.md` for the active baseline.
+If any step before final verification fails, keep the existing public beta
+available while correcting the 1.0 release. See
+`docs/RELEASE_1_0_BASELINE.md` for the approved baseline.
+
+Public release tags use a lowercase `v` prefix followed by the project version;
+the tag for this release is exactly `v1.0`, while the product and installer
+version remain `1.0`.
 
 The canonical public download channel for DO NOT PANIC PORTFOLIO VISUALIZER is GitHub Releases:
 
@@ -62,6 +79,18 @@ The workflow may wait up to 60 minutes for release finalization so a newly publi
 Do not push the whole release-asset folder to Itch. Butler treats folder pushes as build/archive channels, which can surface as a `.zip`-style download on the Itch page. The release workflow intentionally pushes each file directly so website users receive the installer and advisory files as separate downloads.
 
 If future release assets are mirrored to Itch, add an explicit Butler channel and single-file `butler push` for each new file; do not expand the workflow back to a folder push.
+
+The canonical itch.io page description is maintained separately from the
+GitHub README in `distribution/itch/description.md`. Update the itch.io project
+page from that file as a deliberate release step; Butler manages downloads but
+does not edit store-page prose. The GitHub README remains repository-specific
+and retains the canonical GitHub Releases download link.
+
+For the 1.0 cutover, the four named Butler channels replace their existing
+public downloads with version `v1.0`. After the pushes complete, inspect the
+itch.io page and remove any obsolete manually uploaded file or archive-style
+channel. Prior Butler revisions may remain in itch.io's internal patch history,
+but no beta installer or stale archive may remain as a user-visible download.
 
 SourceForge or another mirror is not required for the current public non-commercial release. Revisit mirroring only if GitHub download availability, analytics, or audience reach becomes a product requirement.
 

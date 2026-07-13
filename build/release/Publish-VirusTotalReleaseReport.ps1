@@ -36,7 +36,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-Write-Warning 'Release 1.0 distribution is frozen until development is complete and explicitly approved; do not publish VirusTotal reports for unpublished development installers.'
+Write-Warning 'VirusTotal release reporting is authorized only for an explicitly approved, already-public GitHub Release installer URL.'
 
 function Get-RepoRoot {
     $root = & git rev-parse --show-toplevel 2>$null

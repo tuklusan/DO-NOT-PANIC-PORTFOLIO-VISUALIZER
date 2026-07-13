@@ -99,11 +99,18 @@ For settings work:
 - Scenario coverage and degraded-mode harness profiles are cataloged in `docs/ANOMALY_DEGRADATION_TEST_PLAN.md` and `docs/DEGRADED_MODE_VALIDATION_HARNESS.md`.
 - Validators should create a CR when traces or screenshots show a mismatch between visible behavior and the degraded UX contract.
 
-## Release 1.0 development freeze
+## Release 1.0 publication authorization
 
-The active development lane is `1.0`, but public distribution remains frozen until 1.0 development is complete and explicitly approved. During this phase, do not publish or replace GitHub Release assets, mirror builds to Itch.io, retag `v0.9.0-beta7`, or publish VirusTotal reports for unpublished development installers. Local and VM installer builds are allowed only as private validation artifacts.
+The owner explicitly approved controlled public publication of `1.0` on
+2026-07-13. Follow `docs\RELEASES.md` exactly: reviewed source and documentation,
+fresh installer validation, GitHub installer plus SHA-256, VirusTotal advisory
+report, gated Itch.io mirroring, public verification, and only then retirement
+of the prior beta downloads. This approval does not authorize an unreviewed
+future release.
 
-The detailed baseline is maintained in `docs\RELEASE_1_0_BASELINE.md`.
+The approved baseline is maintained in `docs\RELEASE_1_0_BASELINE.md`.
+Public tags use the project version with a lowercase `v` prefix, so version
+`1.0` is published under tag `v1.0`.
 
 ## Publish
 

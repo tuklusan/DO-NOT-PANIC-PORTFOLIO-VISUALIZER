@@ -21,21 +21,21 @@ namespace PortfolioSaver.Tests.Services;
 public sealed class ItchPublishWorkflowTests
 {
     [Fact]
-    public void ItchPublishWorkflow_IsFrozenBeforeReleaseAssetsAreDownloaded()
+    public void ItchPublishWorkflow_IsDefaultDenyBeforeReleaseAssetsAreDownloaded()
     {
         string workflow = File.ReadAllText(Path.Combine(GetRepositoryRoot(), ".github", "workflows", "itch-publish.yml"));
 
-        Assert.Contains("${{ vars.DNPPV_RELEASE_DISTRIBUTION_FROZEN || 'true' }}", workflow, StringComparison.Ordinal);
-        int freezeIndex = RequireIndex(workflow, "- name: Enforce Distribution Freeze");
+        Assert.Contains("${{ vars.DNPPV_RELEASE_DISTRIBUTION_ALLOWED || 'false' }}", workflow, StringComparison.Ordinal);
+        int authorizationIndex = RequireIndex(workflow, "- name: Enforce Distribution Authorization");
         int validationIndex = RequireIndex(workflow, "- name: Validate Itch Publish Inputs");
         int waitIndex = RequireIndex(workflow, "- name: Wait for Complete GitHub Release Asset Set");
         int butlerIndex = RequireIndex(workflow, "- name: Push Installer and Advisory Files to Itch.io");
 
-        Assert.True(freezeIndex < validationIndex, "Freeze guard must run before input validation.");
-        Assert.True(freezeIndex < waitIndex, "Freeze guard must run before GitHub release asset download.");
-        Assert.True(freezeIndex < butlerIndex, "Freeze guard must run before Butler publication.");
-        Assert.Contains("DNPPV_RELEASE_DISTRIBUTION_FROZEN=false", workflow[freezeIndex..validationIndex], StringComparison.Ordinal);
-        Assert.Contains("Itch.io publishing is frozen for the 1.0 development cycle.", workflow[freezeIndex..validationIndex], StringComparison.Ordinal);
+        Assert.True(authorizationIndex < validationIndex, "Authorization guard must run before input validation.");
+        Assert.True(authorizationIndex < waitIndex, "Authorization guard must run before GitHub release asset download.");
+        Assert.True(authorizationIndex < butlerIndex, "Authorization guard must run before Butler publication.");
+        Assert.Contains("if [ \"$clean_allowed\" != \"true\" ]; then", workflow[authorizationIndex..validationIndex], StringComparison.Ordinal);
+        Assert.Contains("Itch.io publishing is blocked by the distribution safety interlock.", workflow[authorizationIndex..validationIndex], StringComparison.Ordinal);
     }
 
     private static int RequireIndex(string text, string marker)
