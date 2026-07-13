@@ -11741,7 +11741,7 @@
       "priority": 1,
       "area": "market_data_integrity",
       "title": "Reject impossible nonzero-price minus-100-percent quote tuples",
-      "status": "open",
+      "status": "closed",
       "source": "two_hour_installed_vm_soak_2026_07_13",
       "severity": "high",
       "evidence": [
@@ -11761,6 +11761,15 @@
         "Existing ordinary Yahoo sign-correction tests continue to pass unchanged.",
         "Full automated tests pass and a fresh installed-VM soak provides clean trace and visual evidence.",
         "DeepSeek review has no unresolved blocking findings and the CR is committed, pushed, and closed."
+      ],
+      "resolution": [
+        "YFinance.NET now detects only the mathematically impossible case where positive price and previous close are paired with a reported loss equal to or greater than the entire previous close.",
+        "The impossible absolute change is normalized to price minus previous close before both change and percentage are mapped onto the client protocol; ordinary reported changes and missing changes preserve their prior contract semantics.",
+        "Focused quote-normalization tests passed 65 of 65 and the complete automated suite passed 731 of 731, including the existing Yahoo sign-correction regressions and new protocol-mapping assertions.",
+        "Fresh installed-VM soak installed-soak-20260713-025212 completed two hours with zero crashes, errors, warnings, HTTP 429 responses, or strict transport failures.",
+        "The first and every subsequent VIX response in the installed soak reported price=15.03, change=-0.81, and changePercent=-5.1136%; inspected screenshots showed the corrected -5.1% UI value and a complete scene.",
+        "Private memory stabilized and declined to 322 MB by shutdown. Sparse scheduler outliers were reviewed against screenshots and accepted as non-defects on the two-CPU VM.",
+        "DeepSeek review feedback about preserving the protocol contract was incorporated; its accessibility warning was a false positive because YFinance.NET.Server already grants InternalsVisibleTo to PortfolioSaver.Tests."
       ]
     }
   ],
