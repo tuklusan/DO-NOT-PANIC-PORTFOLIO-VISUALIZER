@@ -88,7 +88,7 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
-    public void UpdateTapeItem_TriggersSingleFlashWhenLiveValueChanges()
+    public void UpdateTapeItem_StructuralValueChange_DoesNotFlash()
     {
         MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
             "UpdateTapeItem",
@@ -111,10 +111,10 @@ public sealed class VisualizerRenderBehaviorTests
         };
 
         method.Invoke(null, [target, source]);
-        Assert.Equal(1, target.UpdateSequence);
+        Assert.Equal(0, target.UpdateSequence);
 
         method.Invoke(null, [target, source]);
-        Assert.Equal(1, target.UpdateSequence);
+        Assert.Equal(0, target.UpdateSequence);
     }
 
     [Fact]
@@ -960,7 +960,7 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
-    public void UpdateTapeItem_StaleToLiveRecovery_TriggersFlash()
+    public void UpdateTapeItem_StructuralStaleToLiveRecovery_DoesNotFlash()
     {
         MethodInfo method = typeof(VisualizerSceneControl).GetMethod(
             "UpdateTapeItem",
@@ -982,7 +982,7 @@ public sealed class VisualizerRenderBehaviorTests
         };
 
         method.Invoke(null, [target, source]);
-        Assert.Equal(1, target.UpdateSequence);
+        Assert.Equal(0, target.UpdateSequence);
     }
 
     [Fact]
