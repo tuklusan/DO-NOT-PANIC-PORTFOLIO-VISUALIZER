@@ -72,7 +72,6 @@ public partial class VisualizerSceneControl : UserControl
     private static readonly TimeSpan SceneSchedulerInterval = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan BackgroundZoomInterval = TimeSpan.FromMilliseconds(120);
     private static readonly TimeSpan WorldDataRefreshInterval = TimeSpan.FromMinutes(10);
-    private static readonly TimeSpan DemoFlashInterval = TimeSpan.FromSeconds(30);
     private static readonly Lazy<BackgroundImagePreparationWorker> BackgroundPreparationWorker = new(() => new BackgroundImagePreparationWorker());
     private const int BackgroundDecodePixelWidth = 2560;
     private const double GraphRefreshTravelMinimumVelocity = 260d;
@@ -93,7 +92,6 @@ public partial class VisualizerSceneControl : UserControl
     private DateTimeOffset _nextBackgroundRotationTickUtc = DateTimeOffset.MaxValue;
     private DateTimeOffset _nextBackgroundZoomTickUtc = DateTimeOffset.MaxValue;
     private DateTimeOffset _nextWorldDataTickUtc = DateTimeOffset.MaxValue;
-    private DateTimeOffset _nextDemoFlashTickUtc = DateTimeOffset.MaxValue;
     private DateTimeOffset? _backgroundTransitionCompletionDueUtc;
     private BitmapImage? _backgroundTransitionCompletionBitmap;
     private string? _backgroundTransitionCompletionPath;
@@ -150,7 +148,6 @@ public partial class VisualizerSceneControl : UserControl
     private double _backgroundZoomScale = 1.01d;
     private double _backgroundZoomDirection = 1d;
     private double _currentBackgroundOpacity = 0.45d;
-    private int _demoFlashTicks;
     private DateTimeOffset _lastCritterTargetSwapUtc = DateTimeOffset.MinValue;
     private bool _crittersChasingDollar = true;
     private DateTimeOffset _lastMacroMeterRefreshUtc = DateTimeOffset.MinValue;
@@ -172,6 +169,7 @@ public partial class VisualizerSceneControl : UserControl
     private DateTimeOffset _lastRuntimeQuoteLoopHeartbeatUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastDisplayedTapeSampleTraceUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastRuntimeQuoteAppliedTraceUtc = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastTapeFlashTraceUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastFullTapeSyncUtc = DateTimeOffset.MinValue;
     private readonly RuntimeQuoteRecoveryGate _runtimeQuoteRecoveryGate = new(RuntimeQuoteTransportRecoveryFailureThreshold, TimeSpan.FromSeconds(30));
     private CancellationTokenSource? _newsRefreshCancellation;
@@ -253,7 +251,6 @@ public partial class VisualizerSceneControl : UserControl
             StartMacroLane();
             StartWorldMarketsLane();
             StartCaptureSequenceIfRequested();
-            StartDemoFlashSequence();
             ConfigureTimers();
             TraceScene("OnLoaded completed.");
         }
@@ -273,7 +270,6 @@ public partial class VisualizerSceneControl : UserControl
         CancelWorldMarketsLane();
         StopLiveTimers();
         CancelBackgroundRecoveryReload();
-        StopDemoFlashSequence();
         CancelGraphWarmup();
         CancelCaptureSequence();
         _runtimeQuoteHttpClient.Dispose();
@@ -883,11 +879,6 @@ public partial class VisualizerSceneControl : UserControl
             if (_backgroundTransitionCompletionDueUtc is { } transitionDueUtc && now >= transitionDueUtc)
                 RunScheduledSceneAction("background-transition-complete", CompleteScheduledBackgroundTransition);
 
-            if (_demoFlashTicks > 0 && now >= _nextDemoFlashTickUtc)
-            {
-                _nextDemoFlashTickUtc = GetNextScheduledDueUtc(_nextDemoFlashTickUtc, DemoFlashInterval, now);
-                RunScheduledSceneAction("demo-flash", RunDemoFlashPulse);
-            }
         }
         catch (Exception ex)
         {
@@ -1577,13 +1568,11 @@ public partial class VisualizerSceneControl : UserControl
         _nextBackgroundRotationTickUtc = DateTimeOffset.MaxValue;
         _nextBackgroundZoomTickUtc = DateTimeOffset.MaxValue;
         _nextWorldDataTickUtc = DateTimeOffset.MaxValue;
-        _nextDemoFlashTickUtc = DateTimeOffset.MaxValue;
         _backgroundRotationGeneration++;
         CancelBackgroundRotationWithoutBlocking("stop-live-timers");
         _backgroundTransitionCompletionDueUtc = null;
         _backgroundTransitionCompletionBitmap = null;
         _backgroundTransitionCompletionPath = null;
-        _demoFlashTicks = 0;
         StopRuntimeQuoteLoop();
         CancelBackgroundRecoveryReload();
     }
@@ -1698,7 +1687,6 @@ public partial class VisualizerSceneControl : UserControl
 
             InitializeRuntimeQuoteLoop();
             EnsureBackgroundSlowZoomRunning();
-            StartDemoFlashSequence();
             // ConfigureTimers restarts the scene scheduler and the CompositionTarget motion-rendering loop after config pause.
             ConfigureTimers();
             _ = RefreshNewsLaneAsync(force: true, CancellationToken.None);
@@ -4515,11 +4503,6 @@ public partial class VisualizerSceneControl : UserControl
 
     private static void UpdateTapeItem(TapeItemViewModel target, TapeItemViewModel source)
     {
-        bool hadPriorSymbol = !string.IsNullOrWhiteSpace(target.SymbolText);
-        // Flash only on raw displayed price changes. Percent-only churn is too noisy
-        // for the one-symbol runtime cadence and was a visible source of false motion.
-        bool valueChanged = !string.Equals(target.LastText, source.LastText, StringComparison.Ordinal);
-
         target.SymbolText = source.SymbolText;
         target.LastText = source.LastText;
         target.ChangeText = source.ChangeText;
@@ -4532,9 +4515,6 @@ public partial class VisualizerSceneControl : UserControl
         target.ChangeForeground = source.ChangeForeground;
         target.ValueFlashBrush = source.ValueFlashBrush;
         target.QuoteUpdateToken = source.QuoteUpdateToken;
-
-        if (hadPriorSymbol && valueChanged && !string.IsNullOrWhiteSpace(source.LastText))
-            target.TriggerValueFlash(source.ChangeForeground);
     }
 
     private bool ApplyQuotesToDisplayedTapeItems(IEnumerable<QuoteSnapshot> quotes)
@@ -4591,8 +4571,25 @@ public partial class VisualizerSceneControl : UserControl
             item.ChangeForeground = changeBrush;
             item.QuoteUpdateToken = quote.FetchTimestampUtc != default ? quote.FetchTimestampUtc.UtcTicks : 0;
 
-            if (valueChanged && hasUsableValue)
-                item.TriggerValueFlash(changeBrush);
+            if (!quote.IsStale && hasUsableValue)
+            {
+                Brush flashBrush = valueChanged && percent is decimal positivePercent && positivePercent > 0m
+                    ? Brushes.LimeGreen
+                    : valueChanged && percent is decimal negativePercent && negativePercent < 0m
+                        ? Brushes.OrangeRed
+                        : Brushes.DeepSkyBlue;
+                item.TriggerValueFlash(flashBrush);
+                DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
+                if (nowUtc - _lastTapeFlashTraceUtc >= RuntimeQuoteAppliedTraceInterval)
+                {
+                    _lastTapeFlashTraceUtc = nowUtc;
+                    TraceSceneState(
+                        "TapeValueFlash",
+                        new KeyValuePair<string, object?>("symbol", quote.Symbol),
+                        new KeyValuePair<string, object?>("color", flashBrush == Brushes.LimeGreen ? "green" : flashBrush == Brushes.OrangeRed ? "red" : "blue"),
+                        new KeyValuePair<string, object?>("reason", valueChanged ? "value-changed" : "value-unchanged"));
+                }
+            }
         }
 
         return matchedDisplayedItem || !IsConfiguredTapeSymbol(quote.Symbol);
@@ -5130,36 +5127,6 @@ public partial class VisualizerSceneControl : UserControl
         return merged;
     }
 
-
-    private void StartDemoFlashSequence()
-    {
-        _demoFlashTicks = 0;
-        _nextDemoFlashTickUtc = DateTimeOffset.UtcNow + DemoFlashInterval;
-        StartSceneScheduler();
-        RunDemoFlashPulse();
-    }
-
-    private void StopDemoFlashSequence()
-    {
-        _demoFlashTicks = 0;
-        _nextDemoFlashTickUtc = DateTimeOffset.MaxValue;
-    }
-
-    private void RunDemoFlashPulse()
-    {
-        if (_demoFlashTicks >= 4)
-        {
-            StopDemoFlashSequence();
-            return;
-        }
-
-        _demoFlashTicks++;
-        if (_tapes.Count > 0 && _tapes[0].Items.Count > 0)
-            _tapes[0].Items[0].TriggerValueFlash(Brushes.DeepSkyBlue);
-
-        if (_graphs.Count > 0)
-            _graphs[0].TriggerCardFlash(Brushes.DeepSkyBlue);
-    }
 
     private void SyncGraphVisuals()
     {

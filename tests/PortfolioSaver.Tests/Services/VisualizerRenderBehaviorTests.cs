@@ -4108,7 +4108,7 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
-    public void VisualizerScene_ProvidesDeterministicDemoFlashPulses_ForVisualValidation()
+    public void VisualizerScene_UsesQuoteDrivenTapeFlashColors_WithoutDemoPulses()
     {
         string sceneCodeBehind = File.ReadAllText(Path.Combine(
             GetRepoRoot(),
@@ -4117,14 +4117,70 @@ public sealed class VisualizerRenderBehaviorTests
             "Controls",
             "VisualizerSceneControl.xaml.cs"));
 
-        Assert.Contains("DemoFlashInterval = TimeSpan.FromSeconds(30)", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("_nextDemoFlashTickUtc", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("StartDemoFlashSequence()", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("if (_demoFlashTicks > 0 && now >= _nextDemoFlashTickUtc)", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("RunDemoFlashPulse()", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("TriggerValueFlash(Brushes.DeepSkyBlue)", sceneCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("TriggerCardFlash(Brushes.DeepSkyBlue)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("DemoFlashInterval", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("StartDemoFlashSequence", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("RunDemoFlashPulse", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TapeValueFlash", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Brushes.DeepSkyBlue", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("value-unchanged", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("TriggerCardFlash(Brushes.DeepSkyBlue)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("graph.FlashBrush = percent > 0m ? Brushes.LimeGreen : Brushes.OrangeRed;", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("graph.RefreshTravelTargetY = percent > 0m", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("? bounds.Top", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains(": Math.Max(bounds.Top, bounds.Bottom - Math.Max(1d, graph.Height));", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ClearGraphRefreshTravelState(graph);", sceneCodeBehind, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void VisualizerScene_TapeFlashColorTracksEachFreshValue_AndIgnoresStaleValues()
+    {
+        RunOnSta(() =>
+        {
+            VisualizerSceneControl control = new();
+            FieldInfo tapesField = typeof(VisualizerSceneControl).GetField("_tapes", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new MissingFieldException(nameof(VisualizerSceneControl), "_tapes");
+            var tapes = Assert.IsType<System.Collections.ObjectModel.ObservableCollection<TapeViewModel>>(tapesField.GetValue(control));
+            TapeItemViewModel item = new() { SymbolText = "VOO", LastText = "100.00" };
+            tapes.Add(new TapeViewModel { Items = [item] });
+            MethodInfo apply = typeof(VisualizerSceneControl).GetMethod(
+                "ApplyQuoteToDisplayedTapeItems",
+                BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new MissingMethodException(nameof(VisualizerSceneControl), "ApplyQuoteToDisplayedTapeItems");
+
+            apply.Invoke(control, [Quote("VOO", 100m, 1m)]);
+            Assert.Equal(1, item.UpdateSequence);
+            Assert.Equal(Brushes.DeepSkyBlue, item.ValueFlashBrush);
+
+            apply.Invoke(control, [Quote("VOO", 101m, 1m)]);
+            Assert.Equal(2, item.UpdateSequence);
+            Assert.Equal(Brushes.LimeGreen, item.ValueFlashBrush);
+
+            apply.Invoke(control, [Quote("VOO", 99m, -1m)]);
+            Assert.Equal(3, item.UpdateSequence);
+            Assert.Equal(Brushes.OrangeRed, item.ValueFlashBrush);
+
+            QuoteSnapshot stale = Quote("VOO", 99m, -1m);
+            stale.IsStale = true;
+            apply.Invoke(control, [stale]);
+            Assert.Equal(3, item.UpdateSequence);
+
+            MethodInfo structuralUpdate = typeof(VisualizerSceneControl).GetMethod(
+                "UpdateTapeItem",
+                BindingFlags.Static | BindingFlags.NonPublic)
+                ?? throw new MissingMethodException(nameof(VisualizerSceneControl), "UpdateTapeItem");
+            structuralUpdate.Invoke(null, [item, new TapeItemViewModel { SymbolText = "VOO", LastText = "102.00" }]);
+            Assert.Equal(3, item.UpdateSequence);
+        });
+    }
+
+    private static QuoteSnapshot Quote(string symbol, decimal last, decimal changePercent)
+        => new()
+        {
+            Symbol = symbol,
+            Last = last,
+            ChangePercent = changePercent,
+            FetchTimestampUtc = DateTimeOffset.UtcNow
+        };
 
     [Fact]
     public void VisualizerScene_IncludesAnimatedMarketCritterOverlay()

@@ -11690,6 +11690,40 @@
         "The first timed screenshot from installed-soak-20260712-191616 visibly shows the provisional QUAL graph before daily history completed; later screenshots show the full daily-close graph set.",
         "DeepSeek artifact advisory agreed the critical graph-hydration path passed. Its generic short-run memory/handle trend observations are covered by the project's recent clean two-hour installed-soak baseline and did not identify a CR-254 graph defect."
       ]
+    },
+    {
+      "id": "CR-255",
+      "tracking_number": "CR-255",
+      "priority": 1,
+      "area": "ticker_tape_visual_feedback",
+      "title": "Replace synthetic blue demo flashes with quote-driven tape update colors",
+      "status": "open",
+      "source": "user_behavior_change_request_2026_07_12",
+      "severity": "high",
+      "evidence": [
+        "The current scene runs an unconditional deterministic demo sequence that flashes the first ticker in the first tape DeepSkyBlue immediately and every 30 seconds for four pulses.",
+        "Synthetic flashes are unrelated to market-data receipt and can mislead users about which ticker was updated."
+      ],
+      "notes": [
+        "Remove the complete synthetic/demo blue-flash sequence, including its timer state, scheduler action, startup/config-reapply calls, and tests.",
+        "Apply this behavior only to actual ticker items displayed in the four portfolio tape lanes; macro cards, world markets, graph cards, clocks, and news are unaffected.",
+        "Every accepted non-stale quote carrying a usable value for a displayed ticker must trigger exactly one tape-item flash.",
+        "If the newly formatted displayed price equals the ticker's current displayed price, flash DeepSkyBlue.",
+        "If the displayed price changed, retain the existing positive/negative market-direction colors: LimeGreen for positive change and OrangeRed for negative change.",
+        "If direction is neutral or unavailable, use DeepSkyBlue so every fresh usable tape update produces one of exactly three colors.",
+        "A stale quote, missing value, non-tape symbol, structural tape rebuild, or configuration apply must not generate a quote-update flash.",
+        "The one-symbol-per-second request and surgical render cadence must remain unchanged.",
+        "Graph-card behavior is explicitly out of scope and must remain unchanged: an accepted raw-price increase flashes LimeGreen and accelerates to the ceiling; a decrease flashes OrangeRed and accelerates to the floor; flashing stops at the target edge and normal motion resumes."
+      ],
+      "acceptance": [
+        "Automated tests prove unchanged fresh values flash DeepSkyBlue.",
+        "Automated tests prove changed positive and negative values flash LimeGreen and OrangeRed respectively.",
+        "Automated tests prove stale or missing quotes do not flash and no demo-flash scheduler remains.",
+        "Graph-card regression tests prove raw-price-change-only triggering, green ceiling travel, red floor travel, edge-arrival flash stop, and normal-motion restoration remain unchanged.",
+        "Trace evidence identifies symbol, selected color, and unchanged/changed reason without exposing sensitive data or causing per-frame noise.",
+        "A fresh installer is used for installed-app VM validation and visual/trace evidence confirms quote-driven flashes with no synthetic 30-second pulse sequence.",
+        "DeepSeek review has no unresolved blocking findings, tests pass, and the CR is closed with committed and pushed evidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
