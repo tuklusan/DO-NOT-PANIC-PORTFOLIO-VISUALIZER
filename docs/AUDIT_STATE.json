@@ -11811,7 +11811,8 @@
         "Installed-app visual state during the incident is unobserved because scene-capture evidence in the artifact bundle belongs to testhost processes, not PortfolioSaver.Desktop PID 19400. Future local reproduction must include periodic installed-app screenshots or app-native scene captures.",
         "The absence of a current WER event means the investigation must also consider silent external termination, resource-manager termination, WER configuration/disk-space failure, heap corruption that prevented WER, or process kill by another actor; these remain unproven alternatives to the WPF composition hypothesis.",
         "The short local GPU smoke is not close-out evidence. It did not capture app screenshots or exported circular trace payload text, and it was shorter than the roughly 70-minute incident window; use it only as startup and diagnostic-path evidence.",
-        "The 2026-07-13 implementation intentionally keeps hardware rendering as the default after clean exits and selects WPF software rendering only for explicit override or an abnormal previous run, matching the acceptance preference for evidence-driven recovery rather than an unconditional software switch."
+        "The 2026-07-13 implementation intentionally keeps hardware rendering as the default after clean exits and selects WPF software rendering only for explicit override or an abnormal previous run, matching the acceptance preference for evidence-driven recovery rather than an unconditional software switch.",
+        "The user's recollection that the original local failure happened soon after manual resize/fullscreen switching around the 70-minute mark is accepted as a CR-257 reproduction clue. That clue points at WPF layout/composition/GPU stress and is distinct from the later one-minute harness false failure."
       ],
       "acceptance": [
         "A fresh causal dump, process-exit record, or repeatable hardware/software rendering differential identifies the failure class.",
@@ -11837,7 +11838,48 @@
         "Full PortfolioSaver.Tests Release suite passed 781/781 tests with dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --nologo after the CR-257 implementation and documentation baseline wording fix.",
         "WER LocalDumps was enabled under HKCU for PortfolioSaver.Desktop.exe on the affected local PC with full dumps, count 10, and dump folder C:/Users/vagab/AppData/Local/DoNotPanicPortfolioVisualizer/CrashDumps.",
         "Local GPU hardware-mode smoke on the affected PC ran the direct Release desktop executable for 45 seconds with --hardware-rendering and an isolated local data root under ignored artifact path build/validation/artifacts/local-cr257-smoke-/+/20260713-161851; the process remained alive before explicit stop, no new dump was created, and no PortfolioSaver.Desktop, PortfolioSaver.Config, or YFinance.NET.Server process remained afterward.",
-        "DeepSeek artifact second opinion for the local GPU smoke completed in build/validation/artifacts/local-cr257-smoke-/+/20260713-161851/deepseek-artifact-review.md. It marked the smoke insufficient for closure because no app screenshots or exported trace payload were captured and duration was below the original incident window; CR-257 remains open pending long hardware/software installed soaks and VM regression validation."
+        "DeepSeek artifact second opinion for the local GPU smoke completed in build/validation/artifacts/local-cr257-smoke-/+/20260713-161851/deepseek-artifact-review.md. It marked the smoke insufficient for closure because no app screenshots or exported trace payload were captured and duration was below the original incident window; CR-257 remains open pending long hardware/software installed soaks and VM regression validation.",
+        "Local two-hour hardware-rendering soak attempt cr257-local-ux-soak-20260713-165449 ran for about one minute before the harness stopped the desktop after a fullscreen predicate failure. Postmortem found no fresh WER item, no fresh dump, and normal desktop/server traces through the forced stop, so this attempt is not a CR-257 product crash reproduction.",
+        "Deterministic analysis and DeepSeek artifact advisory for cr257-local-ux-soak-20260713-165449 agree that the one-minute stop exposed a validation harness defect: on the local multi-monitor desktop, the app was monitor-local fullscreen on the right monitor while the harness compared against the entire virtual desktop. CR-257 remains open for long local resize/fullscreen stress and hardware/software rendering differential evidence."
+      ]
+    },
+    {
+      "id": "CR-258",
+      "tracking_number": "CR-258",
+      "priority": 1,
+      "area": "validation_harness",
+      "title": "Accept monitor-local fullscreen on multi-monitor desktops",
+      "status": "closed",
+      "source": "cr257_local_soak_false_failure_2026_07_13",
+      "severity": "high",
+      "evidence": [
+        "Local CR-257 two-hour soak attempt cr257-local-ux-soak-20260713-165449 stopped after about one minute with DesktopPhaseStatus=Failed and the note Visual host did not enter true fullscreen during long-run soak.",
+        "The fullscreen-entry screenshot showed the visualizer occupying the right monitor while the left monitor remained visible, which is valid monitor-local fullscreen on a multi-monitor desktop.",
+        "The app and owned YFinance.NET server were alive and logging normal runtime activity immediately before the harness forced process termination.",
+        "No fresh WER item or dump was created for the one-minute run, and deterministic plus DeepSeek artifact review classified the stop as harness-induced rather than a product crash."
+      ],
+      "notes": [
+        "The validation harness must not require a WPF fullscreen window to cover the entire Windows virtual desktop. Covering the monitor that owns the window is a valid fullscreen state.",
+        "Retain virtual-desktop coverage as an accepted case for single-surface or special display configurations.",
+        "Failure messages should include window, containing-monitor, virtual-screen, and enumerated-screen rectangles so future fullscreen failures are diagnosable from text artifacts."
+      ],
+      "acceptance": [
+        "Guest-UxDeepExercise.ps1 accepts a window whose bounds cover the containing monitor within tolerance as true fullscreen.",
+        "The existing virtual-screen fullscreen path remains accepted.",
+        "The harness records rectangle diagnostics when fullscreen detection fails.",
+        "Focused harness script tests pass, PowerShell parse succeeds, DeepSeek code review has no unresolved blocking finding, and the fix is committed and pushed before the next local or remote soak."
+      ],
+      "validation": [
+        "PowerShell parser accepted build/vm/Guest-UxDeepExercise.ps1 after adding monitor-aware fullscreen helpers.",
+        "Focused VmHarnessScriptTests passed 31/31 with dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --filter \"FullyQualifiedName~VmHarnessScriptTests\" --nologo.",
+        "DeepSeek code review completed in build/deepseek-review/deepseek-review-20260713-171832.md with no critical or high findings. Medium maintainability notes about structural string tests and duplicate RECT layout were accepted as non-blocking because this script already uses structural tests extensively and separate Add-Type blocks cannot reference the earlier dynamic RECT type without broader C# block churn.",
+        "Full PortfolioSaver.Tests Release suite passed 784/784 with dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj -c Release --nologo."
+      ],
+      "resolution": [
+        "Guest-UxDeepExercise.ps1 now gets the monitor nearest the desktop window with MonitorFromWindow/GetMonitorInfo and accepts fullscreen when the live window covers that containing monitor.",
+        "The previous virtual-screen fullscreen check remains as a valid fallback, and each enumerated screen is also checked with the same strict one-pixel position and two-pixel size tolerances used by the old virtual-screen predicate.",
+        "Fullscreen failure messages now include window, monitor, virtual-screen, and all-screen rectangle diagnostics for future artifact-only analysis.",
+        "Rectangle-like inputs are normalized before comparison so System.Drawing.Rectangle and custom Left/Top objects are both supported."
       ]
     }
   ],

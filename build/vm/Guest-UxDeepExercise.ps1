@@ -61,6 +61,37 @@ public static class NativeWindowBounds {
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
+public static class NativeMonitorBounds {
+    public const int MONITOR_DEFAULTTONEAREST = 2;
+
+    // Separate Add-Type blocks cannot reference NativeWindowBounds.RECT directly.
+    // Keep this layout aligned with NativeWindowBounds.RECT above.
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MONITORINFO {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public int dwFlags;
+    }
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr MonitorFromWindow(IntPtr hwnd, int dwFlags);
+
+    [DllImport("user32.dll")]
+    public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+}
+"@
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
 using System.Text;
 public static class NativeWindowSearch {
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
@@ -435,6 +466,83 @@ function Get-WindowRectangle {
     }
 }
 
+function Get-WindowMonitorRectangle {
+    param([Parameter(Mandatory=$true)][System.Diagnostics.Process]$Process)
+
+    $Process.Refresh()
+    if ($Process.MainWindowHandle -eq [IntPtr]::Zero) {
+        return $null
+    }
+
+    $monitor = [NativeMonitorBounds]::MonitorFromWindow(
+        $Process.MainWindowHandle,
+        [NativeMonitorBounds]::MONITOR_DEFAULTTONEAREST)
+    if ($monitor -eq [IntPtr]::Zero) {
+        return $null
+    }
+
+    $info = New-Object NativeMonitorBounds+MONITORINFO
+    $info.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf([type]([NativeMonitorBounds+MONITORINFO]))
+    if (-not [NativeMonitorBounds]::GetMonitorInfo($monitor, [ref]$info)) {
+        return $null
+    }
+
+    return [pscustomobject]@{
+        Left = $info.rcMonitor.Left
+        Top = $info.rcMonitor.Top
+        Width = ($info.rcMonitor.Right - $info.rcMonitor.Left)
+        Height = ($info.rcMonitor.Bottom - $info.rcMonitor.Top)
+    }
+}
+
+function ConvertTo-RectangleBounds {
+    param($Rectangle)
+
+    if ($null -eq $Rectangle) {
+        return $null
+    }
+
+    $properties = $Rectangle.PSObject.Properties
+    $leftProperty = $properties['Left']
+    if ($null -eq $leftProperty) { $leftProperty = $properties['X'] }
+    $topProperty = $properties['Top']
+    if ($null -eq $topProperty) { $topProperty = $properties['Y'] }
+    $widthProperty = $properties['Width']
+    $heightProperty = $properties['Height']
+
+    if ($null -eq $leftProperty -or $null -eq $topProperty -or $null -eq $widthProperty -or $null -eq $heightProperty -or
+        $null -eq $leftProperty.Value -or $null -eq $topProperty.Value -or $null -eq $widthProperty.Value -or $null -eq $heightProperty.Value) {
+        return $null
+    }
+
+    return [pscustomobject]@{
+        Left = [int]$leftProperty.Value
+        Top = [int]$topProperty.Value
+        Width = [int]$widthProperty.Value
+        Height = [int]$heightProperty.Value
+    }
+}
+
+function Test-RectangleCoversBounds {
+    param(
+        [Parameter(Mandatory=$true)]$Rectangle,
+        [Parameter(Mandatory=$true)]$Bounds,
+        [int]$PositionTolerancePixels = 1,
+        [int]$SizeTolerancePixels = 2
+    )
+
+    $normalizedRectangle = ConvertTo-RectangleBounds -Rectangle $Rectangle
+    $normalizedBounds = ConvertTo-RectangleBounds -Rectangle $Bounds
+    if ($null -eq $normalizedRectangle -or $null -eq $normalizedBounds) {
+        return $false
+    }
+
+    return [Math]::Abs($normalizedRectangle.Left - $normalizedBounds.Left) -le $PositionTolerancePixels -and
+           [Math]::Abs($normalizedRectangle.Top - $normalizedBounds.Top) -le $PositionTolerancePixels -and
+           [Math]::Abs($normalizedRectangle.Width - $normalizedBounds.Width) -le $SizeTolerancePixels -and
+           [Math]::Abs($normalizedRectangle.Height - $normalizedBounds.Height) -le $SizeTolerancePixels
+}
+
 function Test-IsTrueFullscreen {
     param([Parameter(Mandatory=$true)][System.Diagnostics.Process]$Process)
 
@@ -443,11 +551,46 @@ function Test-IsTrueFullscreen {
         return $false
     }
 
+    $monitorBounds = Get-WindowMonitorRectangle -Process $Process
+    if ($null -ne $monitorBounds -and (Test-RectangleCoversBounds -Rectangle $rect -Bounds $monitorBounds)) {
+        return $true
+    }
+
     $screen = [System.Windows.Forms.SystemInformation]::VirtualScreen
-    return [Math]::Abs($rect.Left - $screen.Left) -le 1 -and
-           [Math]::Abs($rect.Top - $screen.Top) -le 1 -and
-           [Math]::Abs($rect.Width - $screen.Width) -le 2 -and
-           [Math]::Abs($rect.Height - $screen.Height) -le 2
+    if (Test-RectangleCoversBounds -Rectangle $rect -Bounds $screen) {
+        return $true
+    }
+
+    foreach ($candidateScreen in [System.Windows.Forms.Screen]::AllScreens) {
+        if (Test-RectangleCoversBounds -Rectangle $rect -Bounds $candidateScreen.Bounds) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Format-RectangleForTrace {
+    param($Rectangle)
+
+    if ($null -eq $Rectangle) {
+        return '<none>'
+    }
+
+    return ("left={0};top={1};width={2};height={3}" -f $Rectangle.Left, $Rectangle.Top, $Rectangle.Width, $Rectangle.Height)
+}
+
+function Get-FullscreenDiagnosticSummary {
+    param([Parameter(Mandatory=$true)][System.Diagnostics.Process]$Process)
+
+    $window = Get-WindowRectangle -Process $Process
+    $monitor = Get-WindowMonitorRectangle -Process $Process
+    $virtual = [System.Windows.Forms.SystemInformation]::VirtualScreen
+    $screens = @([System.Windows.Forms.Screen]::AllScreens | ForEach-Object {
+        "{0}:{1}" -f $_.DeviceName, (Format-RectangleForTrace -Rectangle $_.Bounds)
+    })
+
+    return "window=[$(Format-RectangleForTrace -Rectangle $window)]; monitor=[$(Format-RectangleForTrace -Rectangle $monitor)]; virtual=[$(Format-RectangleForTrace -Rectangle $virtual)]; screens=[$($screens -join ', ')]"
 }
 
 function Focus-ProcessWindow {
@@ -3681,7 +3824,7 @@ try {
             $summary.RuntimeShots++
             Write-RuntimeFreshnessSnapshot -CaptureIndex 0 -Phase 'fullscreen-entry' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop -IncludeVisibleFreshness
             if (-not $enteredFullScreen) {
-                throw "Visual host did not enter true fullscreen during long-run soak."
+                throw "Visual host did not enter true fullscreen during long-run soak. $(Get-FullscreenDiagnosticSummary -Process $desktop)"
             }
             $summary.FullScreenToggleStatus = "Completed"
             Write-SummaryFiles
@@ -3710,7 +3853,7 @@ try {
             $summary.DesktopShots++
             Write-RuntimeFreshnessSnapshot -CaptureIndex 0 -Phase 'fullscreen-entry' -ResultsDir $results -RequestedFaultProfile $FaultProfile -FaultProfilePath $faultProfilePath -DesktopProcess $desktop -IncludeVisibleFreshness
             if (-not $enteredFullScreen) {
-                throw "Desktop shell did not enter true fullscreen; taskbar/work-area chrome appears to remain visible."
+                throw "Desktop shell did not enter true fullscreen; taskbar/work-area chrome appears to remain visible. $(Get-FullscreenDiagnosticSummary -Process $desktop)"
             }
             Write-SummaryFiles
 

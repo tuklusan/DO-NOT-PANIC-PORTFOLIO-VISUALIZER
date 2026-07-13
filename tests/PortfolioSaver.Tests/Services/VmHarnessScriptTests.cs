@@ -1139,6 +1139,27 @@ public sealed class VmHarnessScriptTests
     }
 
     [Fact]
+    public void GuestUxDeepExercise_AcceptsMonitorLocalFullscreenOnMultiMonitorDesktops()
+    {
+        string script = ReadRepoText("build", "vm", "Guest-UxDeepExercise.ps1");
+
+        Assert.Contains("public static class NativeMonitorBounds", script, StringComparison.Ordinal);
+        Assert.Contains("MonitorFromWindow", script, StringComparison.Ordinal);
+        Assert.Contains("GetMonitorInfo", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-WindowMonitorRectangle", script, StringComparison.Ordinal);
+        Assert.Contains("function ConvertTo-RectangleBounds", script, StringComparison.Ordinal);
+        Assert.Contains("$leftProperty = $properties['Left']", script, StringComparison.Ordinal);
+        Assert.Contains("if ($null -eq $leftProperty) { $leftProperty = $properties['X'] }", script, StringComparison.Ordinal);
+        Assert.Contains("$null -eq $leftProperty.Value", script, StringComparison.Ordinal);
+        Assert.Contains("[int]$PositionTolerancePixels = 1", script, StringComparison.Ordinal);
+        Assert.Contains("[int]$SizeTolerancePixels = 2", script, StringComparison.Ordinal);
+        Assert.Contains("$normalizedBounds.Left", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("$Bounds.Left", script, StringComparison.Ordinal);
+        Assert.Contains("Test-RectangleCoversBounds -Rectangle $rect -Bounds $monitorBounds", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-FullscreenDiagnosticSummary", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void DeepSeekArtifactReview_IncludesAppNativeSceneCaptureTiming()
     {
         string script = ReadRepoText("build", "validation", "Invoke-DeepSeekArtifactReview.ps1");
