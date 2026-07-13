@@ -11697,7 +11697,7 @@
       "priority": 1,
       "area": "ticker_tape_visual_feedback",
       "title": "Replace synthetic blue demo flashes with quote-driven tape update colors",
-      "status": "open",
+      "status": "closed",
       "source": "user_behavior_change_request_2026_07_12",
       "severity": "high",
       "evidence": [
@@ -11723,6 +11723,16 @@
         "Trace evidence identifies symbol, selected color, and unchanged/changed reason without exposing sensitive data or causing per-frame noise.",
         "A fresh installer is used for installed-app VM validation and visual/trace evidence confirms quote-driven flashes with no synthetic 30-second pulse sequence.",
         "DeepSeek review has no unresolved blocking findings, tests pass, and the CR is closed with committed and pushed evidence."
+      ],
+      "resolution": [
+        "Removed the synthetic startup/configuration/30-second blue demo-flash scheduler and all associated state and tests.",
+        "Each accepted non-stale usable quote now flashes only its displayed tape item: DeepSkyBlue when the displayed value is unchanged or direction is neutral, LimeGreen for a changed positive value, and OrangeRed for a changed negative value.",
+        "Structural tape rebuilds, configuration application, stale quotes, missing values, and non-tape symbols do not produce quote-update flashes.",
+        "Graph-card code was not changed. Regression coverage preserves raw-price-change-only activation, green ceiling travel, red floor travel, edge-arrival flash termination, and return to normal motion.",
+        "Focused tape/graph tests passed 4 of 4 and the complete automated suite passed 729 of 729.",
+        "Fresh installed-build VM validation ran for five minutes without crashes, errors, warnings, transport failures, or demo-flash events. Throttled trace evidence recorded 11 quote-driven tape flashes: 7 blue unchanged and 4 green changed-positive; negative/red behavior was exercised by the behavioral test because the closed-market VM run produced no natural negative update.",
+        "Seven VM scene captures were inspected and showed a complete, stable scene with populated tape lanes and graph cards.",
+        "DeepSeek's advisory found no CR-255 behavioral defect. Its request for primary flash evidence was resolved against the full circular trace; generic long-run memory and visual-baseline suggestions are outside this focused behavior change and remain covered by the established soak-validation workflow."
       ]
     }
   ],
