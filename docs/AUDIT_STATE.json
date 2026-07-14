@@ -11779,7 +11779,7 @@
       "priority": 1,
       "area": "desktop_rendering_reliability",
       "title": "Diagnose and mitigate local WPF composition termination",
-      "status": "open",
+      "status": "closed",
       "source": "local_installed_windows_incident_2026_07_13",
       "severity": "critical",
       "evidence": [
@@ -11847,6 +11847,12 @@
         "Deterministic trace analysis and mandatory DeepSeek artifact reviews for the two-machine soak are preserved under ignored build/validation/artifacts/cr257-two-machine-soak-20260713-172241-analysis.md, cr257-local-ux-soak-20260713-172241/deepseek-artifact-review.md, and cr257-remote-soak-20260713-172803/deepseek-artifact-review.md. The advisory review classified the verified local app-surface visual stall as a blocking follow-up rather than close-out evidence for CR-257.",
         "Live checkpoint from the post-mitigation two-machine cycle build/validation/artifacts/cr257-cr259-two-machine-cycle-20260714-090000: both the local affected GPU host and remote AMD host remained alive past the 2026-07-14 New York market-open transition with PortfolioSaver.Desktop and YFinance.NET.Server still responding; this is transition evidence only and not CR-257 closure evidence until the full run and artifact reviews complete.",
         "Wrap-up for the 2026-07-14 09:00 two-machine cycle: the affected local GPU host completed its two-hour hardware-rendering soak and shut down without process death, WER/dump evidence, ERROR/WARN trace lines, unhandled/fatal/transport failures, or failed 7/70/90/110-minute resize/fullscreen stress cycles. The remote AMD run was intentionally stopped early at the user's wrap-up request after roughly 113 minutes; immediately before shutdown, PortfolioSaver.Desktop and YFinance.NET.Server were alive, traces were clean, no dump/WER files were found, and remote app/server/harness processes were terminated."
+      ],
+      "resolution": [
+        "Closed by owner decision on 2026-07-14: the original local hard-crash/termination has not been reproducible after the diagnostic and mitigation work, including long local hardware-rendering soaks with explicit resize/fullscreen stress.",
+        "The retained historical wpfgfx_cor3.dll dump remains useful context, but there is no fresh causal dump or repeatable process-termination reproduction for the current incident.",
+        "WER LocalDumps and render-recovery diagnostics remain enabled/available so any future recurrence can be captured with stronger evidence.",
+        "If the hard termination happens again, open a new CR with the fresh dump, WER/process-exit record, trace tail, monitor/GPU state, and reproduction context instead of keeping this historical non-reproducible incident open indefinitely."
       ]
     },
     {
@@ -11894,7 +11900,7 @@
       "priority": 1,
       "area": "desktop_rendering_reliability",
       "title": "Detect and recover local WPF rendered-surface stalls",
-      "status": "open",
+      "status": "closed",
       "source": "cr257_two_machine_soak_2026_07_13",
       "severity": "critical",
       "evidence": [
@@ -11949,8 +11955,43 @@
         "The same 2026-07-14 market-open checkpoint on remote run cr257-cr259-remote-soak-20260714-090000-r4 recorded Market (New York): Open Closing in 06:28 at 2026-07-14T13:31:11Z, with post-open RuntimeQuoteApplied=25, GraphImmediateHydration=91, WorldMarketsUiPatchComplete=2, and RenderSurfaceHeartbeat alive at 2026-07-14T13:36:15Z on the AMD Radeon RX 6700S host.",
         "Completed local wrap-up analysis for build/validation/artifacts/cr257-cr259-two-machine-cycle-20260714-090000 reported local-visual-analysis-wrapup-20260714-090000.json clean=true with zero findings and DeepSeek advisory deepseek-artifact-review-20260714-110620.md. A follow-up numbered-screenshot app-region sample-hash pass decoded 121 screenshots and found no repeated 3+ frame static segment, so the prior local rendered-surface stasis symptom did not reappear in this run.",
         "Remote wrap-up for cr257-cr259-remote-soak-20260714-090000-r4 was intentionally partial because the user requested shutdown before its full 7200-second duration elapsed. At stop time the AMD host had 113 native scene captures, no dump/WER files, zero trace ERROR/WARN-like lines, RuntimeQuoteApplied=433, GraphImmediateHydration=1759, RenderSurfaceHeartbeat=226, BackgroundTransitionComplete=23, and a final New York status of Open Closing in 05:00.",
-        "Validation remains pending on a fresh post-mitigation local/remote two-machine soak; CR-259 stays open until deterministic and DeepSeek artifact analyses report no unresolved critical or high findings across consecutive cycles."
+        "Closed by owner decision on 2026-07-14: the seven-minute-short remote run is accepted as sufficient because it had already crossed the market-open transition, produced 113 native scene captures, and showed no remote crash/stall evidence, while the affected local GPU host completed the full two-hour post-mitigation soak cleanly.",
+        "The 2026-07-14 local wrap-up visual analysis and follow-up numbered-screenshot sample-hash pass are accepted as sufficient evidence that the rendered-surface stasis regression did not recur after the final mitigation."
+      ],
+      "resolution": [
+        "Closed as fixed on 2026-07-14 by the final scoped fullscreen composition nudge and bounds-repair mitigation.",
+        "The final accepted evidence is the local two-hour affected-GPU soak with 7/70/90/110-minute resize/fullscreen stress cycles, clean deterministic visual analysis, mandatory DeepSeek artifact advisory, zero trace ERROR/WARN-like lines, no dumps/WER files, and no repeated 3+ frame app-region stasis segment across 121 numbered screenshots.",
+        "The remote AMD run ended approximately seven minutes early by owner request and is accepted for this CR because it remained clean through 113 native scene captures and showed no crash, dump, WER, trace error, or rendered-surface-stall evidence before explicit shutdown."
       ]
+    },
+    {
+      "id": "CR-260",
+      "tracking_number": "CR-260",
+      "priority": 1,
+      "area": "desktop_rendering_reliability",
+      "title": "Constrain fullscreen composition nudges to the product window and owning monitor",
+      "status": "open",
+      "source": "owner_multimonitor_observation_2026_07_14",
+      "severity": "high",
+      "evidence": [
+        "On a multi-display setup, the GPU/WDM composition nudges associated with the product can force other active windows into maximized or borderless fullscreen states.",
+        "Observed example: while the product was running fullscreen on the right-hand monitor, the Codex window on the left monitor became fullscreen and frameless.",
+        "The affected monitors have different resolutions, so any fix must be monitor-aware and must not assume a single virtual-desktop rectangle or primary-monitor geometry."
+      ],
+      "notes": [
+        "Nudges must affect only the PortfolioSaver product window and only the monitor that currently owns that product window.",
+        "The product must be tested after moving it fully from one monitor to another; do not validate with the window straddling monitors.",
+        "The fix must preserve CR-259's rendered-surface-stall mitigation intent while preventing unrelated applications from being maximized, full-screened, resized, or stripped of frames."
+      ],
+      "acceptance": [
+        "Code inspection and tests prove the nudge path targets only the product HWND, never the foreground window, all top-level windows, shell windows, or virtual-desktop-wide state.",
+        "Monitor selection is based on the product HWND's containing monitor at the time of the nudge, and geometry used by the nudge is restricted to that monitor.",
+        "Moving the product fully between monitors with different resolutions preserves correct fullscreen/nudge behavior on each monitor.",
+        "Manual or automated validation proves an unrelated window on another monitor remains in its original window state, frame state, and bounds while the product exercises fullscreen and composition nudge paths.",
+        "Tests cover at least the branch/selection logic for product-window-only nudge targeting and monitor-local geometry.",
+        "DeepSeek code review has no unresolved blocking finding, focused tests pass, and the fix is committed and pushed."
+      ],
+      "validation": []
     }
   ],
   "remaining_validation_gaps": [],
