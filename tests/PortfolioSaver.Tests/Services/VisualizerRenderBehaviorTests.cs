@@ -3850,6 +3850,26 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
+    public void VisualizerScene_ExposesHostCompositionNudgeForDesktopShell()
+    {
+        string sceneCodeBehind = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "VisualizerSceneControl.xaml.cs"));
+
+        Assert.Contains("public void RequestHostCompositionNudge(string reason)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Dispatcher.BeginInvoke(", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DispatcherPriority.Render", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RequestHostCompositionNudgeCore(reason)", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("InvalidateRenderSurfaceVisuals();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RenderSurfaceHostCompositionNudge", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RenderSurfaceHostCompositionNudgeFailed", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("motion_frame_count", sceneCodeBehind, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void VisualizerScene_RenderSurfaceHeartbeatRequestsRecoveryWhenMotionFramesStop()
     {
         RunOnSta(() =>

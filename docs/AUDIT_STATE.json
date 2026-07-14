@@ -11900,13 +11900,20 @@
         "Pixel verification in build/validation/artifacts/cr257-local-ux-soak-20260713-172241/pixel-diff-freeze-window.json confirmed the app-window, ticker-band, top-status, and floating-card crops were exactly unchanged from desktop-038 through desktop-046, spanning about 18:00:15 through 18:08:10 local time.",
         "During the same interval, runtime-freshness-events.log reported fresh UI Automation quote freshness every minute, and trace/trace.circular.log continued to record RuntimeQuoteAppliedDebug and NewsFlasher PlaybackPhase events, proving the logical UI/dispatcher remained active while the rendered surface stayed stale.",
         "The visual surface resumed at desktop-047, where the app-window crop changed by about 89 percent, so the symptom is a recoverable rendered-surface stall rather than a whole-process hang.",
-        "The affected local machine is a hybrid Intel HD Graphics 630 driver 26.20.100.6812 from 2019-05-20 plus NVIDIA GeForce GTX 1060 driver 32.0.15.8157 from 2025-10-08. The remote AMD Radeon RX 6700S hardware soak did not show trace-level errors or process instability."
+        "The affected local machine is a hybrid Intel HD Graphics 630 driver 26.20.100.6812 from 2019-05-20 plus NVIDIA GeForce GTX 1060 driver 32.0.15.8157 from 2025-10-08. The remote AMD Radeon RX 6700S hardware soak did not show trace-level errors or process instability.",
+        "Follow-up two-machine cycle build/validation/artifacts/cr257-cr259-two-machine-cycle-20260713-204515 reproduced the local visual stall after the first heartbeat/recovery implementation: local desktop-039.png through desktop-070.png stayed pixel-static from 2026-07-13 21:24:11 through 21:54:54 local time while runtime freshness and trace activity continued.",
+        "During the reproduced local stall, trace/trace.circular.log continued to emit RenderSurfaceHeartbeat with motion_frame_count increasing, is_loaded=true, is_visible=true, motion_rendering_subscribed=true, scene_timer_enabled=true, and recovery_count=0, proving a CompositionTarget.Rendering heartbeat is too shallow for this failure mode.",
+        "The 2026-07-13 local manual window/fullscreen stress at roughly 70 minutes recovered visual movement: post-stress desktop-071.png changed substantially from desktop-069.png and subsequent screenshots stayed variable.",
+        "Remote laptop soak cr257-cr259-remote-soak-20260713-204515-r2 on AMD Radeon RX 6700S completed two hours with no process death or dumps; remote native image diff scan across 120 captures found zero static or near-static adjacent pairs, with minimum normalized MAE about 0.025.",
+        "The same local trace also explains the observed borderless clipped-window symptom: the stress harness sent F11 while PORTFOLIOSAVER_DISABLE_INPUT_EXIT caused ToggleIgnored, then external resize/move events left the logically fullscreen borderless window at roughly left=180, top=120, width=1500, height=900 until a later recovery path."
       ],
       "notes": [
         "Treat this as CR-257-adjacent because the symptom lives in the same WPF hardware composition lane as the historical wpfgfx_cor3.dll access violation, even though this run did not crash.",
         "UI Automation freshness alone is insufficient proof of visual liveness. The harness needs pixel-diff or app-native frame heartbeat evidence to catch rendered-surface stalls.",
         "The app currently lacks low-noise fullscreen enter/exit lifecycle tracing for F11/manual paths, making post-stress correlation weaker than it should be.",
-        "Remote SSH runs in session 0 and cannot manipulate the session-1 desktop HWND directly; remote resize/fullscreen stress needs an interactive-session runner if required."
+        "Remote SSH runs in session 0 and cannot manipulate the session-1 desktop HWND directly; remote resize/fullscreen stress needs an interactive-session runner if required.",
+        "The current code-level render callback heartbeat is necessary telemetry but not sufficient recovery logic because the stale-surface failure can occur while the WPF render pump keeps firing.",
+        "Fullscreen recovery must also defend against external resize/move while the app is logically fullscreen, because a borderless smaller window can mimic or amplify the local rendered-surface failure."
       ],
       "acceptance": [
         "Add low-noise app tracing for fullscreen enter/exit, window-state/size transitions relevant to fullscreen, and render/frame heartbeat evidence sufficient to correlate future stalls with WPF composition activity.",
@@ -11917,7 +11924,12 @@
         "All code, harness, and test changes pass the mandatory DeepSeek code-review gate before commit/push and before validation.",
         "Deterministic artifact analysis and mandatory DeepSeek artifact-review second opinions report no unresolved critical or high findings after the fix."
       ],
-      "validation": []
+      "validation": [
+        "2026-07-13 local two-hour UX soak cr257-cr259-local-ux-soak-20260713-204515 completed without process death, WER dump, or fatal trace errors but failed deterministic visual analysis with rendered-surface-stasis from desktop-039.png to desktop-070.png; local-visual-analysis.json reported clean=false and one high-severity finding.",
+        "2026-07-13 local DeepSeek artifact advisory deepseek-artifact-review-20260713-230025.md agreed the rendered-surface-stasis finding is real and severe, with no evidence of fault injection or process crash causing it.",
+        "2026-07-13 remote laptop soak cr257-cr259-remote-soak-20260713-204515-r2 completed two hours on AMD Radeon RX 6700S with DesktopProcessAliveAtEndBeforeStop=true, DumpFiles=[], fatalCrashException=0, strictTransportFailure=0, and no static native-capture pairs.",
+        "2026-07-13 remote DeepSeek artifact advisory remote-deepseek-artifact-review-20260713-230025.md classified the remote run as pass from reliability/stability perspective, with only trivial/informational observations."
+      ]
     }
   ],
   "remaining_validation_gaps": [],

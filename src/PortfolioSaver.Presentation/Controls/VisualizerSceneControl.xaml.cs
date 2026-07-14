@@ -290,6 +290,42 @@ public partial class VisualizerSceneControl : UserControl
         _initialized = false;
     }
 
+    public void RequestHostCompositionNudge(string reason)
+    {
+        if (!CheckAccess())
+        {
+            _ = Dispatcher.BeginInvoke(
+                new Action(() => RequestHostCompositionNudgeCore(reason)),
+                DispatcherPriority.Render);
+            return;
+        }
+
+        RequestHostCompositionNudgeCore(reason);
+    }
+
+    private void RequestHostCompositionNudgeCore(string reason)
+    {
+        try
+        {
+            InvalidateRenderSurfaceVisuals();
+            TraceSceneState(
+                "RenderSurfaceHostCompositionNudge",
+                new KeyValuePair<string, object?>("reason", reason),
+                new KeyValuePair<string, object?>("motion_frame_count", _acceptedMotionFrameCount),
+                new KeyValuePair<string, object?>("actual_width", Math.Round(ActualWidth, 1)),
+                new KeyValuePair<string, object?>("actual_height", Math.Round(ActualHeight, 1)),
+                new KeyValuePair<string, object?>("is_loaded", IsLoaded),
+                new KeyValuePair<string, object?>("is_visible", IsVisible));
+        }
+        catch (Exception ex)
+        {
+            TraceSceneState(
+                "RenderSurfaceHostCompositionNudgeFailed",
+                new KeyValuePair<string, object?>("reason", reason),
+                new KeyValuePair<string, object?>("exception", ex.ToString()));
+        }
+    }
+
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
         ApplyResponsiveLayout();

@@ -33,6 +33,7 @@
         PreviewMouseLeftButtonDown="OnWindowPreviewMouseLeftButtonDown"
         PreviewMouseDoubleClick="OnWindowPreviewMouseDoubleClick"
         SizeChanged="OnWindowSizeChanged"
+        LocationChanged="OnWindowLocationChanged"
         StateChanged="OnWindowStateChanged">
     <Window.DataContext>
         <vm:DesktopShellViewModel />

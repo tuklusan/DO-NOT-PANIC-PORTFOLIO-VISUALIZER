@@ -70,6 +70,7 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("MinHeight=\"720\"", xaml, StringComparison.Ordinal);
         Assert.Contains("WindowState=\"Maximized\"", xaml, StringComparison.Ordinal);
         Assert.Contains("SizeChanged=\"OnWindowSizeChanged\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("LocationChanged=\"OnWindowLocationChanged\"", xaml, StringComparison.Ordinal);
         Assert.Contains("StateChanged=\"OnWindowStateChanged\"", xaml, StringComparison.Ordinal);
         Assert.Contains("PreviewMouseLeftButtonDown=\"OnWindowPreviewMouseLeftButtonDown\"", xaml, StringComparison.Ordinal);
         Assert.Contains("PreviewMouseDoubleClick=\"OnWindowPreviewMouseDoubleClick\"", xaml, StringComparison.Ordinal);
@@ -141,6 +142,118 @@ public sealed class DesktopShellMigrationTests
         Assert.DoesNotContain("SceneHost?.SetValidationPause(isValidating);", code, StringComparison.Ordinal);
         Assert.Contains("AboutWindow window = new()", code, StringComparison.Ordinal);
         Assert.Contains("window.ShowDialog();", code, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DesktopShell_DefinesFullscreenCompositionNudge()
+    {
+        string code = File.ReadAllText(Path.Combine(GetRepoRoot(), "src", "PortfolioSaver.Desktop", "Windows", "MainWindow.xaml.cs"));
+
+        Assert.Contains("CompositionSurfaceNudgeInterval = TimeSpan.FromMinutes(2)", code, StringComparison.Ordinal);
+        Assert.Contains("CompositionSurfaceNudgeMinimumSpacing = TimeSpan.FromSeconds(20)", code, StringComparison.Ordinal);
+        Assert.Contains("FullScreenBoundsRepairDebounce = TimeSpan.FromMilliseconds(250)", code, StringComparison.Ordinal);
+        Assert.Contains("PORTFOLIOSAVER_DISABLE_COMPOSITION_NUDGE", code, StringComparison.Ordinal);
+        Assert.Contains("new(DispatcherPriority.Background)", code, StringComparison.Ordinal);
+        Assert.Contains("CompositionSurfaceNudgeTimerStarted", code, StringComparison.Ordinal);
+        Assert.Contains("CompositionSurfaceBoundsRepairSkipped", code, StringComparison.Ordinal);
+        Assert.Contains("periodic-fullscreen-composition-watchdog", code, StringComparison.Ordinal);
+        Assert.Contains("QueueFullScreenBoundsRepair(", code, StringComparison.Ordinal);
+        Assert.Contains("FullScreenBoundsRepairQueued", code, StringComparison.Ordinal);
+        Assert.Contains("FullScreenBoundsRepairFailed", code, StringComparison.Ordinal);
+        Assert.Contains("fullscreen-bounds-repair-{reason}", code, StringComparison.Ordinal);
+        Assert.Contains("OnWindowLocationChanged", code, StringComparison.Ordinal);
+        Assert.Contains("IsFullScreenBoundsRepairNeeded(", code, StringComparison.Ordinal);
+        Assert.Contains("ShouldApplyNativeFullScreenBounds(", code, StringComparison.Ordinal);
+        Assert.Contains("CalculateNativePixelTolerance(", code, StringComparison.Ordinal);
+        Assert.Contains("ScheduleCompositionSurfaceNudge(", code, StringComparison.Ordinal);
+        Assert.Contains("RequestCompositionSurfaceNudge(", code, StringComparison.Ordinal);
+        Assert.Contains("SceneHost?.RequestHostCompositionNudge(reason);", code, StringComparison.Ordinal);
+        Assert.Contains("SetWindowPos(", code, StringComparison.Ordinal);
+        Assert.Contains("RedrawWindow(", code, StringComparison.Ordinal);
+        Assert.Contains("GetWindowRect(", code, StringComparison.Ordinal);
+        Assert.Contains("TryGetCurrentMonitorRect(", code, StringComparison.Ordinal);
+        Assert.Contains("GetNativePixelTolerance()", code, StringComparison.Ordinal);
+        Assert.Contains("native_pixel_tolerance", code, StringComparison.Ordinal);
+        Assert.Contains("SwpFrameChanged", code, StringComparison.Ordinal);
+        Assert.Contains("SwpNoZOrder", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("SwpShowWindow", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("HwndTopMost", code, StringComparison.Ordinal);
+        Assert.Contains("RdwAllChildren", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("DwmFlush", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("RdwUpdateNow", code, StringComparison.Ordinal);
+        Assert.Contains("set_window_pos_skipped", code, StringComparison.Ordinal);
+        Assert.Contains("native_fullscreen_bounds_applied", code, StringComparison.Ordinal);
+        Assert.Contains("native_fullscreen_target", code, StringComparison.Ordinal);
+        Assert.Contains("window_rect_before", code, StringComparison.Ordinal);
+        Assert.Contains("CompositionSurfaceNudge", code, StringComparison.Ordinal);
+        Assert.Contains("_compositionSurfaceNudgeTimer.Stop();", code, StringComparison.Ordinal);
+        Assert.Contains("_compositionSurfaceDelayedNudgeTimer.Stop();", code, StringComparison.Ordinal);
+        Assert.Contains("_fullScreenBoundsRepairTimer.Stop();", code, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DesktopShell_ConfiguresCompositionNudgeTimers()
+    {
+        RunOnSta(() =>
+        {
+            MainWindow window = new();
+            try
+            {
+                Assert.True(window.CompositionSurfaceNudgeTimerEnabled);
+                Assert.Equal(TimeSpan.FromMinutes(2), window.CompositionSurfaceNudgeTimerInterval);
+                Assert.False(window.CompositionSurfaceDelayedNudgeTimerEnabled);
+                Assert.Equal(TimeSpan.FromSeconds(2), window.CompositionSurfaceDelayedNudgeTimerInterval);
+                Assert.False(window.FullScreenBoundsRepairTimerEnabled);
+                Assert.Equal(TimeSpan.FromMilliseconds(250), window.FullScreenBoundsRepairTimerInterval);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void DesktopShell_CompositionNudgeEnvironmentOverride_DisablesPeriodicTimer()
+    {
+        string? previous = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_DISABLE_COMPOSITION_NUDGE");
+        Environment.SetEnvironmentVariable("PORTFOLIOSAVER_DISABLE_COMPOSITION_NUDGE", "1");
+        try
+        {
+            RunOnSta(() =>
+            {
+                MainWindow window = new();
+                try
+                {
+                    Assert.False(window.CompositionSurfaceNudgeTimerEnabled);
+                    Assert.False(window.CompositionSurfaceDelayedNudgeTimerEnabled);
+                    Assert.False(window.FullScreenBoundsRepairTimerEnabled);
+                }
+                finally
+                {
+                    window.Close();
+                }
+            });
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PORTFOLIOSAVER_DISABLE_COMPOSITION_NUDGE", previous);
+        }
+    }
+
+    [Fact]
+    public void DesktopShell_CompositionNudgeDecisionHelpers_CoverNativeBoundsAndDpiTolerance()
+    {
+        Assert.True(MainWindow.ShouldApplyNativeFullScreenBounds(isFullScreen: true, fullScreenBoundsNeedRepair: true, nativeBoundsAvailable: true));
+        Assert.False(MainWindow.ShouldApplyNativeFullScreenBounds(isFullScreen: false, fullScreenBoundsNeedRepair: true, nativeBoundsAvailable: true));
+        Assert.False(MainWindow.ShouldApplyNativeFullScreenBounds(isFullScreen: true, fullScreenBoundsNeedRepair: false, nativeBoundsAvailable: true));
+        Assert.False(MainWindow.ShouldApplyNativeFullScreenBounds(isFullScreen: true, fullScreenBoundsNeedRepair: true, nativeBoundsAvailable: false));
+
+        Assert.Equal(2, MainWindow.CalculateNativePixelTolerance(0));
+        Assert.Equal(2, MainWindow.CalculateNativePixelTolerance(1.0));
+        Assert.Equal(4, MainWindow.CalculateNativePixelTolerance(1.75));
+        Assert.Equal(2, MainWindow.CalculateNativePixelTolerance(double.PositiveInfinity));
+        Assert.Equal(int.MaxValue, MainWindow.CalculateNativePixelTolerance(double.MaxValue));
     }
 
     [Fact]
