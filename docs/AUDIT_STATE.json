@@ -12037,6 +12037,33 @@
         "If a product defect is confirmed, fix the recovery path so repeated quote failures or abrupt YFinance transport closure cannot leave the WPF UI nonresponsive or require Windows to close the app.",
         "Prove the fix with local and VM installed-release monitoring artifacts, deterministic analysis, and mandatory DeepSeek artifact second opinion."
       ]
+    },
+    {
+      "id": "CR-262",
+      "tracking_number": "CR-262",
+      "priority": 2,
+      "area": "validation_harness",
+      "title": "Add session-local visible-window and screenshot evidence to installed-release monitor",
+      "status": "open",
+      "source": "installed_release_trace_monitor_2026_07_14",
+      "severity": "medium",
+      "evidence": [
+        "Heartbeat artifact bundle build/validation/artifacts/installed-monitor-20260714-170822 showed all six monitored local, VM, and remote-laptop product/server processes alive, but VM and remote-laptop PortfolioSaver.Desktop process snapshots reported MainWindowHandle=0 and empty MainWindowTitle.",
+        "The same VM trace set includes Desktop.FullScreen HwndHookAttached and ongoing RenderSurfaceHeartbeat events with nonzero dimensions, so process-level MainWindowHandle evidence conflicts with app-level HWND/render evidence rather than proving a product headless state.",
+        "Mandatory DeepSeek artifact second opinion build/validation/artifacts/installed-monitor-20260714-170822/deepseek-artifact-review.md flagged the missing MainWindowHandle values and lack of screenshots as a critical evidence weakness for a visual product monitor.",
+        "The monitor bundle contained no screenshot/image artifacts, so this heartbeat could not independently prove the VM and remote-laptop visualizer windows were visible and rendering in the interactive desktop session."
+      ],
+      "notes": [
+        "This ticket is for monitor/harness evidence quality. It does not assert a confirmed product rendering failure.",
+        "SSH/session-0 process inspection may be unable to observe session-1 top-level windows reliably; future checks should run from the logged-on interactive session or through the existing VM agent-style desktop bridge.",
+        "The installed-release monitor should avoid treating process aliveness alone as sufficient proof for a visualizer."
+      ],
+      "acceptance": [
+        "Installed-release monitor wake-ups collect at least one session-local screenshot or app-native scene capture from local PC, VM, and remote laptop.",
+        "Installed-release monitor wake-ups collect session-local visible-window evidence for PortfolioSaver.Desktop on VM and remote laptop using a method that can observe the logged-on desktop session.",
+        "Analysis distinguishes product headless/rendering defects from monitor instrumentation blind spots when MainWindowHandle is zero but app trace reports valid HWND/render heartbeats.",
+        "DeepSeek artifact-review packets include the screenshot inventory and window-evidence summary so advisory review can assess visual confidence."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
