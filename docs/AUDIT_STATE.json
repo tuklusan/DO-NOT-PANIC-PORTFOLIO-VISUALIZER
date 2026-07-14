@@ -11970,7 +11970,7 @@
       "priority": 1,
       "area": "desktop_rendering_reliability",
       "title": "Constrain fullscreen composition nudges to the product window and owning monitor",
-      "status": "open",
+      "status": "closed",
       "source": "owner_multimonitor_observation_2026_07_14",
       "severity": "high",
       "evidence": [
@@ -11991,7 +11991,21 @@
         "Tests cover at least the branch/selection logic for product-window-only nudge targeting and monitor-local geometry.",
         "DeepSeek code review has no unresolved blocking finding, focused tests pass, and the fix is committed and pushed."
       ],
-      "validation": []
+      "validation": [
+        "2026-07-14 local corrected multi-monitor validation build/validation/artifacts/cr260-local-multimonitor-20260714-1350 passed with result=pass, screenshot_count=7, and remaining_process_count=0.",
+        "The validation moved the product fully onto the left-hand monitor first (\\\\.\\DISPLAY4), then onto the right-hand monitor (\\\\.\\DISPLAY1), before exercising fullscreen on each monitor.",
+        "Native HWND/monitor assertions passed on both displays: screen_assertion ok=true before entry and after exit, fullscreen_assertion ok=true after entry, and native monitor ownership matched the target display.",
+        "The unrelated CR260 sentinel window retained its original style and bounds during both product fullscreen entries; sentinel_comparison changed=false for \\\\.\\DISPLAY4 and \\\\.\\DISPLAY1.",
+        "Visual inspection of 02-after-uia--DISPLAY4.png confirmed the product fullscreened on the left monitor while unrelated Codex/sentinel windows remained framed and separate; visual inspection of 02-after-uia--DISPLAY1.png confirmed the product fullscreened on the right monitor with unrelated windows remaining on the opposite monitor.",
+        "UI Automation successfully invoked ViewFullScreenMenuItem for fullscreen entry on both monitors. Fullscreen exit used a targeted product-HWND Escape fallback only after the menu became hidden by fullscreen mode; no global SendKeys path was used.",
+        "Mandatory DeepSeek artifact second opinion build/validation/artifacts/cr260-local-multimonitor-20260714-1350/deepseek-artifact-review.md was obtained. Its high-severity UIA concern was reviewed as advisory and partially based on a misread of the log: entry used UIA successfully, while only exit used the targeted-key fallback. Its remaining recommendations are documented residual test-harness hardening notes, not blockers for this CR closure."
+      ],
+      "resolution": [
+        "Closed as fixed on 2026-07-14 by the targeted fullscreen/nudge automation and native monitor-scoped fullscreen validation work.",
+        "Implementation commits pushed: 15e95a6 Fix CR-260 targeted fullscreen input; 0833089 Use UIA fullscreen toggle in VM validation; cb35650 Expose View menu for targeted fullscreen automation.",
+        "Accepted closure evidence proves the product window can be moved fully between different-resolution monitors and fullscreened on each owning monitor without maximizing, fullscreening, reframing, resizing, or moving an unrelated window.",
+        "Residual advisory risk is limited to future harness polish around fullscreen-exit UIA discoverability and richer analysis.json criteria. The product behavior under the reported CR-260 scenario is accepted as fixed."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
