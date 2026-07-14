@@ -83,7 +83,7 @@ public partial class MainWindow : Window
             {
                 TraceFullScreenWindowState(
                     "ToggleIgnored",
-                    new("reason", "input_exit_disabled"));
+                    TraceField("reason", "input_exit_disabled"));
                 return;
             }
 
@@ -113,14 +113,14 @@ public partial class MainWindow : Window
 
         TraceFullScreenWindowState(
             "FullScreenEnterStart",
-            new("previous_window_state", _previousWindowState),
-            new("previous_window_style", _previousWindowStyle),
-            new("previous_resize_mode", _previousResizeMode),
-            new("previous_topmost", _previousTopmost),
-            new("previous_left", Math.Round(_previousLeft, 1)),
-            new("previous_top", Math.Round(_previousTop, 1)),
-            new("previous_width", Math.Round(_previousWidth, 1)),
-            new("previous_height", Math.Round(_previousHeight, 1)));
+            TraceField("previous_window_state", _previousWindowState),
+            TraceField("previous_window_style", _previousWindowStyle),
+            TraceField("previous_resize_mode", _previousResizeMode),
+            TraceField("previous_topmost", _previousTopmost),
+            TraceField("previous_left", Math.Round(_previousLeft, 1)),
+            TraceField("previous_top", Math.Round(_previousTop, 1)),
+            TraceField("previous_width", Math.Round(_previousWidth, 1)),
+            TraceField("previous_height", Math.Round(_previousHeight, 1)));
 
         Rect bounds = Rect.Empty;
         _suppressWindowConstraint = true;
@@ -152,10 +152,10 @@ public partial class MainWindow : Window
 
         TraceFullScreenWindowState(
             "FullScreenEnterApplied",
-            new("target_left", Math.Round(bounds.Left, 1)),
-            new("target_top", Math.Round(bounds.Top, 1)),
-            new("target_width", Math.Round(bounds.Width, 1)),
-            new("target_height", Math.Round(bounds.Height, 1)));
+            TraceField("target_left", Math.Round(bounds.Left, 1)),
+            TraceField("target_top", Math.Round(bounds.Top, 1)),
+            TraceField("target_width", Math.Round(bounds.Width, 1)),
+            TraceField("target_height", Math.Round(bounds.Height, 1)));
 
         Dispatcher.BeginInvoke(
             DispatcherPriority.ApplicationIdle,
@@ -172,20 +172,20 @@ public partial class MainWindow : Window
         {
             TraceFullScreenWindowState(
                 "FullScreenExitIgnored",
-                new("reason", "input_exit_disabled"));
+                TraceField("reason", "input_exit_disabled"));
             return;
         }
 
         TraceFullScreenWindowState(
             "FullScreenExitStart",
-            new("restore_window_state", _previousWindowState),
-            new("restore_window_style", _previousWindowStyle),
-            new("restore_resize_mode", _previousResizeMode),
-            new("restore_topmost", _previousTopmost),
-            new("restore_left", Math.Round(_previousLeft, 1)),
-            new("restore_top", Math.Round(_previousTop, 1)),
-            new("restore_width", Math.Round(_previousWidth, 1)),
-            new("restore_height", Math.Round(_previousHeight, 1)));
+            TraceField("restore_window_state", _previousWindowState),
+            TraceField("restore_window_style", _previousWindowStyle),
+            TraceField("restore_resize_mode", _previousResizeMode),
+            TraceField("restore_topmost", _previousTopmost),
+            TraceField("restore_left", Math.Round(_previousLeft, 1)),
+            TraceField("restore_top", Math.Round(_previousTop, 1)),
+            TraceField("restore_width", Math.Round(_previousWidth, 1)),
+            TraceField("restore_height", Math.Round(_previousHeight, 1)));
 
         Topmost = _previousTopmost;
         ResizeMode = _previousResizeMode;
@@ -235,6 +235,9 @@ public partial class MainWindow : Window
         };
         TraceLog.InfoState("Desktop.FullScreen", eventName, combined);
     }
+
+    private static KeyValuePair<string, object?> TraceField(string name, object? value)
+        => new(name, value);
 
     private void OnExitClick(object sender, RoutedEventArgs e)
     {
@@ -472,7 +475,7 @@ public partial class MainWindow : Window
         {
             TraceFullScreenWindowState(
                 "KeyboardToggleRequested",
-                new("key", e.Key));
+                TraceField("key", e.Key));
             ToggleFullScreen();
             e.Handled = true;
             return;
@@ -482,7 +485,7 @@ public partial class MainWindow : Window
         {
             TraceFullScreenWindowState(
                 "KeyboardExitRequested",
-                new("key", e.Key));
+                TraceField("key", e.Key));
             ExitFullScreen();
             e.Handled = true;
         }
@@ -492,7 +495,7 @@ public partial class MainWindow : Window
     {
         TraceFullScreenWindowState(
             "WindowStateChanged",
-            new("suppress_window_constraint", _suppressWindowConstraint));
+            TraceField("suppress_window_constraint", _suppressWindowConstraint));
 
         if (_suppressWindowConstraint || _isFullScreen)
             return;
@@ -508,12 +511,12 @@ public partial class MainWindow : Window
         {
             TraceFullScreenWindowState(
                 "WindowSizeChanged",
-                new("suppress_window_constraint", _suppressWindowConstraint),
-                new("previous_width", Math.Round(e.PreviousSize.Width, 1)),
-                new("previous_height", Math.Round(e.PreviousSize.Height, 1)),
-                new("new_width", Math.Round(e.NewSize.Width, 1)),
-                new("new_height", Math.Round(e.NewSize.Height, 1)),
-                new("size_will_be_constrained", sizeWillBeConstrained));
+                TraceField("suppress_window_constraint", _suppressWindowConstraint),
+                TraceField("previous_width", Math.Round(e.PreviousSize.Width, 1)),
+                TraceField("previous_height", Math.Round(e.PreviousSize.Height, 1)),
+                TraceField("new_width", Math.Round(e.NewSize.Width, 1)),
+                TraceField("new_height", Math.Round(e.NewSize.Height, 1)),
+                TraceField("size_will_be_constrained", sizeWillBeConstrained));
         }
 
         if (_suppressWindowConstraint || _isFullScreen)
@@ -558,10 +561,10 @@ public partial class MainWindow : Window
         {
             TraceFullScreenWindowState(
                 "FullScreenBoundsRecheckAligned",
-                new("target_left", Math.Round(bounds.Left, 1)),
-                new("target_top", Math.Round(bounds.Top, 1)),
-                new("target_width", Math.Round(bounds.Width, 1)),
-                new("target_height", Math.Round(bounds.Height, 1)));
+                TraceField("target_left", Math.Round(bounds.Left, 1)),
+                TraceField("target_top", Math.Round(bounds.Top, 1)),
+                TraceField("target_width", Math.Round(bounds.Width, 1)),
+                TraceField("target_height", Math.Round(bounds.Height, 1)));
             return;
         }
 
@@ -580,10 +583,10 @@ public partial class MainWindow : Window
 
         TraceFullScreenWindowState(
             "FullScreenBoundsReapplied",
-            new("target_left", Math.Round(bounds.Left, 1)),
-            new("target_top", Math.Round(bounds.Top, 1)),
-            new("target_width", Math.Round(bounds.Width, 1)),
-            new("target_height", Math.Round(bounds.Height, 1)));
+            TraceField("target_left", Math.Round(bounds.Left, 1)),
+            TraceField("target_top", Math.Round(bounds.Top, 1)),
+            TraceField("target_width", Math.Round(bounds.Width, 1)),
+            TraceField("target_height", Math.Round(bounds.Height, 1)));
     }
 
     private void EnforceRestoredWindowSize()
