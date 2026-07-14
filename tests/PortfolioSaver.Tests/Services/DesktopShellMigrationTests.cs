@@ -21,6 +21,8 @@ using PortfolioSaver.Desktop.Windows;
 
 namespace PortfolioSaver.Tests.Services;
 
+// EnvironmentSerial is defined in EnvironmentSerialCollection.cs for tests that mutate process-wide state.
+[Collection("EnvironmentSerial")]
 public sealed class DesktopShellMigrationTests
 {
     [Fact]
@@ -216,6 +218,7 @@ public sealed class DesktopShellMigrationTests
     [Fact]
     public void DesktopShell_CompositionNudgeEnvironmentOverride_DisablesPeriodicTimer()
     {
+        // This test mutates PORTFOLIOSAVER_DISABLE_COMPOSITION_NUDGE, so the class opts into EnvironmentSerial.
         string? previous = Environment.GetEnvironmentVariable("PORTFOLIOSAVER_DISABLE_COMPOSITION_NUDGE");
         Environment.SetEnvironmentVariable("PORTFOLIOSAVER_DISABLE_COMPOSITION_NUDGE", "1");
         try
