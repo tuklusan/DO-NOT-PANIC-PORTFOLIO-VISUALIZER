@@ -208,6 +208,29 @@ function Get-CaptureImagePath {
     return $null
 }
 
+function ConvertTo-ValidationBool {
+    param($Value)
+
+    if ($Value -is [bool]) { return $Value }
+    if ($null -eq $Value) { return $false }
+
+    $text = ([string]$Value).Trim()
+    if ([string]::IsNullOrWhiteSpace($text)) { return $false }
+    if ($text -ieq 'true') { return $true }
+    if ($text -ieq 'false') { return $false }
+
+    $number = 0.0
+    if ([double]::TryParse(
+            $text,
+            [System.Globalization.NumberStyles]::Float,
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            [ref]$number)) {
+        return $number -ne 0.0
+    }
+
+    return $false
+}
+
 function Get-CaptureSequenceNumber {
     param([Parameter(Mandatory = $true)]$Record)
 
@@ -474,11 +497,15 @@ foreach ($run in $runs) {
     $summary = Get-Content -Raw -LiteralPath $summaryPath | ConvertFrom-Json
     $runId = [string](Get-JsonPropertyValue -Object $summary -Name 'ResultName' -Default $run.Name)
     $faultProfile = [string](Get-JsonPropertyValue -Object $summary -Name 'FaultProfile' -Default 'none')
-    [void]$runSummaries.Add([pscustomobject]@{ resultName=$runId; path=$run.FullName; configPhaseStatus=[string](Get-JsonPropertyValue -Object $summary -Name 'ConfigPhaseStatus'); desktopPhaseStatus=[string](Get-JsonPropertyValue -Object $summary -Name 'DesktopPhaseStatus'); fullScreenToggleStatus=[string](Get-JsonPropertyValue -Object $summary -Name 'FullScreenToggleStatus'); notes=@(Get-JsonPropertyValue -Object $summary -Name 'Notes' -Default @()) })
+    $isLongRunSoak = ConvertTo-ValidationBool (Get-JsonPropertyValue -Object $summary -Name 'IsLongRunSoak' -Default $false)
+    [void]$runSummaries.Add([pscustomobject]@{ resultName=$runId; path=$run.FullName; isLongRunSoak=$isLongRunSoak; configPhaseStatus=[string](Get-JsonPropertyValue -Object $summary -Name 'ConfigPhaseStatus'); desktopPhaseStatus=[string](Get-JsonPropertyValue -Object $summary -Name 'DesktopPhaseStatus'); fullScreenToggleStatus=[string](Get-JsonPropertyValue -Object $summary -Name 'FullScreenToggleStatus'); notes=@(Get-JsonPropertyValue -Object $summary -Name 'Notes' -Default @()) })
 
     foreach ($statusName in @('ConfigPhaseStatus','DesktopPhaseStatus','FullScreenToggleStatus')) {
         $status = [string](Get-JsonPropertyValue -Object $summary -Name $statusName)
-        if ($status -ne 'Completed') {
+        $isExpectedLongRunDesktopHost = $isLongRunSoak -and
+                                      $statusName -eq 'DesktopPhaseStatus' -and
+                                      $status -eq 'Running'
+        if ($status -ne 'Completed' -and -not $isExpectedLongRunDesktopHost) {
             [void]$findings.Add((New-Finding -Code "harness-$($statusName.ToLowerInvariant())" -Title "VM validation phase did not complete: $statusName" -Area 'VM validation harness' -Severity 'High' -Evidence @("Run ${runId} reported ${statusName}=$status.", "Summary: $summaryPath") -Notes @('Incomplete harness phases are release-candidate blockers.')))
         }
     }

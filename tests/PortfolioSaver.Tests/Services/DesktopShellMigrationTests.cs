@@ -169,6 +169,10 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("CalculateNativePixelTolerance(", code, StringComparison.Ordinal);
         Assert.Contains("ScheduleCompositionSurfaceNudge(", code, StringComparison.Ordinal);
         Assert.Contains("RequestCompositionSurfaceNudge(", code, StringComparison.Ordinal);
+        Assert.Contains("ShouldPulseFullScreenPresentation(", code, StringComparison.Ordinal);
+        Assert.Contains("SelectCompositionNativeNudgeAction(", code, StringComparison.Ordinal);
+        Assert.Contains("CompositionNativeNudgeAction.RepairFullScreenBounds", code, StringComparison.Ordinal);
+        Assert.Contains("CompositionNativeNudgeAction.PulseFullScreenPresentation", code, StringComparison.Ordinal);
         Assert.Contains("SceneHost?.RequestHostCompositionNudge(reason);", code, StringComparison.Ordinal);
         Assert.Contains("SetWindowPos(", code, StringComparison.Ordinal);
         Assert.Contains("RedrawWindow(", code, StringComparison.Ordinal);
@@ -178,13 +182,21 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("native_pixel_tolerance", code, StringComparison.Ordinal);
         Assert.Contains("SwpFrameChanged", code, StringComparison.Ordinal);
         Assert.Contains("SwpNoZOrder", code, StringComparison.Ordinal);
+        Assert.Contains("SwpNoOwnerZOrder", code, StringComparison.Ordinal);
+        Assert.Contains("SwpNoMove", code, StringComparison.Ordinal);
+        Assert.Contains("SwpNoSize", code, StringComparison.Ordinal);
         Assert.DoesNotContain("SwpShowWindow", code, StringComparison.Ordinal);
         Assert.DoesNotContain("HwndTopMost", code, StringComparison.Ordinal);
         Assert.Contains("RdwAllChildren", code, StringComparison.Ordinal);
         Assert.DoesNotContain("DwmFlush", code, StringComparison.Ordinal);
         Assert.DoesNotContain("RdwUpdateNow", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("SwpNoCopyBits", code, StringComparison.Ordinal);
         Assert.Contains("set_window_pos_skipped", code, StringComparison.Ordinal);
+        Assert.Contains("native_fullscreen_bounds_attempted", code, StringComparison.Ordinal);
         Assert.Contains("native_fullscreen_bounds_applied", code, StringComparison.Ordinal);
+        Assert.Contains("native_presentation_pulse_attempted", code, StringComparison.Ordinal);
+        Assert.Contains("native_presentation_pulse_applied", code, StringComparison.Ordinal);
+        Assert.Contains("pulse_set_window_pos_ok", code, StringComparison.Ordinal);
         Assert.Contains("native_fullscreen_target", code, StringComparison.Ordinal);
         Assert.Contains("window_rect_before", code, StringComparison.Ordinal);
         Assert.Contains("CompositionSurfaceNudge", code, StringComparison.Ordinal);
@@ -194,6 +206,7 @@ public sealed class DesktopShellMigrationTests
     }
 
     [Fact]
+    [Trait("Category", "WindowsOnly")]
     public void DesktopShell_ConfiguresCompositionNudgeTimers()
     {
         RunOnSta(() =>
@@ -216,6 +229,7 @@ public sealed class DesktopShellMigrationTests
     }
 
     [Fact]
+    [Trait("Category", "WindowsOnly")]
     public void DesktopShell_CompositionNudgeEnvironmentOverride_DisablesPeriodicTimer()
     {
         // This test mutates PORTFOLIOSAVER_DISABLE_COMPOSITION_NUDGE, so the class opts into EnvironmentSerial.
@@ -251,6 +265,76 @@ public sealed class DesktopShellMigrationTests
         Assert.False(MainWindow.ShouldApplyNativeFullScreenBounds(isFullScreen: false, fullScreenBoundsNeedRepair: true, nativeBoundsAvailable: true));
         Assert.False(MainWindow.ShouldApplyNativeFullScreenBounds(isFullScreen: true, fullScreenBoundsNeedRepair: false, nativeBoundsAvailable: true));
         Assert.False(MainWindow.ShouldApplyNativeFullScreenBounds(isFullScreen: true, fullScreenBoundsNeedRepair: true, nativeBoundsAvailable: false));
+
+        Assert.True(MainWindow.ShouldPulseFullScreenPresentation(
+            isFullScreen: true,
+            fullScreenBoundsNeedRepair: false,
+            wpfBoundsAligned: true,
+            nativeBoundsAvailable: true,
+            nativeBoundsAligned: true));
+        Assert.False(MainWindow.ShouldPulseFullScreenPresentation(
+            isFullScreen: true,
+            fullScreenBoundsNeedRepair: false,
+            wpfBoundsAligned: true,
+            nativeBoundsAvailable: false,
+            nativeBoundsAligned: true));
+        Assert.False(MainWindow.ShouldPulseFullScreenPresentation(
+            isFullScreen: false,
+            fullScreenBoundsNeedRepair: false,
+            wpfBoundsAligned: true,
+            nativeBoundsAvailable: true,
+            nativeBoundsAligned: true));
+        Assert.False(MainWindow.ShouldPulseFullScreenPresentation(
+            isFullScreen: true,
+            fullScreenBoundsNeedRepair: true,
+            wpfBoundsAligned: true,
+            nativeBoundsAvailable: true,
+            nativeBoundsAligned: true));
+        Assert.False(MainWindow.ShouldPulseFullScreenPresentation(
+            isFullScreen: true,
+            fullScreenBoundsNeedRepair: false,
+            wpfBoundsAligned: false,
+            nativeBoundsAvailable: true,
+            nativeBoundsAligned: true));
+        Assert.False(MainWindow.ShouldPulseFullScreenPresentation(
+            isFullScreen: true,
+            fullScreenBoundsNeedRepair: false,
+            wpfBoundsAligned: true,
+            nativeBoundsAvailable: true,
+            nativeBoundsAligned: false));
+
+        Assert.Equal(
+            MainWindow.CompositionNativeNudgeAction.RepairFullScreenBounds,
+            MainWindow.SelectCompositionNativeNudgeAction(
+                isFullScreen: true,
+                fullScreenBoundsNeedRepair: true,
+                nativeBoundsAvailable: true,
+                wpfBoundsAligned: false,
+                nativeBoundsAligned: false));
+        Assert.Equal(
+            MainWindow.CompositionNativeNudgeAction.PulseFullScreenPresentation,
+            MainWindow.SelectCompositionNativeNudgeAction(
+                isFullScreen: true,
+                fullScreenBoundsNeedRepair: false,
+                nativeBoundsAvailable: true,
+                wpfBoundsAligned: true,
+                nativeBoundsAligned: true));
+        Assert.Equal(
+            MainWindow.CompositionNativeNudgeAction.None,
+            MainWindow.SelectCompositionNativeNudgeAction(
+                isFullScreen: true,
+                fullScreenBoundsNeedRepair: false,
+                nativeBoundsAvailable: false,
+                wpfBoundsAligned: true,
+                nativeBoundsAligned: true));
+        Assert.Equal(
+            MainWindow.CompositionNativeNudgeAction.None,
+            MainWindow.SelectCompositionNativeNudgeAction(
+                isFullScreen: false,
+                fullScreenBoundsNeedRepair: true,
+                nativeBoundsAvailable: true,
+                wpfBoundsAligned: false,
+                nativeBoundsAligned: false));
 
         Assert.Equal(2, MainWindow.CalculateNativePixelTolerance(0));
         Assert.Equal(2, MainWindow.CalculateNativePixelTolerance(1.0));
@@ -329,6 +413,7 @@ public sealed class DesktopShellMigrationTests
     }
 
     [Fact]
+    [Trait("Category", "WindowsOnly")]
     public void DesktopShell_DoubleClickSuppression_CoversKnownInteractiveControlsOnly()
     {
         RunOnSta(() =>

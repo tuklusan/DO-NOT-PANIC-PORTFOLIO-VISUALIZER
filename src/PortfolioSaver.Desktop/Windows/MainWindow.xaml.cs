@@ -68,6 +68,13 @@ public partial class MainWindow : Window
     internal bool FullScreenBoundsRepairTimerEnabled => _fullScreenBoundsRepairTimer.IsEnabled;
     internal TimeSpan FullScreenBoundsRepairTimerInterval => _fullScreenBoundsRepairTimer.Interval;
 
+    internal enum CompositionNativeNudgeAction
+    {
+        None,
+        RepairFullScreenBounds,
+        PulseFullScreenPresentation
+    }
+
     public MainWindow()
     {
         InitializeComponent();
@@ -881,21 +888,26 @@ public partial class MainWindow : Window
         int getWindowRectError = 0;
         NativeRect windowRectBefore = default;
         NativeRect nativeFullScreenTarget = default;
+        bool nativeFullScreenBoundsAttempted = false;
+        bool nativePresentationPulseAttempted = false;
+        bool nativePresentationPulseApplied = false;
+        bool pulseSetWindowPosOk = false;
+        int pulseSetWindowPosError = 0;
         bool redrawWindowOk = false;
         int redrawWindowError = 0;
         try
         {
-            // WPF invalidation refreshes the scene tree; Win32 redraw pokes the presented HWND.
-            // Native reposition is reserved for proven fullscreen-bounds drift to avoid flicker.
+            // WPF invalidation refreshes the scene tree; the HWND/DWM pulses prod the presented surface.
             SceneHost?.RequestHostCompositionNudge(reason);
             InvalidateVisual();
 
             if (hwnd != 0)
             {
+                Rect targetDipBounds = Rect.Empty;
                 if (_isFullScreen)
                 {
                     fullScreenBoundsNeedRepair = IsFullScreenBoundsRepairNeeded(
-                        out _,
+                        out targetDipBounds,
                         out wpfBoundsAligned,
                         out nativeBoundsAvailable,
                         out nativeBoundsAligned,
@@ -911,10 +923,16 @@ public partial class MainWindow : Window
                         getWindowRectError = Marshal.GetLastPInvokeError();
                 }
 
-                if (ShouldApplyNativeFullScreenBounds(_isFullScreen, fullScreenBoundsNeedRepair, nativeBoundsAvailable))
+                CompositionNativeNudgeAction nativeNudgeAction = SelectCompositionNativeNudgeAction(
+                    _isFullScreen,
+                    fullScreenBoundsNeedRepair,
+                    nativeBoundsAvailable,
+                    wpfBoundsAligned,
+                    nativeBoundsAligned);
+                if (nativeNudgeAction == CompositionNativeNudgeAction.RepairFullScreenBounds)
                 {
                     uint setWindowPosFlags = SwpNoActivate | SwpNoOwnerZOrder | SwpNoZOrder | SwpFrameChanged;
-                    nativeFullScreenBoundsApplied = true;
+                    nativeFullScreenBoundsAttempted = true;
                     int targetX = nativeFullScreenTarget.Left;
                     int targetY = nativeFullScreenTarget.Top;
                     int targetWidth = Math.Max(1, nativeFullScreenTarget.Right - nativeFullScreenTarget.Left);
@@ -928,10 +946,34 @@ public partial class MainWindow : Window
                         targetHeight,
                         setWindowPosFlags);
                     if (!setWindowPosOk)
+                    {
                         setWindowPosError = Marshal.GetLastPInvokeError();
+                    }
+                    nativeFullScreenBoundsApplied = setWindowPosOk;
+                }
+                else if (nativeNudgeAction == CompositionNativeNudgeAction.PulseFullScreenPresentation)
+                {
+                    // Local Intel/NVIDIA evidence showed a live WPF render pump with stale DWM pixels.
+                    // A no-move/no-size FRAMECHANGED pulse is lower risk than the layout resize that recovered CR-259.
+                    uint setWindowPosFlags = SwpNoActivate | SwpNoOwnerZOrder | SwpNoZOrder | SwpNoMove | SwpNoSize | SwpFrameChanged;
+                    nativePresentationPulseAttempted = true;
+                    pulseSetWindowPosOk = SetWindowPos(
+                        hwnd,
+                        HwndTop,
+                        0,
+                        0,
+                        0,
+                        0,
+                        setWindowPosFlags);
+                    if (!pulseSetWindowPosOk)
+                    {
+                        pulseSetWindowPosError = Marshal.GetLastPInvokeError();
+                    }
+                    nativePresentationPulseApplied = pulseSetWindowPosOk;
                 }
                 else
                 {
+                    // If native bounds are unavailable, keep the nudge non-visual: async redraw still runs.
                     setWindowPosSkipped = true;
                 }
 
@@ -958,7 +1000,10 @@ public partial class MainWindow : Window
                     TraceField("native_bounds_available", nativeBoundsAvailable),
                     TraceField("native_bounds_aligned", nativeBoundsAligned),
                     TraceField("native_pixel_tolerance", nativePixelTolerance),
+                    TraceField("native_fullscreen_bounds_attempted", nativeFullScreenBoundsAttempted),
                     TraceField("native_fullscreen_bounds_applied", nativeFullScreenBoundsApplied),
+                    TraceField("native_presentation_pulse_attempted", nativePresentationPulseAttempted),
+                    TraceField("native_presentation_pulse_applied", nativePresentationPulseApplied),
                     TraceField("get_window_rect_ok", getWindowRectOk),
                     TraceField("get_window_rect_error", getWindowRectError),
                     TraceField("window_rect_before", getWindowRectOk ? FormatNativeRect(windowRectBefore) : null),
@@ -966,6 +1011,8 @@ public partial class MainWindow : Window
                     TraceField("set_window_pos_skipped", setWindowPosSkipped),
                     TraceField("set_window_pos_ok", setWindowPosOk),
                     TraceField("set_window_pos_error", setWindowPosError),
+                    TraceField("pulse_set_window_pos_ok", nativePresentationPulseAttempted ? pulseSetWindowPosOk : null),
+                    TraceField("pulse_set_window_pos_error", nativePresentationPulseAttempted ? pulseSetWindowPosError : null),
                     TraceField("redraw_window_ok", redrawWindowOk),
                     TraceField("redraw_window_error", redrawWindowError),
                     TraceField("seconds_since_previous", _compositionSurfaceNudgeCount == 1 ? null : Math.Round(sincePrevious.TotalSeconds, 1))
@@ -983,6 +1030,38 @@ public partial class MainWindow : Window
                     TraceField("exception", ex.ToString())
                 ]);
         }
+    }
+
+    internal static bool ShouldPulseFullScreenPresentation(
+        bool isFullScreen,
+        bool fullScreenBoundsNeedRepair,
+        bool wpfBoundsAligned,
+        bool nativeBoundsAvailable,
+        bool nativeBoundsAligned)
+        => isFullScreen &&
+           !fullScreenBoundsNeedRepair &&
+           wpfBoundsAligned &&
+           nativeBoundsAvailable &&
+           nativeBoundsAligned;
+
+    internal static CompositionNativeNudgeAction SelectCompositionNativeNudgeAction(
+        bool isFullScreen,
+        bool fullScreenBoundsNeedRepair,
+        bool nativeBoundsAvailable,
+        bool wpfBoundsAligned,
+        bool nativeBoundsAligned)
+    {
+        if (ShouldApplyNativeFullScreenBounds(isFullScreen, fullScreenBoundsNeedRepair, nativeBoundsAvailable))
+            return CompositionNativeNudgeAction.RepairFullScreenBounds;
+
+        return ShouldPulseFullScreenPresentation(
+            isFullScreen,
+            fullScreenBoundsNeedRepair,
+            wpfBoundsAligned,
+            nativeBoundsAvailable,
+            nativeBoundsAligned)
+            ? CompositionNativeNudgeAction.PulseFullScreenPresentation
+            : CompositionNativeNudgeAction.None;
     }
 
     private static bool TryGetCurrentMonitorRect(nint hwnd, out NativeRect monitorRect)
