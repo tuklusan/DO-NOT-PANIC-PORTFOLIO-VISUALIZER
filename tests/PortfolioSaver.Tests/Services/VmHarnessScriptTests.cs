@@ -35,8 +35,12 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("RuntimeDesktopResolution", script, StringComparison.Ordinal);
         Assert.Contains("ResolutionChecks", script, StringComparison.Ordinal);
         Assert.Contains(". (Join-Path $PSScriptRoot 'VmWindowInput.ps1')", script, StringComparison.Ordinal);
-        Assert.Contains("Send-ProcessWindowKey -Process $desktop -VirtualKey ([NativeWindowMessaging]::VK_F11)", script, StringComparison.Ordinal);
-        Assert.Contains("Send-ProcessWindowKey -Process $desktop -VirtualKey ([NativeWindowMessaging]::VK_ESCAPE)", script, StringComparison.Ordinal);
+        Assert.Contains("function Invoke-DesktopFullScreenToggle", script, StringComparison.Ordinal);
+        Assert.Contains("Find-DesktopAutomationWindow -Process $Process", script, StringComparison.Ordinal);
+        Assert.Contains("'ViewFullScreenMenuItem'", script, StringComparison.Ordinal);
+        Assert.Contains("Invoke-DesktopFullScreenToggle -Process $desktop -FallbackVirtualKey ([NativeWindowMessaging]::VK_F11)", script, StringComparison.Ordinal);
+        Assert.Contains("Invoke-DesktopFullScreenToggle -Process $desktop -FallbackVirtualKey ([NativeWindowMessaging]::VK_ESCAPE)", script, StringComparison.Ordinal);
+        Assert.Contains("falling back to targeted virtual key", script, StringComparison.Ordinal);
         Assert.DoesNotContain("[System.Windows.Forms.SendKeys]::SendWait('{F11}')", script, StringComparison.Ordinal);
         Assert.DoesNotContain("[System.Windows.Forms.SendKeys]::SendWait('{ESC}')", script, StringComparison.Ordinal);
     }

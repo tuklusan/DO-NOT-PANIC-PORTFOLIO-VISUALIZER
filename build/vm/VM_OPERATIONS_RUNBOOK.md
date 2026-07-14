@@ -269,7 +269,7 @@ The harness details that made this pass reliable are now considered part of the 
 - config Validate should close naturally without fallback dialogs; if validation blocks, the harness records the blocking dialog text instead of force-closing blindly
 - the desktop shell exposes `DesktopMainWindow` automation metadata with semantic-version help text
 - the desktop fullscreen action exposes `ViewFullScreenMenuItem` for direct UI Automation invocation
-- fullscreen keyboard fallback is posted to the product window handle with `PostMessage` and then verified by the harness wait loop; do not use global `SendKeys` for product fullscreen toggles
+- fullscreen entry/exit should invoke `ViewFullScreenMenuItem` by UI Automation; any keyboard fallback is posted to the product window handle with `PostMessage` and then verified by the harness wait loop; do not use global `SendKeys` for product fullscreen toggles
 
 ## Important operational notes
 

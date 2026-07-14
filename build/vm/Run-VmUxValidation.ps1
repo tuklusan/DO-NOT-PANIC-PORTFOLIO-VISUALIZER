@@ -257,6 +257,59 @@ function Invoke-Button {
     }
 }
 
+function Find-DesktopAutomationWindow {
+    param([Parameter(Mandatory=$true)]$Process,[int]$TimeoutSeconds=12)
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $processIdProperty = [System.Windows.Automation.AutomationElement]::ProcessIdProperty
+    $automationIdProperty = [System.Windows.Automation.AutomationElement]::AutomationIdProperty
+    $desktopCondition = New-Object System.Windows.Automation.AndCondition(
+        (New-Object System.Windows.Automation.PropertyCondition($processIdProperty, $Process.Id)),
+        (New-Object System.Windows.Automation.PropertyCondition($automationIdProperty, 'DesktopMainWindow')))
+
+    do {
+        $window = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst(
+            [System.Windows.Automation.TreeScope]::Children,
+            $desktopCondition)
+        if ($null -ne $window) { return $window }
+
+        Start-Sleep -Milliseconds 250
+    } while ((Get-Date) -lt $deadline)
+
+    return $null
+}
+
+function Invoke-DesktopFullScreenToggle {
+    param(
+        [Parameter(Mandatory=$true)]$Process,
+        [Parameter(Mandatory=$true)][int]$FallbackVirtualKey
+    )
+
+    try {
+        $window = Find-DesktopAutomationWindow -Process $Process
+        if ($null -eq $window) {
+            throw "Desktop automation window was not found for process $($Process.Id)."
+        }
+
+        $menuCondition = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+            'ViewFullScreenMenuItem')
+        $menuItem = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $menuCondition)
+        if ($null -eq $menuItem) {
+            throw "Desktop full-screen menu item was not found for process $($Process.Id)."
+        }
+
+        $invoke = $menuItem.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+        $invoke.Invoke()
+        return 'uia'
+    }
+    catch {
+        Write-Warning ("UI Automation fullscreen toggle failed for process {0}; falling back to targeted virtual key 0x{1:X2}. {2}" -f $Process.Id, $FallbackVirtualKey, $_.Exception.Message)
+        Send-ProcessWindowKey -Process $Process -VirtualKey $FallbackVirtualKey
+        return 'targeted-key'
+    }
+}
+
 if (-not (Test-Path $configExe)) { throw "Missing config executable: $configExe" }
 if (-not (Test-Path $desktopExe)) { throw "Missing desktop executable: $desktopExe" }
 
@@ -356,13 +409,15 @@ $summary.ResolutionChecks += @{
 }
 
 [void](Focus-Window -Process $desktop)
-Send-ProcessWindowKey -Process $desktop -VirtualKey ([NativeWindowMessaging]::VK_F11)
+$fullScreenEntryMethod = Invoke-DesktopFullScreenToggle -Process $desktop -FallbackVirtualKey ([NativeWindowMessaging]::VK_F11)
+$summary.Notes += "Desktop fullscreen entry invoked via $fullScreenEntryMethod."
 Start-Sleep -Seconds 2
 $fullscreen = Join-Path $results 'desktop-fullscreen.png'
 Capture-Screen -Path $fullscreen
 $summary.Captures += $fullscreen
 
-Send-ProcessWindowKey -Process $desktop -VirtualKey ([NativeWindowMessaging]::VK_ESCAPE)
+$fullScreenExitMethod = Invoke-DesktopFullScreenToggle -Process $desktop -FallbackVirtualKey ([NativeWindowMessaging]::VK_ESCAPE)
+$summary.Notes += "Desktop fullscreen exit invoked via $fullScreenExitMethod."
 Start-Sleep -Seconds 2
 $windowedAfterEsc = Join-Path $results 'desktop-windowed-after-esc.png'
 Capture-Screen -Path $windowedAfterEsc
