@@ -732,6 +732,16 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.Contains("\"BackgroundTimerArmed\"", codeBehind, StringComparison.Ordinal);
         Assert.Contains("CancelBackgroundRotationWithoutBlocking(\"scheduler-replace\")", codeBehind, StringComparison.Ordinal);
         Assert.Contains("CancelBackgroundRotationWithoutBlocking(\"stop-live-timers\")", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("SettleBackgroundTransitionForPause(\"stop-live-timers\")", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void SettleBackgroundTransitionForPause(string reason)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("if (!_backgroundTransitionInFlight)", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("_backgroundTransitionCompletionBitmap ??", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("_inactiveBackgroundImage?.Source", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("string? settledPath = _backgroundTransitionCompletionPath ?? _currentBackgroundPath;", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("string? settledFileName = string.IsNullOrWhiteSpace(settledPath) ? null : Path.GetFileName(settledPath);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("CanonicalizeBackgroundLayers(source);", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("new KeyValuePair<string, object?>(\"path\", settledFileName ?? \"<unknown>\")", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"BackgroundTransitionSettledForPause\"", codeBehind, StringComparison.Ordinal);
         Assert.Contains("Interlocked.Exchange(ref _backgroundRotationCancellation, null)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("_backgroundRotationInFlight = false;", codeBehind, StringComparison.Ordinal);
         Assert.Contains("\"BackgroundRotationCancelQueued\"", codeBehind, StringComparison.Ordinal);
@@ -810,6 +820,69 @@ public sealed class VisualizerRenderBehaviorTests
         Assert.DoesNotContain("AnimateBackgroundTranslation(incoming", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("fileBitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("outgoing.Source = null;", codeBehind, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BackgroundTransition_PauseSettlementCanonicalizesOneVisibleLayer()
+    {
+        RunOnSta(() =>
+        {
+            VisualizerSceneControl control = new();
+            Image activeImage = Assert.IsType<Image>(control.FindName("BackgroundImageA"));
+            Image inactiveImage = Assert.IsType<Image>(control.FindName("BackgroundImageB"));
+            BitmapImage currentBitmap = CreateTestBitmapImage();
+            BitmapImage incomingBitmap = CreateTestBitmapImage();
+            FieldInfo activeField = typeof(VisualizerSceneControl).GetField(
+                "_activeBackgroundImage",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_activeBackgroundImage field not found.");
+            FieldInfo inactiveField = typeof(VisualizerSceneControl).GetField(
+                "_inactiveBackgroundImage",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_inactiveBackgroundImage field not found.");
+            FieldInfo inFlightField = typeof(VisualizerSceneControl).GetField(
+                "_backgroundTransitionInFlight",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_backgroundTransitionInFlight field not found.");
+            FieldInfo completionBitmapField = typeof(VisualizerSceneControl).GetField(
+                "_backgroundTransitionCompletionBitmap",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_backgroundTransitionCompletionBitmap field not found.");
+            FieldInfo completionPathField = typeof(VisualizerSceneControl).GetField(
+                "_backgroundTransitionCompletionPath",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_backgroundTransitionCompletionPath field not found.");
+            FieldInfo completionDueField = typeof(VisualizerSceneControl).GetField(
+                "_backgroundTransitionCompletionDueUtc",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("_backgroundTransitionCompletionDueUtc field not found.");
+            MethodInfo settleMethod = typeof(VisualizerSceneControl).GetMethod(
+                "SettleBackgroundTransitionForPause",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("SettleBackgroundTransitionForPause method not found.");
+
+            activeField.SetValue(control, activeImage);
+            inactiveField.SetValue(control, inactiveImage);
+            activeImage.Source = currentBitmap;
+            activeImage.Opacity = 0.45d;
+            inactiveImage.Source = incomingBitmap;
+            inactiveImage.Opacity = 0.35d;
+            inFlightField.SetValue(control, true);
+            completionBitmapField.SetValue(control, incomingBitmap);
+            completionPathField.SetValue(control, null);
+            completionDueField.SetValue(control, DateTimeOffset.UtcNow);
+
+            settleMethod.Invoke(control, ["unit-test"]);
+
+            Assert.False((bool)(inFlightField.GetValue(control) ?? true));
+            Assert.Null(completionBitmapField.GetValue(control));
+            Assert.Null(completionPathField.GetValue(control));
+            Assert.Null(completionDueField.GetValue(control));
+            Assert.NotNull(activeImage.Source);
+            Assert.Equal(0.45d, activeImage.Opacity, 3);
+            Assert.NotNull(inactiveImage.Source);
+            Assert.Equal(0d, inactiveImage.Opacity, 3);
+        });
     }
 
     [Fact]
@@ -4531,6 +4604,21 @@ public sealed class VisualizerRenderBehaviorTests
         }
 
         throw new InvalidOperationException($"Could not locate method body end: {methodSignature}");
+    }
+
+    private static BitmapImage CreateTestBitmapImage()
+    {
+        byte[] onePixelPng = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=");
+        using MemoryStream stream = new(onePixelPng, writable: false);
+        BitmapImage bitmap = new();
+        bitmap.BeginInit();
+        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+        bitmap.StreamSource = stream;
+        bitmap.EndInit();
+        if (bitmap.CanFreeze)
+            bitmap.Freeze();
+        return bitmap;
     }
 
     private static string GetRepoRoot()

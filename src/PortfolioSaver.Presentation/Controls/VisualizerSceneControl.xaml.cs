@@ -1722,9 +1722,7 @@ public partial class VisualizerSceneControl : UserControl
         _nextWorldDataTickUtc = DateTimeOffset.MaxValue;
         _backgroundRotationGeneration++;
         CancelBackgroundRotationWithoutBlocking("stop-live-timers");
-        _backgroundTransitionCompletionDueUtc = null;
-        _backgroundTransitionCompletionBitmap = null;
-        _backgroundTransitionCompletionPath = null;
+        SettleBackgroundTransitionForPause("stop-live-timers");
         StopRuntimeQuoteLoop();
         CancelBackgroundRecoveryReload();
     }
@@ -3924,6 +3922,43 @@ public partial class VisualizerSceneControl : UserControl
         _backgroundTransitionCompletionDueUtc = null;
         _backgroundTransitionCompletionBitmap = null;
         _backgroundTransitionCompletionPath = null;
+    }
+
+    private void SettleBackgroundTransitionForPause(string reason)
+    {
+        if (!_backgroundTransitionInFlight)
+        {
+            ClearScheduledBackgroundTransition();
+            return;
+        }
+
+        ImageSource? source =
+            _backgroundTransitionCompletionBitmap ??
+            _currentBackgroundBitmap ??
+            _committedBackgroundSource ??
+            _activeBackgroundImage?.Source ??
+            _inactiveBackgroundImage?.Source;
+
+        if (source is null)
+        {
+            _backgroundTransitionInFlight = false;
+            ClearScheduledBackgroundTransition();
+            TraceSceneState(
+                "BackgroundTransitionSettledForPause",
+                new KeyValuePair<string, object?>("reason", reason),
+                new KeyValuePair<string, object?>("source_available", false));
+            return;
+        }
+
+        string? settledPath = _backgroundTransitionCompletionPath ?? _currentBackgroundPath;
+        string? settledFileName = string.IsNullOrWhiteSpace(settledPath) ? null : Path.GetFileName(settledPath);
+        CanonicalizeBackgroundLayers(source);
+        _backgroundTransitionInFlight = false;
+        TraceSceneState(
+            "BackgroundTransitionSettledForPause",
+            new KeyValuePair<string, object?>("reason", reason),
+            new KeyValuePair<string, object?>("source_available", true),
+            new KeyValuePair<string, object?>("path", settledFileName ?? "<unknown>"));
     }
 
     private void ResetBackgroundZoomState()

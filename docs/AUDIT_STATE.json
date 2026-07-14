@@ -11905,7 +11905,8 @@
         "During the reproduced local stall, trace/trace.circular.log continued to emit RenderSurfaceHeartbeat with motion_frame_count increasing, is_loaded=true, is_visible=true, motion_rendering_subscribed=true, scene_timer_enabled=true, and recovery_count=0, proving a CompositionTarget.Rendering heartbeat is too shallow for this failure mode.",
         "The 2026-07-13 local manual window/fullscreen stress at roughly 70 minutes recovered visual movement: post-stress desktop-071.png changed substantially from desktop-069.png and subsequent screenshots stayed variable.",
         "Remote laptop soak cr257-cr259-remote-soak-20260713-204515-r2 on AMD Radeon RX 6700S completed two hours with no process death or dumps; remote native image diff scan across 120 captures found zero static or near-static adjacent pairs, with minimum normalized MAE about 0.025.",
-        "The same local trace also explains the observed borderless clipped-window symptom: the stress harness sent F11 while PORTFOLIOSAVER_DISABLE_INPUT_EXIT caused ToggleIgnored, then external resize/move events left the logically fullscreen borderless window at roughly left=180, top=120, width=1500, height=900 until a later recovery path."
+        "The same local trace also explains the observed borderless clipped-window symptom: the stress harness sent F11 while PORTFOLIOSAVER_DISABLE_INPUT_EXIT caused ToggleIgnored, then external resize/move events left the logically fullscreen borderless window at roughly left=180, top=120, width=1500, height=900 until a later recovery path.",
+        "Follow-up cycle cr257-cr259-two-machine-cycle-20260713-234706 was stopped early after the user-visible background appeared as two cityscape images superimposed. Trace correlation showed BackgroundRotationChosen for london-skyline-public-domain.jpg, then warmup-complete forced shanghai-skyline-public-domain.jpg, then StopLiveTimers/config-resume occurred while the crossfade was in flight; no BackgroundTransitionComplete event followed, consistent with transition bookkeeping being cleared while both image layers remained visible."
       ],
       "notes": [
         "Treat this as CR-257-adjacent because the symptom lives in the same WPF hardware composition lane as the historical wpfgfx_cor3.dll access violation, even though this run did not crash.",
@@ -11913,7 +11914,8 @@
         "The app currently lacks low-noise fullscreen enter/exit lifecycle tracing for F11/manual paths, making post-stress correlation weaker than it should be.",
         "Remote SSH runs in session 0 and cannot manipulate the session-1 desktop HWND directly; remote resize/fullscreen stress needs an interactive-session runner if required.",
         "The current code-level render callback heartbeat is necessary telemetry but not sufficient recovery logic because the stale-surface failure can occur while the WPF render pump keeps firing.",
-        "Fullscreen recovery must also defend against external resize/move while the app is logically fullscreen, because a borderless smaller window can mimic or amplify the local rendered-surface failure."
+        "Fullscreen recovery must also defend against external resize/move while the app is logically fullscreen, because a borderless smaller window can mimic or amplify the local rendered-surface failure.",
+        "Background crossfade settlement during validation pause/fullscreen setup is now treated as part of the same visual reliability lane: pausing live timers must canonicalize an in-flight transition to one visible background layer instead of leaving incoming and outgoing images stacked."
       ],
       "acceptance": [
         "Add low-noise app tracing for fullscreen enter/exit, window-state/size transitions relevant to fullscreen, and render/frame heartbeat evidence sufficient to correlate future stalls with WPF composition activity.",
@@ -11928,7 +11930,8 @@
         "2026-07-13 local two-hour UX soak cr257-cr259-local-ux-soak-20260713-204515 completed without process death, WER dump, or fatal trace errors but failed deterministic visual analysis with rendered-surface-stasis from desktop-039.png to desktop-070.png; local-visual-analysis.json reported clean=false and one high-severity finding.",
         "2026-07-13 local DeepSeek artifact advisory deepseek-artifact-review-20260713-230025.md agreed the rendered-surface-stasis finding is real and severe, with no evidence of fault injection or process crash causing it.",
         "2026-07-13 remote laptop soak cr257-cr259-remote-soak-20260713-204515-r2 completed two hours on AMD Radeon RX 6700S with DesktopProcessAliveAtEndBeforeStop=true, DumpFiles=[], fatalCrashException=0, strictTransportFailure=0, and no static native-capture pairs.",
-        "2026-07-13 remote DeepSeek artifact advisory remote-deepseek-artifact-review-20260713-230025.md classified the remote run as pass from reliability/stability perspective, with only trivial/informational observations."
+        "2026-07-13 remote DeepSeek artifact advisory remote-deepseek-artifact-review-20260713-230025.md classified the remote run as pass from reliability/stability perspective, with only trivial/informational observations.",
+        "2026-07-14 DeepSeek code review deepseek-review-20260714-000507.md approved the background-transition pause-settlement fix and added STA regression coverage; validation remains pending on the next local/remote soak cycle."
       ]
     }
   ],
