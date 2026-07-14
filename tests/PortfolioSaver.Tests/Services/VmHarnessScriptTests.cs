@@ -37,6 +37,10 @@ public sealed class VmHarnessScriptTests
         Assert.Contains(". (Join-Path $PSScriptRoot 'VmWindowInput.ps1')", script, StringComparison.Ordinal);
         Assert.Contains("function Invoke-DesktopFullScreenToggle", script, StringComparison.Ordinal);
         Assert.Contains("Find-DesktopAutomationWindow -Process $Process", script, StringComparison.Ordinal);
+        Assert.Contains("'ViewMenuRoot'", script, StringComparison.Ordinal);
+        Assert.Contains("[System.Windows.Automation.ExpandCollapsePattern]::Pattern", script, StringComparison.Ordinal);
+        Assert.Contains("$invokeView = $viewMenuItem.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)", script, StringComparison.Ordinal);
+        Assert.Contains("$menuDeadline = (Get-Date).AddSeconds(3)", script, StringComparison.Ordinal);
         Assert.Contains("'ViewFullScreenMenuItem'", script, StringComparison.Ordinal);
         Assert.Contains("Invoke-DesktopFullScreenToggle -Process $desktop -FallbackVirtualKey ([NativeWindowMessaging]::VK_F11)", script, StringComparison.Ordinal);
         Assert.Contains("Invoke-DesktopFullScreenToggle -Process $desktop -FallbackVirtualKey ([NativeWindowMessaging]::VK_ESCAPE)", script, StringComparison.Ordinal);

@@ -291,10 +291,36 @@ function Invoke-DesktopFullScreenToggle {
             throw "Desktop automation window was not found for process $($Process.Id)."
         }
 
+        $automationIdProperty = [System.Windows.Automation.AutomationElement]::AutomationIdProperty
+        $viewMenuCondition = New-Object System.Windows.Automation.PropertyCondition($automationIdProperty, 'ViewMenuRoot')
+        $viewMenuItem = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $viewMenuCondition)
+        if ($null -ne $viewMenuItem) {
+            try {
+                $expandView = $viewMenuItem.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern)
+                $expandView.Expand()
+            }
+            catch {
+                try {
+                    $invokeView = $viewMenuItem.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+                    $invokeView.Invoke()
+                }
+                catch {
+                    Write-Warning ("Unable to open View menu before fullscreen toggle: {0}" -f $_.Exception.Message)
+                }
+            }
+        }
+        Start-Sleep -Milliseconds 350
+
         $menuCondition = New-Object System.Windows.Automation.PropertyCondition(
-            [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+            $automationIdProperty,
             'ViewFullScreenMenuItem')
-        $menuItem = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $menuCondition)
+        $menuDeadline = (Get-Date).AddSeconds(3)
+        $menuItem = $null
+        do {
+            $menuItem = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $menuCondition)
+            if ($null -ne $menuItem) { break }
+            Start-Sleep -Milliseconds 100
+        } while ((Get-Date) -lt $menuDeadline)
         if ($null -eq $menuItem) {
             throw "Desktop full-screen menu item was not found for process $($Process.Id)."
         }

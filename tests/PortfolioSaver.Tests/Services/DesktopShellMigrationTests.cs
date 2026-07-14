@@ -54,6 +54,7 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("Header=\"_File\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"E_xit\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"_View\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.AutomationId=\"ViewMenuRoot\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"_Full Screen\"", xaml, StringComparison.Ordinal);
         Assert.Contains("<Menu x:Name=\"MainMenu\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"_Options\"", xaml, StringComparison.Ordinal);

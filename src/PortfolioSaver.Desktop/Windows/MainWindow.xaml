@@ -43,7 +43,8 @@
             <MenuItem Header="_File">
                 <MenuItem Header="E_xit" Click="OnExitClick" />
             </MenuItem>
-            <MenuItem Header="_View">
+            <MenuItem Header="_View"
+                      AutomationProperties.AutomationId="ViewMenuRoot">
                 <MenuItem x:Name="FullScreenMenuItem"
                           Header="_Full Screen"
                           InputGestureText="F11"
