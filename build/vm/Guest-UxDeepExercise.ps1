@@ -42,6 +42,7 @@ Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 Add-Type -AssemblyName Microsoft.VisualBasic
+. (Join-Path $PSScriptRoot 'VmWindowInput.ps1')
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
@@ -142,16 +143,6 @@ public static class NativeWindowSearch {
 
         return found;
     }
-}
-"@
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public static class NativeWindowMessaging {
-    public const uint WM_CLOSE = 0x0010;
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 }
 "@
 Add-Type @"
@@ -3901,7 +3892,7 @@ try {
                 $fullScreenInvoked = Invoke-AutomationElement -Element $fullScreenMenuItem
             }
             if (-not $fullScreenInvoked) {
-                try { [System.Windows.Forms.SendKeys]::SendWait('{F11}') } catch {}
+                Send-ProcessWindowKey -Process $desktop -VirtualKey ([NativeWindowMessaging]::VK_F11)
             }
             $fullScreenDeadline = (Get-Date).AddSeconds(12)
             do {
@@ -3931,7 +3922,7 @@ try {
                 $fullScreenInvoked = Invoke-AutomationElement -Element $fullScreenMenuItem
             }
             if (-not $fullScreenInvoked) {
-                try { [System.Windows.Forms.SendKeys]::SendWait('{F11}') } catch {}
+                Send-ProcessWindowKey -Process $desktop -VirtualKey ([NativeWindowMessaging]::VK_F11)
             }
             $fullScreenDeadline = (Get-Date).AddSeconds(8)
             do {
@@ -3950,9 +3941,9 @@ try {
             [void](Focus-ProcessWindow -Process $desktop)
             $stillFullScreen = $true
             foreach ($exitAttempt in @(
-                @{ Name = 'Escape'; Key = '{ESC}'; UseMenu = $false },
-                @{ Name = 'F11'; Key = '{F11}'; UseMenu = $false },
-                @{ Name = 'MenuToggle'; Key = $null; UseMenu = $true }
+                @{ Name = 'Escape'; VirtualKey = [NativeWindowMessaging]::VK_ESCAPE; UseMenu = $false },
+                @{ Name = 'F11'; VirtualKey = [NativeWindowMessaging]::VK_F11; UseMenu = $false },
+                @{ Name = 'MenuToggle'; VirtualKey = $null; UseMenu = $true }
             )) {
                 if (-not $stillFullScreen) { break }
 
@@ -3965,8 +3956,11 @@ try {
                         }
                     }
                 }
+                elseif ($exitAttempt.ContainsKey('VirtualKey') -and $null -ne $exitAttempt.VirtualKey) {
+                    Send-ProcessWindowKey -Process $desktop -VirtualKey $exitAttempt.VirtualKey
+                }
                 else {
-                    try { [System.Windows.Forms.SendKeys]::SendWait([string]$exitAttempt.Key) } catch {}
+                    throw ("Exit attempt '{0}' does not define a menu action or virtual key." -f $exitAttempt.Name)
                 }
 
                 $windowedDeadline = (Get-Date).AddSeconds(4)

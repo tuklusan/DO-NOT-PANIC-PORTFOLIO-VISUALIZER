@@ -12,6 +12,7 @@
 // patent, trademark, and governing-law provisions.
 // ============================================================================
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -932,6 +933,9 @@ public partial class MainWindow : Window
                 if (nativeNudgeAction == CompositionNativeNudgeAction.RepairFullScreenBounds)
                 {
                     uint setWindowPosFlags = SwpNoActivate | SwpNoOwnerZOrder | SwpNoZOrder | SwpFrameChanged;
+#if DEBUG
+                    Debug.Assert((setWindowPosFlags & SwpNoZOrder) == SwpNoZOrder, "Fullscreen bounds nudges must not alter Z-order.");
+#endif
                     nativeFullScreenBoundsAttempted = true;
                     int targetX = nativeFullScreenTarget.Left;
                     int targetY = nativeFullScreenTarget.Top;
@@ -939,7 +943,7 @@ public partial class MainWindow : Window
                     int targetHeight = Math.Max(1, nativeFullScreenTarget.Bottom - nativeFullScreenTarget.Top);
                     setWindowPosOk = SetWindowPos(
                         hwnd,
-                        HwndTop,
+                        HwndInsertAfterIgnored,
                         targetX,
                         targetY,
                         targetWidth,
@@ -956,10 +960,13 @@ public partial class MainWindow : Window
                     // Local Intel/NVIDIA evidence showed a live WPF render pump with stale DWM pixels.
                     // A no-move/no-size FRAMECHANGED pulse is lower risk than the layout resize that recovered CR-259.
                     uint setWindowPosFlags = SwpNoActivate | SwpNoOwnerZOrder | SwpNoZOrder | SwpNoMove | SwpNoSize | SwpFrameChanged;
+#if DEBUG
+                    Debug.Assert((setWindowPosFlags & SwpNoZOrder) == SwpNoZOrder, "Fullscreen presentation pulses must not alter Z-order.");
+#endif
                     nativePresentationPulseAttempted = true;
                     pulseSetWindowPosOk = SetWindowPos(
                         hwnd,
-                        HwndTop,
+                        HwndInsertAfterIgnored,
                         0,
                         0,
                         0,
@@ -1165,7 +1172,8 @@ public partial class MainWindow : Window
     private const int WmNcLeftButtonDoubleClick = 0x00A3;
     private const int WmLeftButtonDown = 0x0201;
     private const int WmLeftButtonDoubleClick = 0x0203;
-    private static readonly nint HwndTop = 0;
+    // Safe only with SWP_NOZORDER; SetWindowPos ignores hWndInsertAfter in the nudge calls above.
+    private static readonly nint HwndInsertAfterIgnored = 0;
     private const uint SwpNoSize = 0x0001;
     private const uint SwpNoMove = 0x0002;
     private const uint SwpNoZOrder = 0x0004;

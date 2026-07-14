@@ -23,6 +23,7 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
+. (Join-Path $PSScriptRoot 'VmWindowInput.ps1')
 
 Add-Type @"
 using System;
@@ -330,7 +331,10 @@ if ($window -ne $null -and (Invoke-Button -Window $window -Name 'Preview')) {
     $summary.Captures += $previewCapture
 
     Start-Sleep -Milliseconds 300
-    [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+    $previewDesktop = Get-Process PortfolioSaver.Desktop -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -ne $previewDesktop) {
+        Send-ProcessWindowKey -Process $previewDesktop -VirtualKey ([NativeWindowMessaging]::VK_ESCAPE)
+    }
     Start-Sleep -Seconds 1
 }
 
@@ -352,13 +356,13 @@ $summary.ResolutionChecks += @{
 }
 
 [void](Focus-Window -Process $desktop)
-[System.Windows.Forms.SendKeys]::SendWait('{F11}')
+Send-ProcessWindowKey -Process $desktop -VirtualKey ([NativeWindowMessaging]::VK_F11)
 Start-Sleep -Seconds 2
 $fullscreen = Join-Path $results 'desktop-fullscreen.png'
 Capture-Screen -Path $fullscreen
 $summary.Captures += $fullscreen
 
-[System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+Send-ProcessWindowKey -Process $desktop -VirtualKey ([NativeWindowMessaging]::VK_ESCAPE)
 Start-Sleep -Seconds 2
 $windowedAfterEsc = Join-Path $results 'desktop-windowed-after-esc.png'
 Capture-Screen -Path $windowedAfterEsc

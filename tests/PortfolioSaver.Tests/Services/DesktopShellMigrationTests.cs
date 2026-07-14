@@ -183,10 +183,14 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("SwpFrameChanged", code, StringComparison.Ordinal);
         Assert.Contains("SwpNoZOrder", code, StringComparison.Ordinal);
         Assert.Contains("SwpNoOwnerZOrder", code, StringComparison.Ordinal);
+        Assert.Contains("SwpNoActivate", code, StringComparison.Ordinal);
+        Assert.Contains("Debug.Assert((setWindowPosFlags & SwpNoZOrder) == SwpNoZOrder", code, StringComparison.Ordinal);
         Assert.Contains("SwpNoMove", code, StringComparison.Ordinal);
         Assert.Contains("SwpNoSize", code, StringComparison.Ordinal);
         Assert.DoesNotContain("SwpShowWindow", code, StringComparison.Ordinal);
         Assert.DoesNotContain("HwndTopMost", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetForegroundWindow", code, StringComparison.Ordinal);
+        Assert.Contains("HwndInsertAfterIgnored", code, StringComparison.Ordinal);
         Assert.Contains("RdwAllChildren", code, StringComparison.Ordinal);
         Assert.DoesNotContain("DwmFlush", code, StringComparison.Ordinal);
         Assert.DoesNotContain("RdwUpdateNow", code, StringComparison.Ordinal);

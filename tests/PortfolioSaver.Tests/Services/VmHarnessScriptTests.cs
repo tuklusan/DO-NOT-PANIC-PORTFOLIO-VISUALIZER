@@ -34,6 +34,11 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Capture-WindowByScreenCrop", script, StringComparison.Ordinal);
         Assert.Contains("RuntimeDesktopResolution", script, StringComparison.Ordinal);
         Assert.Contains("ResolutionChecks", script, StringComparison.Ordinal);
+        Assert.Contains(". (Join-Path $PSScriptRoot 'VmWindowInput.ps1')", script, StringComparison.Ordinal);
+        Assert.Contains("Send-ProcessWindowKey -Process $desktop -VirtualKey ([NativeWindowMessaging]::VK_F11)", script, StringComparison.Ordinal);
+        Assert.Contains("Send-ProcessWindowKey -Process $desktop -VirtualKey ([NativeWindowMessaging]::VK_ESCAPE)", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("[System.Windows.Forms.SendKeys]::SendWait('{F11}')", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("[System.Windows.Forms.SendKeys]::SendWait('{ESC}')", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -66,6 +71,56 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[string]$ResultName", script, StringComparison.Ordinal);
         Assert.Contains("$root = $RootPath", script, StringComparison.Ordinal);
         Assert.Contains("$results = Join-Path $root ('results\\' + $ResultName)", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VmWindowInput_SendsFullscreenKeysToTargetWindowHandleOnly()
+    {
+        string helper = ReadRepoText("build",
+            "vm",
+            "VmWindowInput.ps1");
+
+        Assert.Contains("function Send-ProcessWindowKey", helper, StringComparison.Ordinal);
+        Assert.Contains("function New-KeyboardMessageLParam", helper, StringComparison.Ordinal);
+        Assert.Contains("[ValidateNotNull()]", helper, StringComparison.Ordinal);
+        Assert.Contains("[ValidateRange(1, 255)]", helper, StringComparison.Ordinal);
+        Assert.Contains("$Process.HasExited", helper, StringComparison.Ordinal);
+        Assert.Contains("public const uint WM_KEYDOWN = 0x0100;", helper, StringComparison.Ordinal);
+        Assert.Contains("public const uint WM_KEYUP = 0x0101;", helper, StringComparison.Ordinal);
+        Assert.Contains("public const int VK_ESCAPE = 0x1B;", helper, StringComparison.Ordinal);
+        Assert.Contains("public const int VK_F11 = 0x7A;", helper, StringComparison.Ordinal);
+        Assert.Contains("Set-StrictMode -Version Latest", helper, StringComparison.Ordinal);
+        Assert.Contains("public static extern bool PostMessage", helper, StringComparison.Ordinal);
+        Assert.Contains("public static extern uint MapVirtualKey", helper, StringComparison.Ordinal);
+        Assert.Contains("public static extern bool IsWindow", helper, StringComparison.Ordinal);
+        Assert.Contains("function Test-IsExtendedVirtualKey", helper, StringComparison.Ordinal);
+        Assert.Contains("[uint32](1 -bor ([uint32]$scanCode -shl 16))", helper, StringComparison.Ordinal);
+        Assert.Contains("[uint32]($value -bor ([uint32]1 -shl 24))", helper, StringComparison.Ordinal);
+        Assert.Contains("[uint32]($value -bor ([uint32]1 -shl 30) -bor ([uint32]1 -shl 31))", helper, StringComparison.Ordinal);
+        Assert.Contains("[IntPtr]([int64][uint32]$value)", helper, StringComparison.Ordinal);
+        Assert.Contains("[NativeWindowMessaging]::IsWindow($handle)", helper, StringComparison.Ordinal);
+        Assert.Contains("[NativeWindowMessaging]::PostMessage($handle, [NativeWindowMessaging]::WM_KEYDOWN", helper, StringComparison.Ordinal);
+        Assert.Contains("[NativeWindowMessaging]::PostMessage($handle, [NativeWindowMessaging]::WM_KEYUP", helper, StringComparison.Ordinal);
+        Assert.DoesNotContain("[System.Windows.Forms.SendKeys]::SendWait('{F11}')", helper, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetForegroundWindow", helper, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VmHarnessScripts_DotSourceOnlyExistingLocalHelpers()
+    {
+        string vmDirectory = Path.Combine(GetRepoRoot(), "build", "vm");
+
+        foreach (string scriptPath in Directory.EnumerateFiles(vmDirectory, "*.ps1"))
+        {
+            string script = File.ReadAllText(scriptPath);
+            foreach (Match match in Regex.Matches(script, @"\. \(Join-Path \$PSScriptRoot '([^']+)'\)"))
+            {
+                string helperPath = Path.Combine(vmDirectory, match.Groups[1].Value);
+                Assert.True(
+                    File.Exists(helperPath),
+                    $"{Path.GetFileName(scriptPath)} dot-sources missing helper {match.Groups[1].Value}.");
+            }
+        }
     }
 
     [Fact]
@@ -553,6 +608,9 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Get-ProcessWindowElement", script, StringComparison.Ordinal);
         Assert.Contains("Invoke-AutomationElement", script, StringComparison.Ordinal);
         Assert.Contains("Expand-AutomationElement", script, StringComparison.Ordinal);
+        Assert.Contains(". (Join-Path $PSScriptRoot 'VmWindowInput.ps1')", script, StringComparison.Ordinal);
+        Assert.Contains("[NativeWindowMessaging]::VK_F11", script, StringComparison.Ordinal);
+        Assert.Contains("[NativeWindowMessaging]::VK_ESCAPE", script, StringComparison.Ordinal);
         Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait('%o')", script, StringComparison.Ordinal);
         Assert.Contains("function Find-DescendantByNameAndControlType", script, StringComparison.Ordinal);
         Assert.Contains("function Find-TabItemByName", script, StringComparison.Ordinal);
@@ -608,9 +666,11 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("[System.Windows.Automation.AutomationElement]::RootElement.FindAll(", script, StringComparison.Ordinal);
         Assert.Contains("[System.Windows.Automation.TreeScope]::Children", script, StringComparison.Ordinal);
         Assert.Contains("[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')", script, StringComparison.Ordinal);
-        Assert.Contains("@{ Name = 'Escape'; Key = '{ESC}'; UseMenu = $false }", script, StringComparison.Ordinal);
-        Assert.Contains("@{ Name = 'F11'; Key = '{F11}'; UseMenu = $false }", script, StringComparison.Ordinal);
-        Assert.Contains("@{ Name = 'MenuToggle'; Key = $null; UseMenu = $true }", script, StringComparison.Ordinal);
+        Assert.Contains("@{ Name = 'Escape'; VirtualKey = [NativeWindowMessaging]::VK_ESCAPE; UseMenu = $false }", script, StringComparison.Ordinal);
+        Assert.Contains("@{ Name = 'F11'; VirtualKey = [NativeWindowMessaging]::VK_F11; UseMenu = $false }", script, StringComparison.Ordinal);
+        Assert.Contains("@{ Name = 'MenuToggle'; VirtualKey = $null; UseMenu = $true }", script, StringComparison.Ordinal);
+        Assert.Contains("elseif ($exitAttempt.ContainsKey('VirtualKey') -and $null -ne $exitAttempt.VirtualKey)", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("[System.Windows.Forms.SendKeys]::SendWait('{F11}')", script, StringComparison.Ordinal);
         Assert.Contains("Capture-Screen -Path (Join-Path $results (\"config-tab-{0:D3}-{1}-scrolled.png\"", script, StringComparison.Ordinal);
         Assert.Contains("return Perform-VisibleScrollSequence -Window $Window -TabName $TabName -PageDownCount $pageDownCount", script, StringComparison.Ordinal);
         Assert.Contains("Try-ScrollWindowContent -Window $Window -TabName $TabName -PageCount ([Math]::Max(1, [Math]::Min(2, $PageDownCount)))", script, StringComparison.Ordinal);
