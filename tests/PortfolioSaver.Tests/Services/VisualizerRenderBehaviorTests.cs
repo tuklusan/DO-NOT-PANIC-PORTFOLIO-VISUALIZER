@@ -3822,6 +3822,77 @@ public sealed class VisualizerRenderBehaviorTests
     }
 
     [Fact]
+    public void VisualizerScene_EmitsRenderSurfaceHeartbeat_AndRequestsScopedRecovery()
+    {
+        string sceneCodeBehind = File.ReadAllText(Path.Combine(
+            GetRepoRoot(),
+            "src",
+            "PortfolioSaver.Presentation",
+            "Controls",
+            "VisualizerSceneControl.xaml.cs"));
+
+        Assert.Contains("RenderSurfaceHeartbeatTraceInterval", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RenderSurfaceMissingThreshold", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RenderSurfaceStartupGracePeriod", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RenderSurfaceRecoveryRequestInterval", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MaxRenderSurfaceRecoveryAttemptsPerEpisode", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("CheckRenderSurfaceHeartbeat(now);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TraceRenderSurfaceHeartbeatIfDue(acceptedAt);", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RenderSurfaceHeartbeat", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RenderSurfaceHeartbeatRecovered", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RenderSurfaceRecoveryRequested", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("motion-frame-heartbeat-missing", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("FloatingOverlayCanvas?.InvalidateVisual();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("StatusBarHost?.InvalidateVisual();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TapeItemsControl?.InvalidateVisual();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("NewsFlasherHost?.InvalidateVisual();", sceneCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly", sceneCodeBehind, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VisualizerScene_RenderSurfaceHeartbeatRequestsRecoveryWhenMotionFramesStop()
+    {
+        RunOnSta(() =>
+        {
+            VisualizerSceneControl control = new();
+            Window? host = null;
+            try
+            {
+                host = HostControlForLayout(control, 900, 80);
+                // This intentionally exercises the private watchdog state; keep names in sync with the structural test above.
+                Type controlType = typeof(VisualizerSceneControl);
+                FieldInfo lastAcceptedFrameField = controlType.GetField("_lastAcceptedMotionFrameUtc", BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException("_lastAcceptedMotionFrameUtc field not found.");
+                FieldInfo heartbeatMissingField = controlType.GetField("_renderSurfaceHeartbeatMissing", BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException("_renderSurfaceHeartbeatMissing field not found.");
+                FieldInfo heartbeatArmedField = controlType.GetField("_renderSurfaceHeartbeatArmedUtc", BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException("_renderSurfaceHeartbeatArmedUtc field not found.");
+                FieldInfo recoveryCountField = controlType.GetField("_renderSurfaceRecoveryCount", BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException("_renderSurfaceRecoveryCount field not found.");
+                MethodInfo checkHeartbeatMethod = controlType.GetMethod("CheckRenderSurfaceHeartbeat", BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException("CheckRenderSurfaceHeartbeat method not found.");
+
+                DateTimeOffset now = DateTimeOffset.UtcNow;
+                heartbeatArmedField.SetValue(control, now - TimeSpan.FromSeconds(1));
+                lastAcceptedFrameField.SetValue(control, now - TimeSpan.FromSeconds(10));
+                checkHeartbeatMethod.Invoke(control, [now]);
+
+                Assert.True((bool)(heartbeatMissingField.GetValue(control) ?? false));
+                Assert.Equal(1, (int)(recoveryCountField.GetValue(control) ?? 0));
+
+                lastAcceptedFrameField.SetValue(control, now);
+                checkHeartbeatMethod.Invoke(control, [now]);
+
+                Assert.False((bool)(heartbeatMissingField.GetValue(control) ?? true));
+            }
+            finally
+            {
+                host?.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void VisualizerScene_SeparatesTitleLaneFromTopStatusBand()
     {
         string sceneXaml = File.ReadAllText(Path.Combine(

@@ -16,6 +16,7 @@ param(
     [string]$OutputPath,
     [switch]$CreateChangeRequests,
     [int]$MinimumScreenshots = 3,
+    [int]$MinimumStaticPairs = 3,
     [double]$BlankBrightnessThreshold = 7.0,
     [switch]$SkipDeepSeekArtifactReview
 )
@@ -23,6 +24,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows -and $PSVersionTable.Platform -ne 'Win32NT') { throw 'Visual artifact image analysis requires Windows/System.Drawing support.' }
+Add-Type -AssemblyName System.Drawing
+$script:MaxScreenshotDifferenceBytes = 100MB
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $allowedTracePath = Join-Path $PSScriptRoot 'allowed-trace-patterns.txt'
 $allowedFaultTracePath = Join-Path $PSScriptRoot 'allowed-fault-injection-trace-patterns.txt'
@@ -129,9 +132,8 @@ function Get-TraceLineTimestampUtc {
 
 function Measure-ImageBrightness {
     param([string]$Path)
-    Add-Type -AssemblyName System.Drawing
     $bytes = [System.IO.File]::ReadAllBytes($Path)
-    $stream = New-Object System.IO.MemoryStream(, $bytes)
+    $stream = [System.IO.MemoryStream]::new($bytes)
     $bitmap = [System.Drawing.Bitmap]::FromStream($stream)
     try {
         $stepX = [Math]::Max(1, [int]($bitmap.Width / 32))
@@ -147,6 +149,319 @@ function Measure-ImageBrightness {
         return $total / $count
     }
     finally { if ($null -ne $bitmap) { $bitmap.Dispose() }; $stream.Dispose() }
+}
+
+function Read-ScreenCaptureManifest {
+    param([Parameter(Mandatory = $true)][string]$RunDirectory)
+
+    $manifestPath = Join-Path $RunDirectory 'screen-captures.jsonl'
+    if (-not (Test-Path -LiteralPath $manifestPath)) {
+        return @()
+    }
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $lineNumber = 0
+    foreach ($line in Get-Content -LiteralPath $manifestPath) {
+        $lineNumber++
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+
+        try {
+            $record = $line | ConvertFrom-Json
+            if ($null -ne $record) {
+                [void]$records.Add($record)
+            }
+        }
+        catch {
+            Write-Warning ("Ignoring malformed screen capture manifest line {0} in {1}: {2}" -f $lineNumber, $manifestPath, $_.Exception.Message)
+        }
+    }
+
+    return @($records.ToArray())
+}
+
+function Get-CaptureImagePath {
+    param(
+        [Parameter(Mandatory = $true)]$Record,
+        [Parameter(Mandatory = $true)][string]$RunDirectory
+    )
+
+    $fileName = [string](Get-JsonPropertyValue -Object $Record -Name 'FileName' -Default '')
+    if ([string]::IsNullOrWhiteSpace($fileName)) {
+        return $null
+    }
+    if ([IO.Path]::GetFileName($fileName) -ne $fileName) {
+        return $null
+    }
+
+    $candidate = Join-Path $RunDirectory $fileName
+    $resolvedRunDirectory = [IO.Path]::GetFullPath($RunDirectory).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+    $resolvedCandidate = [IO.Path]::GetFullPath($candidate)
+    if (-not $resolvedCandidate.StartsWith($resolvedRunDirectory, [StringComparison]::OrdinalIgnoreCase)) {
+        return $null
+    }
+    if (Test-Path -LiteralPath $resolvedCandidate) {
+        return $resolvedCandidate
+    }
+
+    return $null
+}
+
+function Get-CaptureSequenceNumber {
+    param([Parameter(Mandatory = $true)]$Record)
+
+    $fileName = [string](Get-JsonPropertyValue -Object $Record -Name 'FileName' -Default '')
+    $match = [regex]::Match($fileName, '^desktop-(\d+)\.png$')
+    if (-not $match.Success) {
+        return [int]::MaxValue
+    }
+
+    return [int]::Parse($match.Groups[1].Value, [System.Globalization.CultureInfo]::InvariantCulture)
+}
+
+function Get-CaptureRectangleNumber {
+    param(
+        $Object,
+        [Parameter(Mandatory = $true)][string[]]$Names
+    )
+
+    if ($null -eq $Object) {
+        return $null
+    }
+
+    foreach ($name in $Names) {
+        if ($Object.PSObject.Properties.Name -contains $name) {
+            $number = 0.0
+            if ([double]::TryParse(
+                    [string]$Object.$name,
+                    [System.Globalization.NumberStyles]::Float,
+                    [System.Globalization.CultureInfo]::InvariantCulture,
+                    [ref]$number)) {
+                return $number
+            }
+        }
+    }
+
+    return $null
+}
+
+function Get-CaptureRectangle {
+    param(
+        [Parameter(Mandatory = $true)]$Record,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    $rect = Get-JsonPropertyValue -Object $Record -Name $Name
+    if ($null -eq $rect) {
+        return $null
+    }
+
+    $x = Get-CaptureRectangleNumber -Object $rect -Names @('X', 'Left')
+    $y = Get-CaptureRectangleNumber -Object $rect -Names @('Y', 'Top')
+    $width = Get-CaptureRectangleNumber -Object $rect -Names @('Width')
+    $height = Get-CaptureRectangleNumber -Object $rect -Names @('Height')
+    if ($null -eq $x -or $null -eq $y -or $null -eq $width -or $null -eq $height) {
+        return $null
+    }
+    if ($width -le 0 -or $height -le 0) {
+        return $null
+    }
+
+    return [pscustomobject]@{
+        X = $x
+        Y = $y
+        Width = $width
+        Height = $height
+    }
+}
+
+function Test-CaptureRectanglesEquivalent {
+    param(
+        $Left,
+        $Right,
+        [double]$TolerancePixels = 2.0
+    )
+
+    if ($null -eq $Left -or $null -eq $Right) {
+        return $false
+    }
+
+    return [Math]::Abs($Left.X - $Right.X) -le $TolerancePixels -and
+           [Math]::Abs($Left.Y - $Right.Y) -le $TolerancePixels -and
+           [Math]::Abs($Left.Width - $Right.Width) -le $TolerancePixels -and
+           [Math]::Abs($Left.Height - $Right.Height) -le $TolerancePixels
+}
+
+function Get-CaptureImageCrop {
+    param([Parameter(Mandatory = $true)]$Record)
+
+    $virtualScreen = Get-CaptureRectangle -Record $Record -Name 'VirtualScreen'
+    $windowBounds = Get-CaptureRectangle -Record $Record -Name 'DesktopWindowBounds'
+    if ($null -eq $virtualScreen -or $null -eq $windowBounds) {
+        return $null
+    }
+
+    return [pscustomobject]@{
+        X = [int][Math]::Floor($windowBounds.X - $virtualScreen.X)
+        Y = [int][Math]::Floor($windowBounds.Y - $virtualScreen.Y)
+        Width = [int][Math]::Ceiling($windowBounds.Width)
+        Height = [int][Math]::Ceiling($windowBounds.Height)
+    }
+}
+
+function Measure-ImageSampleDifference {
+    param(
+        [Parameter(Mandatory = $true)][string]$LeftPath,
+        [Parameter(Mandatory = $true)][string]$RightPath,
+        [Parameter(Mandatory = $true)]$Crop
+    )
+
+    $leftStream = $null
+    $rightStream = $null
+    $leftBitmap = $null
+    $rightBitmap = $null
+    try {
+        foreach ($imagePath in @($LeftPath, $RightPath)) {
+            $imageInfo = Get-Item -LiteralPath $imagePath -ErrorAction Stop
+            if ($imageInfo.Length -gt $script:MaxScreenshotDifferenceBytes) {
+                throw "Screenshot '$imagePath' is too large for safe stasis comparison: $($imageInfo.Length) bytes."
+            }
+        }
+
+        $leftBytes = [System.IO.File]::ReadAllBytes($LeftPath)
+        $rightBytes = [System.IO.File]::ReadAllBytes($RightPath)
+        $leftStream = [System.IO.MemoryStream]::new($leftBytes)
+        $rightStream = [System.IO.MemoryStream]::new($rightBytes)
+        $leftBitmap = [System.Drawing.Bitmap]::FromStream($leftStream)
+        $rightBitmap = [System.Drawing.Bitmap]::FromStream($rightStream)
+
+        $x = [Math]::Max(0, [int]$Crop.X)
+        $y = [Math]::Max(0, [int]$Crop.Y)
+        $width = [Math]::Min([int]$Crop.Width, [Math]::Min($leftBitmap.Width, $rightBitmap.Width) - $x)
+        $height = [Math]::Min([int]$Crop.Height, [Math]::Min($leftBitmap.Height, $rightBitmap.Height) - $y)
+        if ($width -le 2 -or $height -le 2) {
+            return $null
+        }
+
+        $sampleColumns = 48
+        $sampleRows = 27
+        $total = 0.0
+        $changed = 0
+        $count = 0
+        for ($row = 0; $row -lt $sampleRows; $row++) {
+            $sampleY = $y + [int][Math]::Round((($height - 1) * $row) / [Math]::Max(1, $sampleRows - 1))
+            for ($column = 0; $column -lt $sampleColumns; $column++) {
+                $sampleX = $x + [int][Math]::Round((($width - 1) * $column) / [Math]::Max(1, $sampleColumns - 1))
+                $leftPixel = $leftBitmap.GetPixel($sampleX, $sampleY)
+                $rightPixel = $rightBitmap.GetPixel($sampleX, $sampleY)
+                $difference = ([Math]::Abs($leftPixel.R - $rightPixel.R) + [Math]::Abs($leftPixel.G - $rightPixel.G) + [Math]::Abs($leftPixel.B - $rightPixel.B)) / 3.0
+                $total += $difference
+                if ($difference -gt 0.0) {
+                    $changed++
+                }
+
+                $count++
+            }
+        }
+
+        if ($count -eq 0) {
+            return $null
+        }
+
+        return [pscustomobject]@{
+            MeanAbsDiff = $total / $count
+            ChangedSampleFraction = $changed / [double]$count
+            SampleCount = $count
+        }
+    }
+    finally {
+        if ($null -ne $leftBitmap) { $leftBitmap.Dispose() }
+        if ($null -ne $rightBitmap) { $rightBitmap.Dispose() }
+        if ($null -ne $leftStream) { $leftStream.Dispose() }
+        if ($null -ne $rightStream) { $rightStream.Dispose() }
+    }
+}
+
+function Find-RenderedSurfaceStasis {
+    param([Parameter(Mandatory = $true)][string]$RunDirectory)
+
+    $records = @(Read-ScreenCaptureManifest -RunDirectory $RunDirectory |
+        Where-Object { [string](Get-JsonPropertyValue -Object $_ -Name 'FileName' -Default '') -match '^desktop-\d+\.png$' } |
+        Sort-Object { Get-CaptureSequenceNumber -Record $_ })
+    if ($records.Count -lt ($MinimumStaticPairs + 1)) {
+        return @()
+    }
+
+    $segments = New-Object System.Collections.Generic.List[object]
+    $currentSegment = $null
+
+    for ($index = 1; $index -lt $records.Count; $index++) {
+        $previous = $records[$index - 1]
+        $current = $records[$index]
+        $previousBounds = Get-CaptureRectangle -Record $previous -Name 'DesktopWindowBounds'
+        $currentBounds = Get-CaptureRectangle -Record $current -Name 'DesktopWindowBounds'
+        $previousVirtualScreen = Get-CaptureRectangle -Record $previous -Name 'VirtualScreen'
+        $currentVirtualScreen = Get-CaptureRectangle -Record $current -Name 'VirtualScreen'
+
+        if (-not (Test-CaptureRectanglesEquivalent -Left $previousBounds -Right $currentBounds) -or
+            -not (Test-CaptureRectanglesEquivalent -Left $previousVirtualScreen -Right $currentVirtualScreen)) {
+            if ($null -ne $currentSegment -and $currentSegment.StaticPairs -ge $MinimumStaticPairs) {
+                [void]$segments.Add($currentSegment)
+            }
+            $currentSegment = $null
+            continue
+        }
+
+        $previousPath = Get-CaptureImagePath -Record $previous -RunDirectory $RunDirectory
+        $currentPath = Get-CaptureImagePath -Record $current -RunDirectory $RunDirectory
+        $crop = Get-CaptureImageCrop -Record $previous
+        if ([string]::IsNullOrWhiteSpace($previousPath) -or [string]::IsNullOrWhiteSpace($currentPath) -or $null -eq $crop) {
+            if ($null -ne $currentSegment -and $currentSegment.StaticPairs -ge $MinimumStaticPairs) {
+                [void]$segments.Add($currentSegment)
+            }
+            $currentSegment = $null
+            continue
+        }
+
+        $difference = Measure-ImageSampleDifference -LeftPath $previousPath -RightPath $currentPath -Crop $crop
+        $isStaticPair = $null -ne $difference -and
+            $difference.MeanAbsDiff -le 0.01 -and
+            $difference.ChangedSampleFraction -le 0.001
+        if ($isStaticPair) {
+            if ($null -eq $currentSegment) {
+                $currentSegment = [pscustomobject]@{
+                    StartFile = [string](Get-JsonPropertyValue -Object $previous -Name 'FileName' -Default '')
+                    EndFile = [string](Get-JsonPropertyValue -Object $current -Name 'FileName' -Default '')
+                    StartCapturedAt = [string](Get-JsonPropertyValue -Object $previous -Name 'CapturedAt' -Default '')
+                    EndCapturedAt = [string](Get-JsonPropertyValue -Object $current -Name 'CapturedAt' -Default '')
+                    StaticPairs = 1
+                    MaxMeanAbsDiff = [double]$difference.MeanAbsDiff
+                    MaxChangedSampleFraction = [double]$difference.ChangedSampleFraction
+                    Crop = $crop
+                }
+            }
+            else {
+                $currentSegment.EndFile = [string](Get-JsonPropertyValue -Object $current -Name 'FileName' -Default '')
+                $currentSegment.EndCapturedAt = [string](Get-JsonPropertyValue -Object $current -Name 'CapturedAt' -Default '')
+                $currentSegment.StaticPairs = [int]$currentSegment.StaticPairs + 1
+                $currentSegment.MaxMeanAbsDiff = [Math]::Max([double]$currentSegment.MaxMeanAbsDiff, [double]$difference.MeanAbsDiff)
+                $currentSegment.MaxChangedSampleFraction = [Math]::Max([double]$currentSegment.MaxChangedSampleFraction, [double]$difference.ChangedSampleFraction)
+            }
+        }
+        else {
+            if ($null -ne $currentSegment -and $currentSegment.StaticPairs -ge $MinimumStaticPairs) {
+                [void]$segments.Add($currentSegment)
+            }
+            $currentSegment = $null
+        }
+    }
+
+    if ($null -ne $currentSegment -and $currentSegment.StaticPairs -ge $MinimumStaticPairs) {
+        [void]$segments.Add($currentSegment)
+    }
+
+    return @($segments.ToArray())
 }
 
 $runs = @(Get-ValidationRunDirectories -Root $ResultRoot)
@@ -197,6 +512,42 @@ foreach ($run in $runs) {
     }
     if ($dark.Count -gt 0) {
         [void]$findings.Add((New-Finding -Code 'blank-or-dark-background' -Title 'Possible blank or fully dark screen captured during VM validation' -Area 'visual_background' -Severity 'High' -Evidence @("Run ${runId} contains very dark capture(s): $($dark -join '; ')", "Run directory: $($run.FullName)") -Notes @('Triage against the actual screenshots before closure.')))
+    }
+
+    $captureManifestRecords = @(Read-ScreenCaptureManifest -RunDirectory $run.FullName)
+    $desktopCaptureManifestRecords = @($captureManifestRecords |
+        Where-Object { [string](Get-JsonPropertyValue -Object $_ -Name 'FileName' -Default '') -match '^desktop-\d+\.png$' })
+    $missingWindowBoundsRecords = @($desktopCaptureManifestRecords |
+        Where-Object { $null -eq (Get-CaptureRectangle -Record $_ -Name 'DesktopWindowBounds') })
+    if ($desktopCaptureManifestRecords.Count -gt 0 -and $missingWindowBoundsRecords.Count -gt 0) {
+        $missingWindowBoundsSeverity = if ($missingWindowBoundsRecords.Count -eq $desktopCaptureManifestRecords.Count) { 'High' } else { 'Medium' }
+        $missingWindowBoundsSample = @($missingWindowBoundsRecords |
+            Select-Object -First 8 |
+            ForEach-Object { [string](Get-JsonPropertyValue -Object $_ -Name 'FileName' -Default '<unknown>') })
+        [void]$findings.Add((New-Finding -Code 'screen-capture-window-bounds-missing' -Title 'Screen capture manifest lacks app-window bounds for stasis analysis' -Area 'desktop_rendering_reliability' -Severity $missingWindowBoundsSeverity -Evidence @(
+            "Run ${runId} has $($missingWindowBoundsRecords.Count) desktop capture manifest record(s) without DesktopWindowBounds out of $($desktopCaptureManifestRecords.Count).",
+            "Sample missing-bound capture(s): $($missingWindowBoundsSample -join ', ').",
+            "Run directory: $($run.FullName)"
+        ) -Notes @('Rendered-surface stasis analysis needs app-window bounds; missing bounds make affected capture pairs unprovable rather than clean.')))
+    }
+
+    $stasisSegments = @(Find-RenderedSurfaceStasis -RunDirectory $run.FullName)
+    if ($stasisSegments.Count -gt 0) {
+        $runtimeFreshnessPath = Join-Path $run.FullName 'runtime-freshness-events.log'
+        $runtimeFreshnessLineCount = if (Test-Path -LiteralPath $runtimeFreshnessPath) {
+            @(Get-Content -LiteralPath $runtimeFreshnessPath).Count
+        } else {
+            0
+        }
+        foreach ($segment in $stasisSegments) {
+            [void]$findings.Add((New-Finding -Code 'rendered-surface-stasis' -Title 'Desktop rendered surface stayed pixel-static across runtime captures' -Area 'desktop_rendering_reliability' -Severity 'High' -Evidence @(
+                "Run ${runId} app-window crop remained unchanged from $($segment.StartFile) to $($segment.EndFile).",
+                "CapturedAt range: $($segment.StartCapturedAt) to $($segment.EndCapturedAt).",
+                "Static adjacent pairs: $($segment.StaticPairs); max mean absolute RGB diff=$([Math]::Round([double]$segment.MaxMeanAbsDiff, 4)); max changed-sample fraction=$([Math]::Round([double]$segment.MaxChangedSampleFraction, 4)).",
+                "runtime-freshness-events.log line count during run: $runtimeFreshnessLineCount.",
+                "Run directory: $($run.FullName)"
+            ) -Notes @('The stasis detector compares only stable app-window crops from screen-captures.jsonl, so this indicates the presented WPF surface stopped changing while harness/runtime evidence may still be live.')))
+        }
     }
 
     $traceFiles = @(Get-ChildItem -LiteralPath $run.FullName -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '(?i)(trace|circular|events|log)' })

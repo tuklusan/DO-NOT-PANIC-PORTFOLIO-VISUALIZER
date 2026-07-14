@@ -67,6 +67,11 @@ public partial class VisualizerSceneControl : UserControl
     // CR-234: 20 FPS keeps motion smooth enough while reducing UI-thread pressure on 2-CPU validation VMs.
     private static readonly TimeSpan MotionFrameInterval = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan MaxMotionStepInterval = TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan RenderSurfaceHeartbeatTraceInterval = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan RenderSurfaceMissingThreshold = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan RenderSurfaceStartupGracePeriod = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan RenderSurfaceRecoveryRequestInterval = TimeSpan.FromSeconds(30);
+    private const int MaxRenderSurfaceRecoveryAttemptsPerEpisode = 3;
     private static readonly TimeSpan GraphRefreshTravelFlashMaximumDuration = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan GraphRefreshTravelTargetDuration = TimeSpan.FromSeconds(1.4);
     private static readonly TimeSpan SceneSchedulerInterval = TimeSpan.FromMilliseconds(50);
@@ -157,7 +162,16 @@ public partial class VisualizerSceneControl : UserControl
     private DateTimeOffset _lastStatusAncillaryRefreshUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastClockAncillaryRefreshUtc = DateTimeOffset.MinValue;
     private DateTimeOffset _lastSceneHeartbeatUtc = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastAcceptedMotionFrameUtc = DateTimeOffset.UtcNow;
+    private DateTimeOffset _lastRenderSurfaceHeartbeatTraceUtc = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastRenderSurfaceMissingTraceUtc = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastRenderSurfaceRecoveryRequestUtc = DateTimeOffset.MinValue;
+    private DateTimeOffset _renderSurfaceHeartbeatArmedUtc = DateTimeOffset.MaxValue;
     private DateTimeOffset _lastGraphSelectionRefreshUtc = DateTimeOffset.MinValue;
+    private long _acceptedMotionFrameCount;
+    private int _renderSurfaceRecoveryCount;
+    private int _renderSurfaceRecoveryAttemptsInEpisode;
+    private bool _renderSurfaceHeartbeatMissing;
     private bool _isValidationPaused;
     // Graph warmup awaits background work, so keep suppression reads/writes explicit across continuations.
     private volatile bool _suppressGraphRefreshMotionCues;
@@ -779,6 +793,13 @@ public partial class VisualizerSceneControl : UserControl
         _nextGraphSelectionTickUtc = now + GraphSelectionRefreshInterval;
         _nextWorldDataTickUtc = now + WorldDataRefreshInterval;
         _lastMotionTick = DateTime.UtcNow;
+        _lastAcceptedMotionFrameUtc = now;
+        _lastRenderSurfaceHeartbeatTraceUtc = DateTimeOffset.MinValue;
+        _lastRenderSurfaceMissingTraceUtc = DateTimeOffset.MinValue;
+        _lastRenderSurfaceRecoveryRequestUtc = DateTimeOffset.MinValue;
+        _renderSurfaceHeartbeatArmedUtc = now + RenderSurfaceStartupGracePeriod;
+        _renderSurfaceRecoveryAttemptsInEpisode = 0;
+        _renderSurfaceHeartbeatMissing = false;
         _backgroundRotationEnabled = _backgroundPaths.Count > 1;
         if (_backgroundRotationEnabled)
         {
@@ -839,6 +860,7 @@ public partial class VisualizerSceneControl : UserControl
             _sceneSchedulerTickInProgress = true;
             acquiredSchedulerTick = true;
             DateTimeOffset now = DateTimeOffset.UtcNow;
+            CheckRenderSurfaceHeartbeat(now);
 
             if (now >= _nextClockTickUtc)
             {
@@ -902,6 +924,8 @@ public partial class VisualizerSceneControl : UserControl
             return;
 
         _lastMotionTick = DateTime.UtcNow;
+        _lastAcceptedMotionFrameUtc = DateTimeOffset.UtcNow;
+        _renderSurfaceHeartbeatArmedUtc = _lastAcceptedMotionFrameUtc + RenderSurfaceStartupGracePeriod;
         CompositionTarget.Rendering += OnMotionRendering;
         _motionRenderingSubscribed = true;
         TraceSceneState("MotionRenderingStarted");
@@ -932,6 +956,10 @@ public partial class VisualizerSceneControl : UserControl
         Stopwatch stopwatch = Stopwatch.StartNew();
         try
         {
+            DateTimeOffset acceptedAt = DateTimeOffset.UtcNow;
+            _lastAcceptedMotionFrameUtc = acceptedAt;
+            _acceptedMotionFrameCount++;
+            TraceRenderSurfaceHeartbeatIfDue(acceptedAt);
             StepMotion(currentTick);
         }
         catch (Exception ex)
@@ -951,6 +979,94 @@ public partial class VisualizerSceneControl : UserControl
                     new KeyValuePair<string, object?>("elapsed_milliseconds", Math.Round(stopwatch.Elapsed.TotalMilliseconds, 1)));
             }
         }
+    }
+
+    private void CheckRenderSurfaceHeartbeat(DateTimeOffset now)
+    {
+        if (!IsLoaded)
+            return;
+        if (now < _renderSurfaceHeartbeatArmedUtc)
+            return;
+        if (!IsVisible || Window.GetWindow(this)?.WindowState == WindowState.Minimized)
+            return;
+
+        TimeSpan elapsed = now - _lastAcceptedMotionFrameUtc;
+        if (elapsed <= RenderSurfaceMissingThreshold)
+        {
+            if (_renderSurfaceHeartbeatMissing)
+            {
+                _renderSurfaceHeartbeatMissing = false;
+                _renderSurfaceRecoveryAttemptsInEpisode = 0;
+                TraceSceneState(
+                    "RenderSurfaceHeartbeatRecovered",
+                    new KeyValuePair<string, object?>("elapsed_seconds", Math.Round(elapsed.TotalSeconds, 1)),
+                    new KeyValuePair<string, object?>("motion_frame_count", _acceptedMotionFrameCount),
+                    new KeyValuePair<string, object?>("recovery_count", _renderSurfaceRecoveryCount));
+            }
+
+            return;
+        }
+
+        if (now - _lastRenderSurfaceMissingTraceUtc < RenderSurfaceHeartbeatTraceInterval)
+            return;
+        if (now - _lastRenderSurfaceRecoveryRequestUtc < RenderSurfaceRecoveryRequestInterval)
+            return;
+        if (_renderSurfaceRecoveryAttemptsInEpisode >= MaxRenderSurfaceRecoveryAttemptsPerEpisode)
+            return;
+
+        _renderSurfaceHeartbeatMissing = true;
+        _lastRenderSurfaceMissingTraceUtc = now;
+        _lastRenderSurfaceRecoveryRequestUtc = now;
+        _renderSurfaceRecoveryAttemptsInEpisode++;
+        RequestRenderSurfaceRecovery("motion-frame-heartbeat-missing", elapsed);
+    }
+
+    private void TraceRenderSurfaceHeartbeatIfDue(DateTimeOffset now)
+    {
+        if (now - _lastRenderSurfaceHeartbeatTraceUtc < RenderSurfaceHeartbeatTraceInterval)
+            return;
+
+        _lastRenderSurfaceHeartbeatTraceUtc = now;
+        TraceSceneState(
+            "RenderSurfaceHeartbeat",
+            new KeyValuePair<string, object?>("motion_frame_count", _acceptedMotionFrameCount),
+            new KeyValuePair<string, object?>("actual_width", Math.Round(ActualWidth, 1)),
+            new KeyValuePair<string, object?>("actual_height", Math.Round(ActualHeight, 1)),
+            new KeyValuePair<string, object?>("is_loaded", IsLoaded),
+            new KeyValuePair<string, object?>("is_visible", IsVisible),
+            new KeyValuePair<string, object?>("motion_rendering_subscribed", _motionRenderingSubscribed),
+            new KeyValuePair<string, object?>("scene_timer_enabled", _sceneTimer.IsEnabled),
+            new KeyValuePair<string, object?>("recovery_count", _renderSurfaceRecoveryCount));
+    }
+
+    private void RequestRenderSurfaceRecovery(string reason, TimeSpan elapsed)
+    {
+        _renderSurfaceRecoveryCount++;
+        InvalidateRenderSurfaceVisuals();
+        TraceSceneState(
+            "RenderSurfaceRecoveryRequested",
+            new KeyValuePair<string, object?>("reason", reason),
+            new KeyValuePair<string, object?>("elapsed_seconds", Math.Round(elapsed.TotalSeconds, 1)),
+            new KeyValuePair<string, object?>("motion_frame_count", _acceptedMotionFrameCount),
+            new KeyValuePair<string, object?>("recovery_count", _renderSurfaceRecoveryCount),
+            new KeyValuePair<string, object?>("episode_attempt", _renderSurfaceRecoveryAttemptsInEpisode),
+            new KeyValuePair<string, object?>("max_episode_attempts", MaxRenderSurfaceRecoveryAttemptsPerEpisode),
+            new KeyValuePair<string, object?>("motion_rendering_subscribed", _motionRenderingSubscribed),
+            new KeyValuePair<string, object?>("scene_timer_enabled", _sceneTimer.IsEnabled));
+    }
+
+    private void InvalidateRenderSurfaceVisuals()
+    {
+        if (!IsLoaded)
+            return;
+
+        InvalidateVisual();
+        BackgroundImageA?.InvalidateVisual();
+        BackgroundImageB?.InvalidateVisual();
+        FloatingOverlayCanvas?.InvalidateVisual();
+        StatusBarHost?.InvalidateVisual();
+        TapeItemsControl?.InvalidateVisual();
+        NewsFlasherHost?.InvalidateVisual();
     }
 
     private void RunScheduledSceneAction(string actionName, Action action)

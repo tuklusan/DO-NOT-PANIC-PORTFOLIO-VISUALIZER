@@ -95,6 +95,15 @@ public sealed class DesktopShellMigrationTests
         Assert.Contains("ShouldToggleFullScreenFromNativeMessage(msg)", code, StringComparison.Ordinal);
         Assert.Contains("ShouldToggleFullScreenFromNativeLeftButtonDown", code, StringComparison.Ordinal);
         Assert.Contains("NativeLeftButtonDoubleClickToggle", code, StringComparison.Ordinal);
+        Assert.Contains("TraceFullScreenWindowState", code, StringComparison.Ordinal);
+        Assert.Contains("FullScreenEnterStart", code, StringComparison.Ordinal);
+        Assert.Contains("FullScreenEnterApplied", code, StringComparison.Ordinal);
+        Assert.Contains("FullScreenExitStart", code, StringComparison.Ordinal);
+        Assert.Contains("FullScreenExitApplied", code, StringComparison.Ordinal);
+        Assert.Contains("WindowStateChanged", code, StringComparison.Ordinal);
+        Assert.Contains("WindowSizeChanged", code, StringComparison.Ordinal);
+        Assert.Contains("FullScreenBoundsRecheckAligned", code, StringComparison.Ordinal);
+        Assert.Contains("FullScreenBoundsReapplied", code, StringComparison.Ordinal);
         Assert.Contains("Leave the routed event unhandled", code, StringComparison.Ordinal);
         Assert.Contains("ToggleFullScreen();", code, StringComparison.Ordinal);
         Assert.Contains("e.Key == Key.F11", code, StringComparison.Ordinal);

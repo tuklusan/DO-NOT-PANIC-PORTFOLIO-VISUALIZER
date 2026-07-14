@@ -790,6 +790,11 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("CapturedAt = $capturedAt", script, StringComparison.Ordinal);
         Assert.Contains("FileName = $fileInfo.Name", script, StringComparison.Ordinal);
         Assert.Contains("Length = $fileInfo.Length", script, StringComparison.Ordinal);
+        Assert.Contains("VirtualScreen = Convert-RectangleForCaptureRecord -Rectangle $bounds", script, StringComparison.Ordinal);
+        Assert.Contains("DesktopWindowBounds = try { Get-DesktopWindowBoundsForCaptureRecord } catch { $null }", script, StringComparison.Ordinal);
+        Assert.Contains("function Get-DesktopWindowBoundsForCaptureRecord", script, StringComparison.Ordinal);
+        Assert.Contains("AutomationIdProperty", script, StringComparison.Ordinal);
+        Assert.Contains("'DesktopMainWindow'", script, StringComparison.Ordinal);
         Assert.Contains("Add-Content -LiteralPath $script:screenCaptureManifestPath", script, StringComparison.Ordinal);
         Assert.Contains("Write-SummaryFiles", script, StringComparison.Ordinal);
         Assert.DoesNotContain("VBOXSVR", script, StringComparison.Ordinal);
@@ -822,6 +827,17 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("Minimum blocking completion ratio is 50 percent", analyzer, StringComparison.Ordinal);
         Assert.Contains("$hasFreshTraceAge = Test-TraceAgeFieldFresh -Line $_.Line -FieldName 'trace_age_seconds'", analyzer, StringComparison.Ordinal);
         Assert.Contains("$hasDirectUiFreshness = $_.Line -match 'latest_freshness_source=ui(\\s|$)' -and $_.Line -match 'ui_freshness=LIVE quote feed'", analyzer, StringComparison.Ordinal);
+        Assert.Contains("function Read-ScreenCaptureManifest", analyzer, StringComparison.Ordinal);
+        Assert.Contains("function Find-RenderedSurfaceStasis", analyzer, StringComparison.Ordinal);
+        Assert.Contains("function Get-CaptureSequenceNumber", analyzer, StringComparison.Ordinal);
+        Assert.Contains("Sort-Object { Get-CaptureSequenceNumber -Record $_ }", analyzer, StringComparison.Ordinal);
+        Assert.Contains("function Measure-ImageSampleDifference", analyzer, StringComparison.Ordinal);
+        Assert.Contains("DesktopWindowBounds", analyzer, StringComparison.Ordinal);
+        Assert.Contains("rendered-surface-stasis", analyzer, StringComparison.Ordinal);
+        Assert.Contains("Desktop rendered surface stayed pixel-static across runtime captures", analyzer, StringComparison.Ordinal);
+        Assert.Contains("stasisAnalysisPath", script, StringComparison.Ordinal);
+        Assert.Contains("Write-SmokeScreenCaptureRecord", script, StringComparison.Ordinal);
+        Assert.Contains("rendered-surface-stasis", script, StringComparison.Ordinal);
         Assert.Contains("elseif (-not [string]::IsNullOrWhiteSpace($uiFreshnessText) -and $uiFreshnessText -eq $latestFreshnessText)", guestHarness, StringComparison.Ordinal);
     }
 
@@ -1085,6 +1101,10 @@ public sealed class VmHarnessScriptTests
         Assert.Contains("function Select-Http429Evidence", analyzer, StringComparison.Ordinal);
         Assert.Contains("status(_code)?=429", analyzer, StringComparison.Ordinal);
         Assert.Contains("Too Many Requests", analyzer, StringComparison.Ordinal);
+        Assert.Contains("ux-deep-summary.json", analyzer, StringComparison.Ordinal);
+        Assert.Contains("renderSurfaceHeartbeat", analyzer, StringComparison.Ordinal);
+        Assert.Contains("renderSurfaceRecoveryRequested", analyzer, StringComparison.Ordinal);
+        Assert.Contains("renderSurfaceHeartbeatRecovered", analyzer, StringComparison.Ordinal);
         Assert.DoesNotContain("\\b429\\b|rate limit", analyzer, StringComparison.Ordinal);
         Assert.DoesNotContain("transport_fail", analyzer, StringComparison.OrdinalIgnoreCase);
     }

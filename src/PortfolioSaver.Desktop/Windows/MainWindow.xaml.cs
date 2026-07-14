@@ -76,10 +76,16 @@ public partial class MainWindow : Window
 
     public void ToggleFullScreen()
     {
+        TraceFullScreenWindowState("ToggleRequested");
         if (_isFullScreen)
         {
             if (DisableFullScreenInputExit)
+            {
+                TraceFullScreenWindowState(
+                    "ToggleIgnored",
+                    new("reason", "input_exit_disabled"));
                 return;
+            }
 
             ExitFullScreen();
         }
@@ -105,6 +111,18 @@ public partial class MainWindow : Window
         _previousWidth = Width;
         _previousHeight = Height;
 
+        TraceFullScreenWindowState(
+            "FullScreenEnterStart",
+            new("previous_window_state", _previousWindowState),
+            new("previous_window_style", _previousWindowStyle),
+            new("previous_resize_mode", _previousResizeMode),
+            new("previous_topmost", _previousTopmost),
+            new("previous_left", Math.Round(_previousLeft, 1)),
+            new("previous_top", Math.Round(_previousTop, 1)),
+            new("previous_width", Math.Round(_previousWidth, 1)),
+            new("previous_height", Math.Round(_previousHeight, 1)));
+
+        Rect bounds = Rect.Empty;
         _suppressWindowConstraint = true;
         _isFullScreen = true;
         try
@@ -116,7 +134,7 @@ public partial class MainWindow : Window
             MinHeight = 0d;
             MaxWidth = double.PositiveInfinity;
             MaxHeight = double.PositiveInfinity;
-            Rect bounds = GetCurrentMonitorBoundsInDips();
+            bounds = GetCurrentMonitorBoundsInDips();
             Left = bounds.Left;
             Top = bounds.Top;
             Width = bounds.Width;
@@ -132,6 +150,13 @@ public partial class MainWindow : Window
         if (MainMenu is not null)
             MainMenu.Visibility = Visibility.Collapsed;
 
+        TraceFullScreenWindowState(
+            "FullScreenEnterApplied",
+            new("target_left", Math.Round(bounds.Left, 1)),
+            new("target_top", Math.Round(bounds.Top, 1)),
+            new("target_width", Math.Round(bounds.Width, 1)),
+            new("target_height", Math.Round(bounds.Height, 1)));
+
         Dispatcher.BeginInvoke(
             DispatcherPriority.ApplicationIdle,
             new Action(ApplyFullScreenBoundsIfNeeded));
@@ -145,8 +170,22 @@ public partial class MainWindow : Window
         }
         if (DisableFullScreenInputExit)
         {
+            TraceFullScreenWindowState(
+                "FullScreenExitIgnored",
+                new("reason", "input_exit_disabled"));
             return;
         }
+
+        TraceFullScreenWindowState(
+            "FullScreenExitStart",
+            new("restore_window_state", _previousWindowState),
+            new("restore_window_style", _previousWindowStyle),
+            new("restore_resize_mode", _previousResizeMode),
+            new("restore_topmost", _previousTopmost),
+            new("restore_left", Math.Round(_previousLeft, 1)),
+            new("restore_top", Math.Round(_previousTop, 1)),
+            new("restore_width", Math.Round(_previousWidth, 1)),
+            new("restore_height", Math.Round(_previousHeight, 1)));
 
         Topmost = _previousTopmost;
         ResizeMode = _previousResizeMode;
@@ -169,6 +208,32 @@ public partial class MainWindow : Window
         MinWidth = RestoredWindowWidth;
         MinHeight = RestoredWindowHeight;
         ApplyWindowStateConstraints();
+        TraceFullScreenWindowState("FullScreenExitApplied");
+    }
+
+    private void TraceFullScreenWindowState(
+        string eventName,
+        params KeyValuePair<string, object?>[] fields)
+    {
+        List<KeyValuePair<string, object?>> combined = new(fields)
+        {
+            new("is_fullscreen", _isFullScreen),
+            new("window_state", WindowState),
+            new("window_style", WindowStyle),
+            new("resize_mode", ResizeMode),
+            new("topmost", Topmost),
+            new("left", Math.Round(Left, 1)),
+            new("top", Math.Round(Top, 1)),
+            new("width", Math.Round(Width, 1)),
+            new("height", Math.Round(Height, 1)),
+            new("actual_width", Math.Round(ActualWidth, 1)),
+            new("actual_height", Math.Round(ActualHeight, 1)),
+            new("min_width", Math.Round(MinWidth, 1)),
+            new("min_height", Math.Round(MinHeight, 1)),
+            new("max_width", double.IsPositiveInfinity(MaxWidth) ? "Infinity" : Math.Round(MaxWidth, 1)),
+            new("max_height", double.IsPositiveInfinity(MaxHeight) ? "Infinity" : Math.Round(MaxHeight, 1))
+        };
+        TraceLog.InfoState("Desktop.FullScreen", eventName, combined);
     }
 
     private void OnExitClick(object sender, RoutedEventArgs e)
@@ -268,8 +333,18 @@ public partial class MainWindow : Window
             return;
 
         if (ShouldSuppressDoubleClickFullScreenForInteractiveSource(e.OriginalSource as DependencyObject))
+        {
+            TraceLog.InfoState(
+                "Desktop.FullScreen",
+                "PreviewMouseDoubleClickSuppressed",
+                [new("changed_button", e.ChangedButton), new("source_type", e.OriginalSource?.GetType().FullName ?? "<null>")]);
             return;
+        }
 
+        TraceLog.InfoState(
+            "Desktop.FullScreen",
+            "PreviewMouseDoubleClickToggle",
+            [new("changed_button", e.ChangedButton), new("is_fullscreen_before", _isFullScreen)]);
         // Use the preview event so child scene controls cannot accidentally swallow the global shortcut.
         // Leave the routed event unhandled so future non-conflicting child double-click UX can still run.
         ToggleFullScreen();
@@ -395,6 +470,9 @@ public partial class MainWindow : Window
     {
         if (e.Key == Key.F11)
         {
+            TraceFullScreenWindowState(
+                "KeyboardToggleRequested",
+                new("key", e.Key));
             ToggleFullScreen();
             e.Handled = true;
             return;
@@ -402,6 +480,9 @@ public partial class MainWindow : Window
 
         if (e.Key == Key.Escape && _isFullScreen)
         {
+            TraceFullScreenWindowState(
+                "KeyboardExitRequested",
+                new("key", e.Key));
             ExitFullScreen();
             e.Handled = true;
         }
@@ -409,6 +490,10 @@ public partial class MainWindow : Window
 
     private void OnWindowStateChanged(object sender, EventArgs e)
     {
+        TraceFullScreenWindowState(
+            "WindowStateChanged",
+            new("suppress_window_constraint", _suppressWindowConstraint));
+
         if (_suppressWindowConstraint || _isFullScreen)
             return;
 
@@ -417,11 +502,24 @@ public partial class MainWindow : Window
 
     private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
     {
+        bool sizeWillBeConstrained = WindowState == WindowState.Normal &&
+                                     (Math.Abs(Width - RestoredWindowWidth) > 0.5d || Math.Abs(Height - RestoredWindowHeight) > 0.5d);
+        if (_suppressWindowConstraint || _isFullScreen || sizeWillBeConstrained)
+        {
+            TraceFullScreenWindowState(
+                "WindowSizeChanged",
+                new("suppress_window_constraint", _suppressWindowConstraint),
+                new("previous_width", Math.Round(e.PreviousSize.Width, 1)),
+                new("previous_height", Math.Round(e.PreviousSize.Height, 1)),
+                new("new_width", Math.Round(e.NewSize.Width, 1)),
+                new("new_height", Math.Round(e.NewSize.Height, 1)),
+                new("size_will_be_constrained", sizeWillBeConstrained));
+        }
+
         if (_suppressWindowConstraint || _isFullScreen)
             return;
 
-        if (WindowState == WindowState.Normal &&
-            (Math.Abs(Width - RestoredWindowWidth) > 0.5d || Math.Abs(Height - RestoredWindowHeight) > 0.5d))
+        if (sizeWillBeConstrained)
         {
             EnforceRestoredWindowSize();
         }
@@ -457,7 +555,15 @@ public partial class MainWindow : Window
                               Math.Abs(Width - bounds.Width) <= 0.5d &&
                               Math.Abs(Height - bounds.Height) <= 0.5d;
         if (alreadyAligned)
+        {
+            TraceFullScreenWindowState(
+                "FullScreenBoundsRecheckAligned",
+                new("target_left", Math.Round(bounds.Left, 1)),
+                new("target_top", Math.Round(bounds.Top, 1)),
+                new("target_width", Math.Round(bounds.Width, 1)),
+                new("target_height", Math.Round(bounds.Height, 1)));
             return;
+        }
 
         _suppressWindowConstraint = true;
         try
@@ -471,6 +577,13 @@ public partial class MainWindow : Window
         {
             _suppressWindowConstraint = false;
         }
+
+        TraceFullScreenWindowState(
+            "FullScreenBoundsReapplied",
+            new("target_left", Math.Round(bounds.Left, 1)),
+            new("target_top", Math.Round(bounds.Top, 1)),
+            new("target_width", Math.Round(bounds.Width, 1)),
+            new("target_height", Math.Round(bounds.Height, 1)));
     }
 
     private void EnforceRestoredWindowSize()

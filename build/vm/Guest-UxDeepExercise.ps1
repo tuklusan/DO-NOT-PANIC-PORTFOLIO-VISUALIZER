@@ -392,12 +392,102 @@ function Capture-Screen {
             Path = $resolvedPath
             FileName = $fileInfo.Name
             Length = $fileInfo.Length
+            VirtualScreen = Convert-RectangleForCaptureRecord -Rectangle $bounds
+            # Null bounds intentionally make app-window stasis analysis skip this pair.
+            DesktopWindowBounds = try { Get-DesktopWindowBoundsForCaptureRecord } catch { $null }
         }
         Add-Content -LiteralPath $script:screenCaptureManifestPath -Value ($captureRecord | ConvertTo-Json -Compress) -Encoding UTF8
     }
     catch {
         Write-Warning ("Screen capture manifest append failed for '{0}': {1}" -f $Path, $_.Exception.Message)
     }
+}
+
+function Get-CaptureRectangleProperty {
+    param(
+        [Parameter(Mandatory = $true)]$Object,
+        [Parameter(Mandatory = $true)][string[]]$Names
+    )
+
+    foreach ($name in $Names) {
+        $property = $Object.PSObject.Properties[$name]
+        if ($null -ne $property) {
+            return [double]$property.Value
+        }
+    }
+
+    return $null
+}
+
+function Convert-RectangleForCaptureRecord {
+    param($Rectangle)
+
+    if ($null -eq $Rectangle) {
+        return $null
+    }
+
+    try {
+        $x = Get-CaptureRectangleProperty -Object $Rectangle -Names @('X', 'Left')
+        $y = Get-CaptureRectangleProperty -Object $Rectangle -Names @('Y', 'Top')
+        $width = Get-CaptureRectangleProperty -Object $Rectangle -Names @('Width')
+        $height = Get-CaptureRectangleProperty -Object $Rectangle -Names @('Height')
+        if ($null -eq $x -or $null -eq $y -or $null -eq $width -or $null -eq $height) {
+            return $null
+        }
+        if ($width -le 0 -or $height -le 0) {
+            return $null
+        }
+
+        return [ordered]@{
+            X = [Math]::Round($x, 2)
+            Y = [Math]::Round($y, 2)
+            Width = [Math]::Round($width, 2)
+            Height = [Math]::Round($height, 2)
+        }
+    }
+    catch {
+        return $null
+    }
+}
+
+function Get-DesktopWindowBoundsForCaptureRecord {
+    try {
+        $desktop = @(Get-Process -Name 'PortfolioSaver.Desktop' -ErrorAction SilentlyContinue |
+                Where-Object { -not $_.HasExited } |
+                Sort-Object -Property StartTime -Descending |
+                Select-Object -First 1)
+        if ($desktop.Count -eq 0) {
+            return $null
+        }
+
+        $process = $desktop[0]
+        if ($process.MainWindowHandle -ne [IntPtr]::Zero) {
+            try {
+                $window = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)
+                if ($null -ne $window) {
+                    return Convert-RectangleForCaptureRecord -Rectangle $window.Current.BoundingRectangle
+                }
+            }
+            catch {}
+        }
+
+        $processCondition = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::ProcessIdProperty,
+            $process.Id)
+        $automationIdCondition = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+            'DesktopMainWindow')
+        $condition = New-Object System.Windows.Automation.AndCondition($processCondition, $automationIdCondition)
+        $window = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst(
+            [System.Windows.Automation.TreeScope]::Children,
+            $condition)
+        if ($null -ne $window) {
+            return Convert-RectangleForCaptureRecord -Rectangle $window.Current.BoundingRectangle
+        }
+    }
+    catch {}
+
+    return $null
 }
 
 function Apply-HarnessSettingsOverrides {

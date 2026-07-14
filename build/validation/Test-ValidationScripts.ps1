@@ -123,6 +123,47 @@ if ($innoText -match 'PrivilegesRequiredOverridesAllowed') {
     throw 'Inno installer must not allow non-admin privilege override.'
 }
 
+function New-SmokePng {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    Add-Type -AssemblyName System.Drawing
+    $bitmap = New-Object System.Drawing.Bitmap 320, 180
+    $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+    $font = New-Object System.Drawing.Font 'Arial', 14
+    $brush = [System.Drawing.Brushes]::White
+    try {
+        $graphics.Clear([System.Drawing.Color]::FromArgb(12, 28, 45))
+        $graphics.DrawString($Label, $font, $brush, 24, 72)
+        $bitmap.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
+    }
+    finally {
+        $font.Dispose()
+        $graphics.Dispose()
+        $bitmap.Dispose()
+    }
+}
+
+function Write-SmokeScreenCaptureRecord {
+    param(
+        [Parameter(Mandatory = $true)][string]$RunDirectory,
+        [Parameter(Mandatory = $true)][string]$FileName,
+        [Parameter(Mandatory = $true)][string]$CapturedAt
+    )
+
+    $record = [ordered]@{
+        CapturedAt = $CapturedAt
+        Path = Join-Path $RunDirectory $FileName
+        FileName = $FileName
+        Length = (Get-Item -LiteralPath (Join-Path $RunDirectory $FileName)).Length
+        VirtualScreen = [ordered]@{ X = 0; Y = 0; Width = 320; Height = 180 }
+        DesktopWindowBounds = [ordered]@{ X = 10; Y = 10; Width = 300; Height = 150 }
+    }
+    Add-Content -LiteralPath (Join-Path $RunDirectory 'screen-captures.jsonl') -Value ($record | ConvertTo-Json -Compress) -Encoding UTF8
+}
+
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ('dnppv-validation-smoke-' + [Guid]::NewGuid().ToString('N'))
 try {
     $singleRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000000'
@@ -522,6 +563,38 @@ try {
     $missingCaptureCountReport = Get-Content -Raw -LiteralPath $missingCaptureCountAnalysisPath | ConvertFrom-Json
     $missingCaptureCountFinding = @($missingCaptureCountReport.findings | Where-Object { $_.code -eq 'capture-loop-starved' })
     if ($missingCaptureCountFinding.Count -ne 0) { throw 'Analyze-VisualValidationArtifacts flagged capture-loop starvation when DesktopShots was absent.' }
+
+    $stasisRun = Join-Path $tempRoot 'ux-deep-ssh-20990101-000020'
+    New-Item -ItemType Directory -Force -Path $stasisRun | Out-Null
+    @{
+        ResultName = 'ux-deep-ssh-20990101-000020'
+        ConfigPhaseStatus = 'Completed'
+        DesktopPhaseStatus = 'Completed'
+        FullScreenToggleStatus = 'Completed'
+        DesktopShots = 4
+        TargetCaptureFrames = 4
+        Notes = @()
+    } |
+        ConvertTo-Json |
+        Set-Content -LiteralPath (Join-Path $stasisRun 'ux-deep-summary.json') -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $stasisRun 'screen-captures.jsonl') -Value '' -Encoding UTF8
+    for ($captureIndex = 1; $captureIndex -le 4; $captureIndex++) {
+        $fileName = 'desktop-{0:D3}.png' -f $captureIndex
+        New-SmokePng -Path (Join-Path $stasisRun $fileName) -Label 'STATIC'
+        Write-SmokeScreenCaptureRecord -RunDirectory $stasisRun -FileName $fileName -CapturedAt ('2099-01-01T00:00:{0:D2}Z' -f $captureIndex)
+    }
+    @(
+        '2099-01-01T00:00:01Z phase=capture capture_index=1 latest_applied_quote_symbol=SPY latest_freshness=LIVE quote feed',
+        '2099-01-01T00:00:02Z phase=capture capture_index=2 latest_applied_quote_symbol=QQQ latest_freshness=LIVE quote feed',
+        '2099-01-01T00:00:03Z phase=capture capture_index=3 latest_applied_quote_symbol=DIA latest_freshness=LIVE quote feed',
+        '2099-01-01T00:00:04Z phase=capture capture_index=4 latest_applied_quote_symbol=IWM latest_freshness=LIVE quote feed'
+    ) | Set-Content -LiteralPath (Join-Path $stasisRun 'runtime-freshness-events.log') -Encoding UTF8
+    $stasisAnalysisPath = Join-Path $tempRoot 'stasis-analysis.json'
+    $stasisOutput = & (Join-Path $repoRoot 'build\validation\Analyze-VisualValidationArtifacts.ps1') -ResultRoot $stasisRun -OutputPath $stasisAnalysisPath -MinimumScreenshots 0 -MinimumStaticPairs 3 -SkipDeepSeekArtifactReview
+    if (-not ($stasisOutput -match 'ANALYSIS_REPORT=')) { throw 'Stasis analysis did not emit ANALYSIS_REPORT.' }
+    $stasisReport = Get-Content -Raw -LiteralPath $stasisAnalysisPath | ConvertFrom-Json
+    $stasisFinding = @($stasisReport.findings | Where-Object { $_.code -eq 'rendered-surface-stasis' })
+    if ($stasisFinding.Count -ne 1) { throw 'Analyze-VisualValidationArtifacts did not flag exactly one rendered-surface stasis segment.' }
 
     $auditFixture = Join-Path $tempRoot 'audit-state.json'
     @{

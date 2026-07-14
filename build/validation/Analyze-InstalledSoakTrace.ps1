@@ -61,8 +61,10 @@ $desktopLines = @(Read-CircularTraceText -Path (Join-Path $traceDir 'trace.circu
 $yfinanceLines = @(Read-CircularTraceText -Path (Join-Path $traceDir 'yfinance.circular.log'))
 $allLines = @($desktopLines + $yfinanceLines)
 $summaryPath = Join-Path $root 'summary.json'
-$summary = if (Test-Path -LiteralPath $summaryPath) { Get-Content -Raw -LiteralPath $summaryPath | ConvertFrom-Json } else { $null }
+$summaryPath = if (Test-Path -LiteralPath $summaryPath) { $summaryPath } else { Join-Path $root 'ux-deep-summary.json' }
+$summary = if (Test-Path -LiteralPath $summaryPath) { Get-Content -Raw -LiteralPath $summaryPath | ConvertFrom-Json } else { [pscustomobject]@{} }
 $slowScene = @($desktopLines | Where-Object { $_ -match 'event=SceneSchedulerActionSlow' })
+$renderSurfaceRecovery = @($desktopLines | Where-Object { $_ -match 'event=RenderSurfaceRecoveryRequested' })
 $transportFailures = @(Select-StrictTransportFailure -Lines $yfinanceLines)
 $http429Evidence = @(Select-Http429Evidence -Lines $allLines)
 
@@ -77,6 +79,9 @@ $report = [ordered]@{
         sceneSchedulerActionSlow = Measure-LineCount $slowScene
         strictTransportFailure = Measure-LineCount $transportFailures
         runtimeQuoteApplied = @($desktopLines | Where-Object { $_ -match 'event=RuntimeQuoteApplied(?!\w)' }).Count
+        renderSurfaceHeartbeat = @($desktopLines | Where-Object { $_ -match 'event=RenderSurfaceHeartbeat(?!\w)' }).Count
+        renderSurfaceRecoveryRequested = Measure-LineCount $renderSurfaceRecovery
+        renderSurfaceHeartbeatRecovered = @($desktopLines | Where-Object { $_ -match 'event=RenderSurfaceHeartbeatRecovered' }).Count
         worldMarketsFetchComplete = @($desktopLines | Where-Object { $_ -match 'event=WorldMarketsFetchComplete' }).Count
         worldMarketsUiPatchComplete = @($desktopLines | Where-Object { $_ -match 'event=WorldMarketsUiPatchComplete' }).Count
         backgroundRotationChosen = @($desktopLines | Where-Object { $_ -match 'event=BackgroundRotationChosen' }).Count
@@ -87,6 +92,7 @@ $report = [ordered]@{
         slowScene = @($slowScene | Select-Object -First 20)
         strictTransportFailure = @($transportFailures | Select-Object -First 20)
         http429 = @($http429Evidence | Select-Object -First 20)
+        renderSurfaceRecovery = @($renderSurfaceRecovery | Select-Object -First 20)
         runtimeErrors = @($allLines | Where-Object { $_ -match '(?i)(DispatcherUnhandledException|UnhandledException|Fatal|crash|\bERROR\b)' } | Select-Object -First 20)
     }
 }
