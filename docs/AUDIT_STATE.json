@@ -12080,19 +12080,23 @@
       "tracking_number": "CR-263",
       "priority": 2,
       "area": "market_data_runtime",
-      "title": "Normalize malformed POSTPOST market_state values in YFinance quote observations",
-      "status": "open",
+      "title": "Investigate POSTPOST market_state values in YFinance quote observations",
+      "status": "closed",
       "source": "installed_release_trace_monitor_2026_07_14",
       "severity": "medium",
       "evidence": [
         "Installed-release monitor artifact bundle build/validation/artifacts/installed-monitor-20260714-195154 captured fresh local, VM, and remote-laptop traces during the 2026-07-14T23:29:41Z to 2026-07-14T23:52:23Z heartbeat window.",
-        "Deterministic analysis build/validation/artifacts/installed-monitor-20260714-195154/deterministic-analysis.json confirmed repeated malformed market_state=POSTPOST QuoteResponseObserved lines in all three YFinance.NET.Server logs during that fresh window: local=118, vm=119, remote-laptop=117.",
-        "Sample cross-platform evidence is written to build/validation/artifacts/installed-monitor-20260714-195154/interesting-lines.txt, including recent ^VIX, ^TNX, ^IRX, ^GSPTSE, and ^BVSP QuoteResponseObserved entries carrying market_state=POSTPOST."
+        "Initial deterministic analysis build/validation/artifacts/installed-monitor-20260714-195154/deterministic-analysis.json classified repeated market_state=POSTPOST QuoteResponseObserved lines as malformed across all three YFinance.NET.Server logs during that fresh window: local=118, vm=119, remote-laptop=117.",
+        "Sample cross-platform evidence is written to build/validation/artifacts/installed-monitor-20260714-195154/interesting-lines.txt, including recent ^VIX, ^TNX, ^IRX, ^GSPTSE, and ^BVSP QuoteResponseObserved entries carrying market_state=POSTPOST.",
+        "Follow-up artifact build/validation/artifacts/installed-monitor-20260715-001203/market-state-distribution.json showed only PREPRE, REGULAR, and POSTPOST on all three platforms, with market-state totals exactly matching quote-observation totals.",
+        "src/PortfolioSaver.Data/Services/YFinanceSymbolMapper.cs has intentionally mapped PREPRE to MarketSession.PreMarket and POSTPOST to MarketSession.AfterHours since commit 3c427f2 on 2026-05-20.",
+        "Corrected deterministic analysis build/validation/artifacts/installed-monitor-20260715-001203/deterministic-analysis.json and DeepSeek second opinion build/validation/artifacts/installed-monitor-20260715-001203/deepseek-artifact-review-final.md agree that CR-263 should close as invalid/non-bug."
       ],
       "notes": [
-        "This is a trace-confirmed cross-platform server/runtime defect, not a screenshot-only evidence gap.",
-        "All six monitored PortfolioSaver.Desktop and YFinance.NET.Server processes remained alive with unchanged PIDs versus the previous heartbeat, and no recent Application/.NET error events accompanied the malformed state strings.",
-        "This ticket was created from the monitoring lane only; no product fix was attempted in this lane."
+        "The original malformed-state interpretation was incorrect: PREPRE and POSTPOST are intentional upstream market-state vocabulary values, not duplicated strings produced by this application.",
+        "All six monitored PortfolioSaver.Desktop and YFinance.NET.Server processes remained alive with unchanged PIDs versus the previous heartbeat, and no recent Application/.NET error events accompanied the observed state strings.",
+        "The product already normalizes these upstream values to its internal PreMarket and AfterHours sessions, so no runtime, server, parser, or UI fix is required.",
+        "Closed on 2026-07-15 as invalid/non-bug after cross-platform trace distribution, repository history, deterministic re-analysis, and DeepSeek artifact second opinion corrected the initial monitoring interpretation."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
