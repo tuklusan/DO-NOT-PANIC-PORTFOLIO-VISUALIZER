@@ -68,6 +68,7 @@ function Get-NumericProperty {
 
 function Get-DesktopProcess {
     param($Processes)
+    if ($null -eq $Processes) { return $null }
     $matches = @($Processes | Where-Object ProcessName -eq 'PortfolioSaver.Desktop' | Select-Object -First 1)
     if ($matches.Count -eq 0) { return $null }
     return $matches[0]
@@ -190,6 +191,7 @@ function Invoke-SelfTest {
         $sustained = Get-ResourceHealth local $low $low $process $previousProcess 0.5 $false
         $missingResult = Get-ResourceHealth local $missing $healthy $process $previousProcess 0.5 $false
         $noProcessResult = Get-ResourceHealth local $healthy $healthy @() @() 0.5 $false
+        if ($null -ne (Get-DesktopProcess $null)) { throw 'Null process input must return no desktop process.' }
         $vmCpu = [pscustomobject]@{ FreePhysicalMemoryBytes = 4GB; CpuLoadPercentage = 100; SystemDrive = [pscustomobject]@{ FreeSpace = 20GB }; TopProcessesByPrivateBytes = $otherTop }
         $vmBaseline = Get-ResourceHealth vm $vmCpu $healthy $process $previousProcess 0.5 $false
         $shortWindow = Get-ResourceHealth local $low $healthy $process $previousProcess (1.0 / 3600.0) $false
