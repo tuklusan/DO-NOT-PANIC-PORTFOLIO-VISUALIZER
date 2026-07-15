@@ -68,7 +68,9 @@ function Get-NumericProperty {
 
 function Get-DesktopProcess {
     param($Processes)
-    return @($Processes | Where-Object ProcessName -eq 'PortfolioSaver.Desktop' | Select-Object -First 1)[0]
+    $matches = @($Processes | Where-Object ProcessName -eq 'PortfolioSaver.Desktop' | Select-Object -First 1)
+    if ($matches.Count -eq 0) { return $null }
+    return $matches[0]
 }
 
 function Get-ResourceHealth {
@@ -187,6 +189,7 @@ function Invoke-SelfTest {
         $recovery = Get-ResourceHealth local $healthy $low $process $previousProcess 0.5 $false
         $sustained = Get-ResourceHealth local $low $low $process $previousProcess 0.5 $false
         $missingResult = Get-ResourceHealth local $missing $healthy $process $previousProcess 0.5 $false
+        $noProcessResult = Get-ResourceHealth local $healthy $healthy @() @() 0.5 $false
         $vmCpu = [pscustomobject]@{ FreePhysicalMemoryBytes = 4GB; CpuLoadPercentage = 100; SystemDrive = [pscustomobject]@{ FreeSpace = 20GB }; TopProcessesByPrivateBytes = $otherTop }
         $vmBaseline = Get-ResourceHealth vm $vmCpu $healthy $process $previousProcess 0.5 $false
         $shortWindow = Get-ResourceHealth local $low $healthy $process $previousProcess (1.0 / 3600.0) $false
@@ -194,6 +197,7 @@ function Invoke-SelfTest {
         if ($recovery.classification -ne 'recovered') { throw 'Recovery classification failed.' }
         if ($sustained.classification -ne 'sustained-environmental-pressure') { throw 'Sustained pressure classification failed.' }
         if ($missingResult.classification -ne 'evidence-failure') { throw 'Missing sample classification failed.' }
+        if ($noProcessResult.productPrivateMemoryBytes -ne $null -or $noProcessResult.productResponding -ne $null) { throw 'Missing product process classification failed.' }
         if ($vmBaseline.classification -ne 'accepted-constrained-vm-baseline') { throw 'Constrained VM baseline classification failed.' }
         if ($shortWindow.trendWindowQualified -or $null -ne $shortWindow.diskRateGbPerHour) { throw 'Short trend windows must not produce rates.' }
         if ($crossing.productIsTopPrivateConsumer) { throw 'Product-versus-host attribution failed.' }
