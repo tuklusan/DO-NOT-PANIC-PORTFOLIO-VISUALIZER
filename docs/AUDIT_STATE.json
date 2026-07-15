@@ -12023,7 +12023,7 @@
       "priority": 1,
       "area": "desktop_runtime_reliability",
       "title": "Investigate VM installed-release AppHang after quote-failure/offline cascade",
-      "status": "open",
+      "status": "closed",
       "source": "installed_release_trace_monitor_2026_07_14",
       "severity": "high",
       "evidence": [
@@ -12049,6 +12049,11 @@
         "Capture screenshots or app-native scene evidence during any OFFLINE - showing last values period so UX state is visible, not inferred only from trace text.",
         "If a product defect is confirmed, fix the recovery path so repeated quote failures or abrupt YFinance transport closure cannot leave the WPF UI nonresponsive or require Windows to close the app.",
         "Prove the fix with local and VM installed-release monitoring artifacts, deterministic analysis, and mandatory DeepSeek artifact second opinion."
+      ],
+      "resolution": [
+        "Closed on 2026-07-15 as not reproducible after extended three-platform installed-release surveillance and a real multi-platform DNS/transport outage failed to reproduce the AppHang.",
+        "The outage exercised OFFLINE state, repeated quote failures, transport resets, and automatic LIVE recovery while all three product processes remained responsive. No product defect was isolated and no speculative runtime change was made.",
+        "The owner accepted the residual risk. Open a new ticket if the failure recurs, preserving fresh Windows hang/error events, process state, traces, and a dump when practical."
       ]
     },
     {
@@ -12057,7 +12062,7 @@
       "priority": 2,
       "area": "validation_harness",
       "title": "Add session-local visible-window and screenshot evidence to installed-release monitor",
-      "status": "open",
+      "status": "closed",
       "source": "installed_release_trace_monitor_2026_07_14",
       "severity": "medium",
       "evidence": [
@@ -12070,6 +12075,11 @@
         "This ticket is for monitor/harness evidence quality. It does not assert a confirmed product rendering failure.",
         "SSH/session-0 process inspection may be unable to observe session-1 top-level windows reliably; future checks should run from the logged-on interactive session or through the existing VM agent-style desktop bridge.",
         "The installed-release monitor should avoid treating process aliveness alone as sufficient proof for a visualizer."
+      ],
+      "resolution": [
+        "Closed on 2026-07-15 as superseded by the owner's trace-only installed-monitor policy.",
+        "The original screenshot and session-local visible-window requirements are intentionally withdrawn for unattended surveillance because the product may be minimized or behind unrelated work.",
+        "The supported analysis distinguishes the SSH/session-0 instrumentation blind spot: MainWindowHandle=0 is not treated as proof of a headless or failed product."
       ],
       "acceptance": [
         "Installed-release monitor wake-ups collect at least one session-local screenshot or app-native scene capture from local PC, VM, and remote laptop.",
@@ -12116,7 +12126,7 @@
       "priority": 2,
       "area": "validation_harness",
       "title": "Serialize empty installed-monitor Application event results as valid JSON",
-      "status": "open",
+      "status": "closed",
       "source": "installed_release_trace_monitor_2026_07_15",
       "severity": "medium",
       "evidence": [
@@ -12129,6 +12139,11 @@
         "This defect is distinct from CR-262, which tracks interactive-session window and visual evidence rather than Application event serialization.",
         "The current product instances remained alive and responsive with unchanged process IDs, continuous quote observations, and no broad trace failure signals during the affected interval.",
         "Do not infer absence of Application/.NET errors from a zero-byte artifact; deterministic analysis must distinguish a valid empty event array from missing, malformed, or unreadable evidence."
+      ],
+      "resolution": [
+        "Closed as fixed on 2026-07-15 by commits de4d4cb, c45827d, 15fd89a, fb9a5da, and d41345b.",
+        "Empty event-query results now serialize as valid JSON `[]`; non-empty and null cases retain array semantics; and missing, zero-byte, malformed, or unreadable evidence is reported as an evidence failure rather than zero events.",
+        "The validation smoke suite passed. Fresh three-platform bundle build/validation/artifacts/installed-monitor-closeout-3platform-20260715-121937 contains parseable `[]` event files and valid-empty classifications for local, VM, and remote laptop; mandatory DeepSeek code review and artifact second opinion completed."
       ],
       "acceptance": [
         "Installed-monitor collection writes valid JSON `[]` when an Application error query returns no matching events on local or remote platforms.",
@@ -12144,7 +12159,7 @@
       "priority": 2,
       "area": "validation_harness",
       "title": "Add host resource thresholds and trends to installed-release monitoring",
-      "status": "open",
+      "status": "closed",
       "source": "installed_release_trace_monitor_2026_07_15",
       "severity": "medium",
       "evidence": [
@@ -12160,6 +12175,12 @@
         "Closed CR-226 already accepts the visualizer's roughly one-core rendering profile on the constrained VM absent user-visible or trace degradation; resource alerts must distinguish that baseline from a worsening trend or correlated failure.",
         "Host-wide memory pressure should not automatically be attributed to PortfolioSaver.Desktop. Capture process deltas and top consumers so the analyzer can separate product growth from environmental contention.",
         "Threshold crossings should be visible in deterministic output even when the product remains alive, allowing the final adjudicator to classify them as environmental warnings, product-correlated anomalies, or accepted baselines."
+      ],
+      "resolution": [
+        "Closed as fixed on 2026-07-15 by commits de4d4cb, c45827d, 15fd89a, fb9a5da, and d41345b.",
+        "The supported analyzer now emits explicit threshold, trend, evidence-quality, recovery, accepted-baseline, and attribution classifications without assigning host pressure to the product absent product-correlated evidence.",
+        "The validation smoke suite covers threshold crossing, recovery, sustained pressure, missing samples, short trend windows, constrained-VM baseline, and product-versus-host attribution. Fresh three-platform bundle build/validation/artifacts/installed-monitor-closeout-3platform-20260715-121937 correctly classified local and VM pressure as environmental and the laptop as recovered/healthy; mandatory DeepSeek review agreed with that interpretation.",
+        "The local host's low-memory condition remains an environmental operational warning, not an open product CR."
       ],
       "acceptance": [
         "Installed-release heartbeat analysis emits explicit resource-health findings for configurable low-free-memory, high-CPU, and low-disk thresholds on local, VM, and remote-laptop targets, and emits an evidence warning when any expected resource sample is null or missing.",
