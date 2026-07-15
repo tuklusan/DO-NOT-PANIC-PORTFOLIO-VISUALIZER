@@ -156,7 +156,7 @@ foreach ($requiredSnippet in @(
 $analyzerText = Get-Content -Raw -LiteralPath $installedAnalyzer
 foreach ($requiredSnippet in @(
     "State = 'zero-byte'",
-    "classification = 'evidence-failure'",
+    "if (`$missing.Count -gt 0) { 'evidence-failure' }",
     "'accepted-constrained-vm-baseline'",
     'diskRateGbPerHour',
     'productPrivateRateMbPerHour',
