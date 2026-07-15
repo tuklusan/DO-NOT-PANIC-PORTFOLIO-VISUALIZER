@@ -51,6 +51,23 @@ function Write-JsonFile {
     [System.IO.File]::WriteAllText($Path, $json, [System.Text.UTF8Encoding]::new($false))
 }
 
+function Merge-TopProcessesIntoResourceSummary {
+    param(
+        [Parameter(Mandatory = $true)]$ResourceSummary,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][object[]]$TopProcesses
+    )
+
+    $merged = [ordered]@{}
+    if ($ResourceSummary -is [System.Collections.IDictionary]) {
+        foreach ($key in $ResourceSummary.Keys) { $merged[[string]$key] = $ResourceSummary[$key] }
+    }
+    else {
+        foreach ($property in $ResourceSummary.PSObject.Properties) { $merged[$property.Name] = $property.Value }
+    }
+    $merged['TopProcessesByPrivateBytes'] = @($TopProcesses)
+    return [pscustomobject]$merged
+}
+
 if ($SelfTest) {
     $selfTestRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('dnppv-monitor-collector-' + [guid]::NewGuid().ToString('N'))
     try {
@@ -69,6 +86,15 @@ if ($SelfTest) {
         }
         if ((Get-Content -Raw -LiteralPath $nullPath).Trim() -ne 'null') {
             throw 'Null values must serialize as valid JSON null.'
+        }
+        $mergedSummary = Merge-TopProcessesIntoResourceSummary -ResourceSummary ([ordered]@{ ComputerName = 'test'; CpuLoadPercentage = 10 }) -TopProcesses @()
+        if ($mergedSummary.ComputerName -ne 'test' -or @($mergedSummary.TopProcessesByPrivateBytes).Count -ne 0) {
+            throw 'Resource-summary merge did not preserve fields and an empty top-process array.'
+        }
+        $syntheticProcess = [pscustomobject]@{ ProcessName = 'PortfolioSaver.Desktop'; PrivateMemorySize64 = 12345 }
+        $nonEmptyMergedSummary = Merge-TopProcessesIntoResourceSummary -ResourceSummary ([pscustomobject]@{ ComputerName = 'test' }) -TopProcesses @($syntheticProcess)
+        if (@($nonEmptyMergedSummary.TopProcessesByPrivateBytes).Count -ne 1 -or $nonEmptyMergedSummary.TopProcessesByPrivateBytes[0].ProcessName -ne 'PortfolioSaver.Desktop') {
+            throw 'Resource-summary merge did not preserve a non-empty top-process array.'
         }
         Write-Output 'Collect-InstalledReleaseMonitor self-test passed.'
         return
@@ -151,6 +177,7 @@ function Get-ResourceSummary {
             CpuLoadPercentage = $cpu.LoadPercentage
             CpuName = $cpu.Name
             SystemDrive = $disk
+            # Keep the local schema identical to the merged remote summaries.
             TopProcessesByPrivateBytes = @(
                 Get-Process -ErrorAction SilentlyContinue |
                     Sort-Object PrivateMemorySize64 -Descending |
@@ -290,11 +317,6 @@ try {
         CpuLoadPercentage = $cpu.LoadPercentage
         CpuName = $cpu.Name
         SystemDrive = $disk
-        TopProcessesByPrivateBytes = @(
-            Get-Process -ErrorAction SilentlyContinue |
-                Sort-Object PrivateMemorySize64 -Descending |
-                Select-Object -First 10 ProcessName, Id, PrivateMemorySize64, WorkingSet64, CPU
-        )
     }
 }
 catch {
@@ -314,6 +336,15 @@ catch {
     applicationErrors = $events
     resourceSummary = $resourceSummary
 } | ConvertTo-Json -Depth 10 -Compress
+'@
+
+$remoteTopProcessesPayload = @'
+$top = @(
+    Get-Process -ErrorAction SilentlyContinue |
+        Sort-Object PrivateMemorySize64 -Descending |
+        Select-Object -First 10 ProcessName, Id, PrivateMemorySize64, WorkingSet64, CPU
+)
+ConvertTo-Json -InputObject $top -Depth 5 -Compress
 '@
 
 $localRoot = Join-Path $artifactRoot 'local'
@@ -339,6 +370,16 @@ if (-not $SkipVm) {
             $notes.Add('VM remote command returned no JSON data.')
         }
         else {
+            try {
+                $vmTopProcesses = @(Invoke-RemotePwshJson -SshSession $vmBundle.SshSession -Command $remoteTopProcessesPayload | Where-Object { $null -ne $_ })
+            }
+            catch {
+                $notes.Add("VM top-processes query failed: $($_.Exception.Message)")
+                $vmTopProcesses = @()
+            }
+            if ($vmTopProcesses.Count -eq 0) { $notes.Add('VM top-processes query returned an empty list.') }
+            $notes.Add('VM top-processes evidence is a bounded follow-up sample and may differ slightly from the primary process snapshot.')
+            $vmData.resourceSummary = Merge-TopProcessesIntoResourceSummary -ResourceSummary $vmData.resourceSummary -TopProcesses $vmTopProcesses
             $vmRoot = Join-Path $artifactRoot 'vm'
             Write-JsonFile -Path (Join-Path $vmRoot 'processes.json') -Object @($vmData.processes)
             Write-JsonFile -Path (Join-Path $vmRoot 'application-events-error.json') -Object @($vmData.applicationErrors)
@@ -372,6 +413,16 @@ if (-not $SkipRemoteLaptop) {
             $notes.Add('Remote-laptop command returned no JSON data.')
         }
         else {
+            try {
+                $remoteTopProcesses = @(Invoke-RemotePwshJson -SshSession $remoteSsh -Command $remoteTopProcessesPayload -ShellExecutable 'powershell' | Where-Object { $null -ne $_ })
+            }
+            catch {
+                $notes.Add("Remote-laptop top-processes query failed: $($_.Exception.Message)")
+                $remoteTopProcesses = @()
+            }
+            if ($remoteTopProcesses.Count -eq 0) { $notes.Add('Remote-laptop top-processes query returned an empty list.') }
+            $notes.Add('Remote-laptop top-processes evidence is a bounded follow-up sample and may differ slightly from the primary process snapshot.')
+            $remoteData.resourceSummary = Merge-TopProcessesIntoResourceSummary -ResourceSummary $remoteData.resourceSummary -TopProcesses $remoteTopProcesses
             $remoteRoot = Join-Path $artifactRoot 'remote-laptop'
             Write-JsonFile -Path (Join-Path $remoteRoot 'processes.json') -Object @($remoteData.processes)
             Write-JsonFile -Path (Join-Path $remoteRoot 'application-events-error.json') -Object @($remoteData.applicationErrors)
