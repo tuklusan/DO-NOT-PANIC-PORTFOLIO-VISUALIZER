@@ -12032,17 +12032,20 @@
         "VM Application Hang 1002 at 2026-07-14T17:36:38.746803Z reported: The program PortfolioSaver.Desktop.exe version 1.0.0.0 stopped interacting with Windows and was closed.",
         "VM trace for the affected pre-restart process PID 6928 stopped producing correlated product activity around 2026-07-14T17:35:25Z; no clean OnExit for PID 6928 was found before the hang event.",
         "Before the hang, VM trace showed repeated RuntimeQuoteRequestFailed and RuntimeQuoteRequestTimedOut events with data_freshness_text=OFFLINE - showing last values, plus a ClientReceiveLoopFailed warning at 2026-07-14T17:35:01Z: Cannot access a disposed object. Object name: System.Net.Sockets.NetworkStream.",
-        "Mandatory DeepSeek artifact second opinion build/validation/artifacts/installed-monitor-20260714-163840/deepseek-artifact-review.md agreed the VM hang/offline cascade is actionable and advised failing this monitor check unless follow-up proves the hang was purely user-triggered."
+        "Mandatory DeepSeek artifact second opinion build/validation/artifacts/installed-monitor-20260714-163840/deepseek-artifact-review.md agreed the VM hang/offline cascade is actionable and advised failing this monitor check unless follow-up proves the hang was purely user-triggered.",
+        "Real-world recovery bundle build/validation/artifacts/installed-monitor-20260715-074310 captured a simultaneous DNS outage for query1.finance.yahoo.com across local, VM, and remote-laptop instances. All three changed to OFFLINE - showing last values, produced 50/81/55 runtime quote failures, exercised transport resets, retained unchanged responsive process IDs, and returned automatically to LIVE with failure streak zero at 11:14:59Z to 11:15:09Z.",
+        "Quote-observation gaps during that outage varied by platform: local 85.566 seconds, VM 145.801 seconds, and remote laptop 123.856 seconds. Exact-interval scans found zero independent AppHang, unhandled, composition, device-loss, or fatal signals, and mandatory DeepSeek review build/validation/artifacts/installed-monitor-20260715-074310/deepseek-artifact-review.md classified DNS recovery and process stability as robust while recommending the timing variance be retained as CR-261 evidence."
       ],
       "notes": [
         "The current VM instance was restarted successfully and was alive/responding at collection time as PID 1680, so this ticket concerns the prior hung instance rather than the active restarted process.",
         "Local PC and remote laptop instances were alive/responding at collection time and did not show product Application Error/Application Hang events in the collected recent event logs.",
         "VM PowerToys AlwaysOnTop/FancyZones crashes also appeared in the same Application event window and should be treated as environmental noise unless correlation evidence later says otherwise.",
-        "This ticket was logged from the monitoring lane only; no fix attempt was made in that lane."
+        "This ticket was logged from the monitoring lane only; no fix attempt was made in that lane.",
+        "The 2026-07-15 shared DNS outage is positive recovery evidence and does not reproduce the prior VM AppHang. It narrows CR-261 toward the earlier disposed-stream/AppHang sequence or user-close interaction rather than ordinary upstream DNS loss."
       ],
       "acceptance": [
         "Reproduce or explain the VM AppHang/offline cascade under controlled conditions, including whether user close was causal or merely coincident with an already hung UI.",
-        "Exercise YFinance server interruption, socket disposal, and repeated quote timeout/cancellation paths while the installed desktop app is running in an interactive Windows session.",
+        "Exercise YFinance server interruption, socket disposal, and repeated quote timeout/cancellation paths while the installed desktop app is running in an interactive Windows session, and define an acceptable platform-independent recovery-time bound or explain expected retry-timing variance.",
         "Capture screenshots or app-native scene evidence during any OFFLINE - showing last values period so UX state is visible, not inferred only from trace text.",
         "If a product defect is confirmed, fix the recovery path so repeated quote failures or abrupt YFinance transport closure cannot leave the WPF UI nonresponsive or require Windows to close the app.",
         "Prove the fix with local and VM installed-release monitoring artifacts, deterministic analysis, and mandatory DeepSeek artifact second opinion."
