@@ -19,6 +19,8 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $scriptPaths = @(
     'build\validation\Add-AuditChangeRequest.ps1',
     'build\validation\Analyze-VisualValidationArtifacts.ps1',
+    'build\validation\Analyze-InstalledReleaseMonitor.ps1',
+    'build\validation\Collect-InstalledReleaseMonitor.ps1',
     'build\validation\Invoke-DeepSeekArtifactReview.ps1',
     'build\validation\Invoke-AutonomousVisualValidation.ps1',
     'build\vm\Invoke-VmBuildTest.ps1',
@@ -121,6 +123,48 @@ foreach ($requiredInnoSnippet in @(
 }
 if ($innoText -match 'PrivilegesRequiredOverridesAllowed') {
     throw 'Inno installer must not allow non-admin privilege override.'
+}
+
+$installedCollector = Join-Path $repoRoot 'build\validation\Collect-InstalledReleaseMonitor.ps1'
+$installedAnalyzer = Join-Path $repoRoot 'build\validation\Analyze-InstalledReleaseMonitor.ps1'
+try {
+    & $installedCollector -SelfTest
+}
+catch {
+    Write-Error "Collect-InstalledReleaseMonitor self-test FAILED: $($_.Exception.Message)"
+    throw
+}
+try {
+    & $installedAnalyzer -SelfTest
+}
+catch {
+    Write-Error "Analyze-InstalledReleaseMonitor self-test FAILED: $($_.Exception.Message)"
+    throw
+}
+
+$collectorText = Get-Content -Raw -LiteralPath $installedCollector
+foreach ($requiredSnippet in @(
+    'ConvertTo-Json -InputObject $Object',
+    'TopProcessesByPrivateBytes',
+    'RemoteLaptopCredential is required unless -SkipRemoteLaptop is used.'
+)) {
+    if ($collectorText.IndexOf($requiredSnippet, [StringComparison]::Ordinal) -lt 0) {
+        throw "Installed-release collector is missing required behavior: $requiredSnippet"
+    }
+}
+
+$analyzerText = Get-Content -Raw -LiteralPath $installedAnalyzer
+foreach ($requiredSnippet in @(
+    "State = 'zero-byte'",
+    "classification = 'evidence-failure'",
+    "'accepted-constrained-vm-baseline'",
+    'diskRateGbPerHour',
+    'productPrivateRateMbPerHour',
+    'productIsTopPrivateConsumer'
+)) {
+    if ($analyzerText.IndexOf($requiredSnippet, [StringComparison]::Ordinal) -lt 0) {
+        throw "Installed-release analyzer is missing required behavior: $requiredSnippet"
+    }
 }
 
 function New-SmokePng {
