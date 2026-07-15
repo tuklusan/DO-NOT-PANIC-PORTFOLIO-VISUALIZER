@@ -12150,6 +12150,7 @@
         "Mandatory DeepSeek artifact second opinion build/validation/artifacts/installed-monitor-20260715-044236/deepseek-artifact-review.md classified the local memory and VM CPU observations as material system-level risks that the deterministic analyzer did not classify.",
         "A post-heartbeat local top-private-memory snapshot in build/validation/artifacts/installed-monitor-20260715-044236/local-top-private-memory.txt shows memory pressure distributed across DWM, browsers, security tooling, development applications, and PortfolioSaver.Desktop; the product was not the dominant consumer and its private memory fell about 55 MiB during the interval.",
         "Follow-up bundle build/validation/artifacts/installed-monitor-20260715-051238 recorded CpuLoadPercentage=null for the remote laptop while other resource fields remained populated; the deterministic analyzer must classify missing resource samples instead of silently presenting an incomplete row.",
+        "Bundle build/validation/artifacts/installed-monitor-20260715-064306 recorded local C: free space falling from about 24.8 GiB to 19.5 GiB in one 30-minute interval, an approximately 5.3 GiB loss. Monitoring artifacts are stored on D:, so their roughly 192 MiB per heartbeat cannot explain the C: change; disk rate-of-change requires explicit classification and attribution evidence.",
         "All six product/server processes remained responsive with unchanged PIDs, quote cadence stayed continuous, and broad plus expanded scans of all six full circular traces found no warning, exception, hang, transport, composition, device-loss, or fatal signal. This ticket concerns monitor risk classification, not a confirmed product leak or CPU regression."
       ],
       "notes": [
@@ -12159,7 +12160,7 @@
       ],
       "acceptance": [
         "Installed-release heartbeat analysis emits explicit resource-health findings for configurable low-free-memory, high-CPU, and low-disk thresholds on local, VM, and remote-laptop targets, and emits an evidence warning when any expected resource sample is null or missing.",
-        "Artifacts include cross-heartbeat system-resource trends plus per-process CPU and private-memory deltas, with top-consumer evidence when a threshold is crossed.",
+        "Artifacts include cross-heartbeat system-resource trends plus per-process CPU and private-memory deltas, disk free-space deltas and GiB-per-hour rates, and top-consumer evidence when a threshold or rate threshold is crossed.",
         "The analyzer distinguishes isolated point samples and accepted constrained-VM baselines from sustained or worsening pressure correlated with cadence, responsiveness, trace, or crash evidence.",
         "Automated harness tests cover threshold crossing, recovery, sustained pressure, and product-versus-host attribution scenarios.",
         "The mandatory DeepSeek code-review gate passes before validation, and a subsequent three-platform heartbeat demonstrates deterministic resource classification plus mandatory artifact second opinion."
