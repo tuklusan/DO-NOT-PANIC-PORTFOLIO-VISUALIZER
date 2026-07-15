@@ -12134,6 +12134,35 @@
         "Automated harness coverage proves both empty and non-empty event serialization cases.",
         "The mandatory DeepSeek code-review gate passes before validation of the harness change, and a subsequent three-platform heartbeat produces parseable event artifacts and completes the mandatory artifact second-opinion gate."
       ]
+    },
+    {
+      "id": "CR-265",
+      "tracking_number": "CR-265",
+      "priority": 2,
+      "area": "validation_harness",
+      "title": "Add host resource thresholds and trends to installed-release monitoring",
+      "status": "open",
+      "source": "installed_release_trace_monitor_2026_07_15",
+      "severity": "medium",
+      "evidence": [
+        "Heartbeat bundle build/validation/artifacts/installed-monitor-20260715-044236 recorded only 361,504,768 bytes (about 345 MiB, 2.1% of total) free physical memory on the local PC while the VM resource point sample reached 100% CPU.",
+        "Earlier bundles show the condition is recurrent rather than a single malformed sample: local free memory was about 442 MiB in installed-monitor-20260715-021205 and about 451 MiB in installed-monitor-20260715-024232; VM CPU also sampled 100% in installed-monitor-20260714-231204, installed-monitor-20260714-234204, and installed-monitor-20260715-024232.",
+        "Mandatory DeepSeek artifact second opinion build/validation/artifacts/installed-monitor-20260715-044236/deepseek-artifact-review.md classified the local memory and VM CPU observations as material system-level risks that the deterministic analyzer did not classify.",
+        "A post-heartbeat local top-private-memory snapshot in build/validation/artifacts/installed-monitor-20260715-044236/local-top-private-memory.txt shows memory pressure distributed across DWM, browsers, security tooling, development applications, and PortfolioSaver.Desktop; the product was not the dominant consumer and its private memory fell about 55 MiB during the interval.",
+        "All six product/server processes remained responsive with unchanged PIDs, quote cadence stayed continuous, and broad plus expanded scans of all six full circular traces found no warning, exception, hang, transport, composition, device-loss, or fatal signal. This ticket concerns monitor risk classification, not a confirmed product leak or CPU regression."
+      ],
+      "notes": [
+        "Closed CR-226 already accepts the visualizer's roughly one-core rendering profile on the constrained VM absent user-visible or trace degradation; resource alerts must distinguish that baseline from a worsening trend or correlated failure.",
+        "Host-wide memory pressure should not automatically be attributed to PortfolioSaver.Desktop. Capture process deltas and top consumers so the analyzer can separate product growth from environmental contention.",
+        "Threshold crossings should be visible in deterministic output even when the product remains alive, allowing the final adjudicator to classify them as environmental warnings, product-correlated anomalies, or accepted baselines."
+      ],
+      "acceptance": [
+        "Installed-release heartbeat analysis emits explicit resource-health findings for configurable low-free-memory, high-CPU, and low-disk thresholds on local, VM, and remote-laptop targets.",
+        "Artifacts include cross-heartbeat system-resource trends plus per-process CPU and private-memory deltas, with top-consumer evidence when a threshold is crossed.",
+        "The analyzer distinguishes isolated point samples and accepted constrained-VM baselines from sustained or worsening pressure correlated with cadence, responsiveness, trace, or crash evidence.",
+        "Automated harness tests cover threshold crossing, recovery, sustained pressure, and product-versus-host attribution scenarios.",
+        "The mandatory DeepSeek code-review gate passes before validation, and a subsequent three-platform heartbeat demonstrates deterministic resource classification plus mandatory artifact second opinion."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
