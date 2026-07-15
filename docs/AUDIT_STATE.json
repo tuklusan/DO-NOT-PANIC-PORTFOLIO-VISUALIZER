@@ -12106,6 +12106,34 @@
         "VM validation passes when the change is UI/runtime/harness-visible.",
         "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ]
+    },
+    {
+      "id": "CR-264",
+      "tracking_number": "CR-264",
+      "priority": 2,
+      "area": "validation_harness",
+      "title": "Serialize empty installed-monitor Application event results as valid JSON",
+      "status": "open",
+      "source": "installed_release_trace_monitor_2026_07_15",
+      "severity": "medium",
+      "evidence": [
+        "Heartbeat artifact bundle build/validation/artifacts/installed-monitor-20260715-014209 contains zero-byte application-events-error.json files for the local PC, VM 192.168.56.102, and remote laptop 192.168.4.35.",
+        "Mandatory DeepSeek artifact second opinion build/validation/artifacts/installed-monitor-20260715-014209/deepseek-artifact-review.md identified that the empty files cannot support the deterministic statement that no recent Application/.NET errors were captured.",
+        "The ignored heartbeat collector build/validation/artifacts/_temp/Collect-InstalledMonitorHeartbeat.ps1 passes empty event arrays through Write-JsonFile, where `$Object | ConvertTo-Json` enumerates an empty array into no pipeline output and WriteAllText consequently creates a zero-byte file instead of valid JSON `[]`.",
+        "An expanded timestamp-bounded scan of all six 32 MiB product/server circular traces in the same heartbeat found zero OutOfMemory, Win32Exception, TransportError, DispatcherUnhandledException, UnhandledException, AppHang, AllHostsFailed, access-violation, composition, render-thread, device-removed, or device-reset signals; this ticket concerns monitor evidence integrity rather than a confirmed product failure."
+      ],
+      "notes": [
+        "This defect is distinct from CR-262, which tracks interactive-session window and visual evidence rather than Application event serialization.",
+        "The current product instances remained alive and responsive with unchanged process IDs, continuous quote observations, and no broad trace failure signals during the affected interval.",
+        "Do not infer absence of Application/.NET errors from a zero-byte artifact; deterministic analysis must distinguish a valid empty event array from missing, malformed, or unreadable evidence."
+      ],
+      "acceptance": [
+        "Installed-monitor collection writes valid JSON `[]` when an Application error query returns no matching events on local or remote platforms.",
+        "Non-empty Application error results remain valid JSON arrays with the expected event fields on local, VM, and remote-laptop collection paths.",
+        "The analyzer reports missing, zero-byte, malformed, or unreadable event artifacts as evidence failures rather than as zero events.",
+        "Automated harness coverage proves both empty and non-empty event serialization cases.",
+        "The mandatory DeepSeek code-review gate passes before validation of the harness change, and a subsequent three-platform heartbeat produces parseable event artifacts and completes the mandatory artifact second-opinion gate."
+      ]
     }
   ],
   "remaining_validation_gaps": [],
