@@ -144,8 +144,18 @@
       "sha256": "651ABC11B9DF0959C50EB87420B2A6F489A6B61A9C5B8FB69AB7E386ADF8CAD7"
     },
     "installed_vm_soaks": [
-      { "run": "installed-soak-20260712-074029", "duration_minutes": 120, "result": "clean", "findings": 0 },
-      { "run": "installed-soak-20260712-100642", "duration_minutes": 120, "result": "clean", "findings": 0 }
+      {
+        "run": "installed-soak-20260712-074029",
+        "duration_minutes": 120,
+        "result": "clean",
+        "findings": 0
+      },
+      {
+        "run": "installed-soak-20260712-100642",
+        "duration_minutes": 120,
+        "result": "clean",
+        "findings": 0
+      }
     ],
     "evidence_summary": [
       "Both consecutive installed-app runs completed their full two-hour duration without fatal, error, or warning trace events requiring product action.",
@@ -12063,6 +12073,34 @@
         "Installed-release monitor wake-ups collect session-local visible-window evidence for PortfolioSaver.Desktop on VM and remote laptop using a method that can observe the logged-on desktop session.",
         "Analysis distinguishes product headless/rendering defects from monitor instrumentation blind spots when MainWindowHandle is zero but app trace reports valid HWND/render heartbeats.",
         "DeepSeek artifact-review packets include the screenshot inventory and window-evidence summary so advisory review can assess visual confidence."
+      ]
+    },
+    {
+      "id": "CR-263",
+      "tracking_number": "CR-263",
+      "priority": 2,
+      "area": "market_data_runtime",
+      "title": "Normalize malformed POSTPOST market_state values in YFinance quote observations",
+      "status": "open",
+      "source": "installed_release_trace_monitor_2026_07_14",
+      "severity": "medium",
+      "evidence": [
+        "Installed-release monitor artifact bundle build/validation/artifacts/installed-monitor-20260714-195154 captured fresh local, VM, and remote-laptop traces during the 2026-07-14T23:29:41Z to 2026-07-14T23:52:23Z heartbeat window.",
+        "Deterministic analysis build/validation/artifacts/installed-monitor-20260714-195154/deterministic-analysis.json confirmed repeated malformed market_state=POSTPOST QuoteResponseObserved lines in all three YFinance.NET.Server logs during that fresh window: local=118, vm=119, remote-laptop=117.",
+        "Sample cross-platform evidence is written to build/validation/artifacts/installed-monitor-20260714-195154/interesting-lines.txt, including recent ^VIX, ^TNX, ^IRX, ^GSPTSE, and ^BVSP QuoteResponseObserved entries carrying market_state=POSTPOST."
+      ],
+      "notes": [
+        "This is a trace-confirmed cross-platform server/runtime defect, not a screenshot-only evidence gap.",
+        "All six monitored PortfolioSaver.Desktop and YFinance.NET.Server processes remained alive with unchanged PIDs versus the previous heartbeat, and no recent Application/.NET error events accompanied the malformed state strings.",
+        "This ticket was created from the monitoring lane only; no product fix was attempted in this lane."
+      ],
+      "acceptance": [
+        "Root cause is identified from traces, screenshots, or code inspection.",
+        "A minimal product or harness fix is implemented without destabilizing the current runtime flow.",
+        "DeepSeek code review gate reports no blocking findings for code changes.",
+        "Local build/test validation passes when the change affects code.",
+        "VM validation passes when the change is UI/runtime/harness-visible.",
+        "Ticket is marked resolved/closed in docs/AUDIT_STATE.json with evidence."
       ]
     }
   ],
