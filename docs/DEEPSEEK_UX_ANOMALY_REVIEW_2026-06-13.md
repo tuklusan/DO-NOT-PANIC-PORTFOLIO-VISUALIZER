@@ -20,7 +20,7 @@ Date: 2026-06-13
 Scope: CR-064 through CR-085 degraded/anomalous-situation validation tickets
 Outcome: Additional UX-specific validation tickets CR-086 through CR-091 were created.
 
-## Codex Scan Result
+## Automation Scan Result
 
 CR-064 through CR-085 already included broad user-visible behavior requirements such as expected user-visible behavior, UI responsiveness, screenshots/VM validation, stale/fresh truthfulness, no blank scenes, no clipping/layout runaway, and config closeability. However, the suite did not fully separate user-experience semantics from functional resilience. DeepSeek was asked to identify missing UX checks.
 

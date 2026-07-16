@@ -24,7 +24,7 @@ CR-064 establishes the deterministic fault-injection foundation for degraded-mod
 - The VM network path remains available to the harness.
 - YFinance.NET server responses are delayed or failed at the protocol boundary.
 - All injected conditions are traceable in both harness artifacts and YFinance circular traces.
-- DeepSeek artifact review remains advisory; Codex/project ownership makes the final pass/fail and CR-generation calls.
+- DeepSeek artifact review remains advisory; project ownership makes the final pass/fail and CR-generation calls.
 
 ## Supported Profiles
 

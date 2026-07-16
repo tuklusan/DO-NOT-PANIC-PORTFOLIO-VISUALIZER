@@ -26,23 +26,23 @@ This advisory report records a VirusTotal URL scan for the public GitHub Release
 | GitHub release | https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER/releases/tag/v1.0 |
 | Installer asset | DoNotPanicPortfolioVisualizerSetup-1.0.exe |
 | Installer URL | https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER/releases/download/v1.0/DoNotPanicPortfolioVisualizerSetup-1.0.exe |
-| GitHub asset SHA-256 | f035c1810903b92b98243d6071975bb99d35981a6208d61e9ffab1384f6ecd3e |
-| GitHub asset size | 153456308 bytes |
-| Report generated | 2026-07-13 09:37:46 -04:00 |
+| GitHub asset SHA-256 | be8c6cbccd07c1a024d3a12188585fdc6b1bf9a23f8027139fa0a3c0a8737886 |
+| GitHub asset size | 153477703 bytes |
+| Report generated | 2026-07-14 12:48:06 -04:00 |
 
 ## VirusTotal
 
 | Field | Value |
 | --- | --- |
 | Submission type | Public URL scan |
-| Analysis ID | u-d2979de7678a5a9d885d0679cb08d515746ecc70b2e28d531ff3547a2dc2176c-c4ec3004 |
+| Analysis ID | u-d2979de7678a5a9d885d0679cb08d515746ecc70b2e28d531ff3547a2dc2176c-f6fdd8f2 |
 | Analysis status | completed |
 | Completion note | VirusTotal analysis completed before this report was generated. |
 | URL object ID | aHR0cHM6Ly9naXRodWIuY29tL3R1a2x1c2FuL0RPLU5PVC1QQU5JQy1QT1JURk9MSU8tVklTVUFMSVpFUi9yZWxlYXNlcy9kb3dubG9hZC92MS4wL0RvTm90UGFuaWNQb3J0Zm9saW9WaXN1YWxpemVyU2V0dXAtMS4wLmV4ZQ |
-| VirusTotal analysis API | https://www.virustotal.com/api/v3/analyses/u-d2979de7678a5a9d885d0679cb08d515746ecc70b2e28d531ff3547a2dc2176c-c4ec3004 |
+| VirusTotal analysis API | https://www.virustotal.com/api/v3/analyses/u-d2979de7678a5a9d885d0679cb08d515746ecc70b2e28d531ff3547a2dc2176c-f6fdd8f2 |
 | VirusTotal URL report | https://www.virustotal.com/gui/url/aHR0cHM6Ly9naXRodWIuY29tL3R1a2x1c2FuL0RPLU5PVC1QQU5JQy1QT1JURk9MSU8tVklTVUFMSVpFUi9yZWxlYXNlcy9kb3dubG9hZC92MS4wL0RvTm90UGFuaWNQb3J0Zm9saW9WaXN1YWxpemVyU2V0dXAtMS4wLmV4ZQ/detection |
 | Release context comment status | posted |
-| Release context comment ID | u-d2979de7678a5a9d885d0679cb08d515746ecc70b2e28d531ff3547a2dc2176c-5bd2d1fe |
+| Release context comment ID | u-d2979de7678a5a9d885d0679cb08d515746ecc70b2e28d531ff3547a2dc2176c-d5292739 |
 | Release context comment note | Release context comment posted to the VirusTotal URL object. |
 
 ## Last Analysis Stats

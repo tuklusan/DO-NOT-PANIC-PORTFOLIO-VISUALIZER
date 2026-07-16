@@ -19,11 +19,15 @@ patent, trademark, and governing-law provisions.
 ## Release 1.0 publication record
 
 The owner explicitly approved the first non-prerelease `1.0` publication on
-2026-07-13. The controlled cutover completed that day: GitHub Release `v1.0`
-is canonical, the complete four-file set is mirrored on itch.io, the public
-descriptions were verified, and the obsolete `v0.9.0-beta7` GitHub release and
-tag were deleted. No beta download remains visible on itch.io. See
-`releases/v1.0/RELEASE_1_0_PUBLICATION_EVIDENCE.md` for the final evidence.
+2026-07-13. The controlled cutover completed that day, and the live public
+surfaces were rechecked on 2026-07-14. GitHub Release `v1.0` remains canonical
+and currently exposes three uploaded assets: the installer, its SHA-256 file,
+and `virustotal-advisory-report.md`. The obsolete `v0.9.0-beta7` GitHub
+release and tag were deleted. The live itch.io page now presents the complete
+four-file `v1.0` mirror: installer, SHA-256 checksum, generated MD5 checksum,
+and VirusTotal advisory report. See
+`releases/v1.0/RELEASE_1_0_PUBLICATION_EVIDENCE.md` for the current public
+evidence.
 
 The release cutover is transactional:
 
@@ -53,6 +57,9 @@ The canonical public download channel for DO NOT PANIC PORTFOLIO VISUALIZER is G
 - All releases: https://github.com/tuklusan/DO-NOT-PANIC-PORTFOLIO-VISUALIZER/releases
 
 Installer `.exe` files and checksum artifacts are intentionally published as GitHub Release assets. They are not committed into a source-tree `RELEASE` directory because installers are binary build outputs that would unnecessarily bloat repository history.
+
+The current GitHub release body still matches
+`distribution/github/release-notes-1.0.md`.
 
 Release-specific advisory metadata, including VirusTotal URL-scan reports for public installer downloads when available, is tracked under the repository `releases/<tag>/` directory. The release hook also posts a bounded public VirusTotal URL comment with the installer download link, release tag, SHA-256, and compact app summary so the VirusTotal public page has provenance context. Comment posting is enabled by default and can be suppressed for scan-only advisory runs with `-SkipComment`. If comment posting fails, the advisory report still records the failure so scan evidence is not lost; strict release gates can use the hook's `-RequireComment` switch. These VirusTotal artifacts are third-party advisory signals only; they are not warranties, certifications, or guarantees that software is safe.
 
@@ -87,12 +94,15 @@ page from that file as a deliberate release step; Butler manages downloads but
 does not edit store-page prose. The GitHub README remains repository-specific
 and retains the canonical GitHub Releases download link.
 
-For the completed 1.0 cutover, the four named Butler channels replaced their
-existing public downloads with version `v1.0`. The itch.io page was verified to
-show only the installer, SHA-256, MD5, and VirusTotal report for 1.0. Prior
-Butler revisions may remain in itch.io's internal patch history, but no beta
-installer or stale archive is user-visible. The canonical end-user description
-from `distribution/itch/description.md` was applied and verified on 2026-07-13.
+For the current live 1.0 posting rechecked on 2026-07-14, the itch.io page
+shows `DoNotPanicPortfolioVisualizerSetup-1.0.exe`,
+`DoNotPanicPortfolioVisualizerSetup-1.0.sha256.txt`,
+`DoNotPanicPortfolioVisualizerSetup-1.0.exe.md5.txt`, and
+`virustotal-advisory-report.md`, all as version `v1.0`. The live page metadata
+now reads title `DO NOT PANIC Portfolio Visualizer: Stock Market Dashboard`,
+status `Released`, category `Tool`, platform `Windows`, and AI disclosure
+`AI Assisted, Code, Text`. The current live public description matches
+`distribution/itch/description.md`.
 
 SourceForge or another mirror is not required for the current public non-commercial release. Revisit mirroring only if GitHub download availability, analytics, or audience reach becomes a product requirement.
 

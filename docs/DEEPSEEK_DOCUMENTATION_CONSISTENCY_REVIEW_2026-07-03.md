@@ -17,7 +17,7 @@ patent, trademark, and governing-law provisions.
 # DeepSeek Documentation Consistency Review - 2026-07-03
 
 - Review type: tracked project documentation cross-document consistency, release sanity, accuracy, and maintainability review
-- Developer of record: Codex
+- Developer of record: project automation agent
 - Reviewer: DeepSeek v4-flash via chunked documentation packet process
 - Source artifact directory: `build/deepseek-review/docs-consistency-20260703-093111`
 - Document manifest: `build/deepseek-review/docs-consistency-20260703-093111/document-manifest.json`
@@ -29,7 +29,7 @@ patent, trademark, and governing-law provisions.
 
 DeepSeek was instructed to distinguish historical review/audit records from active current-facing documentation. Historical records were not treated as stale merely because they recorded earlier project states.
 
-Codex accepted five DeepSeek findings as actionable documentation/workflow consistency CRs: CR-220 through CR-224.
+The project automation agent accepted five DeepSeek findings as actionable documentation/workflow consistency CRs: CR-220 through CR-224.
 
 ## Created CRs
 

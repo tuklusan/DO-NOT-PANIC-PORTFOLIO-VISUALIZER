@@ -24,7 +24,7 @@ non-prerelease `1.0` release of DO NOT PANIC PORTFOLIO VISUALIZER.
 - Product version: `1.0`
 - Retired predecessor release: `v0.9.0-beta7`
 - Starting Git baseline: the commit immediately after `v0.9.0-beta7` that deferred `CR-174` pending approval
-- Distribution status: explicitly approved for controlled publication; published and verified on GitHub Releases and itch.io on 2026-07-13
+- Distribution status: explicitly approved for controlled publication; published on GitHub Releases and itch.io on 2026-07-13, with the live posted state rechecked on 2026-07-14
 
 The project intentionally uses one project-owned version string, `1.0`, across build metadata, UI labels, audit state, validation harnesses, and release-script defaults.
 
@@ -41,8 +41,12 @@ unreviewed future releases.
 - Itch.io mirrors the complete GitHub asset set only after the VirusTotal report
   is present and the checksum is verified.
 - `v0.9.0-beta7` was retained during cutover, then its GitHub release/tag was
-  deleted after 1.0 was proven complete at both public locations; no beta
-  download remains user-visible on itch.io.
+  deleted after 1.0 publication. The live itch.io page was rechecked on
+  2026-07-14 and now shows the complete four-file `v1.0` public mirror:
+  installer, SHA-256 checksum, generated MD5 checksum, and VirusTotal advisory
+  report. `docs/RELEASES.md` and
+  `releases/v1.0/RELEASE_1_0_PUBLICATION_EVIDENCE.md` track the current public
+  state.
 - Development/test installers remain private artifacts and must not be confused
   with the released installer.
 

@@ -66,7 +66,7 @@ foreach ($r in $refs) {
 
 $hits = New-Object System.Collections.Generic.List[string]
 $forbiddenPathPatterns = @(
-    '(?i)(^|/|\\)codex\.secrets\.json$',
+    '(?i)(^|/|\\)agent\.secrets\.json$',
     '(?i)(^|/|\\)TUKLUS-NOTES-WITH-API-KEYS\.txt$',
     '(?i)(^|/|\\)Issues and Development Scratchpad.*\.(txt|md)$',
     '(?i)(^|/|\\).*scratchpad.*\.(txt|md)$',

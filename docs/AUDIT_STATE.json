@@ -8855,7 +8855,7 @@
       "severity": "Critical",
       "evidence": [
         "User downloaded the installer from the public GitHub release and reproduced the CR-165 high-DPI layout failure on the local laptop.",
-        "Screenshot evidence: C:/Users/vagab/AppData/Local/Temp/codex-clipboard-6c11883f-44e1-42c6-bf9d-bcd19c788161.png",
+        "Screenshot evidence: C:/Users/vagab/AppData/Local/Temp/clipboard-capture-6c11883f-44e1-42c6-bf9d-bcd19c788161.png",
         "The installer page showed oversized/clipped checkbox text, overlapped help text, and edit controls crossing the page at laptop DPI."
       ],
       "acceptance": [
@@ -9212,7 +9212,7 @@
       "notes": [
         "Recommendation: Introduce a `SemaphoreSlim` to serialize all operations through the shared client or use a dedicated `Channel`.",
         "Acceptance criteria: All concurrent calls to `RunAsync`/`RunSerializedAsync` are serialized; no data races in protocol state; existing integration tests pass.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Validation passed locally for focused YFinance runtime/server protocol/cache tests."
       ],
       "acceptance": [
@@ -9246,7 +9246,7 @@
       "notes": [
         "Recommendation: Replace hand-rolled reference counting with a `ConcurrentDictionary<YFinanceServerClient, int>` or create a new client per operation (pooled).",
         "Acceptance criteria: After a fault, all references to the old client are released and it is disposed exactly once; no client resource leak after 1000 simulated faults.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Validation passed locally for focused YFinance runtime/server protocol/cache tests."
       ],
       "acceptance": [
@@ -9280,7 +9280,7 @@
       "notes": [
         "Recommendation: Add a per-client `SemaphoreSlim` (e.g., max concurrency = 8) inside `HandleClientAsync`.",
         "Acceptance criteria: When a client sends >8 concurrent requests, additional requests are queued; under a 100-request burst the server CPU usage stays below 80%; other clients are not starved.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Validation passed locally for focused YFinance runtime/server protocol/cache tests."
       ],
       "acceptance": [
@@ -9314,7 +9314,7 @@
       "notes": [
         "Recommendation: Serialize consent acceptance using the existing `_refreshLock` or a dedicated `SemaphoreSlim`.",
         "Acceptance criteria: When two threads simultaneously trigger a consent redirect, only one consent POST is sent and cookie state remains consistent; no `AccessViolationException` observed.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Validation passed locally for focused YFinance runtime/server protocol/cache tests."
       ],
       "acceptance": [
@@ -9348,7 +9348,7 @@
       "notes": [
         "Recommendation: Replace with actual behavior-based integration tests or remove if coverage exists elsewhere.",
         "Acceptance criteria: All source-file string-match tests are replaced or removed; no test breaks on whitespace-only or comment-only production changes.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Closed on 2026-07-03. The tests now assert exposed behavioral/seam contracts through type metadata instead of matching production source text snippets."
       ],
       "acceptance": [
@@ -9378,7 +9378,7 @@
       "notes": [
         "Recommendation: Apply a configurable timeout (e.g., 30 s) via `_options.HttpTimeout`.",
         "Acceptance criteria: When the Yahoo endpoint stalls beyond the timeout, the HTTP call is cancelled and the application remains responsive; the timeout is user-configurable.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Validation passed locally for focused YFinance runtime/server protocol/cache tests."
       ],
       "acceptance": [
@@ -9412,7 +9412,7 @@
       "notes": [
         "Recommendation: Use `new FileStream(..., FileOptions.Asynchronous)` for async file opening.",
         "Acceptance criteria: Under concurrent metadata requests, no thread-pool stall occurs; `GetAsync`/`SetAsync` complete without blocking a thread during the OS open call.\n\n### Priority 2 (Medium/High, material improvement in throughput, reliability, or maintainability)",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Validation passed locally for focused YFinance runtime/server protocol/cache tests."
       ],
       "acceptance": [
@@ -9446,7 +9446,7 @@
       "notes": [
         "Recommendation: Use a single `dotnet restore` on the solution; remove `--disable-parallel` from publish calls.",
         "Acceptance criteria: Build time reduces by ≥30%; timeout risk on slow machines is mitigated.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -9479,7 +9479,7 @@
       "notes": [
         "Recommendation: Replace with a full `dotnet restore` in the temp workspace.",
         "Acceptance criteria: After a package version change, the temp build uses the correct assets; no silent dependency drift.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -9514,7 +9514,7 @@
       "notes": [
         "Recommendation: Add `-WhatIf` checks, `try/catch` with retry (3 attempts), and exit-code verification.",
         "Acceptance criteria: Re-running the script on a provisioned VM skips already-installed packages; transient download failures are retried without failing the pipeline.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Implemented shared build/vm/VmPackageInstallCommon.ps1 retry/idempotency helper for Chocolatey/package provisioning.",
         "Removed Invoke-Expression from Chocolatey bootstrap and added explicit download/install retry flow with cleanup.",
         "Updated VM QA/bootstrap scripts to skip already-installed packages and continue past optional tooling failures while keeping required bootstrap installs strict.",
@@ -9547,7 +9547,7 @@
       "notes": [
         "Recommendation: Use `ForEach-Object -Parallel 3` or `Start-ThreadJob` with a throttle limit.",
         "Acceptance criteria: Total installation time reduces by ≥50%; no increase in package installation failures due to contention.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Developer analysis rejected parallel Chocolatey package installation as unsafe for current VM provisioning. Chocolatey uses shared install/cache state and package install scripts can mutate global machine state; concurrent installs risk lock contention, partial installs, and harder-to-debug VM bootstrap failures.",
         "CR-189 already implemented the safer throughput/reliability improvements: idempotent skips, retry/backoff, and optional package continuation. Keeping package installs serialized is intentional until a package-manager-safe parallel provisioning design is approved.",
         "No code change made for CR-190 by design; closure is an explicit do-not-implement decision to preserve harness stability."
@@ -9577,7 +9577,7 @@
       "notes": [
         "Recommendation: Use `Test-Path` on known install directories.",
         "Acceptance criteria: VM inventory scripts complete in <30 s; no access-denied errors.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Replaced recursive Program Files/user-profile file scans in VM inventory and verification scripts with explicit known-tool path probes.",
         "Merged duplicate verify-vm-tools path sections into one Known Tool Paths section and made environment-derived path probes null-safe."
       ],
@@ -9609,7 +9609,7 @@
       "notes": [
         "Recommendation: Add `trap`/`Register-EngineEvent` and remote cleanup command on exit.",
         "Acceptance criteria: On host script termination, the remote harness is always aborted; no stale Config/Desktop/agent processes remain after cancellation.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Manual inspection confirmed Invoke-VmBuildTest.ps1 already has structured try/catch/finally cleanup that calls Invoke-VmHarnessAbortCleanup on incomplete runs and always removes the SSH/SFTP bundle and local command file.",
         "Manual inspection confirmed VmSshCommon.ps1 Invoke-VmHarnessAbortCleanup stops PortfolioSaver.VmAgent, PortfolioSaver.Config, PortfolioSaver.Desktop, WinAppDriver, root-owned guest processes, and writes results/harness-aborted.json.",
         "Added/strengthened test guard coverage in InvokeVmBuildTest_CleansRemoteProcessesWhenAborted so cancellation/abort cleanup invariants stay locked."
@@ -9639,11 +9639,11 @@
       "notes": [
         "Recommendation: Refactor tests to use `EnvironmentScope` or injectable config; remove assembly-level parallelization ban.",
         "Acceptance criteria: All tests that modified environment variables are refactored; parallel execution is enabled; test suite completes in <50% of current time.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Resolved on 2026-07-03 by removing the assembly-level DisableTestParallelization gate while retaining the EnvironmentSerial collection for process-wide environment, culture, trace, console, and current-directory mutating tests.",
         "Added a source-contract guard that scans test sources, excluding bin/obj outputs, and requires tests matching known ambient-state mutator invocation/assignment patterns to opt into [Collection(\"EnvironmentSerial\")].",
         "Updated the release payload third-party notice test to validate the current tracked publish scripts build/publish-safe-temp.ps1 and build/publish-inno-installer.ps1; git ls-files confirmed both scripts are tracked and the obsolete publish-standalone-installer.ps1 script is absent.",
-        "Codex developer decision on DeepSeek review: unchanged tracked script files are outside the staged diff but present in the repository, so the file-missing finding is not a blocker; regex-based source-contract scanning is sufficient for this repo guard and a full Roslyn analyzer is not warranted here."
+        "Project maintainer decision on DeepSeek review: unchanged tracked script files are outside the staged diff but present in the repository, so the file-missing finding is not a blocker; regex-based source-contract scanning is sufficient for this repo guard and a full Roslyn analyzer is not warranted here."
       ],
       "resolution": "Closed on 2026-07-03 by enabling parallel execution for non-mutating test collections, preserving EnvironmentSerial for ambient-state mutating tests, and adding an enforcement guard so future ambient-state tests must explicitly opt into serialization.",
       "validation": [
@@ -9678,10 +9678,10 @@
       "notes": [
         "Recommendation: Add `[assembly: InternalsVisibleTo(\"PortfolioSaver.Tests\")]` and change target methods to `internal`; or extract interfaces.",
         "Acceptance criteria: All reflection tests are replaced with direct calls; no test breaks on method signature changes.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Resolved on 2026-07-03 as a safe service-layer reduction: InternetProbeService, ExchangePhotoCacheService, and FinanceNewsService tests no longer use private reflection for the targeted helpers/state.",
         "Assemblies already expose internals to PortfolioSaver.Tests; this pass reused that seam and intentionally avoided widening dozens of WPF control/private field members where reflection is currently serving as white-box UI state-machine contract coverage.",
-        "DeepSeek review flagged a compile concern for FinanceNewsService helper visibility, but Codex verified those helpers are already internal in the current source and the full Release test suite passed."
+        "DeepSeek review flagged a compile concern for FinanceNewsService helper visibility, but project maintainer verified those helpers are already internal in the current source and the full Release test suite passed."
       ],
       "resolution": "Closed on 2026-07-03 by replacing low-risk service-layer reflection with direct internal seams while documenting that remaining WPF/control reflection should be handled only through a larger UI state-machine extraction, not by blindly widening private members.",
       "validation": [
@@ -9749,7 +9749,7 @@
       "notes": [
         "Recommendation: Use a `SemaphoreSlim` signaled on enqueue.",
         "Acceptance criteria: Idle trace worker uses zero CPU (<1% per core); enqueue releases the worker immediately.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Closed on 2026-07-03. Idle trace worker now blocks on a signal instead of waking every 25 ms; the existing retry delay remains only for exception recovery."
       ],
       "acceptance": [
@@ -9780,7 +9780,7 @@
       "notes": [
         "Recommendation: Store a static `HttpClient` instance.",
         "Acceptance criteria: `ProbeInternetAsync` does not allocate a new `HttpClient`; object allocations per probe drop by >10.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Closed on 2026-07-03. The default probe path no longer allocates a new HttpClient per probe while preserving injected-handler testability and per-request cancellation semantics."
       ],
       "acceptance": [
@@ -9879,7 +9879,7 @@
       "notes": [
         "Recommendation: Use `CancellationTokenSource.CreateLinkedTokenSource` with a resetting timeout per message.",
         "Acceptance criteria: A client that stays idle for the configured timeout is disconnected; after reconnect, it works normally.",
-        "Decision: implemented and closed by Codex developer on 2026-07-09.",
+        "Decision: implemented and closed by project maintainer on 2026-07-09.",
         "No VM run required for this server-side protocol hardening CR; real local server process integration tests cover the runtime behavior."
       ],
       "acceptance": [
@@ -9912,7 +9912,7 @@
       "notes": [
         "Recommendation: Add a configurable capacity with LRU eviction or use `IMemoryCache`.",
         "Acceptance criteria: Cache size never exceeds the configured maximum; eviction does not increase cache miss rate significantly.",
-        "Decision: implemented and closed by Codex developer on 2026-07-09.",
+        "Decision: implemented and closed by project maintainer on 2026-07-09.",
         "Design note: lock-protected Dictionary plus LinkedList was chosen over IMemoryCache to keep YFinance.NET dependency-free and deterministic."
       ],
       "acceptance": [
@@ -9944,7 +9944,7 @@
       "notes": [
         "Recommendation: Use `TimeSpan.FromMilliseconds(Math.Min(1000 * Math.Pow(2, attempt - 1), maxDelay)) + Random.Next(0, 200)`.",
         "Acceptance criteria: Retry storms are eliminated; average success rate under transient failures improves.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Decision: implemented and closed 2026-07-09.",
         "DeepSeek informational note about injected delay delegate was reviewed; no production action needed because delay exceptions propagate out of the catch block and the default delay is Task.Delay."
       ],
@@ -9979,7 +9979,7 @@
       "notes": [
         "Recommendation: Merge into a single 33 ms timer with internal scheduled action checks.",
         "Acceptance criteria: Dispatcher queue depth decreases; UI rendering remains smooth under load.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Decision: implemented and closed 2026-07-09.",
         "The CR explicitly requested timer consolidation; motion was kept in the unified scene scheduler rather than restored to a separate timer. Slow action telemetry was added to support future tuning if traces show starvation."
       ],
@@ -10013,7 +10013,7 @@
       "notes": [
         "Recommendation: Defer `UpdateLayout()` to after the batch or use `InvalidateVisual()`.",
         "Acceptance criteria: Graph population does not cause visible stutter; initial card layout completes within 2 s.",
-        "Decision: accepted by Codex developer as worth tracking.",
+        "Decision: accepted by project maintainer as worth tracking.",
         "Closed on 2026-07-09. The warmup path now batches the expensive layout flush while preserving per-graph responsive sizing, quote application, sprite placement, and visual synchronization."
       ],
       "acceptance": [
@@ -10049,7 +10049,7 @@
       "notes": [
         "Recommendation: Use `Task.WhenAll` with a global timeout and per-feed cancellation.",
         "Acceptance criteria: News refresh wall-clock time reduces from sum of latencies to the slowest single feed.",
-        "Decision: accepted by Codex developer as worth tracking.",
+        "Decision: accepted by project maintainer as worth tracking.",
         "Closed on 2026-07-09. Summarized-news RSS context collection now waits on the slowest feed rather than the sum of all feed latencies while preserving partial-failure behavior."
       ],
       "acceptance": [
@@ -10083,7 +10083,7 @@
       "notes": [
         "Recommendation: Use a single `lock` or `AsyncLock` for both state and save.",
         "Acceptance criteria: No deadlock possible; ledger operations remain correct under concurrent calls.",
-        "Decision: accepted by Codex developer as worth tracking.",
+        "Decision: accepted by project maintainer as worth tracking.",
         "Closed on 2026-07-09. Ledger state and persistence now share a single lock, eliminating the prior two-lock ordering risk."
       ],
       "acceptance": [
@@ -10115,7 +10115,7 @@
       "notes": [
         "Recommendation: Add `ConfigureAwait(false)` to all non-UI continuations.",
         "Acceptance criteria: WPF dispatcher queue utilization reduces; startup scene setup completes faster.",
-        "Decision: accepted by Codex developer as worth tracking.",
+        "Decision: accepted by project maintainer as worth tracking.",
         "Closed on 2026-07-09. StartupCoordinator now avoids unnecessary dispatcher continuation capture for non-UI async work."
       ],
       "acceptance": [
@@ -10151,7 +10151,7 @@
       "notes": [
         "Recommendation: Use `File.ReadAllTextAsync` and `JsonSerializer.DeserializeAsync`; make callers async.",
         "Acceptance criteria: Settings load does not block the UI thread; startup scene appears immediately.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10186,7 +10186,7 @@
       "notes": [
         "Recommendation: Use `Task.WhenAll` with a concurrency limit (SemaphoreSlim 5).",
         "Acceptance criteria: Total weather retrieval time reduces to ~max single city latency; no rate limit violations.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority."
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority."
       ],
       "acceptance": [
         "Root cause is identified from traces, screenshots, or code inspection.",
@@ -10221,7 +10221,7 @@
       "notes": [
         "Recommendation: Use `Task.Run` for word wrapping and measurement, dispatch result to UI.",
         "Acceptance criteria: Ticker playback does not drop frames; headline preparation completes before the next segment.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "",
         "DeepSeek cache/cancellation findings addressed: headline measurement cache is now lock-protected and reused by sync/async paths; stale async headline work is cancelled via CancellationTokenSource; focused render behavior tests 81/81 and full suite 668/668 passed after final fix."
       ],
@@ -10250,7 +10250,7 @@
       "notes": [
         "Recommendation: Mark with `[Conditional(\"DEBUG\")]` or sample at low rate.",
         "Acceptance criteria: Release builds produce <10 trace lines per ticker cycle; disk I/O from tracing is negligible.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Closure 2026-07-09T19:26:52.5948724-04:00: Runtime quote success/heartbeat/skip trace events are gated behind DNPPV_RUNTIME_QUOTE_DEBUG_TRACE while timeout/failure/freshness diagnostics remain always-on; VM harness enables the debug switch only for validation evidence.",
         "Validation: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter FullyQualifiedName~Nb040BehaviorTests|FullyQualifiedName~VmHarnessScriptTests passed 85/85."
       ],
@@ -10279,7 +10279,7 @@
       "notes": [
         "Recommendation: Replace manual canvas with an `ItemsControl` + `VirtualizingStackPanel`; cache item widths.",
         "Acceptance criteria: Window resize and data updates do not cause frame drops; memory usage remains stable.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Closure 2026-07-09T19:31:36.3588687-04:00: TickerTapeControl no longer calls UpdateLayout or creates a measurement visual in RefreshMotionMetrics; sequence width is cached from the fixed-width ticker item layout and invalidated on tape/context structure changes.",
         "Reviewer adjudication 2026-07-09T19:41:43.6455984-04:00: Long-symbol fixed-field clipping concern is intentional product behavior; ticker fields use fixed widths and CharacterEllipsis so symbol length cannot resize the whole tape ribbon.",
         "Validation: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter FullyQualifiedName~VisualizerRenderBehaviorTests passed 83/83 after cached-width, retry, and overflow-guard coverage."
@@ -10309,7 +10309,7 @@
       "notes": [
         "Recommendation: Stop and restart playback timer on change; debounce multiple rapid changes (500 ms window).",
         "Acceptance criteria: Rapid headline updates do not cause UI lag; stale headlines are not displayed.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Closure 2026-07-09T19:45:29.9401119-04:00: NewsFlasherControl now cancels in-flight headline preparation and debounces headline/speed refresh bursts for 500ms by pausing playback, coalescing changes, then resetting/restarting once with the latest headlines.",
         "Reviewer adjudication 2026-07-09T19:54:04.5641950-04:00: Speed-only refresh preserves the current headline index by design; headline collection/text changes reset to the first headline. Idle refresh executes immediately to avoid a blank 500ms startup delay; debounce applies to active playback bursts.",
         "Validation: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --configuration Release --filter FullyQualifiedName~VisualizerRenderBehaviorTests passed 86/86 after idle-path and unload-path debounce coverage."
@@ -10339,7 +10339,7 @@
       "notes": [
         "Recommendation: Subscribe to `NetworkChange.NetworkAvailabilityChanged`; fallback to 30 s interval if event unavailable.",
         "Acceptance criteria: No periodic network poll; connectivity state updates immediately on network change.",
-        "Decision: accepted by Codex developer as worth tracking; implementation remains queued by priority.",
+        "Decision: accepted by project maintainer as worth tracking; implementation remains queued by priority.",
         "Implementation: IConnectivityService now exposes ConnectivityChanged; ConfigConnectivityService subscribes to NetworkChange.NetworkAvailabilityChanged and invalidates the InternetProbeService cache before notifying.",
         "Implementation: MainWindowViewModel removed _stateTimer/OnStateTimerTickAsync, reacts to connectivity events, coalesces rapid events, keeps UI-state mutation on the UI dispatcher, and force-probes connectivity on every Validate click.",
         "Validation: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --filter \"MainWindowViewModelValidationTests\" --no-restore passed 59/59.",
@@ -10375,7 +10375,7 @@
       "notes": [
         "Recommendation: Throttle to ~10 updates/second or report only on state changes.",
         "Acceptance criteria: Validation UI remains responsive; no jitter during validation of 500 symbols.",
-        "Decision: accepted by Codex developer as worth tracking.",
+        "Decision: accepted by project maintainer as worth tracking.",
         "Implemented on 2026-07-09 with BufferedSymbolValidationProgress, a dispatcher-backed progress adapter that batches every YahooSymbolValidationProgress entry and posts throttled UI batches instead of one dispatcher callback per symbol.",
         "MainWindowViewModel now reports validation progress batches through the existing single-symbol progress path, preserving validation log/status formatting while reducing dispatcher load.",
         "Validation completion explicitly flushes pending progress on the UI dispatcher before merging results; ConfigureAwait(true) is intentional to avoid a future pool-thread Dispatcher.Invoke deadlock during teardown.",
@@ -10409,7 +10409,7 @@
       "notes": [
         "Recommendation: Use `symbols.GetRange(index, count)` or span slicing.",
         "Acceptance criteria: Allocation for batching 500 symbols drops by factor >10; no change in batch boundaries.",
-        "Decision: accepted by Codex developer as worth tracking.",
+        "Decision: accepted by project maintainer as worth tracking.",
         "Implemented on 2026-07-09 by replacing ChunkSymbols LINQ Skip/Take allocation with direct indexed list construction using exact batch capacity.",
         "Focused validation passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --filter \"MainWindowViewModelValidationTests|YahooSymbol\" --no-restore (64/64).",
         "DeepSeek gate artifact reviewed: build/deepseek-review/deepseek-review-20260709-210212.md; no actionable findings."
@@ -10440,7 +10440,7 @@
       "notes": [
         "Recommendation: Store the raw JSON string; parse into `JsonDocument` on retrieval.",
         "Acceptance criteria: Per-cache-hit allocation reduces by ~50%; no risk of accessing a disposed `JsonDocument`.\n\n### Priority 3 (Low severity or impact, still testable and worth fixing)",
-        "Decision: accepted by Codex developer as worth tracking.",
+        "Decision: accepted by project maintainer as worth tracking.",
         "Implemented on 2026-07-09 by changing YahooFinanceHttpClient from MemoryTtlCache<JsonDocument> to MemoryTtlCache<string> and caching raw Yahoo JSON payloads.",
         "GetJsonAsync and GetCachedJsonAsync preserve the public JsonDocument contract by parsing raw response strings for callers. Cache misses parse the response before storing it so malformed 2xx payloads cannot poison the cache.",
         "Verified MemoryTtlCache has no IDisposable-specific eviction contract; moving cached values from JsonDocument to string removes the previous retained-disposable risk without introducing new cleanup requirements.",
@@ -10473,10 +10473,10 @@
       "notes": [
         "Recommendation: Move retry loop into main script and rely on `waituntilterminated`.",
         "Acceptance criteria: After uninstall completes, no orphaned cleanup processes remain; removal eventually succeeds.",
-        "Decision: accepted by Codex developer as worth tracking.",
+        "Decision: accepted by project maintainer as worth tracking.",
         "Implemented on 2026-07-09 by removing the detached encoded PowerShell cleanup process from Cleanup-DoNotPanicPortfolioVisualizer.ps1. The uninstall cleanup script now performs process/app-data cleanup and asserts that install-root file removal is managed by Inno Setup rather than spawning a background child.",
         "Installer script now explicitly removes the installer-owned Program Files app root through [UninstallDelete] Type: filesandordirs for {app}, while user data remains under Local AppData and is handled by the scoped cleanup functions.",
-        "DeepSeek raised competing concerns: dirifempty can leave install remnants, while filesandordirs can remove untracked files under Program Files. Codex adjudication: {app} is an installer-owned Program Files payload, not a user-data location; reliable uninstall and no orphan cleanup process are the product requirements for this CR.",
+        "DeepSeek raised competing concerns: dirifempty can leave install remnants, while filesandordirs can remove untracked files under Program Files. Project adjudication: {app} is an installer-owned Program Files payload, not a user-data location; reliable uninstall and no orphan cleanup process are the product requirements for this CR.",
         "Focused validation passed: dotnet test tests/PortfolioSaver.Tests/PortfolioSaver.Tests.csproj --filter \"InnoInstallerScriptTests\" --no-restore (3/3).",
         "DeepSeek gate artifacts reviewed: build/deepseek-review/deepseek-review-20260709-210801.md, 20260709-211009.md, 20260709-211253.md, 20260709-211725.md, and 20260709-212220.md. Actionable diagnostics/test-hardening feedback was incorporated; the remaining retry/data-loss tension was explicitly adjudicated."
       ],
@@ -10540,7 +10540,7 @@
       "notes": [
         "Recommendation: Add an explicit abort condition early in the workflow, such as a repository variable freeze check, or remove workflow_dispatch until freeze is lifted.",
         "Acceptance criteria: Itch publish workflow fails gracefully with explanatory message when freeze is active; disabling the freeze is explicit.",
-        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking.",
+        "Decision: accepted by project maintainer as documentation/workflow consistency work worth tracking.",
         "Closed on 2026-07-03. Publishing to Itch.io now fails fast with a clear 1.0 development-freeze message unless the repository variable explicitly disables the freeze."
       ],
       "acceptance": [
@@ -10569,7 +10569,7 @@
       "notes": [
         "Recommendation: Replace absolute paths with relative repository-root references or mark them clearly as local examples.",
         "Acceptance criteria: A developer cloning the repo can follow the VM runbook without machine-specific path edits.",
-        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking.",
+        "Decision: accepted by project maintainer as documentation/workflow consistency work worth tracking.",
         "Closed on 2026-07-03 as part of the documentation/workflow consistency cleanup slice. Validation: targeted grep confirmed the canonical VM script list no longer uses machine-specific paths; workflow comments now document Butler and MD5 maintenance intent."
       ],
       "acceptance": [
@@ -10598,7 +10598,7 @@
       "notes": [
         "Recommendation: Add visible links from build/deploy and validation workflow docs to the degraded UX contract.",
         "Acceptance criteria: Manual validation instructions make the expected degraded/offline visual behavior easy to locate.",
-        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking.",
+        "Decision: accepted by project maintainer as documentation/workflow consistency work worth tracking.",
         "Closed on 2026-07-03 as part of the documentation/workflow consistency cleanup slice. Validation: targeted grep confirmed the canonical VM script list no longer uses machine-specific paths; workflow comments now document Butler and MD5 maintenance intent."
       ],
       "acceptance": [
@@ -10627,7 +10627,7 @@
       "notes": [
         "Recommendation: Add comments with checksum update instructions or automate checksum lookup/verification.",
         "Acceptance criteria: A maintainer can update Butler without reverse-engineering the checksum process.",
-        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking.",
+        "Decision: accepted by project maintainer as documentation/workflow consistency work worth tracking.",
         "Closed on 2026-07-03 as part of the documentation/workflow consistency cleanup slice. Validation: targeted grep confirmed the canonical VM script list no longer uses machine-specific paths; workflow comments now document Butler and MD5 maintenance intent."
       ],
       "acceptance": [
@@ -10656,7 +10656,7 @@
       "notes": [
         "Recommendation: Remove the MD5 channel or add a comment explaining that it is an Itch-only convenience artifact.",
         "Acceptance criteria: Workflow comments or structure make clear whether MD5 is canonical or Itch-only.",
-        "Decision: accepted by Codex developer as documentation/workflow consistency work worth tracking.",
+        "Decision: accepted by project maintainer as documentation/workflow consistency work worth tracking.",
         "Closed on 2026-07-03 as part of the documentation/workflow consistency cleanup slice. Validation: targeted grep confirmed the canonical VM script list no longer uses machine-specific paths; workflow comments now document Butler and MD5 maintenance intent."
       ],
       "acceptance": [
@@ -11985,7 +11985,7 @@
       "severity": "high",
       "evidence": [
         "On a multi-display setup, the GPU/WDM composition nudges associated with the product can force other active windows into maximized or borderless fullscreen states.",
-        "Observed example: while the product was running fullscreen on the right-hand monitor, the Codex window on the left monitor became fullscreen and frameless.",
+        "Observed example: while the product was running fullscreen on the right-hand monitor, the development window on the left monitor became fullscreen and frameless.",
         "The affected monitors have different resolutions, so any fix must be monitor-aware and must not assume a single virtual-desktop rectangle or primary-monitor geometry."
       ],
       "notes": [
@@ -12006,7 +12006,7 @@
         "The validation moved the product fully onto the left-hand monitor first (\\\\.\\DISPLAY4), then onto the right-hand monitor (\\\\.\\DISPLAY1), before exercising fullscreen on each monitor.",
         "Native HWND/monitor assertions passed on both displays: screen_assertion ok=true before entry and after exit, fullscreen_assertion ok=true after entry, and native monitor ownership matched the target display.",
         "The unrelated CR260 sentinel window retained its original style and bounds during both product fullscreen entries; sentinel_comparison changed=false for \\\\.\\DISPLAY4 and \\\\.\\DISPLAY1.",
-        "Visual inspection of 02-after-uia--DISPLAY4.png confirmed the product fullscreened on the left monitor while unrelated Codex/sentinel windows remained framed and separate; visual inspection of 02-after-uia--DISPLAY1.png confirmed the product fullscreened on the right monitor with unrelated windows remaining on the opposite monitor.",
+        "Visual inspection of 02-after-uia--DISPLAY4.png confirmed the product fullscreened on the left monitor while unrelated development/sentinel windows remained framed and separate; visual inspection of 02-after-uia--DISPLAY1.png confirmed the product fullscreened on the right monitor with unrelated windows remaining on the opposite monitor.",
         "UI Automation successfully invoked ViewFullScreenMenuItem for fullscreen entry on both monitors. Fullscreen exit used a targeted product-HWND Escape fallback only after the menu became hidden by fullscreen mode; no global SendKeys path was used.",
         "Mandatory DeepSeek artifact second opinion build/validation/artifacts/cr260-local-multimonitor-20260714-1350/deepseek-artifact-review.md was obtained. Its high-severity UIA concern was reviewed as advisory and partially based on a misread of the log: entry used UIA successfully, while only exit used the targeted-key fallback. Its remaining recommendations are documented residual test-harness hardening notes, not blockers for this CR closure."
       ],
@@ -12268,7 +12268,7 @@
     {
       "id": "documentation-consistency-review-2026-07-12",
       "date": "2026-07-12",
-      "reviewer": "Codex owner/developer with DeepSeek advisory review",
+      "reviewer": "project owner/developer with DeepSeek advisory review",
       "scope": "Two-pass forensic internal and cross-document consistency review of all tracked project documentation and documentation-support artifacts, cross-checked against current implementation and build metadata.",
       "versioned_document": "docs/DOCUMENTATION_CONSISTENCY_REVIEW_2026-07-12.md",
       "review_artifact": "build/deepseek-review/deepseek-review-20260712-150337.md",

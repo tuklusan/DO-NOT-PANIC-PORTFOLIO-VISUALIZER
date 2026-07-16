@@ -17,7 +17,7 @@ patent, trademark, and governing-law provisions.
 # DeepSeek Full Optimization Review - 2026-07-03
 
 - Review type: full tracked code/documentation optimization, concurrency, parallel processing, UI-fluidity, and QA-process review
-- Developer of record: Codex
+- Developer of record: project automation agent
 - Reviewer: DeepSeek v4-flash via chunked whole-repository packet process
 - Source artifact directory: uild/deepseek-review/full-optimization-20260703-085440
 - Tracked-file manifest: uild/deepseek-review/full-optimization-20260703-085440/tracked-text-manifest.json
@@ -29,7 +29,7 @@ patent, trademark, and governing-law provisions.
 
 A first pass was intentionally discarded for CR creation because it included an older June DeepSeek optimization-review document. That polluted synthesis mostly repeated old findings. The clean pass excluded historical DeepSeek review records and produced the current CR set below.
 
-Codex accepted DeepSeek's clean synthesis as actionable project backlog material and created CR-180 through CR-219. These CRs are optimization and reliability work items; they are queued by priority and have not been implemented as part of this review pass.
+The project automation agent accepted DeepSeek's clean synthesis as actionable project backlog material and created CR-180 through CR-219. These CRs are optimization and reliability work items; they are queued by priority and have not been implemented as part of this review pass.
 
 ## Created CRs
 

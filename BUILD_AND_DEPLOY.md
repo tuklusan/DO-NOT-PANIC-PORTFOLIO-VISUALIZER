@@ -112,10 +112,13 @@ The approved baseline is maintained in `docs\RELEASE_1_0_BASELINE.md`.
 Public tags use the project version with a lowercase `v` prefix, so version
 `1.0` is published under tag `v1.0`.
 
-Publication completed on 2026-07-13. GitHub Release `v1.0` and the itch.io
-mirror were independently verified with matching 1.0 assets and public copy;
-the obsolete `v0.9.0-beta7` GitHub release/tag and user-visible itch.io beta
-downloads were retired. Final evidence is in
+Publication completed on 2026-07-13, and the live public endpoints were
+rechecked on 2026-07-14. GitHub Release `v1.0` remains the canonical surface
+and currently carries the installer, SHA-256 checksum, and VirusTotal advisory
+report. The obsolete `v0.9.0-beta7` GitHub release/tag was retired, and the
+current itch.io page now mirrors the full public 1.0 download set: installer,
+SHA-256 checksum, generated MD5 checksum, and VirusTotal advisory report, all
+posted as `v1.0`. Current evidence is in
 `releases\v1.0\RELEASE_1_0_PUBLICATION_EVIDENCE.md`.
 
 ## Publish

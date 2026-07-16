@@ -16,9 +16,9 @@ publish/
 *passwords*.txt
 *passwords*.md
 TUKLUS-NOTES-WITH-API-KEYS.txt
-codex.secrets.json
+agent.secrets.json
 build/**/test-secrets.json
-build/**/codex.secrets.json
+build/**/agent.secrets.json
 Issues and Development Scratchpad*.txt
 *scratchpad*.txt
 *scratchpad*.md
@@ -26,7 +26,7 @@ Issues and Development Scratchpad*.txt
 *Scratchpad*.md
 
 # Local agent/runtime logs
-.codex-logs/
+.agent-logs/
 build/deepseek-review/
 
 # Generated outputs and packaged binaries

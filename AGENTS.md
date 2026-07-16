@@ -37,9 +37,9 @@ Any floating clock-style overlay behavior should stay visually consistent with t
 ## Data note
 Historical cache belongs under `%LOCALAPPDATA%\DoNotPanicPortfolioVisualizer\Caches\History`. Legacy `%LOCALAPPDATA%\PortfolioSaver` content is migration input only. Delete history files older than 14 days.
 
-## Canonical Codex operational rule
-When running Codex-Agent, cloud requests initiated by the agent must be spaced out by at least 15 seconds after the last response.
-This is a Codex operational constraint only and is not a product/runtime throttling requirement for the desktop visualizer codebase.
+## Canonical automation-agent operational rule
+When running the automation agent, cloud requests initiated by the agent must be spaced out by at least 15 seconds after the last response.
+This is an automation-agent operational constraint only and is not a product/runtime throttling requirement for the desktop visualizer codebase.
 
 ## Mandatory DeepSeek code-review gate
 For any code modification, including application code, XAML, scripts, harnesses, tests, project files, or build tooling, run a DeepSeek code-review pass before committing, pushing, or starting local/VM validation cycles.
@@ -69,11 +69,11 @@ The trusted DeepSeek review endpoint is `https://api.deepseek.com`. If a future 
 Documentation-only ticket updates may be committed without this gate, but any change that can affect runtime behavior, build behavior, tests, harnesses, packaging, or developer workflow must pass the gate.
 
 ## DeepSeek delegation and token-conservation workflow
-Treat Codex as the chief architect and the configured DeepSeek review/generation model as the high-throughput generation assistant. Codex context is scarce; DeepSeek context is expendable. Prefer orchestration, targeted verification, and integration over large local reads or hand-written boilerplate.
+Treat the primary automation agent as the chief architect and the configured DeepSeek review/generation model as the high-throughput generation assistant. Primary-agent context is scarce; DeepSeek context is expendable. Prefer orchestration, targeted verification, and integration over large local reads or hand-written boilerplate.
 
 - Blind drop: For heavy boilerplate, WiX/installer authoring, large XAML layouts, generated tests, or complex algorithm scaffolding, have DeepSeek generate the file and write it directly to disk. Do not read the generated file unless build, tests, review, or targeted validation fail.
 - Delegated reading: Do not read large files just to understand them. Ask DeepSeek to summarize the file structure, key methods/properties, and exact line targets, then operate from the summary plus small local spot checks.
-- Test generation: After implementation, delegate xUnit test creation to DeepSeek and have it save tests directly under the test project. Codex should review failures and stitch integration, not manually author repetitive test bodies.
+- Test generation: After implementation, delegate xUnit test creation to DeepSeek and have it save tests directly under the test project. The primary automation agent should review failures and stitch integration, not manually author repetitive test bodies.
 - Review gate still applies: All generated or modified files must still pass the mandatory DeepSeek code-review gate before staging, committing, pushing, or local/VM validation. Non-critical CR work does not require a commit/push before the DeepSeek review itself; commit/push is retained as the required checkpoint before local or VM test cycles.
 - Full reviews: Full tracked codebase and documentation end-to-end reviews must be preserved as versioned synthesis documents under `docs/` using names like `DEEPSEEK_FULL_RC_REVIEW_YYYY-MM-DD.md`, with review date, reviewer, scope, artifact directory, verdict, and synthesis. Raw packets remain transient under ignored `build/deepseek-review/`.
 - Local inspection is still required for safety-critical final checks: compile/test failures, diffs before commit, small targeted code reads, generated-file smoke checks, git status, process cleanup, and any place where DeepSeek output conflicts with build/runtime evidence.
@@ -82,7 +82,7 @@ Treat Codex as the chief architect and the configured DeepSeek review/generation
 Use `build\validation\Invoke-AutonomousVisualValidation.ps1` for unattended visual and logic release-candidate checks. The script runs the DeepSeek gate, local restore/build/tests, commits and pushes pending changes before VM validation, runs the SSH-first VM UX harness, analyzes pulled screenshots/traces, and can create audit CRs from anomalies without chat prompting.
 
 ## Mandatory DeepSeek test-artifact second-opinion gate
-Whenever a workflow analyzes test result artifacts such as traces, screenshots, logs, summaries, or pulled VM result bundles, get an advisory second opinion from DeepSeek before finalizing the interpretation. The deterministic analyzer and Codex remain the final authority for pass/fail and CR generation, but DeepSeek must be used as an assistant to identify possible missed anomalies, weak proof, false positives, and follow-up checks.
+Whenever a workflow analyzes test result artifacts such as traces, screenshots, logs, summaries, or pulled VM result bundles, get an advisory second opinion from DeepSeek before finalizing the interpretation. The deterministic analyzer and project owner remain the final authority for pass/fail and CR generation, but DeepSeek must be used as an assistant to identify possible missed anomalies, weak proof, false positives, and follow-up checks.
 
 The canonical artifact analyzer `build\validation\Analyze-VisualValidationArtifacts.ps1` invokes `build\validation\Invoke-DeepSeekArtifactReview.ps1` by default and writes an ignored advisory report next to the deterministic analysis JSON. Do not use `-SkipDeepSeekArtifactReview` unless debugging the analyzer itself; normal validation and CR-closure work must keep the advisory gate enabled. The process of obtaining the second opinion is mandatory and failure to obtain it blocks validation; the content of that opinion is advisory and does not override deterministic analyzer/developer judgment. Artifact producers and operators must ensure traces/logs/screenshots do not contain credentials before advisory review; the script sends screenshot metadata, not pixel data, and performs best-effort text secret scanning, but secret hygiene remains mandatory at source.
 

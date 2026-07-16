@@ -152,7 +152,7 @@ try {
 
 You are providing a second opinion on test result artifacts for DO NOT PANIC PORTFOLIO VISUALIZER.
 
-This is advisory only. Codex/the project owner will make the final pass/fail and CR-generation decisions.
+This is advisory only. The project owner will make the final pass/fail and CR-generation decisions.
 
 Focus on:
 - anomalies visible in trace/log excerpts
